@@ -34,6 +34,8 @@ GPT-5.6 Terra at medium effort with Fast completed the blind cache benchmark in 
 
 Three additional no-tools prompts completed in 17–33s. The autocomplete and interval-merging answers were correct; the PostgreSQL transfer answer had a real constraint bug in its temporary idempotency row. This confirms reliable completion and useful coding quality, while showing that Swift remains a Low–Medium mode rather than a substitute for Weave or Prime.
 
+After publishing Terra as the production `swift` route and removing both temporary test modes, an exact-response smoke completed correctly in 15.3s.
+
 ## Task
 
 Each mode received the same self-contained prompt and was told not to use tools or external sources. The starting point was this shared async cache:
@@ -117,6 +119,7 @@ The plugin cannot enforce a hard token ceiling. Cost control therefore comes fro
 - [Terra autocomplete follow-up](https://ampcode.com/threads/T-01a0bba5-698d-7796-ac95-dcc157116ed5)
 - [Terra PostgreSQL follow-up](https://ampcode.com/threads/T-01a0bba5-70d9-73fb-a689-6277f38d3d6d)
 - [Terra interval follow-up](https://ampcode.com/threads/T-01a0bba5-764c-71ad-95c2-eff0566e1288)
+- [Production Swift Terra smoke](https://ampcode.com/threads/T-01a0bbb3-3a2d-7412-9fb7-e9e27a05be41)
 - [Swift Grok Fast candidate](https://ampcode.com/threads/T-01a0bb21-e08a-751e-b977-1445d9bcc220)
 - [Swift Grok Fast smoke test](https://ampcode.com/threads/T-01a0bb28-32d7-773b-bb40-2e67e2588801)
 - [Grok high Fast benchmark](https://ampcode.com/threads/T-01a0bb9c-acde-756c-b0d7-e6ea16e6a11c)
