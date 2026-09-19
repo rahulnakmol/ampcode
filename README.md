@@ -20,13 +20,13 @@ See [`plugins/README.md`](./plugins/README.md) and [`skills/README.md`](./skills
 
 | Mode | Position | Main agent | Oracle | Subagents |
 | --- | --- | --- | --- | --- |
-| **Swiftstep** | Low → Medium | Grok 4.6, medium, Fast | Fable 5.1, medium | Amp automatic specialists |
+| **Swiftstep** | Low → Medium | GPT-5.6 Luna, medium, Fast | Fable 5.1, medium | Amp automatic specialists |
 | **Weave** | Medium → High | Opus 4.8, high, Fast | Fable 5.1, x-high | Sonnet 5, medium |
 | **Prime** | High → Ultra | Opus 5, high | Fable 5.1, max | Amp automatic specialists |
 
 ### Why this routing
 
-- **Swiftstep** keeps a Medium-style workflow but prioritizes direct execution. Amp automatically picks specialist models for Task, Finder, Librarian, and Read Thread.
+- **Swiftstep** keeps a Medium-style workflow but prioritizes direct execution. Luna provides the value-oriented main loop while Amp automatically picks specialist models for Task, Finder, Librarian, and Read Thread.
 - **Weave** is the all-Anthropic mode. Opus leads implementation, Sonnet handles delegated work at medium effort, and Fable is reserved for difficult judgments.
 - **Prime** extends High rather than Ultra, keeps the main agent at high effort, delegates bounded specialist research automatically, and invokes max-effort Fable only for unresolved high-impact decisions.
 

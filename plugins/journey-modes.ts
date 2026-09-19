@@ -8,9 +8,9 @@ export const description =
 	'Adds Swiftstep, Weave, and Prime as optimized intermediate modes with Claude Fable 5.1 as Oracle.'
 
 export default function (amp: PluginAPI) {
-	const grokFast = amp.createAgent({
+	const swift = amp.createAgent({
 		extends: 'medium',
-		model: 'xai/grok-4.6',
+		model: 'openai/gpt-5.6-luna',
 		reasoningEffort: 'medium',
 		features: ['fast'],
 		instructions:
@@ -65,8 +65,8 @@ export default function (amp: PluginAPI) {
 	amp.registerAgentMode({
 		key: 'swiftstep',
 		description:
-			'Runs medium-style work quickly on Grok 4.6 with specialist subagent routing and a Fable 5.1 Oracle. Use between Low and Medium.',
-		agent: grokFast.definition,
+			'Runs medium-style work quickly on GPT-5.6 Luna with specialist subagent routing and a Fable 5.1 Oracle. Use between Low and Medium.',
+		agent: swift.definition,
 	})
 
 	amp.registerAgentMode({
