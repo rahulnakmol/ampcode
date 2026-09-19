@@ -10,7 +10,7 @@ export const description =
 export default function (amp: PluginAPI) {
 	const swift = amp.createAgent({
 		extends: 'medium',
-		model: 'xai/grok-4.6',
+		model: 'openai/gpt-5.6-luna',
 		reasoningEffort: 'medium',
 		features: ['fast'],
 		instructions:
@@ -64,7 +64,7 @@ export default function (amp: PluginAPI) {
 	amp.registerAgentMode({
 		key: 'swift',
 		description:
-			'Runs medium-style work quickly on Grok 4.6 with Fast, specialist subagent routing, and a Fable 5.1 Oracle. Use between Low and Medium.',
+			'Runs medium-style work quickly on GPT-5.6 Luna with Fast, specialist subagent routing, and a Fable 5.1 Oracle. Use between Low and Medium.',
 		agent: swift.definition,
 	})
 
