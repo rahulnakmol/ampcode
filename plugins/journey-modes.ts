@@ -1,5 +1,5 @@
 // @amp-agent-mode {"key":"swiftstep","label":"Swiftstep","features":["fast"]}
-// @amp-agent-mode {"key":"weave","label":"Weave","features":["fast"]}
+// @amp-agent-mode {"key":"weave","label":"Weave"}
 // @amp-agent-mode {"key":"prime","label":"Prime"}
 
 import type { PluginAPI } from '@ampcode/plugin'
@@ -27,9 +27,8 @@ export default function (amp: PluginAPI) {
 
 	const weave = amp.createAgent({
 		extends: 'medium',
-		model: 'anthropic/claude-sonnet-5',
-		reasoningEffort: 'high',
-		features: ['fast'],
+		model: 'anthropic/claude-opus-5',
+		reasoningEffort: 'medium',
 		instructions:
 			'Keep implementation focused and evidence-driven. Consult Oracle only for unresolved, high-impact decisions.',
 		oracle: {
@@ -72,7 +71,7 @@ export default function (amp: PluginAPI) {
 	amp.registerAgentMode({
 		key: 'weave',
 		description:
-			'Runs medium-style work on Claude Sonnet 5 with Fast serving, efficient Sonnet 5 subagents, and a Fable 5.1 Oracle. Use between Medium and High.',
+			'Runs medium-style work on Claude Opus 5 with efficient Sonnet 5 subagents and a Fable 5.1 Oracle. Use between Medium and High.',
 		agent: weave.definition,
 	})
 
