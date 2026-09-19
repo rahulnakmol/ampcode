@@ -25,9 +25,9 @@ export default function (amp: PluginAPI) {
 		},
 	})
 
-	const fast = amp.createAgent({
+	const weave = amp.createAgent({
 		extends: 'medium',
-		model: 'anthropic/claude-opus-4-8',
+		model: 'anthropic/claude-sonnet-5',
 		reasoningEffort: 'high',
 		features: ['fast'],
 		instructions:
@@ -72,8 +72,8 @@ export default function (amp: PluginAPI) {
 	amp.registerAgentMode({
 		key: 'weave',
 		description:
-			'Runs medium-style work on Claude Opus 4.8 with Fast serving, efficient Sonnet 5 subagents, and a Fable 5.1 Oracle. Use between Medium and High.',
-		agent: fast.definition,
+			'Runs medium-style work on Claude Sonnet 5 with Fast serving, efficient Sonnet 5 subagents, and a Fable 5.1 Oracle. Use between Medium and High.',
+		agent: weave.definition,
 	})
 
 	amp.registerAgentMode({
