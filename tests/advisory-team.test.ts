@@ -50,7 +50,11 @@ describe('advisory team', () => {
 		expect(tools.map(t => t.name)).toEqual(['consult_archi', 'consult_darci', 'consult_revo', 'consult_opsci'])
 		const source = readFileSync(new URL('../plugins/advisory-team/index.ts', import.meta.url), 'utf8')
 		const directives = [...source.matchAll(/^\/\/ @amp-agent-mode (.+)$/gm)].map(m => JSON.parse(m[1]))
-		expect(directives).toEqual(modes.map(({ key, label }) => ({ key, label })))
+		expect(directives).toEqual(modes.map(({ key, label, description }) => ({ key, label, description })))
+		for (const directive of directives) {
+			expect(typeof directive.description).toBe('string')
+			expect(directive.description.length).toBeGreaterThan(20)
+		}
 	})
 
 	test('uses an exact direct-tool allowlist without mutation or delegation escape tools', () => {

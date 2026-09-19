@@ -1,7 +1,7 @@
-// @amp-agent-mode {"key":"archi","label":"Archi"}
-// @amp-agent-mode {"key":"darci","label":"Darci"}
-// @amp-agent-mode {"key":"revo","label":"Revo"}
-// @amp-agent-mode {"key":"opsci","label":"Opsci"}
+// @amp-agent-mode {"key":"archi","label":"Archi","description":"Interviews and guides users through enterprise SaaS architecture. Use for application design and architecture reviews."}
+// @amp-agent-mode {"key":"darci","label":"Darci","description":"Interviews and guides users through data, analytics, and evidence-grounded AI architecture. Use for data platform and agentic system design."}
+// @amp-agent-mode {"key":"revo","label":"Revo","description":"Investigates code changes for substantiated defects. Use for read-only PR and diff reviews."}
+// @amp-agent-mode {"key":"opsci","label":"Opsci","description":"Correlates telemetry and deployed code to investigate failures. Use for guided, read-only incident analysis."}
 
 import { readFileSync } from 'node:fs'
 import type { PluginAPI, PluginAgentModel } from '@ampcode/plugin'
