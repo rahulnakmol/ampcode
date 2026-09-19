@@ -1,16 +1,16 @@
-// @amp-agent-mode {"key":"swiftstep","label":"Swiftstep","features":["fast"]}
+// @amp-agent-mode {"key":"swift","label":"Swift","features":["fast"]}
 // @amp-agent-mode {"key":"weave","label":"Weave"}
 // @amp-agent-mode {"key":"prime","label":"Prime"}
 
 import type { PluginAPI } from '@ampcode/plugin'
 
 export const description =
-	'Adds the Amp Custom Mode Dials: Swiftstep, Weave, and Prime, with Claude Fable 5.1 as Oracle.'
+	'Adds the Amp Custom Mode Dials: Swift, Weave, and Prime, with Claude Fable 5.1 as Oracle.'
 
 export default function (amp: PluginAPI) {
 	const swift = amp.createAgent({
 		extends: 'medium',
-		model: 'openai/gpt-5.6-luna',
+		model: 'xai/grok-4.6',
 		reasoningEffort: 'medium',
 		features: ['fast'],
 		instructions:
@@ -20,7 +20,7 @@ export default function (amp: PluginAPI) {
 			effort: 'medium',
 		},
 		display: {
-			label: 'Swiftstep',
+			label: 'Swift',
 			color: '#0ea5e9',
 		},
 	})
@@ -62,9 +62,9 @@ export default function (amp: PluginAPI) {
 	})
 
 	amp.registerAgentMode({
-		key: 'swiftstep',
+		key: 'swift',
 		description:
-			'Runs medium-style work quickly on GPT-5.6 Luna with specialist subagent routing and a Fable 5.1 Oracle. Use between Low and Medium.',
+			'Runs medium-style work quickly on Grok 4.6 with Fast, specialist subagent routing, and a Fable 5.1 Oracle. Use between Low and Medium.',
 		agent: swift.definition,
 	})
 
