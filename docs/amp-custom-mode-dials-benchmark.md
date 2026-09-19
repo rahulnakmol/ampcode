@@ -20,6 +20,8 @@ After renaming Swiftstep to Swift, `xai/grok-4.6` at medium effort with Fast was
 
 The Fable judge scored it **5/100**, tied with the original unreliable Weave route and below the Luna candidate's 52. Because both a realistic task and a trivial prompt failed, Grok Fast is not the production Swift route. This may be a transient provider incident, but adoption requires a later 3/3 smoke pass within 30 seconds before rerunning the full benchmark.
 
+After restoring Luna under the renamed `swift` key, the same `SWIFT_OK` smoke prompt completed correctly in 15.4s.
+
 ## Task
 
 Each mode received the same self-contained prompt and was told not to use tools or external sources. The starting point was this shared async cache:
@@ -99,6 +101,7 @@ The plugin cannot enforce a hard token ceiling. Cost control therefore comes fro
 - [Swiftstep candidate](https://ampcode.com/threads/T-01a0baf3-0be0-737e-b77c-161e57ae4bc2)
 - [Swift Grok Fast candidate](https://ampcode.com/threads/T-01a0bb21-e08a-751e-b977-1445d9bcc220)
 - [Swift Grok Fast smoke test](https://ampcode.com/threads/T-01a0bb28-32d7-773b-bb40-2e67e2588801)
+- [Final Swift Luna smoke test](https://ampcode.com/threads/T-01a0bb2d-57d9-7149-be10-bb34920e926d)
 - [Original Weave candidate](https://ampcode.com/threads/T-01a0baf3-11e1-703c-8411-b63a9bf04a7b)
 - [Final Weave candidate](https://ampcode.com/threads/T-01a0bb09-5dbb-766d-8d91-7d8e19e29991)
 - [Prime candidate](https://ampcode.com/threads/T-01a0baf3-177c-74cb-aeb7-ef1b76be74f6)
