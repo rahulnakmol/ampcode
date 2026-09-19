@@ -10,8 +10,9 @@ Tested on 19 September 2026. This benchmark is a routing check, not a universal 
 | 2 | **Weave / B3** | Opus 5 medium; Fable 5.1 x-high; Sonnet 5 medium subagents | **88** | ~2m35s | Near-Prime quality, faster, with two test/API gaps |
 | 3 | **Swift Terra / TF** | Terra medium + Fast; Fable 5.1 medium; automatic specialists | **77** | 16.4s | Best tested balance for Swift |
 | 4 | **Swift Grok / S** | Grok 4.6 medium + Fast; Fable 5.1 medium; automatic specialists | **74** | 43m53s via an error state | Good eventual code; unusable routing reliability |
-| 5 | **Swiftstep / A** | Luna medium + Fast; Fable 5.1 medium; automatic specialists | **52** | 12.8s | Sound core approach, but a real pre-abort bug and a non-isolated test suite |
-| 6 | **Original Weave / B** | Opus 4.8 + Fast | **5** | No timely result | Reliability failure in the judge window |
+| 5 | **Swift Grok high / GHF** | Grok 4.6 high + Fast; Fable 5.1 medium; automatic specialists | **70** | 13m50s | Strong code and tests, but shipped red and far too slow |
+| 6 | **Swiftstep / A** | Luna medium + Fast; Fable 5.1 medium; automatic specialists | **52** | 12.8s | Sound core approach, but a real pre-abort bug and a non-isolated test suite |
+| 7 | **Original Weave / B** | Opus 4.8 + Fast | **5** | No timely result | Reliability failure in the judge window |
 
 The first judge report printed Prime as 86, but its published components were 36 + 27 + 14 + 9 + 5 = **91**. The independent final judge retained those components and corrected the arithmetic.
 
@@ -23,7 +24,7 @@ The eventual implementation passed its own 11 tests and scored **74/100**, above
 
 Grok Fast is not the production Swift route because the latency, error-state recovery, and failed trivial smoke overwhelm its stronger eventual code. This may be a transient provider incident, but adoption requires a later 3/3 smoke pass within 30 seconds followed by a blind no-tools benchmark.
 
-Grok 4.6 was retested at **high** effort with Fast. Three concurrent `SWIFT_OK` smokes passed in 20–21s, but the identical blind cache benchmark produced no answer within 13 minutes. Higher effort fixed the trivial smoke reliability seen in the earlier window, not full-task delivery, so it was not promoted.
+Grok 4.6 was retested at **high** effort with Fast. Three concurrent `SWIFT_OK` smokes passed in 20–21s, but the identical blind cache benchmark took 13m50s and scored **70/100**. Its production code was slightly stronger than Terra's and its tests had the best mutant-kill profile, but one fake-timer test timed out deterministically because it awaited a refetch without advancing the clock. Higher effort improved quality and trivial smoke reliability, not full-task speed or shipped-suite reliability, so it was not promoted.
 
 After restoring Luna under the renamed `swift` key, the same `SWIFT_OK` smoke prompt completed correctly in 15.4s.
 
@@ -96,6 +97,7 @@ Claude Fable 5.1 executed the candidates under Node 26.8.2 and Vitest 5.0.1, typ
 - **Swift / Luna (tested as Swiftstep):** the cache algorithm was mostly sound, but its delivered suite failed 4/5 because module-level state leaked between tests. A pre-aborted caller also started work before its wait rejected.
 - **Swift / Terra:** scored 77 with clean, no-tools delivery in 16.4s. Its weak spots were test order dependence, missing cleanup/abort-health cases, and non-idiomatic abort reasons; follow-up prompts completed reliably with one substantive SQL bug across three tasks.
 - **Swift / Grok Fast:** eventually produced a solid 74-point implementation, but only after 43m53s, an observed error state, and prohibited tool-driven iteration. Its one-line smoke prompt hard-failed. The route is therefore unsuitable despite better eventual code than Luna.
+- **Swift / Grok high Fast:** scored 70 with excellent production logic and test coverage, but took 13m50s and shipped 1/9 tests failing from a deterministic fake-timer timeout. It beats Luna on quality but not Terra on the quality/latency/reliability balance.
 - **Original Weave:** missed the initial six-minute judge window and arrived much later. It was replaced because latency and routing reliability are part of mode quality.
 
 ## Routing decision
