@@ -14,6 +14,21 @@ scripts/check.sh          Repository validation
 
 See [`plugins/README.md`](./plugins/README.md) and [`skills/README.md`](./skills/README.md) before adding an extension.
 
+## Meet the advisory team
+
+**Start with the [advisory team usage guide](./docs/advisory-team.md)** for installation, example prompts, interviews, consultations, access limits, troubleshooting, and model updates.
+
+| Mode | Responsibility | Main model | Consultation tool |
+| --- | --- | --- | --- |
+| **Archi** | Enterprise SaaS architect, including .NET and mobile/Windows clients | Fable 5.1, high | `consult_archi` |
+| **Darci** | Enterprise data, analytics and evidence-grounded AI architect | Fable 5.1, high | `consult_darci` |
+| **Revo** | Autonomous, evidence-led code reviewer | Astra, high | `consult_revo` |
+| **Opsci** | Guided SRE investigator across telemetry and deployed code | Astra, high | `consult_opsci` |
+
+All four are advisory-only. Archi and Darci interview users and evolve a shared design brief. Revo investigates supplied changes. Opsci investigates supplied incident evidence. Specialist routing stays automatic. The plugin provides no live database/telemetry connectors, GitHub publisher, or report-file writer; the guide explains these boundaries and how to extend access safely.
+
+Select a mode for an ongoing conversation, or ask an implementation agent to use its named consultation tool. Source lives in [`plugins/advisory-team/`](./plugins/advisory-team/). Publishing this GitHub repository alone does not install the modes in Amp.
+
 ## Amp Custom Mode Dials
 
 [`plugins/amp-custom-mode-dials.ts`](./plugins/amp-custom-mode-dials.ts) fills the useful gaps between Amp's built-in modes:
@@ -52,7 +67,7 @@ Run:
 make check
 ```
 
-The check loads every plugin through the installed Amp CLI, verifies formatting errors detectable by Git, and validates the required metadata of every skill package.
+The check loads every plugin through the installed Amp CLI, runs advisory-team wiring and tool-allowlist tests with Bun, verifies formatting errors detectable by Git, and validates the required metadata of every skill package. It does not run paid model evaluations.
 
 ## Publish
 
@@ -61,6 +76,6 @@ Amp stores personal plugins and personal skills in separate global repositories:
 - `amp plugins repositories`
 - `amp skills repositories`
 
-Copy plugin entry points to the root of the Personal Plugins repository. Copy each complete `skills/<skill-name>/` directory to the root of the Personal Skills repository. Commit and push those repositories to publish; new threads load published versions automatically.
+Copy standalone plugin entry points, or complete directory plugins such as `advisory-team/`, to the root of the Personal Plugins repository. Do not omit supporting Markdown files. Copy each complete `skills/<skill-name>/` directory to the root of the Personal Skills repository. Review and commit changes, then push only after explicit approval; new threads load published versions automatically.
 
 Never commit API keys, provider credentials, access tokens, or generated secret-bearing settings here.

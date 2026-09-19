@@ -48,5 +48,7 @@ while IFS= read -r -d '' skill; do
 	fi
 	done < <(find "$root/skills" -mindepth 2 -maxdepth 2 -type f -name SKILL.md -print0)
 
+bun test "$root/tests"
+
 git -C "$root" diff --check
 echo 'All checks passed.'
