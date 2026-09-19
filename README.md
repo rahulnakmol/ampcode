@@ -14,9 +14,9 @@ scripts/check.sh          Repository validation
 
 See [`plugins/README.md`](./plugins/README.md) and [`skills/README.md`](./skills/README.md) before adding an extension.
 
-## Journey modes
+## Amp Custom Mode Dials
 
-[`plugins/journey-modes.ts`](./plugins/journey-modes.ts) fills the useful gaps between Amp's built-in modes:
+[`plugins/amp-custom-mode-dials.ts`](./plugins/amp-custom-mode-dials.ts) fills the useful gaps between Amp's built-in modes:
 
 | Mode | Position | Main agent | Oracle | Subagents |
 | --- | --- | --- | --- | --- |
@@ -31,6 +31,8 @@ See [`plugins/README.md`](./plugins/README.md) and [`skills/README.md`](./skills
 - **Prime** extends High rather than Ultra, keeps the main agent at high effort, delegates bounded specialist research automatically, and invokes max-effort Fable only for unresolved high-impact decisions.
 
 Plugin agent modes cannot enforce a fixed token ceiling, so Prime cannot guarantee a precise percentage below Ultra. Its prompt, effort, delegation, and Oracle policy are deliberately configured to avoid Ultra-style exhaustive exploration.
+
+See the [realistic async-cache benchmark](./docs/amp-custom-mode-dials-benchmark.md) for executed tests, mutation results, timings, and the Fable 5.1 judge comparison.
 
 ## Using modes without changing the Dial
 

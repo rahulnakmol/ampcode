@@ -5,7 +5,7 @@
 import type { PluginAPI } from '@ampcode/plugin'
 
 export const description =
-	'Adds Swiftstep, Weave, and Prime as optimized intermediate modes with Claude Fable 5.1 as Oracle.'
+	'Adds the Amp Custom Mode Dials: Swiftstep, Weave, and Prime, with Claude Fable 5.1 as Oracle.'
 
 export default function (amp: PluginAPI) {
 	const swift = amp.createAgent({
