@@ -35,13 +35,13 @@ Select a mode for an ongoing conversation, or ask an implementation agent to use
 
 | Mode | Position | Main agent | Oracle | Subagents |
 | --- | --- | --- | --- | --- |
-| **Swift** | Low → Medium | GPT-5.6 Luna, medium, Fast | Fable 5.1, medium | Amp automatic specialists |
+| **Swift** | Low → Medium | GPT-5.6 Terra, medium, Fast | Fable 5.1, medium | Amp automatic specialists |
 | **Weave** | Medium → High | Opus 5, medium | Fable 5.1, x-high | Sonnet 5, medium |
 | **Prime** | High → Ultra | Opus 5, high | Fable 5.1, max | Amp automatic specialists |
 
 ### Why this routing
 
-- **Swift** keeps a Medium-style workflow but prioritizes direct execution. Luna provides the reliable value-oriented main loop while Amp automatically picks specialist models for Task, Finder, Librarian, and Read Thread. Grok 4.6 Fast was rejected after its smoke test hard-failed and its benchmark took almost 44 minutes through an error state.
+- **Swift** keeps a Medium-style workflow but prioritizes direct execution. Terra provides the value-oriented main loop while Amp automatically picks specialist models for Task, Finder, Librarian, and Read Thread. It scored 77 versus Luna's 52 at similar latency; Grok remained unreliable on full tasks.
 - **Weave** is the all-Anthropic mode. Opus leads implementation at medium effort, Sonnet handles delegated work at medium effort, and Fable is reserved for difficult judgments.
 - **Prime** extends High rather than Ultra, keeps the main agent at high effort, delegates bounded specialist research automatically, and invokes max-effort Fable only for unresolved high-impact decisions.
 
