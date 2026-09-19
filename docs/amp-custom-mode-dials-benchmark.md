@@ -8,17 +8,19 @@ Tested on 19 September 2026. This benchmark is a routing check, not a universal 
 | --- | --- | --- | ---: | --- | --- |
 | 1 | **Prime / C** | Opus 5 high; Fable 5.1 max; automatic specialists | **91** | ~3m16s | Best production and test completeness |
 | 2 | **Weave / B3** | Opus 5 medium; Fable 5.1 x-high; Sonnet 5 medium subagents | **88** | ~2m35s | Near-Prime quality, faster, with two test/API gaps |
-| 3 | **Swiftstep / A** (now **Swift**) | GPT-5.6 Luna medium + Fast; Fable 5.1 medium; automatic specialists | **52** | 12.8s | Sound core approach, but a real pre-abort bug and a non-isolated test suite |
-| 4 | **Original Weave / B** | Opus 4.8 + Fast | **5** | No timely result | Reliability failure in the judge window |
-| 5 | **Swift Grok / S** | Grok 4.6 medium + Fast; Fable 5.1 medium; automatic specialists | **5** | Hard error at 7m51s | No output; one-line smoke also hard-failed |
+| 3 | **Swift Grok / S** | Grok 4.6 medium + Fast; Fable 5.1 medium; automatic specialists | **74** | 43m53s via an error state | Good eventual code; unusable routing reliability |
+| 4 | **Swiftstep / A** (now **Swift**) | GPT-5.6 Luna medium + Fast; Fable 5.1 medium; automatic specialists | **52** | 12.8s | Sound core approach, but a real pre-abort bug and a non-isolated test suite |
+| 5 | **Original Weave / B** | Opus 4.8 + Fast | **5** | No timely result | Reliability failure in the judge window |
 
 The first judge report printed Prime as 86, but its published components were 36 + 27 + 14 + 9 + 5 = **91**. The independent final judge retained those components and corrected the arithmetic.
 
 ### Grok Fast reevaluation
 
-After renaming Swiftstep to Swift, `xai/grok-4.6` at medium effort with Fast was tested against the identical task. The benchmark produced no assistant message or partial text and entered an error state after 7m50.9s. A separate `SWIFT_OK` smoke prompt also produced no output and hard-failed after 2m26.6s. Neither thread exposed a provider diagnostic.
+After renaming Swiftstep to Swift, `xai/grok-4.6` at medium effort with Fast was tested against the identical task. The benchmark produced no assistant text and was observed in an error state after 7m50.9s, but unexpectedly resumed much later and completed after 43m53s. A separate `SWIFT_OK` smoke prompt produced no output and hard-failed after 2m26.6s. Neither thread exposed a provider diagnostic.
 
-The Fable judge scored it **5/100**, tied with the original unreliable Weave route and below the Luna candidate's 52. Because both a realistic task and a trivial prompt failed, Grok Fast is not the production Swift route. This may be a transient provider incident, but adoption requires a later 3/3 smoke pass within 30 seconds before rerunning the full benchmark.
+The eventual implementation passed its own 11 tests and scored **74/100**, above Luna's 52 on output quality. It deliberately starts shared work for a pre-aborted cold caller, ships a TypeScript config that cannot type-check its own `.ts` import, and has gaps around delayed stale cleanup, settled-hit aborts, and module isolation. It also violated the blind prompt's no-tools constraint by installing packages and iterating against test feedback.
+
+Grok Fast is not the production Swift route because the latency, error-state recovery, and failed trivial smoke overwhelm its stronger eventual code. This may be a transient provider incident, but adoption requires a later 3/3 smoke pass within 30 seconds followed by a blind no-tools benchmark.
 
 After restoring Luna under the renamed `swift` key, the same `SWIFT_OK` smoke prompt completed correctly in 15.4s.
 
@@ -83,7 +85,7 @@ Claude Fable 5.1 executed the candidates under Node 26.8.2 and Vitest 5.0.1, typ
 - **Prime:** strongest overall. Its production code guards synchronous fetcher throws and its tests cover aborting a caller waiting on a settled cache hit. Its stale-cleanup test is weaker than Weave's for delayed cleanup.
 - **Weave:** behaviourally equivalent to Prime on both complete suites and stronger against delayed stale-cleanup mutants. It lets a synchronous fetcher throw synchronously, omits a settled-cache-hit abort test, and carries a redundant rejection guard plus a `null as never` initialization.
 - **Swift / Luna (tested as Swiftstep):** the cache algorithm was mostly sound, but its delivered suite failed 4/5 because module-level state leaked between tests. A pre-aborted caller also started work before its wait rejected.
-- **Swift / Grok Fast:** produced no answer on either the benchmark or a one-line smoke prompt. This was a routing reliability failure, so there was no code to execute.
+- **Swift / Grok Fast:** eventually produced a solid 74-point implementation, but only after 43m53s, an observed error state, and prohibited tool-driven iteration. Its one-line smoke prompt hard-failed. The route is therefore unsuitable despite better eventual code than Luna.
 - **Original Weave:** missed the initial six-minute judge window and arrived much later. It was replaced because latency and routing reliability are part of mode quality.
 
 ## Routing decision

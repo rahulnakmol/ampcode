@@ -41,7 +41,7 @@ Select a mode for an ongoing conversation, or ask an implementation agent to use
 
 ### Why this routing
 
-- **Swift** keeps a Medium-style workflow but prioritizes direct execution. Luna provides the reliable value-oriented main loop while Amp automatically picks specialist models for Task, Finder, Librarian, and Read Thread. Grok 4.6 Fast was rejected after both its benchmark and smoke test hard-failed.
+- **Swift** keeps a Medium-style workflow but prioritizes direct execution. Luna provides the reliable value-oriented main loop while Amp automatically picks specialist models for Task, Finder, Librarian, and Read Thread. Grok 4.6 Fast was rejected after its smoke test hard-failed and its benchmark took almost 44 minutes through an error state.
 - **Weave** is the all-Anthropic mode. Opus leads implementation at medium effort, Sonnet handles delegated work at medium effort, and Fable is reserved for difficult judgments.
 - **Prime** extends High rather than Ultra, keeps the main agent at high effort, delegates bounded specialist research automatically, and invokes max-effort Fable only for unresolved high-impact decisions.
 
