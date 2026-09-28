@@ -35,19 +35,19 @@ Select a mode for an ongoing conversation, or ask an implementation agent to use
 
 | Mode | Position | Main agent | Oracle | Subagents |
 | --- | --- | --- | --- | --- |
-| **Swift** | Low → Medium | GPT-5.6 Terra, medium, Fast | Fable 5.1, medium | Amp automatic specialists |
-| **Weave** | Medium → High | Opus 5, medium | Fable 5.1, x-high | Sonnet 5, medium |
-| **Prime** | High → Ultra | Opus 5, high | Fable 5.1, max | Amp automatic specialists |
+| **Swift** | Low → Medium | Sonnet 5, medium | Fable 5.1, medium | Sonnet 5, medium |
+| **Weave** | Medium → High | Opus 5.5, medium | Fable 5.1, medium | Sonnet 5, medium |
+| **Prime** | High → Ultra | Fable 5.1, high | Fable 5.1, high | Opus 5.5, medium |
 
 ### Why this routing
 
-- **Swift** keeps a Medium-style workflow but prioritizes direct execution. Terra provides the value-oriented main loop while Amp automatically picks specialist models for Task, Finder, Librarian, and Read Thread. It scored 77 versus Luna's 52 at similar latency; Grok remained unreliable on full tasks.
-- **Weave** is the all-Anthropic mode. Opus leads implementation at medium effort, Sonnet handles delegated work at medium effort, and Fable is reserved for difficult judgments.
-- **Prime** extends High rather than Ultra, keeps the main agent at high effort, delegates bounded specialist research automatically, and invokes max-effort Fable only for unresolved high-impact decisions.
+- **Swift** keeps a Medium-style workflow but prioritizes direct execution. Sonnet 5 runs both the main loop and delegated work at medium effort. It does not require Fast: Anthropic's Fast API supports Opus models, not Sonnet 5.
+- **Weave** is the focused all-Anthropic mode. Opus 5.5 leads implementation at its recommended starting effort of medium, Sonnet handles delegated work at medium effort, and Fable is reserved for difficult judgments.
+- **Prime** extends High rather than Ultra. Fable 5.1 leads at high effort, Opus 5.5 handles bounded delegated work at medium effort, and high-effort Fable is reserved for unresolved high-impact decisions.
 
 Plugin agent modes cannot enforce a fixed token ceiling, so Prime cannot guarantee a precise percentage below Ultra. Its prompt, effort, delegation, and Oracle policy are deliberately configured to avoid Ultra-style exhaustive exploration.
 
-See the [realistic async-cache benchmark](./docs/amp-custom-mode-dials-benchmark.md) for executed tests, mutation results, timings, and the Fable 5.1 judge comparison.
+The [realistic async-cache benchmark](./docs/amp-custom-mode-dials-benchmark.md) records earlier configurations; it does not validate this new routing.
 
 ## Using modes without changing the Dial
 
