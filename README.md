@@ -22,10 +22,9 @@ See [`plugins/README.md`](./plugins/README.md) and [`skills/README.md`](./skills
 | --- | --- | --- | --- |
 | **Archi** | Enterprise SaaS architect, including .NET and mobile/Windows clients | Fable 5.1, high | `consult_archi` |
 | **Darci** | Enterprise data, analytics and evidence-grounded AI architect | Fable 5.1, high | `consult_darci` |
-| **Revo** | Autonomous, evidence-led code reviewer | Astra, high | `consult_revo` |
 | **Opsci** | Guided SRE investigator across telemetry and deployed code | Astra, high | `consult_opsci` |
 
-All four are advisory-only. Archi and Darci interview users and evolve a shared design brief. Revo investigates supplied changes. Opsci investigates supplied incident evidence. Specialist routing stays automatic. The plugin provides no live database/telemetry connectors, GitHub publisher, or report-file writer; the guide explains these boundaries and how to extend access safely.
+All three are advisory-only. Archi and Darci interview users and evolve a shared design brief. Opsci investigates supplied incident evidence. Specialist routing stays automatic. The plugin provides no live database/telemetry connectors or report-file writer; the guide explains these boundaries and how to extend access safely.
 
 Select a mode for an ongoing conversation, or ask an implementation agent to use its named consultation tool. Source lives in [`plugins/advisory-team/`](./plugins/advisory-team/). Publishing this GitHub repository alone does not install the modes in Amp.
 
