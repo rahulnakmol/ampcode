@@ -29,15 +29,15 @@ function setup(fail = false) {
 const ctx = { thread: { id: 'T-00000000-0000-0000-0000-000000000001' } } as Parameters<PluginToolDefinition['execute']>[1]
 
 describe('advisory team', () => {
-	test('registers the four distinct models, prompts, modes and consultation tools', () => {
+	test('registers the three distinct models, prompts, modes and consultation tools', () => {
 		const { agents, modes, tools } = setup()
 		expect(modes.map(m => [m.key, m.label])).toEqual([
-			['archi', 'Archi'], ['darci', 'Darci'], ['revo', 'Revo'], ['opsci', 'Opsci'],
+			['archi', 'Archi'], ['darci', 'Darci'], ['opsci', 'Opsci'],
 		])
 		expect(agents.map(a => a.model)).toEqual([
-			'anthropic/claude-fable-5-1', 'anthropic/claude-fable-5-1', 'openai/gpt-6-astra', 'openai/gpt-6-astra',
+			'anthropic/claude-fable-5-1', 'anthropic/claude-fable-5-1', 'openai/gpt-6-astra',
 		])
-		const roleMarkers = ['# Archi', '# Darci', '# Revo', '# Opsci']
+		const roleMarkers = ['# Archi', '# Darci', '# Opsci']
 		for (const [i, agent] of agents.entries()) {
 			expect(agent.instructions).toContain('Never modify source')
 			expect(agent.instructions).toContain(roleMarkers[i])
@@ -47,7 +47,7 @@ describe('advisory team', () => {
 			expect(agent.oracle).toBeUndefined()
 			expect(modes[i].agent).toBe(agent)
 		}
-		expect(tools.map(t => t.name)).toEqual(['consult_archi', 'consult_darci', 'consult_revo', 'consult_opsci'])
+		expect(tools.map(t => t.name)).toEqual(['consult_archi', 'consult_darci', 'consult_opsci'])
 		const source = readFileSync(new URL('../plugins/advisory-team/index.ts', import.meta.url), 'utf8')
 		const directives = [...source.matchAll(/^\/\/ @amp-agent-mode (.+)$/gm)].map(m => JSON.parse(m[1]))
 		expect(directives).toEqual(modes.map(({ key, label, description }) => ({ key, label, description })))
@@ -69,7 +69,7 @@ describe('advisory team', () => {
 	test('each consultation preserves the request, parent and executor and returns its own agent response', async () => {
 		const { tools, calls } = setup()
 		for (const [i, tool] of tools.entries()) {
-			const name = ['Archi', 'Darci', 'Revo', 'Opsci'][i]
+			const name = ['Archi', 'Darci', 'Opsci'][i]
 			const request = `Scope ${i}: inspect /project/service.ts; do not edit.`
 			expect(await tool.execute({ request }, ctx)).toBe(`${name}: advice only`)
 			expect(calls[i]).toEqual({ name, request, options: {
@@ -78,13 +78,13 @@ describe('advisory team', () => {
 		}
 	})
 
-	test('invalid input never launches an agent; execution failure is not a clean review', async () => {
+	test('invalid input never launches an agent; execution failure is not a clean result', async () => {
 		const { tools, calls } = setup(true)
 		for (const request of [undefined, '', '  ', 7]) {
 			await expect(tools[0].execute({ request }, ctx)).rejects.toThrow('non-empty')
 		}
 		expect(calls).toEqual([])
-		await expect(tools[2].execute({ request: 'Review this diff' }, ctx)).rejects.toThrow('Unavailable model')
+		await expect(tools[2].execute({ request: 'Investigate this incident' }, ctx)).rejects.toThrow('Unavailable model')
 		expect(calls).toHaveLength(1)
 	})
 })
