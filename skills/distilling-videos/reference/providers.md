@@ -90,11 +90,16 @@ measured quality bar; otherwise the cheapest provider that meets it. Write the r
 ## Captions route details
 
 ```sh
-yt-dlp --skip-download --write-subs --write-auto-subs --sub-langs 'en.*,ja' \
+yt-dlp --ignore-config --skip-download --write-subs --write-auto-subs --sub-langs 'en.*,ja' \
   --sub-format json3 -o 'scratch/%(id)s' 'https://www.youtube.com/watch?v=VIDEO_ID'
 ```
+
+If `bootstrap.sh` reported node or quickjs rather than deno, add `--no-js-runtimes --js-runtimes node`
+(or `quickjs`). Repeated caption fetches can hit HTTP 429; wait and retry later rather than looping.
 
 Convert events to segments yourself. Automatic captions often lack punctuation, mishear terms, and
 duplicate rolling lines; deduplicate, then compare a sample of segments against the audio. Report
 the route as captions in the final summary. Captions never justify `transcript_coverage: verified`
-without that check.
+without that check. Record the compared spans in the review's `audio_verification`; `signoff`
+blocks captions and agent transcripts without it, and `cleanup` keeps the media until it passes
+(`reference/archival.md`). The record lists checked spans; it is not an accuracy measurement.

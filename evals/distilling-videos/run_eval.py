@@ -900,6 +900,11 @@ def scenario_signoff(env, ws, browser):
     signoff("tech-demo", bad, "gap entry that does not match coverage.json is a contract error (exit 2)", 2)
     expected = 0 if browser else 1
     signoff("tech-demo", r, f"reviewed approval -> exit {expected}", expected)
+    signed = read_json(ws / "publications/tech-demo/signoff.json")["videos"]["tech-demo"]
+    R.check(cat, "tech-demo", "sign-off records transcript provider kind (manual fixture; no audio check claimed)",
+            signed.get("transcript_provider", {}).get("kind") == "manual" and signed.get("audio_verification") is None,
+            "", {"kind": "manual", "audio_verification": None},
+            {"kind": signed.get("transcript_provider"), "audio_verification": signed.get("audio_verification")})
     bad = json.loads(json.dumps(reviews["ja-talk"]))
     bad["videos"]["ja-talk"]["visual_coverage"] = "unverified"
     signoff("ja-talk", bad, "ja-talk left blocked (unverified visual coverage) for archive negatives", 1, "visual")
@@ -1145,7 +1150,7 @@ def scenario_live(env, url, timeout, captions_file=None):
     base_env = {"PATH": f"{env.bin_dir}:/usr/bin:/bin", "HOME": str(env.home)}
     start = time.time()
     try:
-        meta = subprocess.run([str(ytdlp), "--no-playlist", "--skip-download", "--dump-single-json", "--socket-timeout",
+        meta = subprocess.run([str(ytdlp), "--ignore-config", "--no-playlist", "--skip-download", "--dump-single-json", "--socket-timeout",
                                "20", "--", url], capture_output=True, text=True, timeout=timeout, env=base_env)
         meta_code, meta_err = meta.returncode, meta.stderr
     except subprocess.TimeoutExpired:
@@ -1164,24 +1169,26 @@ def scenario_live(env, url, timeout, captions_file=None):
     youtube_id = info["id"]
     write_json(probe / "assignment.json", {"schema_version": 1, "videos": [{"id": "live", "url": url}]})
     env.cli("init", "--workspace", ws, "--assignment", probe / "assignment.json")
-    attempts = [("default yt-dlp configuration", {})]
-    if shutil.which("node") or Path("/opt/homebrew/bin/node").exists():
-        node = shutil.which("node") or "/opt/homebrew/bin/node"
-        config_home = probe / "xdg"
-        (config_home / "yt-dlp").mkdir(parents=True, exist_ok=True)
-        (config_home / "yt-dlp/config").write_text(f"--js-runtimes node:{node}\n")
-        attempts.append(("yt-dlp user config: --js-runtimes node (XDG_CONFIG_HOME)", {"XDG_CONFIG_HOME": str(config_home)}))
-    downloaded = False
-    for label, extra in attempts:
+    # The CLI ignores yt-dlp config files; a runtime is chosen only with --js-runtime.
+    attempts = [("yt-dlp default JavaScript runtime", [], [])]
+    node = shutil.which("node") or ("/opt/homebrew/bin/node" if Path("/opt/homebrew/bin/node").exists() else None)
+    if node:
+        attempts.append(("--js-runtime node", ["--js-runtime", "node", "--js-runtime-path", node],
+                         ["--no-js-runtimes", "--js-runtimes", f"node:{node}"]))
+    downloaded = downloaded_with_runtime = False
+    for label, flags, _ in attempts:
         start = time.time()
         try:
-            code, data, err = env.cli("download", "--workspace", ws, "--video", "live", extra_env=extra, timeout=timeout)
+            code, data, err = env.cli("download", "--workspace", ws, "--video", "live", *flags,
+                                      "--timeout", str(int(timeout)), timeout=timeout + 30)
         except subprocess.TimeoutExpired:
             code, data, err = None, None, "timed out"
         elapsed = round(time.time() - start, 1)
         if code == 0:
-            R.note(cat, url, f"CLI download ({label})", f"ok in {elapsed}s: duration {data.get('duration')}")
+            R.note(cat, url, f"CLI download ({label})", f"ok in {elapsed}s: duration {data.get('duration')}; "
+                   f"runtime {data.get('js_runtime')}; warnings {data.get('warnings')}")
             downloaded = True
+            downloaded_with_runtime = bool(flags)
             break
         R.note(cat, url, f"CLI download ({label})",
                f"exit {code} after {elapsed}s: {classify_ytdlp_error(err)}: {err.strip()[-200:]}")
@@ -1196,9 +1203,10 @@ def scenario_live(env, url, timeout, captions_file=None):
            f"exit {code} in {round(time.time() - start, 1)}s: {data.get('frames') if data else err.strip()[-200:]}")
     caps = probe / "caps"
     try:
-        cap = subprocess.run([str(ytdlp), "--skip-download", "--write-auto-subs", "--sub-langs", "en", "--sub-format",
+        runtime_flags = attempts[-1][2] if downloaded_with_runtime else []
+        cap = subprocess.run([str(ytdlp), "--ignore-config", *runtime_flags, "--skip-download", "--write-auto-subs", "--sub-langs", "en", "--sub-format",
                               "json3", "-o", str(caps / "%(id)s"), "--", url], capture_output=True, text=True,
-                             timeout=timeout, env={**base_env, **(attempts[-1][1] if len(attempts) > 1 else {})})
+                             timeout=timeout, env=base_env)
         cap_files = sorted(caps.glob(f"{youtube_id}*.json3"))
     except subprocess.TimeoutExpired:
         cap_files, cap = [], None

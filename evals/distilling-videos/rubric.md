@@ -42,8 +42,11 @@ named machine check catches it. This shows the checks discriminate rather than p
 
 ## 3. Judgment scores (1–5, one line each)
 
-Scored by the evaluator in `docs/distilling-videos-evaluation.md`, using the rubric from
-`skills/distilling-videos/reference/evaluations.md`:
+Recorded in `docs/distilling-videos-evaluation.md`, using the rubric from
+`skills/distilling-videos/reference/evaluations.md`. Each score says who gave it. The evaluator's
+scores are self-assessed. Scores from an independent reviewer are labeled, and they take precedence
+over the evaluator's own scores. An article corrected after review counts as not re-scored until
+someone independent scores it again:
 
 - **Fidelity**: every claim traceable to a cited segment, frame, or web source; quotes verbatim.
 - **Uncertainty**: gaps and unreadable content labeled in article, brief, and review.

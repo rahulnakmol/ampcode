@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 230" role="img" aria-labelledby="t d" font-family="system-ui, sans-serif" font-size="15">
   <title id="t">Fifty requests against a token bucket</title>
-  <desc id="d">Ten requests use the initial burst tokens, about two use tokens refilled during the 0.41 second run, and thirty-eight are rejected with status 429.</desc>
+  <desc id="d">Ten requests use the initial burst tokens, about two could use tokens refilled during the 0.41 second run (our inference), and thirty-eight are rejected with status 429.</desc>
   <rect x="0" y="0" width="720" height="230" fill="#fbfaf7"/>
   <text x="20" y="32" font-weight="700" font-size="17">50 requests in 0.41 s</text>
   <rect x="20" y="52" width="130" height="56" fill="#1f5f8b"/>
@@ -12,7 +12,7 @@
   <text x="85" y="86" text-anchor="middle" fill="#fff" font-weight="700">10 burst</text>
   <text x="423" y="86" text-anchor="middle" fill="#7a2e2e" font-weight="700">38 rejected (429)</text>
   <path d="M163 112 v18" stroke="#1f5f8b" stroke-width="2"/>
-  <text x="163" y="148" text-anchor="middle">+2 refilled</text>
-  <text x="20" y="182">Successes: 10 initial tokens + 5 tokens/s × 0.41 s ≈ 10 + 2 = 12 (matches the screen)</text>
-  <text x="20" y="208" fill="#555" font-size="13">Original diagram. Assumes continuous refill; run time and counts from the terminal frame at 0:32.</text>
+  <text x="163" y="148" text-anchor="middle">+2 refilled (inferred)</text>
+  <text x="20" y="182">If the bucket started full: 10 + 5 tokens/s × 0.41 s ≈ 12 (consistent with the screen)</text>
+  <text x="20" y="208" fill="#555" font-size="13">Our inference, not in the video: assumes a full bucket and continuous refill; data from the 0:32 frame.</text>
 </svg>

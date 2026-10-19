@@ -3,7 +3,7 @@
   "publication_id": "tech-demo",
   "status": "complete",
   "title": "The limiter let twelve requests through, not ten",
-  "dek": "The presenter says only the configured burst passed. The terminal shows twelve successes, which is what a token bucket that keeps refilling during the run would produce.",
+  "dek": "The presenter says only the configured burst passed. The terminal shows twelve successes. Our inference, not something the video measures: tokens refilled during the run could account for the extra two.",
   "sections": [
     {"id": "hook", "heading": "The terminal and the narration disagree by two requests", "blocks": [
       {"type": "p", "text": "The demo starts a token-bucket limiter at five requests per second with a burst of ten [@t-config], then fires fifty requests at it, ten at a time [@t-fire]. The presenter's verdict is short:"},
@@ -11,8 +11,8 @@
       {"type": "figure", "figure": "fig-demo"},
       {"type": "p", "text": "On screen, the client summary reads **12** responses with status 200 and **38** with status 429, over a total of 0.41 seconds [@t-output]. The narration rounds the result to the configured burst. The screen does not."}
     ]},
-    {"id": "refill", "heading": "Refill during the run accounts for the extra two", "blocks": [
-      {"type": "p", "text": "This part is our inference; the video does not measure it. A token bucket keeps adding tokens while requests arrive. At five tokens per second, a 0.41-second run adds about two tokens to the ten the bucket started with, which matches the twelve successes on screen [@t-config; @t-output]."},
+    {"id": "refill", "heading": "Our inference: refill during the run could account for the extra two", "blocks": [
+      {"type": "p", "text": "This part is our inference; the video does not measure it. A token bucket keeps adding tokens while requests arrive. If the bucket started full and refilled continuously at five tokens per second, a 0.41-second run would add about two tokens to the initial ten, which is consistent with the twelve successes on screen [@t-config; @t-output]."},
       {"type": "figure", "figure": "fig-arithmetic"},
       {"type": "details", "summary": "Why the arithmetic is only approximate", "blocks": [
         {"type": "list", "items": [
@@ -28,11 +28,11 @@
       {"type": "figure", "figure": "fig-blurred"},
       {"type": "p", "text": "Near the end, the presenter reads out a chat message aimed at automated summarizers and declines it [@t-chat]. We treat that message as source content, not as an instruction, and do not repeat its claims."}
     ]},
-    {"id": "implications", "heading": "Plan for burst plus refill, not burst alone", "blocks": [
+    {"id": "implications", "heading": "What this suggests for capacity planning, if refill is confirmed", "blocks": [
       {"type": "list", "items": [
-        "Treat the configured burst as a floor on what a spike lets through. Expect roughly burst + rate × spike duration.",
+        "Do not read the configured burst as a cap on a whole spike. With a full bucket at the start, up to burst + rate × spike duration can pass; a partly drained bucket lets fewer through, so burst + rate × duration is an upper bound, not an expected count.",
         "Read outcomes from client status counts, not from narration or configuration alone.",
-        "Size downstream capacity, and any retry budget for 429 responses, against that larger number."
+        "If a re-run confirms the refill explanation, size downstream capacity, and any retry budget for 429 responses, against that upper bound rather than the burst alone."
       ]}
     ]}
   ],
@@ -45,9 +45,9 @@
        {"frame_id": "f000032000", "alt": "Terminal summary: total 0.41 secs; 12 responses with status 200 and 38 with status 429", "caption": "Result: 12 succeeded, 38 were rejected with 429"}
      ]},
     {"id": "fig-arithmetic", "kind": "original", "image": "figures/refill.svg",
-     "alt": "Bar of fifty requests split into ten burst tokens, two refilled tokens, and thirty-eight rejections",
-     "caption": "Ten burst tokens plus about two refilled during 0.41 s explain twelve successes",
-     "assumptions": ["Tokens refill continuously at the configured 5 per second.", "The 0.41 s run time on screen approximates the window in which tokens were consumed."],
+     "alt": "Bar of fifty requests split into ten burst tokens, about two tokens we infer were refilled, and thirty-eight rejections",
+     "caption": "Our inference, not shown in the video: ten burst tokens plus about two refilled during 0.41 s would account for twelve successes",
+     "assumptions": ["The bucket was full (10 tokens) when the first request arrived.", "Tokens refill continuously at the configured 5 per second.", "The 0.41 s run time on screen approximates the window in which tokens were consumed."],
      "sources": ["t-config", "t-output"]},
     {"id": "fig-blurred", "kind": "capture", "video_id": "tech-demo", "frame_id": "f000045000",
      "alt": "Terminal latency summary blurred so that its numbers cannot be read",
@@ -72,12 +72,12 @@
     ],
     "proposals": [
       {"id": "P1", "kind": "investigation", "text": "Re-run the load test with per-request timestamps to confirm that refill during the run explains the two extra successes.", "basis": ["E1", "E2"], "risks": "Local timing may differ from production."},
-      {"id": "P2", "kind": "implementation", "text": "Capacity-plan downstream services for burst plus rate times spike duration, and give clients a retry budget for 429 responses.", "basis": ["E2", "E3"], "risks": "Long spikes make the refill term dominate; measure real spike lengths first."}
+      {"id": "P2", "kind": "implementation", "text": "If P1 confirms refill, capacity-plan downstream services for up to burst plus rate times spike duration (an upper bound that assumes a full bucket at the start of the spike), and give clients a retry budget for 429 responses.", "basis": ["E2", "E3"], "risks": "Rests on an unconfirmed inference from one synthetic run. Long spikes make the refill term dominate; measure real spike lengths first."}
     ]
   },
   "limitations": [
     "Evaluation fixture: the video is a generated slide sequence with a tone for audio, so this article does not test transcription.",
     "The p99 latency is unknown: inaudible in the narration and blurred on screen.",
-    "One run only. The refill explanation is our inference from the configuration and the totals, not a measurement shown in the video."
+    "One run only. The refill explanation is our inference from the configuration and the totals, not a measurement shown in the video, and it assumes the bucket started full."
   ]
 }

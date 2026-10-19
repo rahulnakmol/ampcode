@@ -1,7 +1,12 @@
 # distilling-videos: Task 5 evaluation
 
-Date: 2026-10-19. Skill under test: `skills/distilling-videos` at commit `fa72b59`.
+Date: 2026-10-19. Skill under test: `skills/distilling-videos` at commit `fa72b59`, then rerun
+(without the network probe) after the review fixes described in "Review fixes and rerun" below.
 Fixtures and harness: `evals/distilling-videos/` (see its `README.md` and `rubric.md`).
+
+This evaluation does not show the task is complete. Still open: a transcription adapter and
+provider selection (no accuracy has been measured), and the producer workflow that the GitHub
+Actions archive hand-off needs.
 
 ## What this evaluation is, and is not
 
@@ -16,10 +21,13 @@ Fixtures and harness: `evals/distilling-videos/` (see its `README.md` and `rubri
   spending cap.
 - Archive and cleanup used an in-process fake Blob transport with a placeholder SAS. Live Azure is
   still unverified.
-- **The editorial exercise has no independent reviewer.** I, the evaluator, wrote the three articles
-  from the fixtures by following `SKILL.md` and `reference/editorial.md`, and then scored them. The
-  machine checks and the 10 negative controls reduce the effect of self-grading, but the 1–5
-  scores below are still self-assessed.
+- **Editorial scores are mostly self-assessed.** I, the evaluator, wrote the three articles from
+  the fixtures by following `SKILL.md` and `reference/editorial.md`, and then scored them. An
+  independent reviewer later read the tech-demo article and scored it **4/5 for fidelity and 4/5
+  for separation**, lower than my self-assessed 5s (see the scores section). The tech-demo fixture
+  was corrected afterwards, but the corrected version has not been re-scored by anyone
+  independent. The other scores remain self-assessed; the machine checks and the 10 negative
+  controls reduce, but do not remove, the effect of self-grading.
 
 ## Commands
 
@@ -40,7 +48,10 @@ The runtime used Python 3.9.6 (`/usr/bin/python3`), yt-dlp 2026.08.19, ffmpeg 7.
 Chrome Canary, and Node 26.12. The run took 65 s and exited 0. PDF pages were rasterized for
 inspection with PyMuPDF in the scratch venv. That tool is not part of the harness.
 
-## Results (final run, per category)
+## Results (per category)
+
+The table below is the post-fix rerun without `--live-youtube`. The live-probe rows come from the
+original run and were not repeated, to avoid unnecessary network calls.
 
 | Category | Pass | Fail | Not run | Observed |
 | --- | --- | --- | --- | --- |
@@ -50,10 +61,10 @@ inspection with PyMuPDF in the scratch venv. That tool is not part of the harnes
 | publication (render refusals, offline/CSP, injection escaping, real PDF, package, determinism) | 52 | 0 | 0 | 3 |
 | editorial (machine rubric) | 52 | 0 | 0 | 0 |
 | editorial rubric negative controls | 10 | 0 | 0 | 0 |
-| sign-off (blocking reasons, approval) | 7 | 0 | 0 | 0 |
+| sign-off (blocking reasons, approval, provider kind recorded) | 8 | 0 | 0 | 0 |
 | archive and cleanup (fake Blob) | 35 | 0 | 0 | 0 |
 | rendered pages (real browser) | 39 | 0 | 0 | 0 |
-| live YouTube probe | 0 | 0 | 0 | 6 |
+| live YouTube probe (original run only) | 0 | 0 | 0 | 6 |
 
 Observed rows are measurements, not pass/fail: scene cues found, PDF page counts, and live probe
 results. Full rows: `.amp/in/artifacts/distilling-videos-eval/results.json` and `run.log`.
@@ -62,9 +73,12 @@ Publications produced:
 
 | Publication | Manifest SHA-256 | Sign-off | Archive (fake) | Cleanup |
 | --- | --- | --- | --- | --- |
-| tech-demo | `4900810c…cb09df` | approved | approved, verified | media deleted; evidence kept; render still works |
-| g-bio (bio-a + bio-b) | `13d88443…7c6dd1` | approved | approved, 2 evidence markers | both members' media deleted, other media untouched |
-| ja-talk | `8871badd…a531c5` | blocked (deliberate: visual coverage unverified) | archived as `blocked` | refused, media intact |
+| tech-demo | `a2d95641…b339b0` | approved | approved, verified | media deleted; evidence kept; render still works |
+| g-bio (bio-a + bio-b) | `55da27bd…b47e59e` | approved | approved, 2 evidence markers | both members' media deleted, other media untouched |
+| ja-talk | `fdd085a3…49dd23` | blocked (deliberate: visual coverage unverified) | archived as `blocked` | refused, media intact |
+
+Manifest digests are from the post-fix rerun; they changed because the renderer, the tech-demo
+article, and its figure changed.
 
 The retention workspace (`retain_media: true`) archived ja-talk with an approved sign-off. Cleanup
 then returned `retained` and deleted nothing.
@@ -104,11 +118,20 @@ frames I inspected, and primary sources I checked on 2026-10-19:
 Crossref confirmed the DOI metadata. Each article sets out the four basis kinds and uses one
 original SVG figure where it helps.
 
+Scores marked *(independent)* come from the independent reviewer. All others are self-assessed.
+
 | Publication | Fidelity | Uncertainty | Traceability | Separation | Explanation | Accessibility |
 | --- | --- | --- | --- | --- | --- | --- |
-| tech-demo | 5: every claim cites a segment, frame, or RFC; the quote is checked verbatim | 5: p99 is unknown in prose, figure, brief, and limits | 4: the config citation chip shows the segment start (0:09) while the matching frame is at 0:12 | 5: refill is labeled "our inference" | 4: honest hook and arithmetic, but the recommendations rest on one synthetic run | 4: adjacent assumption superscripts read as "¹⁴"; the zoom barely enlarges |
+| tech-demo | **4 (independent)**: the article called the configured burst "a floor" on what a spike lets through. It is not: burst + rate × duration is an upper bound that holds only if the bucket starts full. (My earlier self-score was 5.) | 5: p99 is unknown in prose, figure, brief, and limits | 4: the config citation chip shows the segment start (0:09) while the matching frame is at 0:12 | **4 (independent)**: the body labeled refill as "our inference", but the dek and the figure caption stated it as fact, and P2 was unconditional. (My earlier self-score was 5.) | 4: honest hook and arithmetic, but the recommendations rest on one synthetic run | 4: adjacent assumption superscripts read as "¹⁴" (fixed: now one "1, 4" marker); the zoom barely enlarges |
 | ja-talk | 4: the etymology of 定石 (from Go) is my own knowledge and is not cited | 5 | 5 | 4: the uncited etymology mixes my knowledge into the source account | 4: clear but thin; it is a 30 s source | 4: the Japanese quote has no inline translation; the translation is in the preceding sentence |
 | g-bio | 5: survival figures and the four design factors match the primary papers | 5: the unlabeled chart and the unclear years are kept, and the year is dated from the paper, not the presenter | 5 | 5 | 4: strong conflict hook; the design table is qualitative only | 4: same superscript issue in figure assumptions |
+
+**Corrections after the independent review (fixture only; not re-scored):** the implications now
+say the burst is not a cap on a whole spike and that burst + rate × duration is an upper bound
+assuming a full bucket. The dek, section heading, figure caption, alt text, SVG labels, and
+assumptions all label refill as our inference and state the full-bucket assumption. P2 is
+conditional on P1 confirming refill, and its risks name the unconfirmed inference. The final
+screenshots and PDF pages in the artifacts directory show the corrected article.
 
 Visual inspection with `view_media` covered desktop and mobile tops, full pages, the stepper at its
 last step, mobile stepper, expanded details, the zoom dialog, keyboard focus, the brief, print
@@ -123,20 +146,22 @@ No paid calls were made, and nothing was scored for accuracy.
 | Step | What happened |
 | --- | --- |
 | Metadata (`yt-dlp --dump-single-json`) | Worked in about 3 s every time. Title "How Veritasium Storytelling Beat the YouTube Algorithm", uploader Storytellerist, 244 s, public, 177 automatic caption languages, no manual captions |
-| CLI `download` (default) | **First attempt: exit 5, `HTTP Error 403: Forbidden`.** yt-dlp warned that no supported JavaScript runtime was found (only deno is enabled by default). With `--js-runtimes node` in a yt-dlp user config under a scratch `XDG_CONFIG_HOME`, the same CLI command downloaded 1080p media and audio in 9 s. Four later default runs also succeeded (about 9 s each). The 403 is therefore intermittent, and it was not evidence that the video was missing |
+| CLI `download` (default) | **First attempt: exit 5, `HTTP Error 403: Forbidden`.** yt-dlp warned that no supported JavaScript runtime was found (only deno is enabled by default). With `--js-runtimes node` in a yt-dlp user config under a scratch `XDG_CONFIG_HOME`, the same CLI command downloaded 1080p media and audio in 9 s. Four later default runs also succeeded (about 9 s each). The 403 is therefore intermittent, and it was not evidence that the video was missing. That config-file workaround no longer applies: the CLI now passes `--ignore-config`, and the runtime is chosen with `download --js-runtime node`. The probe was not rerun with the new flag |
 | CLI `frames` | Real ffmpeg. In the manual probe, 15 s periodic sampling plus a dense range and scene detection (threshold 0.3) on the 1080p video produced 79 frames in 87 s, with 57 scene cues. In the harness, 30 s periodic sampling produced 9 frames in 2.6 s |
 | Automatic captions (json3) | Worked in 5 s at first. Later attempts hit **HTTP 429 Too Many Requests**, with a yt-dlp warning that no impersonation target was available. The final run worked again |
 | Captions route import | 182 segments, 229.4 of 244.2 s covered, 1 gap, warning "captions-based transcript: accuracy and completeness are not verified". The segments were not compared with the audio |
 
-## Findings for the parent (no production code was edited)
+## Findings from the original run
 
-1. **Contract and code mismatch.** `reference/article-contract.md` says "Every figure needs … an
+Findings 1–3 are fixed (see "Review fixes and rerun"). Findings 4–7 are unchanged.
+
+1. **Contract and code mismatch (fixed in the docs).** `reference/article-contract.md` says "Every figure needs … an
    `alt`", but `publication.py` rejects a figure-level `alt` on `sequence` figures, which take
    per-step `alt` only. Fix one of them.
-2. **Ambiguous superscripts.** Figure assumption citations render as adjacent `<sup>` elements with
+2. **Ambiguous superscripts (fixed).** Figure assumption citations render as adjacent `<sup>` elements with
    no separator, so citations 1 and 4 read as "¹⁴" (seen in the tech-demo zoom capture). Body
    citations use a comma.
-3. **YouTube JavaScript runtime.** yt-dlp now expects a JS runtime (deno by default). `bootstrap.sh`
+3. **YouTube JavaScript runtime (fixed).** yt-dlp now expects a JS runtime (deno by default). `bootstrap.sh`
    neither checks for one nor mentions it, and the CLI cannot pass `--js-runtimes`. A documented
    yt-dlp config file is a workaround. Consider having bootstrap report deno or node, or mentioning
    the config in `SKILL.md`. Caption fetches can also be rate-limited (429) after repeated use.
@@ -152,6 +177,30 @@ No paid calls were made, and nothing was scored for accuracy.
    The static pip build was enough for the evaluation, but `brew install ffmpeg` is still the
    documented route.
 
+## Review fixes and rerun
+
+The independent review raised these points. Each code change was made test-first.
+
+| Finding | Change | Contract change |
+| --- | --- | --- |
+| Sign-off ignored transcript provenance | `signoff` records `transcript_provider` (`name`, `kind`, and `model`/`version` when present) for each video. For `captions` and `agent` transcripts it blocks without `audio_verification`, which lists the spans checked against the source audio (`method`, `checks[]` with `start`, `end`, `segment_ids`, `result` of `matches` or `differs`, and `note`). A `differs` result also blocks. `cleanup` refuses media release when the sign-off's provider does not match `segments.json`, or when a captions or agent transcript lacks passing checks. The record holds `checked_seconds`, `checked_fraction`, and a `limits` statement. There is no "accurate" flag | `reference/archival.md`: review and `signoff.json` shape; cleanup binding step 5 |
+| Optional article fields could cause tracebacks | Wrong types in `risks`, `question`, quote `cite`, `segment_ids`, `frame_id`, figure `sources`, evidence `citations`, proposal `basis`, list `ordered`, `partial_reason`, `audience`, and web-citation text fields are now contract errors (exit 2) | `reference/article-contract.md`: optional field types |
+| `sequence` alt documented as figure-level | Docs now say alt is per step. A figure-level `alt` on a sequence is rejected (regression test) | `reference/article-contract.md`: Figures |
+| Adjacent superscripts ("¹⁴") | Figure-assumption and brief-evidence sources render as one marker. Numbers inside a marker are separated by a literal ", " in the HTML, replacing the CSS `::before` comma | Rendering only |
+| yt-dlp runtime and config | `download --js-runtime deno\|node\|quickjs [--js-runtime-path ABS]` is checked against upstream ([EJS guide](https://github.com/yt-dlp/yt-dlp/wiki/EJS), README `--js-runtimes`/`--ignore-config`). Bun is excluded because it is deprecated and runs scripts without permission restrictions. The runtime is resolved to an absolute path and passed as `--no-js-runtimes --js-runtimes NAME:PATH`. It is part of the reuse config and is recorded in `source.json` with its version. yt-dlp always runs with `--ignore-config`, with no `--remote-components` (yt-dlp vendors the EJS scripts). `--no-warnings` was dropped: `WARNING:` lines are kept in the output and in `source.json` `warnings`. `--timeout` (default 1800 s, max 21600 s) bounds yt-dlp and ffmpeg, and on timeout the process group is killed. `bootstrap.sh` reports deno (≥ 2.3.0), node (≥ 22), or quickjs and which flag to use | `reference/contracts.md`: download CLI, reuse config, `source.json` fields |
+| Status claims | README and SKILL now state what was actually tested and what was not | — |
+| tech-demo editorial | Fixture corrected as described above; scores updated with the independent results | — |
+
+Verification commands and results:
+
+```sh
+python3 -m unittest discover -s tests -p 'test_*.py'      # Ran 96 tests, OK
+make check                                                # exit 0: bun 4 pass; Python 96 tests OK; "All checks passed."
+python3 evals/distilling-videos/run_eval.py --tools-bin .amp/in/tools/bin \
+  --browser "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary" --capture
+# exit 0; 287 pass, 0 fail across 9 categories (table above); no network probe
+```
+
 ## Not tested
 
 - Accuracy of audio transcription, captions, or translation, and any provider. No reference audio
@@ -159,13 +208,20 @@ No paid calls were made, and nothing was scored for accuracy.
 - Live Azure Blob, a real SAS, and the GitHub Actions hand-off (still blocked on a producer workflow).
 - Agent dialogue behavior: editorial approval pause, asking for authorization, and the "no
   transcript route" explanation.
-- An editorial review by someone other than the author.
+- An independent re-score of the corrected tech-demo article, and any independent review of
+  ja-talk and g-bio.
+- `download --js-runtime` against live YouTube (unit-tested with fake tools only), and the caption
+  audio-verification gate on a real captions transcript.
 - Linux or orb execution. Fonts and paths in `media.json` include Linux fallbacks, but they were not
   run.
 - Long videos and batches near 10 videos with real media (limits were checked at assignment level
   only).
 
 ## Artifacts (ignored, under `.amp/in/artifacts/distilling-videos-eval/`)
+
+These files are from the post-fix rerun, so they show the corrected tech-demo article. `results.json`
+and `run.log` therefore have no live-probe rows; the live-probe observations above come from the
+original run.
 
 - `<pub>/desktop-top.png`, `desktop-full.png`, `mobile-top.png`, `mobile-full.png`,
   `desktop-stepper-last.png`, `mobile-stepper.png`, `desktop-details.png`, `desktop-zoom.png`,

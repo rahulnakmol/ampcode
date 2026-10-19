@@ -17,12 +17,13 @@ Say this plainly to the user before starting. Never imply more automation than e
 | Capability | Status |
 | --- | --- |
 | Assignment validation, workspace, resume, stage checksums | Implemented, tested offline |
-| YouTube download, audio extraction, frame sampling | Implemented; needs `yt-dlp`, `ffmpeg`, `ffprobe`. Tests use fake tools; live runs are unverified until you run one |
-| **Transcription and translation** | **No provider adapter exists.** Amp must supply a normalized transcript JSON (manual, captions-derived, agent-produced, or from a provider the user runs). Fully unattended URL-to-package is **not** available |
+| YouTube download, audio extraction, frame sampling | Implemented; needs `yt-dlp`, `ffmpeg`, `ffprobe`, and a JavaScript runtime for YouTube. One real macOS evaluation (one public video, 2026-10-19): the first download failed with HTTP 403 while yt-dlp warned that no JavaScript runtime was found; with node enabled it succeeded, and four later runs succeeded. Treat 403s as intermittent, not proof the video is gone. Not tested in orbs or on Linux |
+| **Transcription and translation** | **No provider adapter exists, and no provider is selected.** Amp must supply a normalized transcript JSON (manual, captions-derived, agent-produced, or from a provider the user runs). No transcription, caption, or translation accuracy has been measured. Fully unattended URL-to-package is **not** available |
 | Frame selection, research, article and brief writing | Amp's job, guided by this skill |
 | Offline HTML, Markdown, coverage report, ZIP | Implemented, tested offline |
-| PDF | Implemented; needs a local Chromium-family browser |
-| Sign-off, Azure archive, verify, safe cleanup | Implemented against a fake Blob transport. Live Azure is unverified and needs user-authorized credentials |
+| PDF | Implemented; needs a local Chromium-family browser. A real Chrome Canary PDF was produced and inspected on macOS in the evaluation |
+| Sign-off, Azure archive, verify, safe cleanup | Implemented against a fake Blob transport. Live Azure is **not tested** and needs user-authorized credentials |
+| Amp orbs (Linux) | **Not tested**. Paths and fonts have Linux fallbacks, but no orb run has happened |
 | GitHub Actions archive hand-off | **Blocked**: the workflow needs a producer workflow that does not exist. Do not build one unless asked |
 | Provider benchmark and choice | **Not run** (needs a user-approved spending cap). No provider is recommended yet |
 
@@ -57,8 +58,10 @@ export PATH="${XDG_CACHE_HOME:-$HOME/.cache}/distilling-videos/venv/bin:$PATH"
 D="python3 $SKILL/scripts/distill.py"
 ```
 
-`bootstrap.sh` creates a private venv with `yt-dlp` and checks `ffmpeg`, `ffprobe`, and a browser.
-It never installs system packages or touches credentials. Exit 3 means a tool is missing: ask the
+`bootstrap.sh` creates a private venv with `yt-dlp` and checks `ffmpeg`, `ffprobe`, a browser, and
+the JavaScript runtime yt-dlp needs for YouTube (deno 2.3+ is yt-dlp's default; node 22+ or quickjs
+need `download --js-runtime node|quickjs`). It never installs system packages, edits yt-dlp config,
+or touches credentials. Exit 3 means a tool is missing: ask the
 user to install it (`brew install ffmpeg`; in an orb, the project's `.agents/setup` can run
 `sudo apt-get install -y ffmpeg`). Do not install system packages without permission.
 
@@ -102,10 +105,17 @@ Run commands in order per video. Every command prints JSON; read `status` and ac
 ### 1. Source
 
 ```sh
-$D download --workspace "$W" --video talk1
+$D download --workspace "$W" --video talk1                      # deno via yt-dlp's default
+$D download --workspace "$W" --video talk1 --js-runtime node    # what bootstrap.sh reported
 # Fallback when the orb cannot download: the user fetches the file on a Mac and shares it.
 $D download --workspace "$W" --video talk1 --from-file /path/to/talk1.mp4
 ```
+
+`download` runs yt-dlp with `--ignore-config`, so yt-dlp config files never change its behavior. The
+runtime (`--js-runtime`, optional `--js-runtime-path`) is part of the reuse config, yt-dlp
+warnings are kept in the output and `source.json` `warnings`, and `--timeout` (default 1800 s,
+max 21600) stops a stuck yt-dlp or ffmpeg. Report the warnings; a 403 with a "no JavaScript
+runtime" warning means fix the runtime and rerun, not that the video is missing.
 
 Read `sources/talk1/source.json`: title, creator, duration, language, caption availability.
 Caption listings are metadata, not a transcript. Never bypass DRM, logins, or access controls.
@@ -117,9 +127,10 @@ recording it in `provider`:
 
 - **Provider the user runs or authorizes**: follow `reference/providers.md`. Reserve budget first.
   `provider.kind = "transcription"`.
-- **Captions**: fetch with `yt-dlp --skip-download --write-subs --write-auto-subs --sub-format
-  json3 -o 'scratch/%(id)s' URL`, convert to segments, `provider.kind = "captions"`. Captions can be
-  wrong or partial; spot-check against audio and mark doubtful segments uncertain.
+- **Captions**: fetch with `yt-dlp --ignore-config --skip-download --write-subs --write-auto-subs
+  --sub-format json3 -o 'scratch/%(id)s' URL`, convert to segments, `provider.kind = "captions"`.
+  Captions can be wrong or partial; spot-check against audio, mark doubtful segments uncertain, and
+  record the checked spans for sign-off (step 7).
 - **Manual or agent transcription**: `kind = "manual"` or `"agent"`. Only claim what you actually
   heard or read; agent listening fidelity is unbenchmarked, so mark doubt per segment.
 
@@ -280,6 +291,10 @@ Two different gates; do not conflate them:
   coverage is adequate, every gap is justified, and every uncertain segment stays labeled.
 
 Mark `verified` only after actually checking. Each gap entry must match `coverage.json` exactly.
+`signoff` records the transcript `provider.kind`. For `captions` and `agent` transcripts it blocks
+(and cleanup keeps the media) until the review adds `audio_verification`: the spans you compared
+with the source audio, their `segment_ids`, and `matches`/`differs` per span. It records checked
+seconds, not accuracy; say so in the report. Shape: `reference/archival.md`.
 
 <!-- example: review -->
 ```json
@@ -365,7 +380,8 @@ Up to ten videos in one workspace. Process videos sequentially or with small bou
 ## Final report to the user
 
 Report per publication: package path and `manifest_sha256`; `complete` flag and reasons; sign-off
-status and blockers; transcript route (provider kind) and coverage gaps; frame selection
+status and blockers; transcript route (provider kind), audio-checked seconds for captions or
+agent transcripts (never an accuracy claim), and coverage gaps; yt-dlp warnings; frame selection
 limitations; archive receipt or "not archived"; media retained or cleaned; costs reserved/settled
 and that Amp usage is not included; and anything unverified (live download, PDF browser, Azure).
 
