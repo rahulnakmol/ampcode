@@ -45,8 +45,18 @@ You can archive partial, unsigned, or blocked packages. The receipt records thei
    "transcript_coverage": "verified", "visual_coverage": "verified",
    "gaps": [{"start": 0.0, "end": 5.0, "resolution": "no-speech", "note": "title music"}],
    "uncertain_segments": [{"segment_id": "s2", "resolution": "labeled", "note": "kept marked uncertain"}],
+   "audio_verification": {"method": "listened-to-source-audio",
+     "note": "spot checks of the opening and the key claim; the rest was not compared",
+     "checks": [{"start": 0.0, "end": 20.0, "segment_ids": ["s1", "s2"], "result": "matches",
+                 "note": "words match at 1x"}]},
    "note": "optional"}}}
 ```
+
+`audio_verification` is optional for `transcription` and `manual` transcripts and required for `captions` and `agent` transcripts (`provider.kind` in `transcript/segments.json`). It is a list of spans the reviewer compared with the source audio, not an accuracy verdict:
+
+- `method` is `listened-to-source-audio` or `compared-with-independent-transcription`. `note` is required text.
+- `checks` is a non-empty list. Each check has numeric `start` < `end` within the media duration, `segment_ids` (a non-empty list of distinct segment ID strings, each overlapping the span), `result` (`matches` or `differs`), and a non-empty `note`.
+- `signoff.json` records the checks plus `checked_seconds`, `checked_fraction` of the duration, and a `limits` statement. Unchecked spans stay unverified; there is deliberately no boolean "accurate" field.
 
 Validation rules:
 
@@ -65,6 +75,8 @@ Sign-off is `blocked` (exit 1) and still recorded with its blockers when any of 
 - The transcript duration is unknown.
 - A transcript gap has no review entry, or its resolution is `unresolved`. The accepted resolutions are `no-speech` and `not-relevant`.
 - An uncertain segment has no review entry, or its resolution is `unresolved`. The accepted resolution is `labeled`, which means the deliverables keep the uncertainty marked.
+- The transcript `provider.kind` is `captions` or `agent` and the review has no `audio_verification`.
+- Any audio check has `result: differs`. Correct the transcript, re-import it, and review again.
 
 `signoff.json` contains:
 
@@ -74,6 +86,8 @@ Sign-off is `blocked` (exit 1) and still recorded with its blockers when any of 
 - For each video:
   - `stages`: a snapshot of the `status`, `inputs`, and `outputs` digests of the `download`, `frames`, `transcript`, `transcript-markdown`, and `frame-selection` records.
   - `media`: the SHA-256 of every tracked temporary media file.
+  - `transcript_provider`: `name`, `kind`, and optional `model` and `version` from `transcript/segments.json`.
+  - `audio_verification`: the validated checks with `checked_seconds`, `checked_fraction`, and `limits`, or `null`.
   - The coverage gaps and uncertain segment IDs.
 
 A sign-off that names a different manifest is stale. `archive` refuses it.
@@ -133,6 +147,7 @@ Before any network request, it checks:
 3. The archived quality status is `approved` and `package_complete` is true.
 4. The local `signoff.json` has exactly the archived sign-off digest, is `approved`, and names the archived manifest. The sign-off object is listed in the archive.
 5. Every stage snapshot in the sign-off equals the current `state.json` record, and every current stage output still matches its checksum. Changing a transcript, frames, or media file after sign-off blocks cleanup.
+   The sign-off's `transcript_provider` equals the provider in the current `transcript/segments.json`. For a `captions` or `agent` transcript, the sign-off has `audio_verification` with at least one check and every check is `matches`. A sign-off made before provider recording is refused; rerun `signoff` and `archive`.
 6. Every archived evidence file for the video exists locally with the archived digest. Every core evidence file that exists locally (`source.json`, `selection.json`, `frames/frames.json`, and the transcript files) was archived. A receipt from another workspace, or from older evidence for the same video ID, therefore fails.
 7. Each media path to delete comes from the sign-off and meets all of these conditions:
    - It is listed in `state.json` `temporary_media`.

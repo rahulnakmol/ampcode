@@ -49,6 +49,10 @@ CORE_EVIDENCE = ("source.json", "selection.json", "frames/frames.json", "transcr
                  "transcript/english.md")
 GAP_RESOLUTIONS = {"no-speech", "not-relevant", "unresolved"}
 UNCERTAIN_RESOLUTIONS = {"labeled", "unresolved"}
+# Transcripts not produced by a dedicated transcription provider or a human transcriber need audio spot checks.
+AUDIO_CHECK_KINDS = {"captions", "agent"}
+AUDIO_METHODS = {"listened-to-source-audio", "compared-with-independent-transcription"}
+AUDIO_RESULTS = {"matches", "differs"}
 TRUSTED_EVENTS = {"workflow_dispatch", "push", "schedule"}
 THIS_WORKFLOW = ".github/workflows/archive-distilled-videos.yml"
 CONTENT_TYPES = {".html": "text/html; charset=utf-8", ".md": "text/markdown; charset=utf-8",
@@ -416,6 +420,60 @@ def _text(obj: Dict[str, Any], key: str, label: str) -> None:
         raise ContractError(f"{label}.{key} must be non-empty text")
 
 
+def _transcript_provider(segments_doc: Dict[str, Any]) -> Dict[str, Any]:
+    provider = segments_doc.get("provider") or {}
+    return {k: provider[k] for k in ("name", "kind", "model", "version") if isinstance(provider.get(k), str)}
+
+
+def _audio_verification(item: Dict[str, Any], label: str, segments_doc: Dict[str, Any],
+                        duration: Optional[float]) -> Optional[Dict[str, Any]]:
+    """Validate the reviewer's audio spot checks. Records what was compared, never an accuracy verdict."""
+    audio = item.get("audio_verification")
+    if audio is None:
+        return None
+    label = f"{label}.audio_verification"
+    _fields(audio, label, {"method", "checks", "note"})
+    _text(audio, "note", label)
+    if audio["method"] not in AUDIO_METHODS:
+        raise ContractError(f"{label}.method must be one of {sorted(AUDIO_METHODS)}")
+    if not isinstance(audio["checks"], list) or not audio["checks"]:
+        raise ContractError(f"{label}.checks must be a non-empty list of checked spans")
+    spans = {s["id"]: s for s in segments_doc.get("segments", [])}
+    checks = []
+    for check in audio["checks"]:
+        where = f"{label}.checks[]"
+        _fields(check, where, {"start", "end", "segment_ids", "result", "note"})
+        _text(check, "note", where)
+        start, end = check["start"], check["end"]
+        if not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in (start, end)) \
+                or start < 0 or end <= start or (duration is not None and end > duration + 0.001):
+            raise ContractError(f"{where}: start/end must be numbers with 0 <= start < end <= the media duration")
+        ids = check["segment_ids"]
+        if not isinstance(ids, list) or not ids or not all(isinstance(s, str) for s in ids) \
+                or len(set(ids)) != len(ids):
+            raise ContractError(f"{where}.segment_ids must be a non-empty list of distinct segment ID strings")
+        for segment_id in ids:
+            segment = spans.get(segment_id)
+            if segment is None or segment["end"] <= start or segment["start"] >= end:
+                raise ContractError(f"{where}: segment {segment_id!r} is not a transcript segment inside "
+                                    f"{start}-{end}s")
+        if check["result"] not in AUDIO_RESULTS:
+            raise ContractError(f"{where}.result must be one of {sorted(AUDIO_RESULTS)}")
+        checks.append({"start": float(start), "end": float(end), "segment_ids": list(ids),
+                       "result": check["result"], "note": check["note"]})
+    covered, cursor = 0.0, 0.0
+    for check in sorted(checks, key=lambda c: c["start"]):
+        begin = max(check["start"], cursor)
+        if check["end"] > begin:
+            covered += check["end"] - begin
+        cursor = max(cursor, check["end"])
+    return {"method": audio["method"], "note": audio["note"], "checks": checks,
+            "checked_seconds": round(covered, 3),
+            "checked_fraction": round(covered / duration, 4) if duration else None,
+            "limits": "Reviewer spot checks of the listed spans against the source audio; this is not a measured "
+                      "accuracy rate, and unchecked spans remain unverified."}
+
+
 def _stage_snapshot(record: Dict[str, Any]) -> Dict[str, Any]:
     return {"status": record.get("status"), "inputs": record.get("inputs", {}), "outputs": record.get("outputs", {})}
 
@@ -452,7 +510,8 @@ def cmd_signoff(args: Any) -> int:
     for video_id in plan["video_ids"]:
         item = review["videos"][video_id]
         label = f"review.videos.{video_id}"
-        _fields(item, label, {"transcript_coverage", "visual_coverage", "gaps", "uncertain_segments"}, {"note"})
+        _fields(item, label, {"transcript_coverage", "visual_coverage", "gaps", "uncertain_segments"},
+                {"note", "audio_verification"})
         stages = {}
         for stage in SNAPSHOT_STAGES:
             key = evidence.stage_key(video_id, stage)
@@ -482,6 +541,16 @@ def cmd_signoff(args: Any) -> int:
                 blockers.append(f"{video_id}: {key.replace('_', ' ')} is unverified")
         if coverage.get("duration") is None:
             blockers.append(f"{video_id}: transcript duration is unknown, so trailing coverage cannot be verified")
+        segments_doc = evidence.read_json(workspace.source_dir(video_id) / "transcript" / "segments.json")
+        provider = _transcript_provider(segments_doc)
+        audio = _audio_verification(item, label, segments_doc, coverage.get("duration"))
+        if provider.get("kind") in AUDIO_CHECK_KINDS and audio is None:
+            blockers.append(f"{video_id}: {provider['kind']} transcript has no audio verification; spot-check "
+                            "spans against the source audio and record them in audio_verification")
+        for check in (audio or {"checks": []})["checks"]:
+            if check["result"] == "differs":
+                blockers.append(f"{video_id}: audio check {check['start']}-{check['end']}s differs from the "
+                                "transcript; correct and re-import the transcript, then review again")
         gaps = coverage["gaps"]
         matched: Dict[int, Dict[str, Any]] = {}
         for entry in item["gaps"] if isinstance(item["gaps"], list) else [None]:
@@ -518,7 +587,8 @@ def cmd_signoff(args: Any) -> int:
                 blockers.append(f"{video_id}: uncertain segment {segment_id} has no review")
             elif reviewed[segment_id] == "unresolved":
                 blockers.append(f"{video_id}: uncertain segment {segment_id} is unresolved")
-        videos[video_id] = {"stages": stages, "media": media,
+        videos[video_id] = {"stages": stages, "media": media, "transcript_provider": provider,
+                            "audio_verification": audio,
                             "coverage": {"duration": coverage.get("duration"), "gaps": gaps,
                                          "uncertain_segment_ids": uncertain, "warnings": coverage.get("warnings", [])}}
     status = "blocked" if blockers else "approved"
@@ -829,6 +899,16 @@ def _plan_video(workspace: Workspace, state: Dict[str, Any], video_id: str, rece
         if problems:
             raise ContractError(["cleanup refused: current evidence does not match its record"] + problems)
     base = workspace.source_dir(video_id)
+    provider = _transcript_provider(evidence.read_json(base / "transcript" / "segments.json"))
+    if signed.get("transcript_provider") != provider:
+        raise ContractError(f"cleanup refused: sign-off does not record the current transcript provider for "
+                            f"{video_id}; rerun signoff and archive")
+    if provider.get("kind") in AUDIO_CHECK_KINDS:
+        audio = signed.get("audio_verification")
+        checks = audio.get("checks") if isinstance(audio, dict) else None
+        if not isinstance(checks, list) or not checks or any(c.get("result") != "matches" for c in checks):
+            raise ContractError(f"cleanup refused: {video_id} has a {provider['kind']} transcript without passing "
+                                "audio verification in the sign-off; media is kept so the audio can be checked")
     archived = marker["videos"][video_id]["files"]
     for rel, info in archived.items():
         path = safe_path(base, check_rel(rel, "evidence path"))
