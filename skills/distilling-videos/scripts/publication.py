@@ -199,7 +199,9 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
             shape = _strings(citation, "segment_ids", label) + _texts(citation, ("frame_id", "note"), label)
             problems += shape
             video_id = citation.get("video_id")
-            if shape:
+            if not isinstance(video_id, str):
+                problems.append(f"{label}.video_id must be a string")
+            elif shape:
                 pass  # references are checked once the field types are right
             elif video_id not in plan["video_ids"]:
                 problems.append(f"{label} cites video {video_id!r}, which is not in publication {plan['id']} "
@@ -331,7 +333,8 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
                 citation = citations.get(block["cite"]) if isinstance(block.get("cite"), str) else None
                 if isinstance(block.get("cite"), str):
                     cite([block["cite"]], where)
-                if citation and citation.get("kind", "video") == "video" and citation["video_id"] in by_video:
+                if (citation and citation.get("kind", "video") == "video" and isinstance(citation.get("video_id"), str)
+                        and citation["video_id"] in by_video):
                     segments = by_video[citation["video_id"]]["segments"]
                     spoken = [segments[s] for s in _list(citation, "segment_ids") if isinstance(s, str) and s in segments]
                     haystacks = [_normalize(" ".join(s[f] for s in spoken)) for f in ("text", "english")]
@@ -342,9 +345,12 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
                     problems.append(f"{where} quote must cite video segments")
             elif kind == "figure":
                 problems.extend(_fields(block, where, ("type", "figure")))
-                if block.get("figure") not in figures:
-                    problems.append(f"{where} references unknown figure {block.get('figure')!r}")
-                placed.append(block.get("figure"))
+                if not isinstance(block.get("figure"), str):
+                    problems.append(f"{where}.figure must be a figure id string")
+                elif block["figure"] not in figures:
+                    problems.append(f"{where} references unknown figure {block['figure']!r}")
+                else:
+                    placed.append(block["figure"])
             else:
                 problems.extend(_fields(block, where, ("type", "summary", "blocks")) + _texts(block, ("summary",), where))
                 blocks(block.get("blocks"), f"{where}.blocks", nested=True)
@@ -381,9 +387,9 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
             if not isinstance(item, dict):
                 continue
             problems += _texts(item, ("text",), label) + _strings(item, "citations", label)
-            if item.get("kind") not in EVIDENCE_KINDS:
+            if not isinstance(item.get("kind"), str) or item["kind"] not in EVIDENCE_KINDS:
                 problems.append(f"{label} kind must be one of {sorted(EVIDENCE_KINDS)}")
-            if "basis" in item and item["basis"] not in BASIS_LABELS:
+            if "basis" in item and (not isinstance(item["basis"], str) or item["basis"] not in BASIS_LABELS):
                 problems.append(f"{label} basis must be one of {sorted(BASIS_LABELS)}")
             if item.get("kind") != "unknown" and not _list(item, "citations"):
                 problems.append(f"{label} ({item.get('id')}) needs citations; uncited observations are unknowns")
@@ -395,7 +401,7 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
             if not isinstance(item, dict):
                 continue
             problems += _texts(item, ("text", "risks"), label) + _strings(item, "basis", label)
-            if item.get("kind") not in PROPOSAL_KINDS:
+            if not isinstance(item.get("kind"), str) or item["kind"] not in PROPOSAL_KINDS:
                 problems.append(f"{label} kind must be one of {sorted(PROPOSAL_KINDS)}")
             if "[@" in str(item.get("text", "")) + str(item.get("risks", "")):
                 problems.append(f"{label} must not cite sources directly; proposals rest on evidence ids in basis")
@@ -410,11 +416,13 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
                     check_id(item.get("id"), "brief item id")
                 except ContractError as error:
                     problems += error.problems
-        all_ids = [i.get("id") for i in _list(brief, "evidence") + _list(brief, "proposals") if isinstance(i, dict)]
+        all_ids = [i.get("id") for i in _list(brief, "evidence") + _list(brief, "proposals")
+                   if isinstance(i, dict) and isinstance(i.get("id"), str)]
         if len(all_ids) != len(set(all_ids)):
             problems.append("brief evidence and proposal ids must be unique")
 
-    cited_videos = {citations[c].get("video_id") for c in used if citations[c].get("kind", "video") == "video"}
+    cited_videos = {citations[c].get("video_id") for c in used
+                    if citations[c].get("kind", "video") == "video" and isinstance(citations[c].get("video_id"), str)}
     for video_id in plan["video_ids"]:
         if video_id not in cited_videos:
             problems.append(f"source {video_id} is never cited; a publication must not silently exclude a source")

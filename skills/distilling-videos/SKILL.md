@@ -58,7 +58,8 @@ export PATH="${XDG_CACHE_HOME:-$HOME/.cache}/distilling-videos/venv/bin:$PATH"
 D="python3 $SKILL/scripts/distill.py"
 ```
 
-`bootstrap.sh` creates a private venv with `yt-dlp` and checks `ffmpeg`, `ffprobe`, a browser, and
+`bootstrap.sh` creates a private venv with `yt-dlp[default]` (the extra supplies `yt-dlp-ejs`, the
+YouTube challenge solver scripts; a venv missing it is repaired, and `--check` reports it) and checks `ffmpeg`, `ffprobe`, a browser, and
 the JavaScript runtime yt-dlp needs for YouTube (deno 2.3+ is yt-dlp's default; node 22+ or quickjs
 need `download --js-runtime node|quickjs`). It never installs system packages, edits yt-dlp config,
 or touches credentials. Exit 3 means a tool is missing: ask the
@@ -293,8 +294,9 @@ Two different gates; do not conflate them:
 Mark `verified` only after actually checking. Each gap entry must match `coverage.json` exactly.
 `signoff` records the transcript `provider.kind`. For `captions` and `agent` transcripts it blocks
 (and cleanup keeps the media) until the review adds `audio_verification`: the spans you compared
-with the source audio, their `segment_ids`, and `matches`/`differs` per span. It records checked
-seconds, not accuracy; say so in the report. Shape: `reference/archival.md`.
+with the source audio, their `segment_ids`, and `matches`/`differs` per span. Approval needs the
+merged spans to cover every transcript segment; a partial spot check is recorded but stays blocked,
+so the media is kept. It records checked seconds, not accuracy; say so in the report. Shape: `reference/archival.md`.
 
 <!-- example: review -->
 ```json

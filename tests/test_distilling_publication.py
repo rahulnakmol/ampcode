@@ -295,6 +295,17 @@ class OptionalFieldTypes(PublicationFixture):
             (lambda a: a["sections"][1]["blocks"][0].update(ordered="yes"), r"ordered"),
             (lambda a: a.update(status="partial", partial_reason=["frames"]), r"partial_reason"),
         ]
+        # Required fields used for hash or set membership must be type-checked first.
+        for bad in (["x"], {"x": 1}):
+            cases += [
+                (lambda a, b=bad: a["sections"][0]["blocks"][2].update(figure=b), r"\.figure must be"),
+                (lambda a, b=bad: a["brief"]["evidence"][0].update(kind=b), r"evidence\[0\] kind must be"),
+                (lambda a, b=bad: a["brief"]["evidence"][0].update(basis=b), r"evidence\[0\] basis must be"),
+                (lambda a, b=bad: a["brief"]["evidence"][0].update(id=b), r"brief item id"),
+                (lambda a, b=bad: a["brief"]["proposals"][0].update(kind=b), r"proposals\[0\] kind must be"),
+                (lambda a, b=bad: a["brief"]["proposals"][0].update(id=b), r"brief item id"),
+                (lambda a, b=bad: a["citations"][0].update(video_id=b), r"citations\[0\]\.video_id must be"),
+            ]
         for change, pattern in cases:
             data = article()
             change(data)

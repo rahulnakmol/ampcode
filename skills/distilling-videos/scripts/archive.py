@@ -12,6 +12,7 @@ import base64
 import hashlib
 import http.client
 import json
+import math
 import os
 import re
 import secrets
@@ -425,6 +426,27 @@ def _transcript_provider(segments_doc: Dict[str, Any]) -> Dict[str, Any]:
     return {k: provider[k] for k in ("name", "kind", "model", "version") if isinstance(provider.get(k), str)}
 
 
+def _finite(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def _unchecked_segments(checks: List[Dict[str, Any]], segments: List[Dict[str, Any]]) -> List[str]:
+    """Transcript segment IDs not fully inside the union of the checked [start, end] intervals."""
+    merged: List[List[float]] = []
+    for check in sorted(checks, key=lambda c: c["start"]):
+        if merged and check["start"] <= merged[-1][1] + 0.001:
+            merged[-1][1] = max(merged[-1][1], check["end"])
+        else:
+            merged.append([check["start"], check["end"]])
+    unchecked = []
+    for segment in segments:
+        start, end = segment["start"], segment["end"]
+        covered = sum(max(0.0, min(end, b) - max(start, a)) for a, b in merged)
+        if covered < (end - start) - 0.001:
+            unchecked.append(segment["id"])
+    return unchecked
+
+
 def _audio_verification(item: Dict[str, Any], label: str, segments_doc: Dict[str, Any],
                         duration: Optional[float]) -> Optional[Dict[str, Any]]:
     """Validate the reviewer's audio spot checks. Records what was compared, never an accuracy verdict."""
@@ -434,7 +456,7 @@ def _audio_verification(item: Dict[str, Any], label: str, segments_doc: Dict[str
     label = f"{label}.audio_verification"
     _fields(audio, label, {"method", "checks", "note"})
     _text(audio, "note", label)
-    if audio["method"] not in AUDIO_METHODS:
+    if not isinstance(audio["method"], str) or audio["method"] not in AUDIO_METHODS:
         raise ContractError(f"{label}.method must be one of {sorted(AUDIO_METHODS)}")
     if not isinstance(audio["checks"], list) or not audio["checks"]:
         raise ContractError(f"{label}.checks must be a non-empty list of checked spans")
@@ -445,9 +467,9 @@ def _audio_verification(item: Dict[str, Any], label: str, segments_doc: Dict[str
         _fields(check, where, {"start", "end", "segment_ids", "result", "note"})
         _text(check, "note", where)
         start, end = check["start"], check["end"]
-        if not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in (start, end)) \
-                or start < 0 or end <= start or (duration is not None and end > duration + 0.001):
-            raise ContractError(f"{where}: start/end must be numbers with 0 <= start < end <= the media duration")
+        if not all(_finite(v) for v in (start, end)) or start < 0 or end <= start or (duration is not None and end > duration + 0.001):
+            raise ContractError(f"{where}: start/end must be finite numbers with 0 <= start < end <= the media "
+                                "duration")
         ids = check["segment_ids"]
         if not isinstance(ids, list) or not ids or not all(isinstance(s, str) for s in ids) \
                 or len(set(ids)) != len(ids):
@@ -457,7 +479,7 @@ def _audio_verification(item: Dict[str, Any], label: str, segments_doc: Dict[str
             if segment is None or segment["end"] <= start or segment["start"] >= end:
                 raise ContractError(f"{where}: segment {segment_id!r} is not a transcript segment inside "
                                     f"{start}-{end}s")
-        if check["result"] not in AUDIO_RESULTS:
+        if not isinstance(check["result"], str) or check["result"] not in AUDIO_RESULTS:
             raise ContractError(f"{where}.result must be one of {sorted(AUDIO_RESULTS)}")
         checks.append({"start": float(start), "end": float(end), "segment_ids": list(ids),
                        "result": check["result"], "note": check["note"]})
@@ -467,11 +489,14 @@ def _audio_verification(item: Dict[str, Any], label: str, segments_doc: Dict[str
         if check["end"] > begin:
             covered += check["end"] - begin
         cursor = max(cursor, check["end"])
+    unchecked = _unchecked_segments(checks, segments_doc.get("segments", []))
     return {"method": audio["method"], "note": audio["note"], "checks": checks,
             "checked_seconds": round(covered, 3),
             "checked_fraction": round(covered / duration, 4) if duration else None,
-            "limits": "Reviewer spot checks of the listed spans against the source audio; this is not a measured "
-                      "accuracy rate, and unchecked spans remain unverified."}
+            "spoken_segments": len(spans), "unchecked_segment_ids": unchecked,
+            "limits": "Reviewer checks of the listed spans against the source audio; this is not a measured "
+                      "accuracy rate, and unchecked spans remain unverified. Approval for captions and agent "
+                      "transcripts requires the checked spans to cover every transcript segment."}
 
 
 def _stage_snapshot(record: Dict[str, Any]) -> Dict[str, Any]:
@@ -547,6 +572,12 @@ def cmd_signoff(args: Any) -> int:
         if provider.get("kind") in AUDIO_CHECK_KINDS and audio is None:
             blockers.append(f"{video_id}: {provider['kind']} transcript has no audio verification; spot-check "
                             "spans against the source audio and record them in audio_verification")
+        if provider.get("kind") in AUDIO_CHECK_KINDS and audio is not None and audio["unchecked_segment_ids"]:
+            unchecked = audio["unchecked_segment_ids"]
+            blockers.append(f"{video_id}: audio checks leave {len(unchecked)} of {audio['spoken_segments']} "
+                            f"transcript segments unchecked (first: {', '.join(unchecked[:5])}); spot checks are "
+                            f"recorded, but approval and media deletion need checked spans covering every "
+                            f"spoken segment of a {provider['kind']} transcript")
         for check in (audio or {"checks": []})["checks"]:
             if check["result"] == "differs":
                 blockers.append(f"{video_id}: audio check {check['start']}-{check['end']}s differs from the "
@@ -906,9 +937,17 @@ def _plan_video(workspace: Workspace, state: Dict[str, Any], video_id: str, rece
     if provider.get("kind") in AUDIO_CHECK_KINDS:
         audio = signed.get("audio_verification")
         checks = audio.get("checks") if isinstance(audio, dict) else None
-        if not isinstance(checks, list) or not checks or any(c.get("result") != "matches" for c in checks):
+        if not isinstance(checks, list) or not checks or not all(
+                isinstance(c, dict) and c.get("result") == "matches" and _finite(c.get("start"))
+                and _finite(c.get("end")) for c in checks):
             raise ContractError(f"cleanup refused: {video_id} has a {provider['kind']} transcript without passing "
                                 "audio verification in the sign-off; media is kept so the audio can be checked")
+        segments = evidence.read_json(base / "transcript" / "segments.json").get("segments", [])
+        unchecked = _unchecked_segments(checks, segments)
+        if unchecked:
+            raise ContractError(f"cleanup refused: {video_id} sign-off audio checks do not cover every spoken "
+                                f"segment of its {provider['kind']} transcript ({len(unchecked)} unchecked, first "
+                                f"{unchecked[0]}); spot checks alone never authorize deleting the media")
     archived = marker["videos"][video_id]["files"]
     for rel, info in archived.items():
         path = safe_path(base, check_rel(rel, "evidence path"))

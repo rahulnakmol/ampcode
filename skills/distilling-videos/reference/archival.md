@@ -55,8 +55,9 @@ You can archive partial, unsigned, or blocked packages. The receipt records thei
 `audio_verification` is optional for `transcription` and `manual` transcripts and required for `captions` and `agent` transcripts (`provider.kind` in `transcript/segments.json`). It is a list of spans the reviewer compared with the source audio, not an accuracy verdict:
 
 - `method` is `listened-to-source-audio` or `compared-with-independent-transcription`. `note` is required text.
-- `checks` is a non-empty list. Each check has numeric `start` < `end` within the media duration, `segment_ids` (a non-empty list of distinct segment ID strings, each overlapping the span), `result` (`matches` or `differs`), and a non-empty `note`.
-- `signoff.json` records the checks plus `checked_seconds`, `checked_fraction` of the duration, and a `limits` statement. Unchecked spans stay unverified; there is deliberately no boolean "accurate" field.
+- `checks` is a non-empty list. Each check has finite numeric `start` < `end` within the media duration (NaN and Infinity are rejected), `segment_ids` (a non-empty list of distinct segment ID strings, each overlapping the span), `result` (`matches` or `differs`), and a non-empty `note`.
+- `signoff.json` records the checks plus `checked_seconds`, `checked_fraction` of the duration, `spoken_segments` (the transcript segment count), `unchecked_segment_ids` (segments not fully inside the merged checked intervals), and a `limits` statement. Unchecked spans stay unverified; there is deliberately no boolean "accurate" field.
+- For `captions` and `agent` transcripts, approval requires the merged checked intervals to cover every transcript segment. A partial spot check (like the example above) is still validated and recorded for the report, but sign-off is `blocked`, so cleanup keeps the media. Full coverage means the reviewer compared every spoken span; it is not a measured accuracy rate.
 
 Validation rules:
 
@@ -75,7 +76,7 @@ Sign-off is `blocked` (exit 1) and still recorded with its blockers when any of 
 - The transcript duration is unknown.
 - A transcript gap has no review entry, or its resolution is `unresolved`. The accepted resolutions are `no-speech` and `not-relevant`.
 - An uncertain segment has no review entry, or its resolution is `unresolved`. The accepted resolution is `labeled`, which means the deliverables keep the uncertainty marked.
-- The transcript `provider.kind` is `captions` or `agent` and the review has no `audio_verification`.
+- The transcript `provider.kind` is `captions` or `agent` and the review has no `audio_verification`, or its merged checked intervals leave any transcript segment unchecked.
 - Any audio check has `result: differs`. Correct the transcript, re-import it, and review again.
 
 `signoff.json` contains:
@@ -87,7 +88,7 @@ Sign-off is `blocked` (exit 1) and still recorded with its blockers when any of 
   - `stages`: a snapshot of the `status`, `inputs`, and `outputs` digests of the `download`, `frames`, `transcript`, `transcript-markdown`, and `frame-selection` records.
   - `media`: the SHA-256 of every tracked temporary media file.
   - `transcript_provider`: `name`, `kind`, and optional `model` and `version` from `transcript/segments.json`.
-  - `audio_verification`: the validated checks with `checked_seconds`, `checked_fraction`, and `limits`, or `null`.
+  - `audio_verification`: the validated checks with `checked_seconds`, `checked_fraction`, `spoken_segments`, `unchecked_segment_ids`, and `limits`, or `null`.
   - The coverage gaps and uncertain segment IDs.
 
 A sign-off that names a different manifest is stale. `archive` refuses it.
@@ -147,7 +148,7 @@ Before any network request, it checks:
 3. The archived quality status is `approved` and `package_complete` is true.
 4. The local `signoff.json` has exactly the archived sign-off digest, is `approved`, and names the archived manifest. The sign-off object is listed in the archive.
 5. Every stage snapshot in the sign-off equals the current `state.json` record, and every current stage output still matches its checksum. Changing a transcript, frames, or media file after sign-off blocks cleanup.
-   The sign-off's `transcript_provider` equals the provider in the current `transcript/segments.json`. For a `captions` or `agent` transcript, the sign-off has `audio_verification` with at least one check and every check is `matches`. A sign-off made before provider recording is refused; rerun `signoff` and `archive`.
+   The sign-off's `transcript_provider` equals the provider in the current `transcript/segments.json`. For a `captions` or `agent` transcript, the sign-off has `audio_verification` with at least one check, every check is `matches` with finite `start`/`end`, and the merged checks cover every segment of the current `transcript/segments.json` (recomputed at cleanup, not trusted from the sign-off). A single short spot check never authorizes deleting the media. A sign-off made before provider recording is refused; rerun `signoff` and `archive`.
 6. Every archived evidence file for the video exists locally with the archived digest. Every core evidence file that exists locally (`source.json`, `selection.json`, `frames/frames.json`, and the transcript files) was archived. A receipt from another workspace, or from older evidence for the same video ID, therefore fails.
 7. Each media path to delete comes from the sign-off and meets all of these conditions:
    - It is listed in `state.json` `temporary_media`.

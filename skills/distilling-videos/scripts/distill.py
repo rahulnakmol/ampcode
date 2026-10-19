@@ -34,7 +34,8 @@ EXTENSION_MODULES = ("publication", "archive")
 DEFAULT_FORMAT = "bv*[height<=1080]+ba/b[height<=1080]/b"
 THUMB_WIDTH = 480
 # yt-dlp solves YouTube JavaScript challenges with an external runtime (upstream EJS guide:
-# https://github.com/yt-dlp/yt-dlp/wiki/EJS). Only deno is enabled by default. Bun is deprecated upstream
+# https://github.com/yt-dlp/yt-dlp/wiki/EJS). The solver scripts come from the yt-dlp-ejs package, which
+# the pip `yt-dlp[default]` extra installs (bootstrap.sh). Only deno is enabled by default. Bun is deprecated upstream
 # and runs scripts without permission restrictions, so it is not offered.
 JS_RUNTIMES = {"deno": "deno", "node": "node", "quickjs": "qjs"}
 DOWNLOAD_TIMEOUT = 1800.0

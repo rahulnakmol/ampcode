@@ -34,7 +34,7 @@ Actions archive hand-off needs.
 ```sh
 # Scratch tools (reversible: delete .amp/in/venv and .amp/in/tools)
 /opt/homebrew/bin/python3.14 -m venv .amp/in/venv
-.amp/in/venv/bin/pip install yt-dlp static-ffmpeg     # static-ffmpeg fetches ffmpeg/ffprobe 7.0 (darwin arm64)
+.amp/in/venv/bin/pip install 'yt-dlp[default]' static-ffmpeg     # static-ffmpeg fetches ffmpeg/ffprobe 7.0 (darwin arm64)
 .amp/in/venv/bin/static_ffmpeg_paths
 mkdir -p .amp/in/tools/bin   # symlinks to ffmpeg, ffprobe, yt-dlp
 
@@ -187,18 +187,23 @@ The independent review raised these points. Each code change was made test-first
 | Optional article fields could cause tracebacks | Wrong types in `risks`, `question`, quote `cite`, `segment_ids`, `frame_id`, figure `sources`, evidence `citations`, proposal `basis`, list `ordered`, `partial_reason`, `audience`, and web-citation text fields are now contract errors (exit 2) | `reference/article-contract.md`: optional field types |
 | `sequence` alt documented as figure-level | Docs now say alt is per step. A figure-level `alt` on a sequence is rejected (regression test) | `reference/article-contract.md`: Figures |
 | Adjacent superscripts ("¹⁴") | Figure-assumption and brief-evidence sources render as one marker. Numbers inside a marker are separated by a literal ", " in the HTML, replacing the CSS `::before` comma | Rendering only |
-| yt-dlp runtime and config | `download --js-runtime deno\|node\|quickjs [--js-runtime-path ABS]` is checked against upstream ([EJS guide](https://github.com/yt-dlp/yt-dlp/wiki/EJS), README `--js-runtimes`/`--ignore-config`). Bun is excluded because it is deprecated and runs scripts without permission restrictions. The runtime is resolved to an absolute path and passed as `--no-js-runtimes --js-runtimes NAME:PATH`. It is part of the reuse config and is recorded in `source.json` with its version. yt-dlp always runs with `--ignore-config`, with no `--remote-components` (yt-dlp vendors the EJS scripts). `--no-warnings` was dropped: `WARNING:` lines are kept in the output and in `source.json` `warnings`. `--timeout` (default 1800 s, max 21600 s) bounds yt-dlp and ffmpeg, and on timeout the process group is killed. `bootstrap.sh` reports deno (≥ 2.3.0), node (≥ 22), or quickjs and which flag to use | `reference/contracts.md`: download CLI, reuse config, `source.json` fields |
+| yt-dlp runtime and config | `download --js-runtime deno\|node\|quickjs [--js-runtime-path ABS]` is checked against upstream ([EJS guide](https://github.com/yt-dlp/yt-dlp/wiki/EJS), README `--js-runtimes`/`--ignore-config`). Bun is excluded because it is deprecated and runs scripts without permission restrictions. The runtime is resolved to an absolute path and passed as `--no-js-runtimes --js-runtimes NAME:PATH`. It is part of the reuse config and is recorded in `source.json` with its version. yt-dlp always runs with `--ignore-config`, with no `--remote-components`: yt-dlp does not vendor the EJS solver scripts in its PyPI package, so `bootstrap.sh` installs `yt-dlp[default]`, whose `default` extra supplies them through the `yt-dlp-ejs` package (upstream EJS guide, step 2), repairs a venv that lacks `yt_dlp_ejs`, and reports it as missing under `--check`. `--no-warnings` was dropped: `WARNING:` lines are kept in the output and in `source.json` `warnings`. `--timeout` (default 1800 s, max 21600 s) bounds yt-dlp and ffmpeg, and on timeout the process group is killed. `bootstrap.sh` reports deno (≥ 2.3.0), node (≥ 22), or quickjs and which flag to use | `reference/contracts.md`: download CLI, reuse config, `source.json` fields |
 | Status claims | README and SKILL now state what was actually tested and what was not | — |
+| Unhashable required article fields crashed `render` | A list or object in block `figure`, evidence `kind`/`basis`/`id`, proposal `kind`/`id`, or citation `video_id` raised `TypeError` before membership checks. These are now type-checked first and exit 2 with a `ContractError` (regression cases for list and object values). Quote and coverage lookups on `video_id` are guarded the same way | `reference/article-contract.md` unchanged (types were already required) |
+| Bare `pip install yt-dlp` lacks the EJS solver | `bootstrap.sh` installs and upgrades `yt-dlp[default]`, whose extra supplies `yt-dlp-ejs` (upstream EJS guide step 2 and yt-dlp `pyproject.toml`). An existing venv without `yt_dlp_ejs` is repaired on a normal run; `--check` reports it missing (exit 3). Tested with a fake venv | `reference/contracts.md`: known limits |
+| One spot check could release captions/agent media | Audio check `start`/`end` must be finite (NaN and Infinity rejected); `method` and `result` are type-checked. For `captions`/`agent` transcripts, sign-off is blocked unless the merged checked intervals cover every transcript segment; partial spot checks are recorded (`spoken_segments`, `unchecked_segment_ids`) for the report. `cleanup` recomputes coverage from the signed checks and current `segments.json` and refuses partial coverage. Coverage is not a measured accuracy rate | `reference/archival.md`: review, blockers, cleanup step 5 |
 | tech-demo editorial | Fixture corrected as described above; scores updated with the independent results | — |
 
 Verification commands and results:
 
 ```sh
-python3 -m unittest discover -s tests -p 'test_*.py'      # Ran 96 tests, OK
-make check                                                # exit 0: bun 4 pass; Python 96 tests OK; "All checks passed."
+python3 -m unittest discover -s tests -p 'test_*.py'      # Ran 98 tests, OK
+make check                                                # exit 0: bun 4 pass; Python 98 tests OK; "All checks passed."
 python3 evals/distilling-videos/run_eval.py --tools-bin .amp/in/tools/bin \
   --browser "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary" --capture
-# exit 0; 287 pass, 0 fail across 9 categories (table above); no network probe
+# exit 0; 287 pass, 0 fail across 9 categories (table above); no network probe. After the residual
+# fixes the rerun matched: report.json identical; six screenshots differed only by antialiasing noise
+# (same dimensions, max channel delta 16/255, under 0.1% of pixels)
 ```
 
 ## Not tested

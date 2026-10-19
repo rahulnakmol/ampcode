@@ -536,6 +536,59 @@ class BootstrapReport(Fixture):
         self.assertRegex(line, r"node v20\.5\.0.*too old")
         self.assertRegex(line, r"warning.*no supported JavaScript runtime")
 
+    def fake_venv(self, has_ejs):
+        """A venv whose python fakes `import yt_dlp_ejs` and logs (and satisfies) pip installs."""
+        venv = self.root / "venv"
+        (venv / "bin").mkdir(parents=True)
+        marker = venv / "ejs-installed"
+        if has_ejs:
+            marker.touch()
+        python = venv / "bin" / "python"
+        python.write_text(f"#!{sys.executable}\n" + textwrap.dedent(f'''
+            import os, sys
+            if sys.argv[1:2] == ["-c"]:
+                sys.exit(0 if os.path.exists({str(marker)!r}) else 1)
+            with open({str(venv / "pip.log")!r}, "a") as handle:
+                handle.write(" ".join(sys.argv[1:]) + "\\n")
+            open({str(marker)!r}, "w").close()
+        '''))
+        python.chmod(0o755)
+        yt = venv / "bin" / "yt-dlp"
+        yt.write_text('#!/bin/sh\necho 2026.10.01\n')
+        yt.chmod(0o755)
+        return venv
+
+    def run_bootstrap(self, *args):
+        for name in ("ffmpeg", "ffprobe"):
+            self.tool(name, 'print("fake 1.0")\n')
+        env = {"PATH": f"{self.bin}:/usr/bin:/bin", "HOME": str(self.root), "DISTILL_PYTHON": sys.executable,
+               "DISTILL_BROWSER": "/nonexistent"}
+        return subprocess.run(["bash", str(SCRIPTS / "bootstrap.sh"), "--venv", str(self.root / "venv"), *args],
+                              capture_output=True, text=True, env=env)
+
+    def test_check_reports_missing_ejs_without_installing(self):
+        venv = self.fake_venv(has_ejs=False)
+        result = self.run_bootstrap("--check")
+        self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
+        self.assertRegex(result.stdout, r"missing\s+yt-dlp-ejs")
+        self.assertFalse((venv / "pip.log").exists())
+
+    def test_bootstrap_repairs_missing_ejs_with_default_extra(self):
+        venv = self.fake_venv(has_ejs=False)
+        result = self.run_bootstrap()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        log = (venv / "pip.log").read_text()
+        self.assertIn("-m pip install", log)
+        self.assertIn("yt-dlp[default]", log)
+        self.assertNotRegex(log, r"(^| )yt-dlp( |$)")
+        self.assertRegex(result.stdout, r"ok\s+yt-dlp-ejs")
+        # Once repaired, a rerun does no install work; --upgrade upgrades the extra, not bare yt-dlp.
+        (venv / "pip.log").unlink()
+        self.assertEqual(self.run_bootstrap().returncode, 0)
+        self.assertFalse((venv / "pip.log").exists())
+        self.assertEqual(self.run_bootstrap("--upgrade").returncode, 0)
+        self.assertRegex((venv / "pip.log").read_text(), r"install .*--upgrade yt-dlp\[default\]")
+
 
 class Extensions(unittest.TestCase):
     def test_optional_modules_register_commands(self):

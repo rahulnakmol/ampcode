@@ -101,5 +101,6 @@ Convert events to segments yourself. Automatic captions often lack punctuation, 
 duplicate rolling lines; deduplicate, then compare a sample of segments against the audio. Report
 the route as captions in the final summary. Captions never justify `transcript_coverage: verified`
 without that check. Record the compared spans in the review's `audio_verification`; `signoff`
-blocks captions and agent transcripts without it, and `cleanup` keeps the media until it passes
-(`reference/archival.md`). The record lists checked spans; it is not an accuracy measurement.
+blocks captions and agent transcripts without it or when the checked spans do not cover every
+transcript segment, and `cleanup` keeps the media until they do (`reference/archival.md`). A spot
+check is recorded for the report only. The record lists checked spans; it is not an accuracy measurement.

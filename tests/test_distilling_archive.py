@@ -402,7 +402,7 @@ class PartialCoverage(ArchiveFixture):
 
 
 class TranscriptProviderSignoff(ArchiveFixture):
-    """Captions and agent transcripts need recorded audio spot checks before media can be released."""
+    """Captions and agent transcripts need audio checks covering every spoken segment before media is released."""
 
     def provider_workspace(self, kind):
         ws = self.root / f"ws-{kind}"
@@ -418,6 +418,16 @@ class TranscriptProviderSignoff(ArchiveFixture):
         check.update(overrides)
         return {"method": "listened-to-source-audio", "checks": [check],
                 "note": "Spot check of the opening; the rest was not compared."}
+
+    @staticmethod
+    def full_audio_check():
+        """Two overlapping checks whose union covers every transcript segment (0-60 s)."""
+        checks = [{"start": 0.0, "end": 35.0, "segment_ids": ["s1", "s2", "s3", "s4"], "result": "matches",
+                   "note": "Listened at 1x."},
+                  {"start": 30.0, "end": 60.0, "segment_ids": ["s4", "s5", "s6"], "result": "matches",
+                   "note": "Listened at 1x."}]
+        return {"method": "listened-to-source-audio", "checks": checks,
+                "note": "Listened to the whole talk against the transcript."}
 
     def test_signoff_records_provider_kind(self):
         self.signoff()
@@ -437,28 +447,39 @@ class TranscriptProviderSignoff(ArchiveFixture):
         ws = self.provider_workspace("captions")
         differs = self.review(ws, audio_verification=self.audio_check(result="differs"))
         self.assertRegex(json.dumps(self.signoff(differs, ws=ws, expect=1)["blockers"]), "differ")
-        result = self.signoff(self.review(ws, audio_verification=self.audio_check()), ws=ws)
-        self.assertEqual(result["status"], "approved")
+        # A short spot check is recorded for the report but cannot approve sign-off.
+        result = self.signoff(self.review(ws, audio_verification=self.audio_check()), ws=ws, expect=1)
+        self.assertEqual(result["status"], "blocked")
+        self.assertRegex(json.dumps(result["blockers"]), r"4 of 6 transcript segments unchecked.*every spoken")
         recorded = json.loads((ws / "publications" / "v1" / "signoff.json").read_text())
         audio = recorded["videos"]["v1"]["audio_verification"]
         self.assertEqual(audio["checked_seconds"], 20.0)
         self.assertAlmostEqual(audio["checked_fraction"], 20.0 / 60.0, places=3)
+        self.assertEqual(audio["unchecked_segment_ids"], ["s3", "s4", "s5", "s6"])
         self.assertRegex(audio["limits"], "not .*accuracy")
         self.assertEqual(audio["checks"][0]["segment_ids"], ["s1", "s2"])
         self.assertNotIn("accurate", json.dumps(audio))
+        # Merged checks covering every spoken segment approve.
+        result = self.signoff(self.review(ws, audio_verification=self.full_audio_check()), ws=ws)
+        self.assertEqual(result["status"], "approved")
+        audio = json.loads((ws / "publications" / "v1" / "signoff.json").read_text())["videos"]["v1"][
+            "audio_verification"]
+        self.assertEqual((audio["checked_seconds"], audio["unchecked_segment_ids"]), (60.0, []))
 
     def test_audio_verification_contract_errors(self):
         ws = self.provider_workspace("agent")
         path = self.root / "review-bad.json"
         bad_checks = [{"segment_ids": "s1"}, {"segment_ids": [1]}, {"segment_ids": []},
                       {"segment_ids": ["s99"]}, {"start": 30.0, "end": 20.0}, {"end": 75.0},
-                      {"result": "verified"}, {"note": ""}, {"extra": 1}, {"start": "0"}]
+                      {"result": "verified"}, {"note": ""}, {"extra": 1}, {"start": "0"},
+                      {"start": float("nan")}, {"end": float("nan")}, {"end": float("inf")},
+                      {"start": float("-inf")}, {"result": ["matches"]}, {"result": {"x": 1}}]
         for overrides in bad_checks:
             review = self.review(ws, audio_verification=self.audio_check(**overrides))
             path.write_text(json.dumps(review))
             self.refused("audio_verification", "signoff", "--workspace", ws, "--publication", "v1",
                          "--review", path)
-        for audio in ({"method": "trust-me", "checks": [], "note": "x"},
+        for audio in ({"method": "trust-me", "checks": [], "note": "x"}, {**self.audio_check(), "method": ["x"]},
                       {**self.audio_check(), "checks": []}, {**self.audio_check(), "verified": True}, True):
             path.write_text(json.dumps(self.review(ws, audio_verification=audio)))
             self.refused("audio_verification", "signoff", "--workspace", ws, "--publication", "v1",
@@ -467,7 +488,7 @@ class TranscriptProviderSignoff(ArchiveFixture):
     def test_cleanup_refuses_signoff_without_provider_or_audio_evidence(self):
         import archive
         ws = self.provider_workspace("captions")
-        self.signoff(self.review(ws, audio_verification=self.audio_check()), ws=ws)
+        self.signoff(self.review(ws, audio_verification=self.full_audio_check()), ws=ws)
         self.archive(ws=ws)
         pub = ws / "publications" / "v1"
         workspace = evidence.Workspace(ws)
@@ -478,7 +499,10 @@ class TranscriptProviderSignoff(ArchiveFixture):
         for mutate in (lambda v: v.pop("transcript_provider"),
                        lambda v: v.update(transcript_provider={"name": "fixture-captions", "kind": "manual"}),
                        lambda v: v.update(audio_verification=None),
-                       lambda v: v["audio_verification"]["checks"][0].update(result="differs")):
+                       lambda v: v["audio_verification"]["checks"][0].update(result="differs"),
+                       lambda v: v["audio_verification"]["checks"].pop(),
+                       lambda v: v["audio_verification"]["checks"][1].update(end=float("nan")),
+                       lambda v: v["audio_verification"]["checks"][1].update(end=["60"])):
             forged = copy.deepcopy(signoff)
             mutate(forged["videos"]["v1"])
             with self.assertRaisesRegex(evidence.ContractError, "provider|audio"):

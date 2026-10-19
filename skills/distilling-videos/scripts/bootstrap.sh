@@ -3,17 +3,20 @@
 #
 # - Verifies python3 >= 3.9 (the runtime itself uses only the standard library).
 # - Creates a private virtualenv (default: ${XDG_CACHE_HOME:-~/.cache}/distilling-videos/venv)
-#   and installs yt-dlp into it only when missing, or when --upgrade is given.
+#   and installs "yt-dlp[default]" into it only when missing, or when --upgrade is given. The
+#   `default` extra supplies yt-dlp-ejs (the YouTube challenge solver scripts); a venv whose yt-dlp
+#   lacks the yt_dlp_ejs module is repaired by installing the extra (--check only reports it).
 # - Checks ffmpeg/ffprobe and a Chromium-family browser and prints how to install what is missing.
 # - Reports the JavaScript runtime yt-dlp needs for YouTube (deno >= 2.3.0 is yt-dlp's default;
 #   node >= 22 or quickjs need `distill.py download --js-runtime NAME`). It never edits yt-dlp config.
 #
 # It never installs system or global packages, never uses sudo, never reads or writes credentials,
-# and never publishes anything. Re-running it is safe and does no network work once yt-dlp exists.
+# and never publishes anything. Re-running it is safe and does no network work once yt-dlp and
+# yt-dlp-ejs exist in the venv.
 #
 # Usage: bootstrap.sh [--check] [--upgrade] [--venv DIR]
 #   --check    only report; create and install nothing
-#   --upgrade  upgrade yt-dlp inside the venv (YouTube extraction changes often)
+#   --upgrade  upgrade yt-dlp[default] inside the venv (YouTube extraction changes often)
 #   --venv DIR use DIR instead of the default venv (or set DISTILL_VENV)
 # Set DISTILL_PYTHON to choose the interpreter used to create the venv (default python3).
 #
@@ -38,7 +41,7 @@ while (($#)); do
 		shift
 		;;
 	-h | --help)
-		sed -n '2,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+		sed -n '2,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 		exit 0
 		;;
 	*)
@@ -67,27 +70,47 @@ if ! "$python" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)
 	say '' 'set DISTILL_PYTHON to a newer interpreter and recreate the venv if downloads fail'
 fi
 
-# Private venv with yt-dlp ----------------------------------------------------
+# Private venv with yt-dlp[default] -------------------------------------------
+# A bare `pip install yt-dlp` has no challenge solver scripts; upstream's PyPI instructions are
+# `pip install -U "yt-dlp[default]"`, whose default extra includes yt-dlp-ejs (module yt_dlp_ejs).
+pip_install() { "$venv/bin/python" -m pip install --quiet --disable-pip-version-check "$@" 'yt-dlp[default]'; }
+has_ejs() { "$venv/bin/python" -c 'import yt_dlp_ejs' >/dev/null 2>&1; }
 if [[ -x $venv/bin/yt-dlp ]]; then
 	if $upgrade && ! $check_only; then
-		"$venv/bin/python" -m pip install --quiet --disable-pip-version-check --upgrade yt-dlp
+		pip_install --upgrade
+	elif ! $check_only && ! has_ejs; then
+		say repair "yt-dlp-ejs is missing from $venv; installing yt-dlp[default]"
+		pip_install
 	fi
 	say ok "yt-dlp $("$venv/bin/yt-dlp" --version) in $venv"
 elif $check_only; then
 	if command -v yt-dlp >/dev/null; then
 		say ok "yt-dlp $(yt-dlp --version) on PATH (no private venv yet)"
+		say warning 'cannot check yt-dlp-ejs for a yt-dlp outside the venv; pip installs need yt-dlp[default]'
 	else
 		say missing "yt-dlp (run bootstrap.sh without --check to install it into $venv)"
 		missing+=(yt-dlp)
 	fi
 else
 	[[ -x $venv/bin/python ]] || "$python" -m venv "$venv"
-	"$venv/bin/python" -m pip install --quiet --disable-pip-version-check yt-dlp
+	pip_install
 	say ok "yt-dlp $("$venv/bin/yt-dlp" --version) installed in $venv"
+fi
+if [[ -x $venv/bin/yt-dlp ]]; then
+	if has_ejs; then
+		say ok "yt-dlp-ejs in $venv"
+	elif $check_only; then
+		say missing "yt-dlp-ejs (run bootstrap.sh without --check to install yt-dlp[default] into $venv)"
+		missing+=(yt-dlp-ejs)
+	else
+		say missing "yt-dlp-ejs (pip install 'yt-dlp[default]' did not provide yt_dlp_ejs in $venv)"
+		missing+=(yt-dlp-ejs)
+	fi
 fi
 
 # JavaScript runtime for YouTube challenges (yt-dlp EJS) ------------------------
-# Upstream: https://github.com/yt-dlp/yt-dlp/wiki/EJS. Only deno is enabled by default in yt-dlp;
+# Upstream: https://github.com/yt-dlp/yt-dlp/wiki/EJS. The solver scripts come from yt-dlp-ejs
+# (above); a runtime executes them. Only deno is enabled by default in yt-dlp;
 # distill.py runs yt-dlp with --ignore-config, so choose another runtime with --js-runtime, not a config file.
 version_at_least() {
 	"$python" -c 'import re, sys
@@ -160,9 +183,14 @@ fi
 
 if ((${#missing[@]})); then
 	echo
-	echo "Install the missing tools yourself, then rerun this script:"
-	echo '  macOS:            brew install ffmpeg'
-	echo '  Debian/orb setup: sudo apt-get install -y ffmpeg'
+	echo "Install the missing tools, then rerun this script:"
+	if [[ " ${missing[*]} " == *' ff'* ]]; then
+		echo '  macOS:            brew install ffmpeg'
+		echo '  Debian/orb setup: sudo apt-get install -y ffmpeg'
+	fi
+	if [[ " ${missing[*]} " == *' yt-dlp'* ]]; then
+		echo "  yt-dlp:           bootstrap.sh (without --check) installs yt-dlp[default] into $venv"
+	fi
 	exit 3
 fi
 
