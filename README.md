@@ -10,6 +10,7 @@ This GitHub repository is the readable source of truth. Amp loads published copi
 plugins/                  TypeScript or JavaScript Amp plugins
 skills/<skill-name>/      Agent Skills, each rooted at SKILL.md
 scripts/check.sh          Repository validation
+tests/                    Bun plugin tests and Python skill-script tests
 ```
 
 See [`plugins/README.md`](./plugins/README.md) and [`skills/README.md`](./skills/README.md) before adding an extension.
@@ -48,6 +49,20 @@ Plugin agent modes cannot enforce a fixed token ceiling, so Prime cannot guarant
 
 The [realistic async-cache benchmark](./docs/amp-custom-mode-dials-benchmark.md) records earlier configurations; it does not validate this new routing.
 
+## Distilling videos
+
+[`skills/distilling-videos/`](./skills/distilling-videos/SKILL.md) turns up to ten public YouTube videos into reusable evidence (timed original and English transcripts, selected frames, checksummed manifests), an evidence-backed brief, and an offline HTML/PDF article, packaged as a ZIP with optional verified Azure Blob archival. Amp does the listening, visual judgment, research, and writing; a standard-library Python CLI (`scripts/distill.py`) does download, frames, validation, rendering, packaging, sign-off, archival, and guarded media cleanup.
+
+| Area | Status |
+| --- | --- |
+| Evidence, rendering, packaging, sign-off, archive/cleanup logic | Implemented; tested offline with fake media tools, browser, and Blob transport |
+| Transcription | No provider adapter: Amp must supply a normalized transcript (manual, captions, agent, or a provider the user runs). Not unattended end to end |
+| Provider choice | Shortlist and benchmark protocol only; paid benchmark not run, no provider recommended |
+| Live YouTube download, real PDF, live Azure | Unverified until run with the user's tools and authorized credentials |
+| GitHub Actions archive hand-off | Blocked: needs a producer workflow that does not exist |
+
+Recommended invocation: Medium mode with Fast where supported (a user preference; the skill cannot enforce modes or cap billing). Run `skills/distilling-videos/scripts/bootstrap.sh` once to create a private venv with `yt-dlp` and check `ffmpeg`/browser; it installs nothing globally and handles no credentials.
+
 ## Using modes without changing the Dial
 
 The standard Low, Medium, High, and Ultra Dial can remain unchanged. Published plugin modes stay available in the complete mode picker and to Puck.
@@ -66,7 +81,7 @@ Run:
 make check
 ```
 
-The check loads every plugin through the installed Amp CLI, runs advisory-team wiring and tool-allowlist tests with Bun, verifies formatting errors detectable by Git, and validates the required metadata of every skill package. It does not run paid model evaluations.
+The check loads every plugin through the installed Amp CLI, runs advisory-team wiring and tool-allowlist tests with Bun, runs the Python skill-script tests (including executing every documented `distilling-videos` JSON example through the CLI), syntax-checks skill shell scripts, verifies formatting errors detectable by Git, and validates the required metadata and 500-line limit of every skill package. It needs `amp`, `bun`, and `python3`; the tests make no network, paid, or cloud calls.
 
 ## Publish
 

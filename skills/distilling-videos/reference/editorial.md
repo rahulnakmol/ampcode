@@ -1,0 +1,127 @@
+# Editorial guide
+
+How to turn verified evidence into an article and brief worth reading. The scripts only check
+structure; everything here is your judgment. Read this before choosing an angle.
+
+## Default reader and voice
+
+- Reader: technically comfortable, unfamiliar with this specific domain. Respect an explicit
+  `audience` or `goal` in the assignment instead.
+- Voice: opinionated and evidence-led. Say what you conclude and why, and keep it attributable.
+- Length follows explanatory need. No word targets, no padding, no summary-of-the-summary.
+- The article is not a transcript replacement. It may reorganize sources around one coherent
+  question; it never invents demonstrations, quotations, measurements, or experiment results.
+
+## Storytelling principles
+
+1. **Honest hook.** Open on a real question, a surprising result from the evidence, or a concrete
+   failure. No manufactured suspense or controversy.
+2. **One mechanism at a time.** Introduce a single idea, show it, then add the next complication.
+   Each section should pay off something the reader now understands.
+3. **Prediction, then consequence.** Where useful, let the reader anticipate an outcome, then show
+   what the source actually demonstrated.
+4. **Running example.** Carry one concrete case (a command, dataset, experiment) through sections.
+5. **Name misconceptions only when supported** by a cited source or the demo itself.
+6. **Claim headings and captions.** Headings and captions state the substance ("Eager invalidation
+   does not close the race"), not topics ("Invalidation").
+7. **Human-scale numbers.** Translate magnitudes into comparisons the reader can hold, showing the
+   arithmetic and its source.
+8. **Tradeoffs and conditions.** Recommendations say when they apply and when they do not; include
+   rejected alternatives when the source discusses them.
+9. **Optional depth.** Put derivations, edge cases, and long command output in `details` blocks so
+   the main line stays readable; print and PDF show them expanded.
+10. **Finish with changed understanding**: what the reader now knows, practical implications for the
+    goal, and the limits of the evidence.
+
+## Attribution and uncertainty rules
+
+Keep four kinds of statement visibly distinct, in prose and in the brief `basis`:
+
+| Kind | How to write it | Brief basis |
+| --- | --- | --- |
+| Presenter claim | "The presenter says…" + segment citation | `presenter` |
+| Screen observation | "On screen, the second client prints…" + frame citation | `screen` |
+| External evidence | Named source + web citation | `external` |
+| Your conclusion | "This suggests…" / "We think…", built on cited items | proposal or prose, no direct evidence citation |
+
+- Cite at the moment of the claim. Quotes must be verbatim from cited segments (the renderer checks).
+- Repetition across several videos is not independent corroboration; say when sources share an
+  origin.
+- Prefer primary research and official documentation. Use practitioner posts (including X) only as
+  leads or clearly labeled practitioner accounts.
+- Uncertain segments and unreadable frames remain uncertain in the article, brief, and
+  limitations. Do not "fix" them by guessing.
+- Translations are labeled as translations; keep the original term where meaning is lossy.
+- OCR or your reading of a frame is an observation, not proof of exact source text.
+- Public availability does not grant republishing rights. Deliver privately, attribute every
+  source, and quote only what the argument needs.
+
+## Visual explanation
+
+- **Captures** are untouched source frames. **Sequences** reconstruct a demo: input, action,
+  configuration, change, output, error. **Originals** are your diagrams, with `assumptions` and
+  `sources`; annotated derivatives name `derived_from`.
+- Every figure has meaningful alt text and a caption that states what to notice.
+- Never encode meaning only in color. Label axes and units. Keep a static equivalent of anything
+  interactive.
+- Add executable or interactive models only when they clarify a mechanism, with explicit
+  assumptions, independently checked behavior, and no network access.
+
+## House style
+
+One consistent style (the bundled `assets/article.css`) unless the user asks for topic-specific
+art direction. Structure that works across topics:
+
+1. Title as a claim; dek as the honest hook in one or two sentences.
+2. Opening section: the question and why it matters for this reader or goal.
+3. Mechanism sections, each with a claim heading, evidence, and a figure where it helps.
+4. A section on what the sources do not show (limits, conflicts, open unknowns).
+5. Implications for the goal; then `limitations`.
+
+The brief is separate: "What the sources establish" (findings, requirements, unknowns) then
+"What we propose" (architecture, implementation, investigations), each proposal resting on
+evidence IDs.
+
+## Pre-render checklist
+
+- [ ] Angle answers the goal (or the most interesting honest question for URL-only work).
+- [ ] Every video in the publication is cited; conflicts are surfaced, not averaged away.
+- [ ] Each claim is attributed to presenter, screen, external source, or you.
+- [ ] Quotes are verbatim; uncertain material stays marked.
+- [ ] Figures have provenance, alt text, and claim captions; demos are reconstructed in order.
+- [ ] Brief separates evidence from proposals; proposals cite evidence IDs only.
+- [ ] Limitations name coverage gaps, unreadable content, translation, and research depth.
+
+## Reference publications (20)
+
+Primary-source articles studied for technique. The study was text extraction, partly excerpts; it
+is not a completed visual or interactive audit. Inspect a few in a browser before changing the
+house style.
+
+| Publication | Representative article | Technique to adapt |
+| --- | --- | --- |
+| Ciechanowski | https://ciechanow.ski/mechanical-watch/ | Progressive mechanism construction |
+| Red Blob Games | https://www.redblobgames.com/pathfinding/a-star/introduction.html | One algorithmic change at a time |
+| Distill | https://distill.pub/2017/momentum/ | Intuition before formalism; figure provenance |
+| The Pudding | https://pudding.cool/2017/03/film-dialogue/ | Methods and quantified limitations |
+| Nicky Case and Vi Hart | https://ncase.me/polygons/ | Prediction followed by visible consequences |
+| Parametric Press | https://parametric.press/issue-01/unraveling-the-jpeg/ | Layered mechanism explanation |
+| Josh Comeau | https://www.joshwcomeau.com/react/why-react-re-renders/ | Explicit mental models and misconceptions |
+| Julia Evans | https://jvns.ca/blog/2023/11/01/confusing-git-terminology/ | Honest uncertainty and concrete command output |
+| Martin Fowler / Ham Vocke | https://martinfowler.com/articles/practical-test-pyramid.html | Running example and actionable checklist |
+| AWS Builders Library | https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/ | Recommendations tied to tradeoffs |
+| Stripe | https://stripe.com/blog/idempotency | Failure cases answered individually |
+| Anthropic | https://www.anthropic.com/engineering/building-effective-agents | Patterns with conditions for use |
+| Cloudflare | https://blog.cloudflare.com/the-story-of-one-latency-spike/ | Hypothesis, experiment, evidence |
+| Netflix | https://netflixtechblog.com/the-netflix-simian-army-16e57fbab116 | Memorable concepts with explicit purpose |
+| Uber | https://www.uber.com/blog/h3/ | Rejected alternatives and concrete properties |
+| GitHub | https://github.blog/engineering/architecture-optimization/the-technology-behind-githubs-new-code-search/ | Why build this; scale arithmetic |
+| Quanta | https://www.quantamagazine.org/how-the-physics-of-nothing-underlies-everything-20220809/ | Historical hook, sustained analogy, named sources |
+| Our World in Data | https://ourworldindata.org/much-better-awful-can-be-better | Claim headings and human-scale numbers |
+| Works in Progress | https://worksinprogress.co/issue/the-golden-age-of-vaccine-development/ | Historical arc with mechanism and primary references |
+| Tailscale | https://tailscale.com/blog/how-nat-traversal-works | Incremental complications; optional deep detail |
+
+User storytelling references: https://youtu.be/G3VbsTdgLWE, https://youtu.be/KwV3_ohJl0Q,
+https://youtu.be/j-96jZO4RvY. Two accessible transcripts and one partial transcript informed the
+narrative principles above (hook, progressive payoff, one complication at a time). Their visual
+execution and their claims about learning or virality have not been verified.
