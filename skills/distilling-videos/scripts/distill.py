@@ -17,6 +17,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -32,6 +33,12 @@ from evidence import ContractError, Workspace  # noqa: E402
 EXTENSION_MODULES = ("publication", "archive")
 DEFAULT_FORMAT = "bv*[height<=1080]+ba/b[height<=1080]/b"
 THUMB_WIDTH = 480
+# yt-dlp solves YouTube JavaScript challenges with an external runtime (upstream EJS guide:
+# https://github.com/yt-dlp/yt-dlp/wiki/EJS). Only deno is enabled by default. Bun is deprecated upstream
+# and runs scripts without permission restrictions, so it is not offered.
+JS_RUNTIMES = {"deno": "deno", "node": "node", "quickjs": "qjs"}
+DOWNLOAD_TIMEOUT = 1800.0
+MAX_DOWNLOAD_TIMEOUT = 6 * 3600.0
 SECRET_ENV = re.compile(r"(SAS|SECRET|TOKEN|PASSWORD|API_KEY|ACCESS_KEY|CONNECTION_STRING|AZURE_STORAGE)",
                         re.IGNORECASE)
 
@@ -64,10 +71,19 @@ def require_tools(names: Sequence[str]) -> Dict[str, str]:
 
 
 def run(command: List[str], timeout: Optional[float] = None) -> subprocess.CompletedProcess:
+    """Run an argument array with no stdin; on timeout, kill the tool and any children it started."""
+    process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               text=True, env=child_env(), start_new_session=True)
     try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout, env=child_env())
+        stdout, stderr = process.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.communicate()
         raise ToolFailed(f"{Path(command[0]).name} timed out after {timeout}s") from None
+    result = subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
     if result.returncode != 0:
         detail = evidence.redact((result.stderr or result.stdout or "").strip())[-1500:]
         raise ToolFailed(f"{Path(command[0]).name} exited {result.returncode}: {detail}")
@@ -124,23 +140,66 @@ def _complete_record(workspace: Workspace, key: str, hint: str) -> Dict[str, Any
     return record
 
 
+def js_runtime(args: argparse.Namespace) -> Optional[Dict[str, str]]:
+    """Resolve the requested yt-dlp JavaScript runtime to an absolute executable, or None for yt-dlp's default."""
+    if args.js_runtime_path and not args.js_runtime:
+        raise ContractError("--js-runtime-path needs --js-runtime (deno, node, or quickjs)")
+    if not args.js_runtime:
+        return None
+    if args.js_runtime_path:
+        path = Path(args.js_runtime_path)
+        if not path.is_absolute() or not path.is_file() or not os.access(path, os.X_OK):
+            raise ContractError(f"--js-runtime-path must be an absolute path to an executable file: {path}")
+        return {"name": args.js_runtime, "path": str(path)}
+    found = shutil.which(JS_RUNTIMES[args.js_runtime])
+    if not found:
+        raise MissingTool(f"JavaScript runtime {args.js_runtime} ({JS_RUNTIMES[args.js_runtime]}) is not on PATH; "
+                          "install it or pass --js-runtime-path; see bootstrap.sh")
+    return {"name": args.js_runtime, "path": str(Path(found).resolve())}
+
+
+def ytdlp_base(ytdlp: str, runtime: Optional[Dict[str, str]]) -> List[str]:
+    """yt-dlp options shared by every call: no user/system config files, one explicit JS runtime when chosen."""
+    command = [ytdlp, "--ignore-config", "--no-playlist"]
+    if runtime:
+        command += ["--no-js-runtimes", "--js-runtimes", f"{runtime['name']}:{runtime['path']}"]
+    return command
+
+
+def tool_warnings(*results: subprocess.CompletedProcess) -> List[str]:
+    found: List[str] = []
+    for result in results:
+        for line in (result.stderr or "").splitlines():
+            line = evidence.redact(line.strip())[:500]
+            if line.startswith("WARNING:") and line not in found:
+                found.append(line)
+    return found
+
+
 def cmd_download(args: argparse.Namespace) -> int:
     workspace = Workspace(Path(args.workspace))
     video = workspace.video(args.video)
     key = evidence.stage_key(video["id"], "download")
     source_dir = workspace.source_dir(video["id"])
+    if not 0 < args.timeout <= MAX_DOWNLOAD_TIMEOUT:
+        raise ContractError(f"--timeout must be between 1 and {int(MAX_DOWNLOAD_TIMEOUT)} seconds")
     config: Dict[str, Any] = {"url": video["url"], "format": args.format, "audio": "flac-16k-mono"}
     if args.from_file:
+        if args.js_runtime or args.js_runtime_path:
+            raise ContractError("--js-runtime applies to yt-dlp downloads, not --from-file")
         local = Path(args.from_file)
         if not local.is_file():
             raise ContractError(f"--from-file does not exist: {local}")
         config = {"from_file_sha256": evidence.sha256_file(local), "url": video["url"], "audio": "flac-16k-mono"}
     names = ["ffprobe", "ffmpeg"] if args.from_file else ["yt-dlp", "ffprobe", "ffmpeg"]
     try:
+        runtime = None if args.from_file else js_runtime(args)
         tools = require_tools(names)
     except MissingTool as error:
         evidence.mark_failed(workspace, key, str(error))
         raise
+    if not args.from_file:
+        config["js_runtime"] = runtime or {"name": "yt-dlp-default"}
     if evidence.reusable(workspace, key, {}, config):
         emit({"status": "reused", "stage": key})
         return 0
@@ -151,6 +210,14 @@ def cmd_download(args: argparse.Namespace) -> int:
         (partial / "media").mkdir(parents=True)
         (partial / "audio").mkdir()
         versions = tool_versions(tools)
+        warnings: List[str] = []
+        runtime_record = None
+        if runtime:
+            try:
+                lines = run([runtime["path"], "--version"], timeout=60).stdout.strip().splitlines()
+            except ToolFailed:
+                lines = []
+            runtime_record = {**runtime, "version": lines[0][:100] if lines else "unknown"}
         if args.from_file:
             metadata: Dict[str, Any] = {}
             suffix = Path(args.from_file).suffix.lower() or ".mp4"
@@ -158,11 +225,14 @@ def cmd_download(args: argparse.Namespace) -> int:
                 raise ContractError(f"unsupported media suffix {suffix!r}")
             shutil.copyfile(args.from_file, partial / "media" / f"source{suffix}")
         else:
-            metadata = json.loads(run([tools["yt-dlp"], "--no-playlist", "--no-warnings", "--skip-download",
-                                       "--dump-single-json", "--", video["url"]], timeout=300).stdout)
-            run([tools["yt-dlp"], "--no-playlist", "--no-warnings", "--no-progress", "-f", args.format,
-                 "--merge-output-format", "mp4", "-o", str(partial / "media" / "source.%(ext)s"),
-                 "--", video["url"]])
+            base = ytdlp_base(tools["yt-dlp"], runtime)
+            probed = run(base + ["--skip-download", "--dump-single-json", "--", video["url"]],
+                         timeout=min(300.0, args.timeout))
+            metadata = json.loads(probed.stdout)
+            fetched = run(base + ["--no-progress", "-f", args.format, "--merge-output-format", "mp4",
+                                  "-o", str(partial / "media" / "source.%(ext)s"), "--", video["url"]],
+                          timeout=args.timeout)
+            warnings = tool_warnings(probed, fetched)
         produced = sorted(p for p in (partial / "media").iterdir() if p.is_file() and p.name.startswith("source."))
         if len(produced) != 1:
             raise ToolFailed(f"expected one downloaded media file, found {[p.name for p in produced]}")
@@ -170,7 +240,7 @@ def cmd_download(args: argparse.Namespace) -> int:
         probe = json.loads(run([tools["ffprobe"], "-v", "error", "-print_format", "json", "-show_format",
                                 "-show_streams", str(media)], timeout=300).stdout)
         run([tools["ffmpeg"], "-nostdin", "-hide_banner", "-loglevel", "error", "-y", "-i", str(media),
-             "-vn", "-ac", "1", "-ar", "16000", str(partial / "audio" / "audio.flac")])
+             "-vn", "-ac", "1", "-ar", "16000", str(partial / "audio" / "audio.flac")], timeout=args.timeout)
         duration = probe.get("format", {}).get("duration") or metadata.get("duration")
         if duration is None:
             raise ToolFailed("could not determine media duration")
@@ -193,6 +263,9 @@ def cmd_download(args: argparse.Namespace) -> int:
             "audio": {"path": "audio/audio.flac", "sample_rate": 16000, "channels": 1},
             "tool_versions": versions, "retrieved_at": evidence.now(),
         }
+        if not args.from_file:
+            source["js_runtime"] = runtime_record or {"name": "yt-dlp-default"}
+            source["warnings"] = warnings
         evidence.atomic_write_json(partial / "source.json", source)
         for name in ("media", "audio"):
             replace_dir(partial / name, source_dir / name)
@@ -207,7 +280,10 @@ def cmd_download(args: argparse.Namespace) -> int:
         evidence.mark_failed(workspace, key, str(error) or type(error).__name__)
         raise
     render_markdown(workspace, video["id"], quiet=True)
-    emit({"status": "downloaded", "stage": key, "duration": source["duration"], "outputs": outputs})
+    result = {"status": "downloaded", "stage": key, "duration": source["duration"], "outputs": outputs}
+    if not args.from_file:
+        result.update(js_runtime=source["js_runtime"], warnings=source["warnings"])
+    emit(result)
     return 0
 
 
@@ -508,6 +584,13 @@ def build_parser(extension_dir: Path = SCRIPT_DIR) -> argparse.ArgumentParser:
     download = add("download", cmd_download, "download public YouTube media, probe it, extract audio")
     download.add_argument("--format", default=DEFAULT_FORMAT, help="yt-dlp format selector")
     download.add_argument("--from-file", help="register an already obtained local media file instead")
+    download.add_argument("--js-runtime", choices=sorted(JS_RUNTIMES),
+                          help="JavaScript runtime yt-dlp uses for YouTube challenges (default: yt-dlp's own "
+                               "default, deno); recorded in the reuse config")
+    download.add_argument("--js-runtime-path", help="absolute path to that runtime's executable (default: PATH)")
+    download.add_argument("--timeout", type=float, default=DOWNLOAD_TIMEOUT,
+                          help=f"seconds before yt-dlp or ffmpeg is stopped (default {int(DOWNLOAD_TIMEOUT)}, "
+                               f"max {int(MAX_DOWNLOAD_TIMEOUT)})")
 
     frames = add("frames", cmd_frames, "extract bounded candidate frames and thumbnails")
     frames.add_argument("--interval", type=float, default=10.0, help="periodic spacing in seconds")

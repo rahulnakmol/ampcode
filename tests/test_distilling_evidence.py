@@ -35,10 +35,17 @@ def assignment(n=2, groups=None, budgets=None):
 
 
 FAKE_YTDLP = r'''
-import json, sys
+import json, os, sys, time
 args = sys.argv[1:]
 if args == ["--version"]:
     print("2026.01.01-fake"); sys.exit(0)
+if os.environ.get("FAKE_YTDLP_LOG"):
+    with open(os.environ["FAKE_YTDLP_LOG"], "a") as handle:
+        handle.write(json.dumps(args) + "\n")
+if os.environ.get("FAKE_YTDLP_WARN"):
+    sys.stderr.write("WARNING: [youtube] No supported JavaScript runtime could be found\n")
+if os.environ.get("FAKE_YTDLP_SLEEP") and "--dump-single-json" not in args:
+    time.sleep(float(os.environ["FAKE_YTDLP_SLEEP"]))
 url = args[-1]
 if "unavailable" in url:
     sys.stderr.write("ERROR: Video unavailable\n"); sys.exit(1)
@@ -330,6 +337,73 @@ class MediaCommands(Fixture):
         (self.ws / "sources/v0/media/source.mp4").write_bytes(b"truncated")
         self.assertIn("downloaded", self.cli("download", "--workspace", self.ws, "--video", "v0").stdout)
 
+    def ytdlp_calls(self, log):
+        calls = [json.loads(line) for line in log.read_text().splitlines()]
+        log.unlink()
+        return calls
+
+    def test_download_js_runtime_is_explicit_isolated_and_recorded(self):
+        self.all_tools()
+        self.tool("node", 'import sys\nprint("v22.11.0")\n')
+        self.init()
+        log = self.root / "ytdlp.log"
+        env = {"FAKE_YTDLP_LOG": str(log), "FAKE_YTDLP_WARN": "1"}
+        result = self.cli("download", "--workspace", self.ws, "--video", "v0", env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for call in self.ytdlp_calls(log):
+            self.assertIn("--ignore-config", call)
+            self.assertNotIn("--no-warnings", call)
+            self.assertNotIn("--js-runtimes", call)
+        out = json.loads(result.stdout)
+        self.assertEqual(out["js_runtime"], {"name": "yt-dlp-default"})
+        self.assertRegex(" ".join(out["warnings"]), "JavaScript runtime")
+        source = json.loads((self.ws / "sources/v0/source.json").read_text())
+        self.assertRegex(" ".join(source["warnings"]), "JavaScript runtime")
+
+        result = self.cli("download", "--workspace", self.ws, "--video", "v0", "--js-runtime", "node", env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("downloaded", result.stdout)  # runtime is part of the reuse config
+        node = str((self.bin / "node").resolve())
+        for call in self.ytdlp_calls(log):
+            at = call.index("--no-js-runtimes")
+            self.assertEqual(call[at + 1:at + 3], ["--js-runtimes", f"node:{node}"])
+        source = json.loads((self.ws / "sources/v0/source.json").read_text())
+        self.assertEqual(source["js_runtime"], {"name": "node", "path": node, "version": "v22.11.0"})
+        config = self.state()["stages"]["sources/v0/download"]["config"]
+        self.assertEqual(config["js_runtime"], {"name": "node", "path": node})
+        again = self.cli("download", "--workspace", self.ws, "--video", "v0", "--js-runtime", "node", env=env)
+        self.assertIn("reused", again.stdout)
+
+    def test_download_js_runtime_rejects_unsupported_or_missing(self):
+        self.all_tools()
+        self.init()
+        bad = self.cli("download", "--workspace", self.ws, "--video", "v0", "--js-runtime", "bun")
+        self.assertEqual(bad.returncode, 2)
+        bad = self.cli("download", "--workspace", self.ws, "--video", "v0", "--js-runtime", "node; rm -rf /")
+        self.assertEqual(bad.returncode, 2)
+        missing = self.cli("download", "--workspace", self.ws, "--video", "v0", "--js-runtime", "deno")
+        self.assertEqual(missing.returncode, 3, missing.stderr)
+        self.assertIn("deno", missing.stderr)
+        for path in ("relative/node", str(self.root / "nope" / "node")):
+            bad = self.cli("download", "--workspace", self.ws, "--video", "v0", "--js-runtime", "node",
+                           "--js-runtime-path", path)
+            self.assertEqual(bad.returncode, 2, bad.stderr)
+        bad = self.cli("download", "--workspace", self.ws, "--video", "v0", "--js-runtime-path", "/usr/bin/true")
+        self.assertEqual(bad.returncode, 2, bad.stderr)
+        self.assertIn("--js-runtime", bad.stderr)
+
+    def test_download_timeout_is_bounded(self):
+        self.all_tools()
+        self.init()
+        for value in ("0", "-5", "90000"):
+            bad = self.cli("download", "--workspace", self.ws, "--video", "v0", "--timeout", value)
+            self.assertEqual(bad.returncode, 2, bad.stderr)
+        result = self.cli("download", "--workspace", self.ws, "--video", "v0", "--timeout", "1",
+                          env={"FAKE_YTDLP_SLEEP": "5"})
+        self.assertEqual(result.returncode, 5, result.stderr)
+        self.assertIn("timed out", result.stderr)
+        self.assertEqual(self.state()["stages"]["sources/v0/download"]["status"], "failed")
+
     def test_inaccessible_download_fails_without_complete_state(self):
         data = assignment(1)
         data["videos"][0]["url"] = "https://youtu.be/unavailable"
@@ -430,6 +504,37 @@ class BudgetLedger(Fixture):
             p.stderr.close()
         self.assertEqual(codes.count(0), 5)
         self.assertEqual(codes.count(4), 7)
+
+
+class BootstrapReport(Fixture):
+    def bootstrap(self, **runtimes):
+        for name in ("yt-dlp", "ffmpeg", "ffprobe"):
+            self.tool(name, 'print("fake 1.0")\n')
+        for name, version in runtimes.items():
+            self.tool(name, f'print({version!r})\n')
+        env = {"PATH": f"{self.bin}:/usr/bin:/bin", "HOME": str(self.root), "DISTILL_PYTHON": sys.executable,
+               "DISTILL_BROWSER": "/nonexistent"}
+        return subprocess.run(["bash", str(SCRIPTS / "bootstrap.sh"), "--check", "--venv", str(self.root / "venv")],
+                              capture_output=True, text=True, env=env)
+
+    def js_line(self, result):
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return "\n".join(line for line in result.stdout.splitlines() if "js-runtime" in line or "JavaScript" in line)
+
+    def test_reports_supported_js_runtime_and_flag(self):
+        line = self.js_line(self.bootstrap(deno="deno 2.3.1 (stable, release, aarch64-apple-darwin)"))
+        self.assertRegex(line, r"deno 2\.3\.1.*default")
+        (self.bin / "deno").unlink()
+        line = self.js_line(self.bootstrap(node="v22.11.0"))
+        self.assertRegex(line, r"node v22\.11\.0.*--js-runtime node")
+
+    def test_warns_when_runtime_missing_or_too_old(self):
+        if any((Path(d) / n).exists() for d in ("/usr/bin", "/bin") for n in ("deno", "node", "qjs")):
+            self.skipTest("a system JavaScript runtime is on /usr/bin or /bin")
+        self.assertRegex(self.js_line(self.bootstrap()), r"warning.*no supported JavaScript runtime")
+        line = self.js_line(self.bootstrap(node="v20.5.0"))
+        self.assertRegex(line, r"node v20\.5\.0.*too old")
+        self.assertRegex(line, r"warning.*no supported JavaScript runtime")
 
 
 class Extensions(unittest.TestCase):

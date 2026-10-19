@@ -7,6 +7,7 @@ The source of truth is `scripts/evidence.py`, and `scripts/distill.py` exposes i
 ```text
 distill.py init              --workspace W --assignment A.json
 distill.py download          --workspace W --video ID [--format SEL] [--from-file MEDIA]
+                             [--js-runtime deno|node|quickjs [--js-runtime-path ABS]] [--timeout 1800]
 distill.py frames            --workspace W --video ID [--interval 10] [--dense S-E[:STEP]]... [--at T]...
                              [--scene-threshold 0.3] [--max-frames 600]
 distill.py import-transcript --workspace W --video ID --transcript T.json [--duration SECONDS]
@@ -120,7 +121,7 @@ Later tasks write publication outputs under `publications/<pub-id>/`. Task 1 wri
 
   | Stage | Config | Inputs |
   | --- | --- | --- |
-  | `download` | URL or local-file SHA-256, format, audio settings | none |
+  | `download` | URL or local-file SHA-256, format, audio settings, and for yt-dlp downloads `js_runtime` (`{name, path}` or `{name: "yt-dlp-default"}`) | none |
   | `frames` | All sampling options | Media SHA-256 |
   | `transcript` | Raw input SHA-256, duration, gap threshold | `source.json`, if present |
   | `transcript-markdown` | Renderer version | `segments.json`, `source.json`, `frames.json`, and `selection.json`, when present |
@@ -135,7 +136,7 @@ Later tasks write publication outputs under `publications/<pub-id>/`. Task 1 wri
 
 ## Source metadata (`source.json`)
 
-Fields: `video_id`, `url`, `youtube_id`, `extractor` (`yt-dlp` or `local-file`), `title`, `creator`, `channel_id`, `upload_date`, `duration` (ffprobe seconds), `language`, `captions` (`manual`, `automatic`, `note`), `media` (`path`, `width`, `height`, `has_audio`), `audio` (`path`, `sample_rate`, `channels`), `tool_versions`, and `retrieved_at`.
+Fields: `video_id`, `url`, `youtube_id`, `extractor` (`yt-dlp` or `local-file`), `title`, `creator`, `channel_id`, `upload_date`, `duration` (ffprobe seconds), `language`, `captions` (`manual`, `automatic`, `note`), `media` (`path`, `width`, `height`, `has_audio`), `audio` (`path`, `sample_rate`, `channels`), `tool_versions`, and `retrieved_at`. yt-dlp downloads also record `js_runtime` (`name`, `path`, `version`, or `{name: "yt-dlp-default"}`) and `warnings` (yt-dlp `WARNING:` lines, redacted).
 
 Metadata from yt-dlp is untrusted data. The `captions` field lists available caption languages only. It is not a transcript.
 
@@ -247,5 +248,6 @@ Missing modules are skipped. A module without `register` raises `RuntimeError`. 
 - The runtime does not call transcription, translation, or OCR providers. Transcripts arrive through `import-transcript`.
 - Frame sampling is bounded. It is not semantic or exhaustive.
 - Scene detection depends on ffmpeg heuristics, and it is exercised only with a fake ffmpeg in tests.
-- Real `yt-dlp` and `ffmpeg` runs have not been verified in this repository's tests, which use fake executables.
+- This repository's unit tests use fake `yt-dlp` and `ffmpeg` executables. Real runs were exercised once on macOS in `docs/distilling-videos-evaluation.md` (intermittent HTTP 403, then success); orbs and Linux are untested.
+- `download` runs yt-dlp with `--ignore-config`, never `--remote-components`, and only the runtime chosen with `--js-runtime` (deno, node, or quickjs). Every yt-dlp and ffmpeg call in `download` is bounded by `--timeout`; on timeout the tool's process group is killed.
 - The runtime needs `fcntl`, so it supports POSIX systems such as macOS, Linux, and orbs.

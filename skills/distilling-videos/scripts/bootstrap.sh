@@ -5,6 +5,8 @@
 # - Creates a private virtualenv (default: ${XDG_CACHE_HOME:-~/.cache}/distilling-videos/venv)
 #   and installs yt-dlp into it only when missing, or when --upgrade is given.
 # - Checks ffmpeg/ffprobe and a Chromium-family browser and prints how to install what is missing.
+# - Reports the JavaScript runtime yt-dlp needs for YouTube (deno >= 2.3.0 is yt-dlp's default;
+#   node >= 22 or quickjs need `distill.py download --js-runtime NAME`). It never edits yt-dlp config.
 #
 # It never installs system or global packages, never uses sudo, never reads or writes credentials,
 # and never publishes anything. Re-running it is safe and does no network work once yt-dlp exists.
@@ -82,6 +84,40 @@ else
 	[[ -x $venv/bin/python ]] || "$python" -m venv "$venv"
 	"$venv/bin/python" -m pip install --quiet --disable-pip-version-check yt-dlp
 	say ok "yt-dlp $("$venv/bin/yt-dlp" --version) installed in $venv"
+fi
+
+# JavaScript runtime for YouTube challenges (yt-dlp EJS) ------------------------
+# Upstream: https://github.com/yt-dlp/yt-dlp/wiki/EJS. Only deno is enabled by default in yt-dlp;
+# distill.py runs yt-dlp with --ignore-config, so choose another runtime with --js-runtime, not a config file.
+version_at_least() {
+	"$python" -c 'import re, sys
+have = [int(x) for x in re.findall(r"\d+", sys.argv[1])[:3]]
+need = [int(x) for x in sys.argv[2].split(".")]
+sys.exit(0 if have and have >= need else 1)' "$1" "$2"
+}
+js_runtime=''
+for spec in deno:deno:2.3.0 node:node:22.0.0; do
+	IFS=: read -r name exe minimum <<<"$spec"
+	command -v "$exe" >/dev/null || continue
+	version=$("$exe" --version 2>/dev/null </dev/null | awk 'NR == 1 { print ($1 == "deno" ? $2 : $1) }')
+	if version_at_least "$version" "$minimum"; then
+		if [[ $name == deno ]]; then
+			say ok "js-runtime deno $version (yt-dlp default; no flag needed)"
+		else
+			say ok "js-runtime node $version: pass --js-runtime node to distill.py download"
+		fi
+		js_runtime=$name
+		break
+	fi
+	say warning "js-runtime $name $version is too old (yt-dlp needs $minimum or newer)"
+done
+if [[ -z $js_runtime ]] && command -v qjs >/dev/null; then
+	say ok 'js-runtime quickjs (qjs): pass --js-runtime quickjs to distill.py download'
+	js_runtime=quickjs
+fi
+if [[ -z $js_runtime ]]; then
+	say warning 'no supported JavaScript runtime for yt-dlp: YouTube downloads may fail (for example HTTP 403)'
+	say '' 'install deno 2.3+ (recommended) or node 22+; see https://github.com/yt-dlp/yt-dlp/wiki/EJS'
 fi
 
 # FFmpeg (system tool; never installed here) ---------------------------------
