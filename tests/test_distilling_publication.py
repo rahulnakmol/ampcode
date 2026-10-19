@@ -270,6 +270,67 @@ class RenderReferences(PublicationFixture):
         self.assertTrue((self.pub / "dist" / "media" / "v2" / "f000012000.jpg").is_file())
 
 
+class OptionalFieldTypes(PublicationFixture):
+    def test_wrong_types_are_contract_errors_not_tracebacks(self):
+        cases = [
+            (lambda a: a["brief"]["proposals"][0].update(risks=5), r"risks"),
+            (lambda a: a["brief"]["proposals"][0].update(risks=["Race may not reproduce"]), r"risks"),
+            (lambda a: a["brief"]["proposals"][0].update(risks=" "), r"risks"),
+            (lambda a: a["brief"].update(question=5), r"question"),
+            (lambda a: a["brief"].update(question={"text": "q"}), r"question"),
+            (lambda a: a["sections"][0]["blocks"][1].update(cite=["c1"]), r"cite"),
+            (lambda a: a["sections"][0]["blocks"][1].update(cite=7), r"cite"),
+            (lambda a: a["citations"][0].update(segment_ids="s1"), r"segment_ids"),
+            (lambda a: a["citations"][1].update(segment_ids="s2"), r"segment_ids"),
+            (lambda a: a["citations"][0].update(segment_ids=[1]), r"segment_ids"),
+            (lambda a: a["citations"][0].update(segment_ids=[["s1"]]), r"segment_ids"),
+            (lambda a: a["citations"][1].update(frame_id=["f000012000"]), r"frame_id"),
+            (lambda a: a["citations"][0].update(note=3), r"note"),
+            (lambda a: a["citations"][2].update(publisher=["Example"]), r"publisher"),
+            (lambda a: a["figures"][1].update(sources=["c1", ["c2"]]), r"sources"),
+            (lambda a: a["figures"][0].update(frame_id=["f000012000"]), r"frame_id"),
+            (lambda a: a["figures"][2]["steps"][0].update(frame_id={"x": 1}), r"frame_id"),
+            (lambda a: a["brief"]["evidence"][0].update(citations=[["c1"]]), r"citations"),
+            (lambda a: a["brief"]["proposals"][0].update(basis=[["E1"]]), r"basis"),
+            (lambda a: a["sections"][1]["blocks"][0].update(ordered="yes"), r"ordered"),
+            (lambda a: a.update(status="partial", partial_reason=["frames"]), r"partial_reason"),
+        ]
+        for change, pattern in cases:
+            data = article()
+            change(data)
+            self.write_article(data)
+            result = self.render()
+            self.assertNotIn("Traceback", result.stderr)
+            self.assert_contract_error(result, pattern)
+
+    def test_sequence_alt_is_per_step(self):
+        data = article()
+        data["figures"][2]["alt"] = "Figure-level alt is not part of the sequence contract"
+        self.write_article(data)
+        self.assert_contract_error(self.render(), r"figures\[2\] has unknown field\(s\) \['alt'\]")
+        data = article()
+        del data["figures"][2]["steps"][1]["alt"]
+        self.write_article(data)
+        self.assert_contract_error(self.render(), r"steps\[1\] is missing alt")
+
+
+class CitationMarkers(PublicationFixture):
+    def test_multiple_sources_render_one_separated_marker(self):
+        data = article()
+        data["brief"]["evidence"][0]["citations"] = ["c1", "c2"]
+        self.write_article(data)
+        self.ok(self.render())
+        index = (self.pub / "dist" / "index.html").read_text()
+        assumptions = re.search(r'<div class="assumptions"><p>Assumptions(.*?)</p>', index).group(1)
+        self.assertEqual(assumptions.count("<sup"), 1, assumptions)
+        self.assertRegex(assumptions, r'<sup class="cite"><a href="#ref-1">1</a>, <a href="#ref-2">2</a></sup>')
+        brief = (self.pub / "dist" / "brief.html").read_text()
+        item = re.search(r'<div role="listitem" id="E1">(.*?)</div></div></div>', brief).group(1)
+        self.assertEqual(item.count("<sup"), 1, item)
+        self.assertIn('<a href="#ref-1">1</a>, <a href="#ref-2">2</a></sup>', item)
+        self.assertNotRegex(index + brief, r"</sup>\s*<sup")
+
+
 class BriefSeparation(PublicationFixture):
     def test_brief_requires_explicit_evidence_and_proposals(self):
         cases = [

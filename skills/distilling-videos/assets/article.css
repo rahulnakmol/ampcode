@@ -90,7 +90,6 @@ article > section > h2 { font-size: clamp(1.8rem, 3.4vw, 2.5rem); margin-top: 3.
 .tc:hover { text-decoration: underline; }
 sup.cite { font: 600 .62rem var(--mono); line-height: 0; margin-left: .08em; }
 sup.cite a { color: var(--cobalt); text-decoration: none; padding: 0 .08em; }
-sup.cite a + a::before { content: ","; color: var(--graphite); }
 
 .pull { margin: 1.2rem 0 2rem; padding: .2rem 0 .2rem 1.3rem; border-left: 4px solid var(--cobalt); }
 .pull p { margin: 0; font-size: 1.55rem; line-height: 1.3; font-style: italic; text-wrap: balance; }

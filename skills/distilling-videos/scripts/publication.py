@@ -73,6 +73,16 @@ def _texts(obj: Dict[str, Any], keys: Tuple[str, ...], label: str) -> List[str]:
             if key in obj and (not isinstance(obj[key], str) or not obj[key].strip())]
 
 
+def _strings(obj: Any, key: str, label: str) -> List[str]:
+    """An optional list field, when present, must be a list of non-empty strings."""
+    if not isinstance(obj, dict) or key not in obj:
+        return []
+    value = obj[key]
+    if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
+        return [f"{label}.{key} must be a list of non-empty strings"]
+    return []
+
+
 def _list(obj: Dict[str, Any], key: str) -> List[Any]:
     value = obj.get(key)
     return value if isinstance(value, list) else []
@@ -163,7 +173,7 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
     if not isinstance(data, dict):
         return problems, []
     warnings: List[str] = []
-    problems += _texts(data, ("title", "dek"), "article")
+    problems += _texts(data, ("title", "dek", "partial_reason", "audience"), "article")
     if data.get("schema_version") != evidence.SCHEMA_VERSION:
         problems.append("article schema_version must be 1")
     if data.get("publication_id") != plan["id"]:
@@ -180,13 +190,18 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
         kind = citation.get("kind", "video") if isinstance(citation, dict) else None
         if kind == "web":
             problems += _fields(citation, label, ("id", "kind", "url", "title"), ("publisher", "accessed", "note"))
+            problems += _texts(citation, ("title", "publisher", "accessed", "note"), label)
             url = urlsplit(str(citation.get("url", "")))
             if url.scheme not in ("http", "https") or not url.hostname or url.username or url.password:
                 problems.append(f"{label} url must be an http(s) URL without credentials")
         elif kind == "video":
             problems += _fields(citation, label, ("id", "video_id"), ("kind", "segment_ids", "frame_id", "note"))
+            shape = _strings(citation, "segment_ids", label) + _texts(citation, ("frame_id", "note"), label)
+            problems += shape
             video_id = citation.get("video_id")
-            if video_id not in plan["video_ids"]:
+            if shape:
+                pass  # references are checked once the field types are right
+            elif video_id not in plan["video_ids"]:
                 problems.append(f"{label} cites video {video_id!r}, which is not in publication {plan['id']} "
                                 f"{plan['video_ids']}")
             elif video_id in by_video:
@@ -213,7 +228,9 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
 
     def cite(ids: List[str], where: str) -> None:
         for cid in ids:
-            if cid not in citations:
+            if not isinstance(cid, str):
+                problems.append(f"{where} citation ids must be strings, not {type(cid).__name__}")
+            elif cid not in citations:
                 problems.append(f"{where} references unknown citation {cid!r}")
             elif cid not in used:
                 used.append(cid)
@@ -266,6 +283,7 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
                 problems.append(f"{label} original figures must state their assumptions")
             if not _list(figure, "sources"):
                 problems.append(f"{label} original figures must cite their sources")
+            problems += _strings(figure, "sources", label)
             cite(_list(figure, "sources"), label)
         else:
             problems.append(f"{label} kind must be capture, sequence, or original")
@@ -273,7 +291,9 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
         if isinstance(figure, dict):
             problems += _texts(figure, ("alt", "caption"), label)
         for video_id, frame_id in frames:
-            if video_id not in plan["video_ids"]:
+            if not isinstance(video_id, str) or not isinstance(frame_id, str):
+                problems.append(f"{label} video_id and frame_id must be strings")
+            elif video_id not in plan["video_ids"]:
                 problems.append(f"{label} uses video {video_id!r}, which is not in publication {plan['id']}")
             elif video_id in by_video and frame_id not in (by_video[video_id]["frames"] or {}):
                 problems.append(f"{label} references missing frame {video_id}/{frame_id}")
@@ -300,17 +320,20 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
                 cite(text_cites(block.get("text")), where)
             elif kind == "list":
                 problems.extend(_fields(block, where, ("type", "items"), ("ordered",)))
+                if "ordered" in block and not isinstance(block["ordered"], bool):
+                    problems.append(f"{where}.ordered must be true or false")
                 if not _list(block, "items") or not all(isinstance(i, str) and i.strip() for i in block["items"]):
                     problems.append(f"{where} items must be non-empty text")
                 for item in _list(block, "items"):
                     cite(text_cites(item), where)
             elif kind == "quote":
-                problems.extend(_fields(block, where, ("type", "text", "cite")) + _texts(block, ("text",), where))
-                citation = citations.get(block.get("cite"))
-                cite([block.get("cite")], where)
+                problems.extend(_fields(block, where, ("type", "text", "cite")) + _texts(block, ("text", "cite"), where))
+                citation = citations.get(block["cite"]) if isinstance(block.get("cite"), str) else None
+                if isinstance(block.get("cite"), str):
+                    cite([block["cite"]], where)
                 if citation and citation.get("kind", "video") == "video" and citation["video_id"] in by_video:
                     segments = by_video[citation["video_id"]]["segments"]
-                    spoken = [segments[s] for s in _list(citation, "segment_ids") if s in segments]
+                    spoken = [segments[s] for s in _list(citation, "segment_ids") if isinstance(s, str) and s in segments]
                     haystacks = [_normalize(" ".join(s[f] for s in spoken)) for f in ("text", "english")]
                     if not any(_normalize(str(block.get("text"))) in h for h in haystacks):
                         problems.append(f"{where} quote does not appear verbatim in cited segments; quotations "
@@ -348,6 +371,8 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
 
     brief = data.get("brief")
     problems += _fields(brief, "brief", ("evidence", "proposals"), ("question",))
+    if isinstance(brief, dict):
+        problems += _texts(brief, ("question",), "brief")
     evidence_ids: List[str] = []
     if isinstance(brief, dict):
         for index, item in enumerate(_list(brief, "evidence")):
@@ -355,7 +380,7 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
             problems += _fields(item, label, ("id", "kind", "basis", "text"), ("citations",))
             if not isinstance(item, dict):
                 continue
-            problems += _texts(item, ("text",), label)
+            problems += _texts(item, ("text",), label) + _strings(item, "citations", label)
             if item.get("kind") not in EVIDENCE_KINDS:
                 problems.append(f"{label} kind must be one of {sorted(EVIDENCE_KINDS)}")
             if "basis" in item and item["basis"] not in BASIS_LABELS:
@@ -369,7 +394,7 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
             problems += _fields(item, label, ("id", "kind", "text", "basis"), ("risks",))
             if not isinstance(item, dict):
                 continue
-            problems += _texts(item, ("text",), label)
+            problems += _texts(item, ("text", "risks"), label) + _strings(item, "basis", label)
             if item.get("kind") not in PROPOSAL_KINDS:
                 problems.append(f"{label} kind must be one of {sorted(PROPOSAL_KINDS)}")
             if "[@" in str(item.get("text", "")) + str(item.get("risks", "")):
@@ -440,6 +465,11 @@ class Context:
         self.order = []
 
 
+def cite_marker(ids: List[str]) -> str:
+    """One combined marker for several citation ids, so adjacent numbers never run together (¹⁴)."""
+    return "[@" + "; @".join(ids) + "]" if ids else ""
+
+
 def inline_html(text: str, ctx: Context, cited: List[str]) -> str:
     out = []
     for kind, value in tokens(text):
@@ -449,7 +479,7 @@ def inline_html(text: str, ctx: Context, cited: List[str]) -> str:
             if out:
                 out[-1] = out[-1].rstrip()
             cited += [c for c in value if c not in cited]
-            links = "".join(f'<a href="#ref-{ctx.number(c)}">{ctx.number(c)}</a>' for c in value)
+            links = ", ".join(f'<a href="#ref-{ctx.number(c)}">{ctx.number(c)}</a>' for c in value)
             out.append(f'<sup class="cite">{links}</sup>')
         else:
             tag = {"strong": "strong", "em": "em", "code": "code"}[kind]
@@ -533,7 +563,7 @@ def figure_html(figure: Dict[str, Any], ctx: Context) -> str:
     else:
         src = figure["image"]
         cited: List[str] = []
-        refs = inline_html("".join(f"[@{c}]" for c in figure["sources"]), ctx, cited)
+        refs = inline_html(cite_marker(figure["sources"]), ctx, cited)
         derived = ""
         if figure.get("derived_from"):
             d = figure["derived_from"]
@@ -704,7 +734,7 @@ def render_brief_html(ctx: Context) -> str:
         for item in items:
             cited: List[str] = []
             text = inline_html(item["text"], ctx, cited)
-            refs = inline_html("".join(f"[@{c}]" for c in item.get("citations", [])), ctx, cited)
+            refs = inline_html(cite_marker(item.get("citations", [])), ctx, cited)
             lis.append(row(f'<p><span class="ev-id">{E(item["id"])}</span> <span class="basis basis-{item["basis"]}">'
                            f'{BASIS_LABELS[item["basis"]]}</span> {text}{refs}</p>', cited, ctx, "ledger-item"))
         groups.append(f'<h3>{label}</h3><div class="ledger" role="list">' +

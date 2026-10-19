@@ -40,7 +40,7 @@ distill.py package --workspace W --publication P [--allow-missing-pdf]
 
 ## `article.json`
 
-Unknown fields are rejected at every level. Text fields must not be empty.
+Unknown fields are rejected at every level. Text fields must not be empty. Optional fields are type-checked when present: `partial_reason`, `audience`, `brief.question`, proposal `risks`, quote `cite`, citation `frame_id`, `note`, `publisher`, and `accessed` are non-empty strings; `segment_ids`, figure `sources`, evidence `citations`, and proposal `basis` are lists of non-empty strings; list `ordered` is a boolean. A wrong type is a contract error (exit 2), never a traceback.
 
 ```json
 {
@@ -80,11 +80,11 @@ Raw HTML, links, and headings in text render as literal characters. Whitespace b
 
 ### Figures
 
-Every figure needs a safe `id`, an `alt`, and a `caption`.
+Every figure needs a safe `id` and a `caption`. Alt text is per image: `capture` and `original` figures take one figure-level `alt`; a `sequence` has no figure-level `alt` (it is rejected as an unknown field), and every step carries its own `alt`.
 
-- `capture` takes `video_id` and `frame_id`. It is an untouched source frame from `frames.json`.
+- `capture` takes `video_id`, `frame_id`, and `alt`. It is an untouched source frame from `frames.json`.
 - `sequence` takes `video_id` and `steps: [{frame_id, alt, caption}]`, with at least two steps. It renders as a demo step-through (Previous / Next, arrow keys, and a filmstrip). Without JavaScript, and in print, every step is visible.
-- `original` takes `image`, `assumptions` (non-empty), `sources` (citation IDs, non-empty), and optional `derived_from: {video_id, frame_id}`. The image must be a `.png`, `.jpg`, `.jpeg`, `.webp`, or `.svg` file under the publication's `figures/` directory. SVGs that contain scripts, event handlers, `foreignObject`, `javascript:`, or remote references are rejected. Annotated derivatives name their original in `derived_from`, and the untouched frame is packaged with the evidence.
+- `original` takes `image`, `alt`, `assumptions` (non-empty), `sources` (citation IDs, non-empty), and optional `derived_from: {video_id, frame_id}`. The image must be a `.png`, `.jpg`, `.jpeg`, `.webp`, or `.svg` file under the publication's `figures/` directory. SVGs that contain scripts, event handlers, `foreignObject`, `javascript:`, or remote references are rejected. Annotated derivatives name their original in `derived_from`, and the untouched frame is packaged with the evidence.
 
 All frame references must exist in that video's `frames.json`, and the video must belong to this publication. Captures and sequence frames are copied to `dist/media/<video>/<frame>.jpg`, with thumbnails in `dist/media/<video>/thumbs/`.
 
