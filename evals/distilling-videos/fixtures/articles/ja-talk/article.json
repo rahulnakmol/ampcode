@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "publication_id": "ja-talk",
+  "status": "complete",
+  "title": "A failing readiness probe takes a Pod out of rotation without restarting it",
+  "dek": "A short Japanese talk, translated here, separates two Kubernetes probes by what happens when they fail. Its terminal shows the readiness half.",
+  "sections": [
+    {"id": "hook", "heading": "Two probes, two different responses to failure", "blocks": [
+      {"type": "p", "text": "The speaker sets out to explain how readiness and liveness probes differ [@j-intro]. The answer, in translation, is about consequences. A failing readiness probe removes the Pod from the Service's endpoints but does not restart it [@j-ready]:"},
+      {"type": "quote", "text": "readinessプローブが失敗すると、Podはサービスのエンドポイントから外されますが、再起動はされません。", "cite": "j-ready"},
+      {"type": "p", "text": "A failing liveness probe is different: the kubelet restarts the container [@j-live]. The Kubernetes documentation says the same. A failed readiness probe removes the Pod's IP address from the EndpointSlices of matching Services, while repeated liveness failures make the kubelet restart the container [@k8s]."}
+    ]},
+    {"id": "screen", "heading": "The terminal shows a Pod that is running, not ready, and never restarted", "blocks": [
+      {"type": "figure", "figure": "fig-probes"},
+      {"type": "p", "text": "On screen, the configuration sets a readiness probe on `/ready` every five seconds and a liveness probe on `/healthz` with a failure threshold of three [@j-config]. The Pod listing then shows `READY 0/1`, `STATUS Running`, and `RESTARTS 0` [@j-pods]."},
+      {"type": "p", "text": "That is what a failing readiness probe looks like: out of rotation, still running, not restarted. The video does not say which probe failed, so this reading is ours."}
+    ]},
+    {"id": "startup", "heading": "Slow starters get a third probe", "blocks": [
+      {"type": "p", "text": "For slow-starting apps, the speaker calls a startup probe 定石 (*joseki*), translated here as the standard move [@j-startup]. The word comes from the game of Go, where it names an established sequence of play. It is stronger than a habit and weaker than a rule, so we keep the original term."},
+      {"type": "p", "text": "The documentation agrees that startup probes suit containers that take a long time to come into service, and that liveness and readiness checks wait until the startup probe succeeds [@k8s]."}
+    ]},
+    {"id": "unknowns", "heading": "The timeout the speaker chose is not recoverable", "blocks": [
+      {"type": "p", "text": "The speaker says they set a timeout, but the number is inaudible and never appears on screen [@j-timeout]. We do not guess it."}
+    ]}
+  ],
+  "figures": [
+    {"id": "fig-probes", "kind": "sequence", "video_id": "ja-talk",
+     "caption": "Configuration, then consequence: the Pod is running but not ready, with zero restarts",
+     "steps": [
+       {"frame_id": "f000015000", "alt": "YAML with readinessProbe on /ready every 5 seconds and livenessProbe on /healthz with failureThreshold 3", "caption": "Configuration: separate readiness and liveness endpoints"},
+       {"frame_id": "f000025000", "alt": "kubectl get pods output: api-7d9f-x2, READY 0/1, STATUS Running, RESTARTS 0", "caption": "Result: READY 0/1 and RESTARTS 0"}
+     ]}
+  ],
+  "citations": [
+    {"id": "j-intro", "video_id": "ja-talk", "segment_ids": ["s1"]},
+    {"id": "j-ready", "video_id": "ja-talk", "segment_ids": ["s2"]},
+    {"id": "j-live", "video_id": "ja-talk", "segment_ids": ["s3"]},
+    {"id": "j-startup", "video_id": "ja-talk", "segment_ids": ["s4"], "note": "定石 kept in the original; the translation is lossy"},
+    {"id": "j-timeout", "video_id": "ja-talk", "segment_ids": ["s5"], "note": "value inaudible"},
+    {"id": "j-config", "video_id": "ja-talk", "frame_id": "f000015000"},
+    {"id": "j-pods", "video_id": "ja-talk", "frame_id": "f000025000"},
+    {"id": "k8s", "kind": "web", "url": "https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/", "title": "Liveness, Readiness, and Startup Probes", "publisher": "Kubernetes documentation", "accessed": "2026-10-19", "note": "probe failure behavior and startup probe purpose"}
+  ],
+  "brief": {
+    "question": "What happens to a Pod when each probe fails?",
+    "evidence": [
+      {"id": "E1", "kind": "finding", "basis": "presenter", "text": "The speaker says a failing readiness probe removes the Pod from Service endpoints without a restart, and a failing liveness probe restarts the container.", "citations": ["j-ready", "j-live"]},
+      {"id": "E2", "kind": "finding", "basis": "screen", "text": "The Pod listing shows READY 0/1, STATUS Running, RESTARTS 0.", "citations": ["j-pods"]},
+      {"id": "E3", "kind": "finding", "basis": "external", "text": "Kubernetes documents the same failure responses and recommends startup probes for slow starters.", "citations": ["k8s"]},
+      {"id": "E4", "kind": "requirement", "basis": "presenter", "text": "Slow-starting apps should use a startup probe (the speaker's 定石).", "citations": ["j-startup"]},
+      {"id": "E5", "kind": "unknown", "basis": "presenter", "text": "The timeout value the speaker set is inaudible and not shown.", "citations": ["j-timeout"]}
+    ],
+    "proposals": [
+      {"id": "P1", "kind": "implementation", "text": "Use readiness for warm-up and dependency checks, and keep liveness for states a restart actually fixes, such as deadlock.", "basis": ["E1", "E3"], "risks": "A liveness probe that checks dependencies can restart healthy containers under load."},
+      {"id": "P2", "kind": "investigation", "text": "Recover the timeout from the speaker's slides or repository before reusing the configuration.", "basis": ["E5"]}
+    ]
+  },
+  "limitations": [
+    "The English is a translation of Japanese speech, not the speaker's words; 定石 is kept in the original because its translation is lossy.",
+    "Evaluation fixture: generated slides and a tone for audio, so this article does not test transcription or translation accuracy.",
+    "The timeout value is unknown, and the video does not show which probe failed."
+  ]
+}

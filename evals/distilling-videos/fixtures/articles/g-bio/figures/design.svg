@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 330" role="img" aria-labelledby="t d" font-family="system-ui, sans-serif" font-size="15">
+  <title id="t">Wisconsin and NIA monkey studies compared</title>
+  <desc id="d">A table comparing the two rhesus monkey calorie restriction studies on reported survival effect, diet, feeding, onset age, and genetic background, as named by the 2017 joint analysis.</desc>
+  <rect x="0" y="0" width="720" height="330" fill="#fbfaf7"/>
+  <g font-weight="700">
+    <text x="20" y="34">Factor</text>
+    <text x="220" y="34">Wisconsin (UW)</text>
+    <text x="470" y="34">NIA</text>
+  </g>
+  <path d="M20 46 H700" stroke="#222" stroke-width="1.5"/>
+  <g>
+    <text x="20" y="78" font-weight="700">Survival result</text>
+    <text x="220" y="78">Benefit reported (2009)</text>
+    <text x="470" y="78">No significant effect (2012)</text>
+    <path d="M20 94 H700" stroke="#ccc"/>
+    <text x="20" y="124">Diet</text>
+    <text x="220" y="124">Purified; much more sucrose</text>
+    <text x="470" y="124">Naturally sourced; varied protein</text>
+    <path d="M20 140 H700" stroke="#ccc"/>
+    <text x="20" y="170">Feeding</text>
+    <text x="220" y="170">Different timing and access</text>
+    <text x="470" y="170">Different timing and access</text>
+    <path d="M20 186 H700" stroke="#ccc"/>
+    <text x="20" y="216">Onset age</text>
+    <text x="220" y="216">Adult onset</text>
+    <text x="470" y="216">Young and old cohorts</text>
+    <path d="M20 232 H700" stroke="#ccc"/>
+    <text x="20" y="262">Genetic background</text>
+    <text x="220" y="262">Indian origin</text>
+    <text x="470" y="262">Indian and Chinese origin</text>
+  </g>
+  <text x="20" y="306" fill="#555" font-size="13">Original table. Factors as named by Mattison et al. 2017 and the NIA summary; not a quantitative comparison.</text>
+</svg>

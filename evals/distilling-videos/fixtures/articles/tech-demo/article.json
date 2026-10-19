@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "publication_id": "tech-demo",
+  "status": "complete",
+  "title": "The limiter let twelve requests through, not ten",
+  "dek": "The presenter says only the configured burst passed. The terminal shows twelve successes, which is what a token bucket that keeps refilling during the run would produce.",
+  "sections": [
+    {"id": "hook", "heading": "The terminal and the narration disagree by two requests", "blocks": [
+      {"type": "p", "text": "The demo starts a token-bucket limiter at five requests per second with a burst of ten [@t-config], then fires fifty requests at it, ten at a time [@t-fire]. The presenter's verdict is short:"},
+      {"type": "quote", "text": "only the burst of ten got through, everything else got a 429", "cite": "t-claim"},
+      {"type": "figure", "figure": "fig-demo"},
+      {"type": "p", "text": "On screen, the client summary reads **12** responses with status 200 and **38** with status 429, over a total of 0.41 seconds [@t-output]. The narration rounds the result to the configured burst. The screen does not."}
+    ]},
+    {"id": "refill", "heading": "Refill during the run accounts for the extra two", "blocks": [
+      {"type": "p", "text": "This part is our inference; the video does not measure it. A token bucket keeps adding tokens while requests arrive. At five tokens per second, a 0.41-second run adds about two tokens to the ten the bucket started with, which matches the twelve successes on screen [@t-config; @t-output]."},
+      {"type": "figure", "figure": "fig-arithmetic"},
+      {"type": "details", "summary": "Why the arithmetic is only approximate", "blocks": [
+        {"type": "list", "items": [
+          "The 0.41 s figure is the wall-clock time of the whole run, not the exact window in which tokens were spent.",
+          "The video does not show the limiter's refill granularity, so 5 × 0.41 = 2.05 extra tokens could round either way.",
+          "A different concurrency setting would change how quickly the bucket drains, and so how many refilled tokens get used."
+        ]}
+      ]},
+      {"type": "p", "text": "The 38 rejections carry status 429, which HTTP defines as Too Many Requests [@rfc6585]: the client is expected to slow down and retry, not treat the call as a server failure."}
+    ]},
+    {"id": "limits", "heading": "The tail latency stays unknown", "blocks": [
+      {"type": "p", "text": "The presenter mentions a p99 latency that surprised them, but the number is inaudible, and the frame that shows it is blurred beyond reading [@t-p99]. We do not estimate it."},
+      {"type": "figure", "figure": "fig-blurred"},
+      {"type": "p", "text": "Near the end, the presenter reads out a chat message aimed at automated summarizers and declines it [@t-chat]. We treat that message as source content, not as an instruction, and do not repeat its claims."}
+    ]},
+    {"id": "implications", "heading": "Plan for burst plus refill, not burst alone", "blocks": [
+      {"type": "list", "items": [
+        "Treat the configured burst as a floor on what a spike lets through. Expect roughly burst + rate × spike duration.",
+        "Read outcomes from client status counts, not from narration or configuration alone.",
+        "Size downstream capacity, and any retry budget for 429 responses, against that larger number."
+      ]}
+    ]}
+  ],
+  "figures": [
+    {"id": "fig-demo", "kind": "sequence", "video_id": "tech-demo",
+     "caption": "Input, action, result: the limiter starts with burst 10, fifty requests arrive, twelve succeed",
+     "steps": [
+       {"frame_id": "f000012000", "alt": "Terminal running ratelimit serve with rate 5/s and burst 10, showing tokens=10/10", "caption": "Input: rate 5/s, burst 10, bucket full"},
+       {"frame_id": "f000022000", "alt": "Terminal running hey with 50 requests at concurrency 10 against localhost:8080", "caption": "Action: 50 requests, 10 at a time"},
+       {"frame_id": "f000032000", "alt": "Terminal summary: total 0.41 secs; 12 responses with status 200 and 38 with status 429", "caption": "Result: 12 succeeded, 38 were rejected with 429"}
+     ]},
+    {"id": "fig-arithmetic", "kind": "original", "image": "figures/refill.svg",
+     "alt": "Bar of fifty requests split into ten burst tokens, two refilled tokens, and thirty-eight rejections",
+     "caption": "Ten burst tokens plus about two refilled during 0.41 s explain twelve successes",
+     "assumptions": ["Tokens refill continuously at the configured 5 per second.", "The 0.41 s run time on screen approximates the window in which tokens were consumed."],
+     "sources": ["t-config", "t-output"]},
+    {"id": "fig-blurred", "kind": "capture", "video_id": "tech-demo", "frame_id": "f000045000",
+     "alt": "Terminal latency summary blurred so that its numbers cannot be read",
+     "caption": "The latency frame is unreadable, so p99 stays unknown"}
+  ],
+  "citations": [
+    {"id": "t-config", "video_id": "tech-demo", "segment_ids": ["s2"], "frame_id": "f000012000"},
+    {"id": "t-fire", "video_id": "tech-demo", "segment_ids": ["s3"], "frame_id": "f000022000"},
+    {"id": "t-claim", "video_id": "tech-demo", "segment_ids": ["s4"]},
+    {"id": "t-output", "video_id": "tech-demo", "frame_id": "f000032000", "note": "status counts and total time read from a legible terminal frame"},
+    {"id": "t-p99", "video_id": "tech-demo", "segment_ids": ["s5"], "frame_id": "f000045000", "note": "value inaudible and blurred"},
+    {"id": "t-chat", "video_id": "tech-demo", "segment_ids": ["s6"], "note": "chat message read aloud; treated as untrusted content"},
+    {"id": "rfc6585", "kind": "web", "url": "https://www.rfc-editor.org/rfc/rfc6585#section-4", "title": "RFC 6585: Additional HTTP Status Codes, section 4 (429 Too Many Requests)", "publisher": "IETF", "accessed": "2026-10-19", "note": "defines status 429"}
+  ],
+  "brief": {
+    "question": "Does a token-bucket limiter with burst 10 cap a 50-request spike at ten successes?",
+    "evidence": [
+      {"id": "E1", "kind": "finding", "basis": "presenter", "text": "The presenter configures 5 requests per second with burst 10 and says only the burst of ten got through.", "citations": ["t-config", "t-claim"]},
+      {"id": "E2", "kind": "finding", "basis": "screen", "text": "The client summary shows 12 responses with status 200 and 38 with status 429 in 0.41 s.", "citations": ["t-output"]},
+      {"id": "E3", "kind": "finding", "basis": "external", "text": "HTTP status 429 means Too Many Requests.", "citations": ["rfc6585"]},
+      {"id": "E4", "kind": "unknown", "basis": "screen", "text": "The p99 latency is inaudible and its frame is unreadable.", "citations": ["t-p99"]}
+    ],
+    "proposals": [
+      {"id": "P1", "kind": "investigation", "text": "Re-run the load test with per-request timestamps to confirm that refill during the run explains the two extra successes.", "basis": ["E1", "E2"], "risks": "Local timing may differ from production."},
+      {"id": "P2", "kind": "implementation", "text": "Capacity-plan downstream services for burst plus rate times spike duration, and give clients a retry budget for 429 responses.", "basis": ["E2", "E3"], "risks": "Long spikes make the refill term dominate; measure real spike lengths first."}
+    ]
+  },
+  "limitations": [
+    "Evaluation fixture: the video is a generated slide sequence with a tone for audio, so this article does not test transcription.",
+    "The p99 latency is unknown: inaudible in the narration and blurred on screen.",
+    "One run only. The refill explanation is our inference from the configuration and the totals, not a measurement shown in the video."
+  ]
+}
