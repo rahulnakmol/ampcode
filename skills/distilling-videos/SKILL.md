@@ -138,6 +138,9 @@ recording it in `provider`:
 Rules: `text` is verbatim original language; `english` is clean English (filler removed, never
 claims, caveats, examples, or instructions) or a labeled translation. Never summarize. Mark
 unclear words with `[inaudible]`/`[unclear]` in place and set `uncertain` with a reason.
+If `english` repeats the text unedited (for example verbatim captions), set
+`english_kind: "original"` on every segment: pages then say "Verbatim English captions", never
+"cleaned". Mixed kinds are labeled "Partly cleaned English".
 
 <!-- example: transcript-en -->
 ```json
@@ -205,6 +208,9 @@ Read `reference/editorial.md` now. Then:
 - Goal-driven or "deep dive": add primary research, official docs, competing explanations,
   limitations, and practical implications for the stated goal.
 - Repeated claims across grouped videos are not independent corroboration.
+- **Central-claim gate:** every rebuttal or comparison the article rests on needs the primary
+  source read in full (never a search excerpt) and comparable dates and denominators. Text revised
+  after an independent review is re-checked and re-reviewed, not auto-approved (`editorial.md`).
 - Record every outside source you rely on as a web citation with a `note` on what it supports.
 
 **Editorial approval mode** (when the user asked to review the outline): post the angle, hook,

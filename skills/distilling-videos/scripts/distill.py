@@ -363,6 +363,10 @@ def cmd_frames(args: argparse.Namespace) -> int:
     return 0
 
 
+TRANSCRIPT_NORMALIZER = 2
+MARKDOWN_RENDERER = 2
+
+
 def cmd_import_transcript(args: argparse.Namespace) -> int:
     workspace = Workspace(Path(args.workspace))
     video = workspace.video(args.video)
@@ -380,8 +384,9 @@ def cmd_import_transcript(args: argparse.Namespace) -> int:
         if duration is None:
             duration = float(evidence.read_json(source_dir / "source.json")["duration"])
     normalized = evidence.validate_transcript(data, video["id"], duration)
+    # normalizer 2 derives english_label from english_kind; a bump re-normalizes unchanged inputs.
     config = {"input_sha256": evidence.sha256_bytes(raw), "duration": duration,
-              "gap_threshold": evidence.GAP_THRESHOLD}
+              "gap_threshold": evidence.GAP_THRESHOLD, "normalizer": TRANSCRIPT_NORMALIZER}
     if evidence.reusable(workspace, key, inputs, config):
         render_markdown(workspace, video["id"], quiet=True)
         emit({"status": "reused", "stage": key})
@@ -448,7 +453,7 @@ def render_markdown(workspace: Workspace, video_id: str, quiet: bool = False) ->
         if selection_record and selection_record.get("status") == "complete":
             candidates.append("selection.json")
     inputs = evidence.file_digests(source_dir, [c for c in candidates if (source_dir / c).is_file()])
-    if evidence.reusable(workspace, key, inputs, {"renderer": 1}):
+    if evidence.reusable(workspace, key, inputs, {"renderer": MARKDOWN_RENDERER}):
         return "reused"
     segments = evidence.read_json(source_dir / "transcript" / "segments.json")
     source = evidence.read_json(source_dir / "source.json") if "source.json" in inputs else {}
@@ -458,7 +463,7 @@ def render_markdown(workspace: Workspace, video_id: str, quiet: bool = False) ->
     documents = evidence.render_transcripts(source, workspace.video(video_id), segments, frames, selection)
     for name, text in documents.items():
         evidence.atomic_write_text(source_dir / "transcript" / name, text)
-    evidence.mark_complete(workspace, key, {"renderer": 1}, inputs,
+    evidence.mark_complete(workspace, key, {"renderer": MARKDOWN_RENDERER}, inputs,
                            evidence.file_digests(source_dir, [f"transcript/{n}" for n in documents]))
     return "rendered"
 

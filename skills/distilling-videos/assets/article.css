@@ -157,7 +157,7 @@ article > section > h2 { font-size: clamp(1.8rem, 3.4vw, 2.5rem); margin-top: 3.
 .rail { display: flex; flex-direction: column; align-items: flex-end; gap: .3rem; padding-top: .32rem; }
 .tc { display: inline-block; color: var(--cobalt); text-decoration: none; border-right: 2px solid var(--cobalt); padding: 0 .45rem 0 0; line-height: 1.25; white-space: nowrap; text-align: right; }
 .tc-n { color: var(--graphite); font-weight: 600; margin-right: .15rem; }
-.tc-web { color: var(--graphite); border-right-style: dotted; border-right-color: var(--graphite); white-space: normal; max-width: 100%; }
+.tc-web { color: var(--graphite); border-right-style: dotted; border-right-color: var(--graphite); white-space: normal; max-width: 100%; overflow-wrap: anywhere; }
 .tc:hover { text-decoration: underline; }
 sup.cite { font: 600 .62rem var(--mono); line-height: 0; margin-left: .08em; }
 sup.cite a { color: var(--cobalt); text-decoration: none; padding: 0 .08em; }
@@ -220,8 +220,8 @@ sup.cite a { color: var(--cobalt); text-decoration: none; padding: 0 .08em; }
 .deeper summary::before { content: "+"; font-family: var(--mono); display: inline-block; width: 1.2rem; color: var(--cobalt); }
 .deeper[open] summary::before { content: "\2212"; }
 .deeper summary .slug { display: block; margin-left: 1.2rem; font-weight: 400; }
-.deeper .row { grid-template-columns: 0 minmax(0, 1fr); column-gap: 0; }
-.deeper .rail { position: relative; left: calc(-1 * var(--gap)); align-items: flex-end; }
+/* The details body sits on the reading column; its row reaches back so notes get the full rail width. */
+.deeper .row { grid-template-columns: var(--rail) minmax(0, 1fr); column-gap: var(--gap); margin-left: calc(-1 * (var(--rail) + var(--gap))); }
 .deeper .tc { margin-right: 0; }
 
 /* Method, references, colophon. */
@@ -365,7 +365,6 @@ sup.cite a { color: var(--cobalt); text-decoration: none; padding: 0 .08em; }
   .row, .row-wide, .deeper .row { grid-template-columns: minmax(0, 1fr); }
   .rail { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; padding: 0 0 .25rem; gap: .5rem; }
   .rail:empty { display: none; }
-  .deeper .rail { left: 0; }
   .tc { border-right: 0; border-left: 2px solid var(--cobalt); padding: 0 0 0 .35rem; }
   .tc-web { border-left: 2px dotted var(--graphite); }
   .reel { grid-template-columns: 3rem minmax(0, 1fr); }
@@ -407,7 +406,9 @@ sup.cite a { color: var(--cobalt); text-decoration: none; padding: 0 .08em; }
   .gallery li[data-filter-item][hidden], .transcript li[data-filter-item][hidden] { display: block !important; }
   .reveal { opacity: 1 !important; transform: none !important; }
   .fig, .pull, .reel, .proposal, .references li, .seg, .g-item, .card { break-inside: avoid; }
-  h2, h3 { break-after: avoid; }
+  /* Keep each heading whole and with the start of what it introduces. */
+  h1, h2, h3, .deeper summary { break-inside: avoid; break-after: avoid; }
+  h2 + .row, h3 + .row, h2 + .row-wide, h3 + .row-wide, .deeper summary + .row { break-before: avoid; }
   .masthead { padding-top: 0; }
   a { text-decoration: none; }
   .fig-capture .frame, .fig-sequence .steps, .g-capture .g-open { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

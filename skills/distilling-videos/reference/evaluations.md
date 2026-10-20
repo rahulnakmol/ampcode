@@ -107,3 +107,15 @@ real-video transcription results. The source repository keeps fixtures and recor
 
 Use an independent reviewer (a separate thread or subagent) who receives the fixtures,
 deliverables, and this rubric, but not the author's self-assessment.
+
+After the author applies the reviewer's findings, the revised publication is **not approved by
+default**, even where the reviewer supplied replacement text. The author re-checks each changed
+central claim against full primary sources (`editorial.md`, central-claim gate), reports changes
+without scores, and a fresh independent review judges the revision.
+
+### Print layout check
+
+`python3 evals/distilling-videos/print_layout.py dist/article.pdf --captures DIR` (needs PyMuPDF)
+fails on margin citations that overlap prose or cross into the reading column, and on headings or
+"Go deeper" summaries stranded at a page bottom. It writes one PNG per page for visual review.
+Inspect the captures as well: the check is geometric, not a judgment of the design.

@@ -40,6 +40,16 @@ class SkillDocs(unittest.TestCase):
         self.assertLess(len(text.splitlines()), 500)
         self.assertRegex(text, r"\A---\nname: distilling-videos\ndescription: \"[^\n]+\"\n---\n")
 
+    def test_editorial_gate_requires_full_primary_reads_and_rereview(self):
+        # Real batch: two central rebuttals built on search excerpts inverted the record.
+        editorial = (SKILL / "reference" / "editorial.md").read_text()
+        gate = editorial.split("## Central-claim gate", 1)[1].split("\n## Visual explanation", 1)[0]
+        for phrase in ("Full primary read", "Date comparability", "Denominator comparability",
+                       "not automatically approved", "fresh independent"):
+            self.assertIn(phrase, gate + editorial.split("## Pre-render checklist", 1)[1], phrase)
+        self.assertIn("Central-claim gate", (SKILL / "SKILL.md").read_text())
+        self.assertIn("not approved by\ndefault", (SKILL / "reference" / "evaluations.md").read_text())
+
     def test_documented_cli_flags_exist(self):
         help_text = {}
         text = (SKILL / "SKILL.md").read_text() + (SKILL / "reference" / "providers.md").read_text() \

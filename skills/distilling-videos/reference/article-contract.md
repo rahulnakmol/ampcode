@@ -129,7 +129,7 @@ The brief must contain both `evidence` and `proposals`, even if `proposals` is e
 | `article.html` | The article: masthead, source slate, sections, method and limits, references. Printed to `article.pdf` |
 | `brief.html` | The research brief |
 | `transcripts.html` | Transcript index: per-source coverage, gaps, uncertainty, links |
-| `transcript-<video>.html`, `transcript-<video>.original.html` | Complete English (labeled translation or clean English) and original-language transcripts; anchors `seg-<id>`, gaps, uncertainty, attached selected frames; filterable |
+| `transcript-<video>.html`, `transcript-<video>.original.html` | Complete English (labeled translation, verbatim original English, or clean English, from `english_kind`) and original-language transcripts; anchors `seg-<id>`, gaps, uncertainty, attached selected frames; filterable |
 | `gallery.html` | Every placed figure, sequence step, and selected or cited frame, with provenance; viewer with zoom, pan, fit, previous/next by buttons, keyboard, pointer, and touch |
 | `glossary.html` | Optional short definitions |
 | `references.html` | Original videos, video citations (`cite-<id>`), external sources, visual credits, bundled software and theme credits |

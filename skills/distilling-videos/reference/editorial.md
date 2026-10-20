@@ -52,9 +52,49 @@ Keep four kinds of statement visibly distinct, in prose and in the brief `basis`
 - Uncertain segments and unreadable frames remain uncertain in the article, brief, and
   limitations. Do not "fix" them by guessing.
 - Translations are labeled as translations; keep the original term where meaning is lossy.
+  Verbatim captions are labeled verbatim, never "cleaned": the label comes from each segment's
+  `english_kind` (see `contracts.md`), so set it truthfully at import.
 - OCR or your reading of a frame is an observation, not proof of exact source text.
 - Public availability does not grant republishing rights. Deliver privately, attribute every
   source, and quote only what the argument needs.
+
+## Central-claim gate (rebuttals and comparisons)
+
+In a real batch, two central rebuttals inverted the record: both rested on search-result excerpts,
+and both flipped when the sources were read in full. A claim is **central** when the article
+corrects, rebuts, or downgrades the presenter ("not a breach", "hyperbole", "overstated"), or
+when a heading, dek, caption, or brief finding depends on it. Before rendering, every central
+claim must pass all of these:
+
+- **Full primary read.** Read the primary source in full: the original write-up, paper, filing,
+  changelog, or data page, not a news summary, search excerpt, or objective-guided extract. If
+  the primary source cannot be read in full, do not rebut; say what is unverified and attribute.
+  Record in the citation `note` how it was read ("full page", "abstract only").
+- **Look for the source that would prove the presenter right.** Search for the presenter's side
+  (the named team's own post, the vendor's announcement) before concluding that a claim fails.
+- **Date comparability.** Compare like with like in time. Do not set a figure published after the
+  recording against something said before it. Do not infer a recording date that the source does
+  not state. Do not use post-recording sources as corroboration without saying so. Do not read the
+  age of a notification as the length of an outage.
+- **Denominator comparability.** Before contrasting two numbers, confirm that they measure the same
+  thing over the same base: tokens vs spend, one-day snapshot vs monthly index, visible items vs
+  total, list price vs paid. A lower bound ("more than 50%") is not a point value. A modal ("can")
+  is not a fact.
+- **Fair target.** Rebut only what was actually said, including what the presenter's own slides
+  state. No straw men, and no attributing motive ("perhaps unintentionally").
+
+If any check fails, soften the claim to attribution plus the open unknown, or drop it.
+
+## Revisions after independent review
+
+An independent judge's findings are input, not approval:
+
+- Revised content is **not automatically approved**, including text the judge supplied. Every
+  changed claim passes the central-claim gate again, against the primary sources.
+- The reviser records what changed and why, and claims no scores. A separate independent reviewer
+  judges the revised publication before it counts as reviewed.
+- Keep the publication `partial` (no sign-off) until that re-review, and until caption-only
+  transcripts have had their audio spot checks.
 
 ## Visual explanation
 
@@ -87,6 +127,10 @@ evidence IDs.
 - [ ] Angle answers the goal (or the most interesting honest question for URL-only work).
 - [ ] Every video in the publication is cited; conflicts are surfaced, not averaged away.
 - [ ] Each claim is attributed to presenter, screen, external source, or you.
+- [ ] Every central rebuttal or comparison passed the central-claim gate: primary source read in
+      full, dates and denominators comparable, the presenter's actual claim targeted.
+- [ ] Judge-revised text was re-checked against primary sources and awaits a fresh independent
+      review; it is not treated as approved.
 - [ ] Quotes are verbatim; uncertain material stays marked.
 - [ ] Figures have provenance, alt text, and claim captions; demos are reconstructed in order.
 - [ ] Brief separates evidence from proposals; proposals cite evidence IDs only.

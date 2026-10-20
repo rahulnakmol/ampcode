@@ -464,6 +464,45 @@ def _language_is_english(language: str) -> bool:
     return language.lower() == "en" or language.lower().startswith("en-")
 
 
+KIND_LABELS = {"original": "original English", "clean": "clean English", "translation": "translation"}
+
+
+def english_label(language: str, segments: List[Dict[str, Any]]) -> str:
+    """Derive the transcript-level English label from every segment's english_kind; never overclaims cleaning."""
+    if not _language_is_english(language):
+        return "translation"
+    kinds = {s.get("english_kind", "clean") for s in segments}
+    if kinds == {"original"}:
+        return "original English"
+    return "clean English" if kinds == {"clean"} else "mixed English"
+
+
+def english_wording(label: str, provider_kind: Optional[str]) -> Dict[str, str]:
+    """Reader-facing names and notes for an english_label; 'original English' is verbatim, not cleaned."""
+    noun = "captions" if provider_kind == "captions" else "transcript"
+    return {
+        "translation": {
+            "short": "English translation", "title": "English translation",
+            "note": "The English text is a translation of the original.",
+            "page": "This is a translation; consult the original transcript for source wording."},
+        "original English": {
+            "short": f"Verbatim English {noun}", "title": f"Verbatim English {noun}",
+            "note": f"The English text is the original English {noun}, verbatim; it was not cleaned or edited.",
+            "page": f"This text reproduces the original English {noun} verbatim: no filler was removed and "
+                    "nothing was corrected."},
+        "clean English": {
+            "short": "Clean English", "title": "Clean English transcript",
+            "note": "The English text is a cleaned version of the original English.",
+            "page": "This is a cleaned transcript; consult the original transcript for verbatim wording."},
+        "mixed English": {
+            "short": "Partly cleaned English", "title": "Partly cleaned English transcript",
+            "note": "The English text mixes verbatim original English and cleaned segments; each segment "
+                    "records which.",
+            "page": "Some segments are verbatim original English and others are cleaned; consult the original "
+                    "transcript for verbatim wording."},
+    }[label]
+
+
 def validate_transcript(data: Any, video_id: str, duration: Optional[float]) -> Dict[str, Any]:
     """Validate provider-neutral transcript input; returns normalized segments, content untouched."""
     if not isinstance(data, dict):
@@ -558,7 +597,7 @@ def validate_transcript(data: Any, video_id: str, duration: Optional[float]) -> 
         raise ContractError(problems)
     return {"schema_version": SCHEMA_VERSION, "video_id": video_id, "language": language,
             "provider": provider, "translation_provider": data.get("translation_provider"),
-            "english_label": "translation" if not english_source else "clean English",
+            "english_label": english_label(language, normalized),
             "duration": duration, "notes": data.get("notes"), "segments": normalized}
 
 
@@ -634,12 +673,11 @@ def render_transcripts(source: Dict[str, Any], video: Dict[str, Any], transcript
         selected = [by_id[i] for i in selection if i in by_id]
     header = [f"Source: <{timestamp_url(youtube, 0)}> — {creator}", f"Transcript provider: {provider_text}"]
     original = [f"# Original transcript ({escape_markdown(transcript['language'])}): {title}", "", *header, ""]
-    label = ("English translation of the original-language transcript"
-             if transcript["english_label"] == "translation" else "Clean English transcript")
-    english = [f"# {label}: {title}", "", *header,
-               "This file is a " + ("translation; consult original.md for source wording."
-                                    if transcript["english_label"] == "translation"
-                                    else "cleaned transcript; consult original.md for verbatim wording."),
+    label = english_label(transcript["language"], transcript["segments"])
+    wording = english_wording(label, provider["kind"])
+    page_heading = ("English translation of the original-language transcript" if label == "translation"
+                    else wording["title"])
+    english = [f"# {page_heading}: {title}", "", *header, wording["page"],
                "Frames are sampled selections, not exhaustive frame-by-frame analysis.", ""]
     if not selected:
         english.append("No screenshots selected yet.\n")

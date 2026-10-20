@@ -58,8 +58,6 @@ MAC_BROWSERS = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
 EVIDENCE_KINDS = {"finding": "Findings", "requirement": "Requirements", "unknown": "Open unknowns"}
 BASIS_LABELS = {"presenter": "Presenter claim", "screen": "Screen observation", "external": "External source"}
 PROPOSAL_KINDS = {"architecture", "implementation", "investigation"}
-ENGLISH_NOTES = {"translation": "The English text is a translation of the original.",
-                 "clean English": "The English text is a cleaned version of the original English."}
 E = html.escape
 
 
@@ -158,7 +156,9 @@ def load_sources(workspace: Workspace, plan: Dict[str, Any]) -> Tuple[List[Dict[
             "title": str(source.get("title") or video.get("title") or video_id),
             "creator": str(source.get("creator") or "unknown creator"),
             "duration": source.get("duration") or segments.get("duration") or coverage.get("duration"),
-            "language": segments["language"], "english_label": segments["english_label"],
+            "language": segments["language"],
+            # Derived from each segment's english_kind so a stale stored label can never claim cleaning.
+            "english_label": evidence.english_label(segments["language"], segments["segments"]),
             "provider_kind": segments["provider"]["kind"], "coverage": coverage,
             "segments": {s["id"]: s for s in segments["segments"]},
             "frames": {f["id"]: f for f in frames["frames"]} if frames else None,
@@ -711,7 +711,7 @@ def rail(cited: List[str], ctx: Context, extra: str = "") -> str:
         href = citation["url"] if citation["kind"] == "video" else f"#ref-{ctx.number(cid)}"
         external = ' rel="noopener noreferrer"' if citation["kind"] == "video" else ""
         chips.append(f'<a class="tc tc-{citation["kind"]}" href="{E(href)}"{external}>'
-                     f'<span class="tc-n">{ctx.number(cid)}</span> {E(citation["chip"])}</a>')
+                     f'<span class="tc-n">{ctx.number(cid)}</span> {E(citation["chip"]).replace("/", "/<wbr>")}</a>')
     label = '<span class="visually-hidden">Source moments: </span>' if chips else ""
     return f'<div class="rail">{extra}{label}{"".join(chips)}</div>'
 
@@ -922,7 +922,6 @@ def evidence_templates(ctx: Context) -> str:
         else:
             source = ctx.sources[c["video_id"]]
             language = lang_code(source["language"])
-            english = "English translation" if source["english_label"] == "translation" else "Clean English"
             segments = []
             for sid in c.get("segment_ids", []):
                 s = source["segments"][sid]
@@ -936,7 +935,8 @@ def evidence_templates(ctx: Context) -> str:
                     f'<li><p class="slug"><a href="{E(evidence.timestamp_url(source["youtube_id"], s["start"]))}" '
                     f'rel="noopener noreferrer">{evidence.timestamp(s["start"])}</a> · <a href="transcript-'
                     f'{E(source["id"])}.html#seg-{E(sid)}">Transcript segment {E(sid)}</a></p>'
-                    f'<p class="ev-en"><span class="slug">{english}</span> {E(s["english"])}</p>{original}{uncertain}</li>')
+                    f'<p class="ev-en"><span class="slug">{E(segment_english(source, s))}</span> '
+                    f'{E(s["english"])}</p>{original}{uncertain}</li>')
             frame = ""
             if c.get("frame_id"):
                 t = source["frames"][c["frame_id"]]["t"]
@@ -959,6 +959,18 @@ def cited_tail(ctx: Context) -> str:
     return references_html(ctx) + evidence_templates(ctx) if ctx.order else ""
 
 
+def english_text(source: Dict[str, Any], field: str) -> str:
+    return evidence.english_wording(source["english_label"], source["provider_kind"])[field]
+
+
+def segment_english(source: Dict[str, Any], segment: Dict[str, Any]) -> str:
+    """Per-segment slug: a verbatim caption is never called clean, even inside a mixed transcript."""
+    if not evidence._language_is_english(source["language"]):
+        return "English translation"
+    label = evidence.KIND_LABELS[segment.get("english_kind", "clean")]
+    return evidence.english_wording(label, source["provider_kind"])["short"]
+
+
 def method_html(ctx: Context) -> str:
     rows = []
     for source in ctx.sources.values():
@@ -971,7 +983,7 @@ def method_html(ctx: Context) -> str:
         rows.append(
             f'<div class="method-reel"><h3>Reel {source["reel"]}: {E(source["title"])}</h3><ul>'
             f'<li>Transcript ({E(source["language"])}, {E(source["provider_kind"])}): {coverage["segment_count"]} '
-            f'segments, {coverage["covered_seconds"]:.0f} s covered{share}. {ENGLISH_NOTES[source["english_label"]]}</li>'
+            f'segments, {coverage["covered_seconds"]:.0f} s covered{share}. {E(english_text(source, "note"))}</li>'
             f'<li>Transcript gaps: {E(gaps) if gaps else "none over the 2 s threshold"}.</li>'
             f'<li>Uncertain segments: {E(", ".join(coverage["uncertain_segment_ids"])) or "none marked"}.</li>'
             f'<li>{E(frames)}</li></ul></div>')
@@ -1141,7 +1153,7 @@ def method_md(ctx: Context) -> List[str]:
         lines += [f"- Reel {source['reel']}: transcript ({source['language']}, {source['provider_kind']}) with "
                   f"{coverage['segment_count']} segments, {coverage['covered_seconds']:.0f} s covered; gaps: "
                   f"{gaps or 'none over 2 s'}; uncertain: {', '.join(coverage['uncertain_segment_ids']) or 'none'}; "
-                  f"{ENGLISH_NOTES[source['english_label']]} {len(source['selected'])} frames selected (sampled, not "
+                  f"{english_text(source, 'note')} {len(source['selected'])} frames selected (sampled, not "
                   "exhaustive)."]
     lines += ["", "Limitations:", ""] + [f"- {inline_md(x, ctx)}" for x in ctx.article["limitations"]] + [""]
     return lines
@@ -1274,25 +1286,26 @@ def transcript_markdown(source: Dict[str, Any], original: bool) -> str:
 
 
 def render_transcripts_index(ctx: Context) -> Tuple[str, str]:
-    cards, md = [], ["# Transcripts", "", "Complete transcripts for every source video. English is labeled as a "
-                     "translation or a cleaned English transcript; the original-language transcript is verbatim.", ""]
+    cards, md = [], ["# Transcripts", "", "Complete transcripts for every source video. English is labeled as verbatim "
+                     "original English, cleaned English, or a translation; the original-language transcript is "
+                     "verbatim.", ""]
     for source in ctx.sources.values():
         coverage = source["coverage"]
         gaps = len(coverage["gaps"])
         uncertain = len(coverage["uncertain_segment_ids"])
-        english = "English translation" if source["english_label"] == "translation" else "Clean English"
+        english = english_text(source, "title")
         stats = (f"{coverage['segment_count']} segments · {coverage['covered_seconds']:.0f} s covered · {gaps} gap"
                  f"{'s' if gaps != 1 else ''} · {uncertain} uncertain segment{'s' if uncertain != 1 else ''} · "
                  f"language {source['language']} · provider {source['provider_kind']}")
         cards.append(f'<li class="card reveal" id="reel-{E(source["id"])}"><p class="slug">Reel {source["reel"]} · '
                      f'{E(source["creator"])}</p><h3>{E(source["title"])}</h3><p>{E(stats)}</p><ul>'
-                     f'<li><a href="transcript-{E(source["id"])}.html">{english} transcript</a></li>'
+                     f'<li><a href="transcript-{E(source["id"])}.html">{E(english)}</a></li>'
                      f'<li><a href="transcript-{E(source["id"])}.original.html">Original transcript '
                      f'({E(source["language"])})</a></li><li><a href="{E(evidence.timestamp_url(source["youtube_id"], 0))}" '
                      f'rel="noopener noreferrer">Watch on YouTube</a></li></ul></li>')
         md += [f"## Reel {source['reel']}: {evidence.escape_markdown(source['title'])}", "",
                f"{evidence.escape_markdown(stats)}.", "",
-               f"- [{english} transcript](transcript-{source['id']}.html)",
+               f"- [{english}](transcript-{source['id']}.html)",
                f"- [Original transcript ({evidence.escape_markdown(source['language'])})]"
                f"(transcript-{source['id']}.original.html)",
                f"- <{evidence.timestamp_url(source['youtube_id'], 0)}>", ""]
@@ -1305,8 +1318,7 @@ def render_transcripts_index(ctx: Context) -> Tuple[str, str]:
 def render_transcript_page(ctx: Context, source: Dict[str, Any], original: bool) -> str:
     language = lang_code(source["language"])
     field = "text" if original else "english"
-    english = "English translation" if source["english_label"] == "translation" else "Clean English"
-    kind = f"Original transcript ({source['language']})" if original else f"{english} transcript"
+    kind = f"Original transcript ({source['language']})" if original else english_text(source, "title")
     starts = [s["start"] for s in source["segments"].values()]
     attached: Dict[int, List[Tuple[str, Dict[str, Any]]]] = {}
     if not original:
@@ -1341,9 +1353,7 @@ def render_transcript_page(ctx: Context, source: Dict[str, Any], original: bool)
     items += [f'<li class="gap" data-filter-item data-uncertain="gap"><p><strong>Transcript gap</strong> '
               f'{evidence.timestamp(g["start"])}–{evidence.timestamp(g["end"])}: no transcribed speech over the 2 s '
               'threshold.</p></li>' for g in gaps]
-    note = ("Verbatim original-language transcript." if original else
-            ("This is a translation; consult the original transcript for source wording." if source["english_label"] ==
-             "translation" else "This is a cleaned transcript; consult the original transcript for verbatim wording."))
+    note = "Verbatim original-language transcript." if original else english_text(source, "page")
     dek = (f'{E(note)} {len(source["segments"])} segments from Reel {source["reel"]}, '
            f'{E(source["creator"])}, provider {E(source["provider_kind"])}. '
            f'<a href="{other}">{"English transcript" if original else "Original transcript"}</a> · '

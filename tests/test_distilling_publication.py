@@ -7,6 +7,7 @@ No network or paid calls.
 
 import copy
 import html
+import importlib.util
 import hashlib
 import json
 import re
@@ -581,6 +582,46 @@ class SitePages(PublicationFixture):
         for target in re.findall(r"\]\((media/[^)]+)\)", twin):
             self.assertTrue((dist / target).is_file(), target)
 
+    def test_english_labels_distinguish_verbatim_captions_clean_and_translation(self):
+        # v2 becomes verbatim original English captions; v1 stays the default cleaned English.
+        data = transcript("v2", [("Here is the setup.", "Here is the setup."),
+                                 ("Watch the stale value " + HOSTILE, "Watch the stale value " + HOSTILE)])
+        data["provider"] = {"name": "youtube-automatic-captions", "kind": "captions"}
+        for segment in data["segments"]:
+            segment["english_kind"] = "original"
+        self.ok(self.cli("import-transcript", "--workspace", self.ws, "--video", "v2",
+                         "--transcript", self.write("v2-captions.json", data), "--duration", "30"))
+        self.ok(self.render())
+        dist = self.pub / "dist"
+        for page in ("transcript-v2.html", "transcript-v2.md"):
+            text = (dist / page).read_text()
+            self.assertIn("Verbatim English captions", text, page)
+            self.assertNotIn("clean", text.lower(), page)
+        clean = (dist / "transcript-v1.html").read_text()
+        self.assertIn("Clean English transcript", clean)
+        self.assertNotIn("Verbatim English", clean)
+        index = (dist / "transcripts.html").read_text()
+        self.assertIn('href="transcript-v2.html">Verbatim English captions</a>', index)
+        self.assertIn('href="transcript-v1.html">Clean English transcript</a>', index)
+        article = (dist / "article.html").read_text()
+        templates = dict(re.findall(r'<template id="ev-(\d+)">(.*?)</template>', article, re.S))
+        v2 = [t for t in templates.values() if "transcript-v2.html#seg-" in t]
+        v1 = [t for t in templates.values() if "transcript-v1.html#seg-" in t]
+        self.assertTrue(v2 and v1)
+        for body in v2:
+            self.assertIn("Verbatim English captions", body)
+            self.assertNotIn("Clean English", body)
+        for body in v1:
+            self.assertIn("Clean English", body)
+        method = article.split('id="method"', 1)[1].split("</section>", 1)[0]
+        reel_b = method.split("Reel B", 1)[1]
+        self.assertIn("verbatim", reel_b.split("</ul>", 1)[0])
+        self.assertNotIn("cleaned version", reel_b.split("</ul>", 1)[0])
+        self.assertIn("cleaned version", method.split("Reel B", 1)[0])
+        manifest_label = {s["video_id"]: s["english_label"] for s in json.loads(
+            (dist / "coverage.json").read_text())["sources"]}
+        self.assertEqual(manifest_label, {"v1": "clean English", "v2": "original English"})
+
     def test_citation_evidence_templates_and_references_page(self):
         self.ok(self.render())
         dist = self.pub / "dist"
@@ -914,6 +955,68 @@ class VendoredMotion(unittest.TestCase):
         self.assertIn("!!window.gsap", script)
         self.assertIn("prefers-reduced-motion: reduce", script)
         self.assertNotIn("ScrollTrigger", script)
+
+
+def _print_rules(css):
+    """Declarations per selector inside the @media print block of article.css."""
+    block = css.split("@media print {", 1)[1]
+    depth, end = 1, 0
+    for end, char in enumerate(block):
+        depth += {"{": 1, "}": -1}.get(char, 0)
+        if depth == 0:
+            break
+    rules = {}
+    for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", block[:end]):
+        for selector in selectors.split(","):
+            rules.setdefault(" ".join(selector.split()), []).append(body)
+    return rules
+
+
+def _span(x0, y0, x1, size, text):
+    return {"bbox": (x0, y0, x1, y0 + size * 1.2), "size": size, "text": text}
+
+
+class PrintLayout(unittest.TestCase):
+    """Real batch defect: a 'Go deeper' rail note wrapped word by word over its prose (WeiB PDF p10)."""
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location("print_layout", ROOT / "evals" / "distilling-videos" /
+                                                      "print_layout.py")
+        self.layout = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.layout)
+
+    def page(self, rail, last=None):
+        body = [_span(126, 40 + 17 * i, 566, 10.5, f"Body line {i} of the article prose.") for i in range(30)]
+        return body + rail + ([last] if last else [])
+
+    def test_checker_flags_overlapping_rail_and_bottom_headings(self):
+        clean = self.page([_span(59, 40, 108, 7.9, "A 1:06:17"), _span(78, 52, 108, 7.9, "ext ·"),
+                           _span(64, 62, 108, 7.9, "Hacktron")])
+        # Measured from the real WeiB p10: the note sat in a zero-width rail and spilled into the column.
+        overlap = self.page([_span(108, 521, 118, 7.9, "34"), _span(108, 531, 122, 7.9, "ext"),
+                             _span(108, 551, 137, 7.9, "Vercel")])
+        long_word = self.page([_span(40, 55, 128, 7.9, "strukturag/libheif")])
+        bottom = self.page([], _span(126, 700, 400, 21.6, "Proof over tests is his long bet, and"))
+        summary = self.page([], _span(140, 700, 188, 8.6, "Go deeper"))
+        self.assertEqual(self.layout.check_pages([clean, clean]), [])
+        kinds = [d["kind"] for d in self.layout.check_pages([clean, overlap, long_word, bottom, summary])]
+        self.assertEqual(kinds, ["rail-overlap", "rail-overlap", "heading-at-page-bottom",
+                                 "summary-at-page-bottom"])
+
+    def test_print_css_keeps_headings_whole_and_gives_details_notes_a_rail(self):
+        css = (SCRIPTS.parent / "assets" / "article.css").read_text()
+        rules = _print_rules(css)
+        for selector in ("h2", "h3", ".deeper summary"):
+            body = " ".join(rules.get(selector, []))
+            self.assertIn("break-inside: avoid", body, selector)
+            self.assertIn("break-after: avoid", body, selector)
+        for selector in ("h2 + .row", "h3 + .row", ".deeper summary + .row"):
+            self.assertIn("break-before: avoid", " ".join(rules.get(selector, [])), selector)
+        # Outside print as well: a details rail must have real width, and long source names must wrap in it.
+        deeper_row = re.search(r"\n\.deeper \.row \{([^}]*)\}", css).group(1)
+        self.assertIn("var(--rail)", deeper_row)
+        self.assertNotRegex(deeper_row, r"grid-template-columns:\s*0\b")
+        self.assertRegex(re.search(r"\n\.tc-web \{([^}]*)\}", css).group(1), r"overflow-wrap:\s*anywhere")
 
 
 class PdfRecordCompatibility(PublicationFixture):

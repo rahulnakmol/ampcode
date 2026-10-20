@@ -264,6 +264,33 @@ class TranscriptImport(Fixture):
         self.assertEqual(coverage["gaps"], [{"start": 9.0, "end": 60.0}])
         self.assertEqual(coverage["uncertain_segment_ids"], ["s2"])
 
+    def test_english_label_follows_english_kind_and_provider(self):
+        cases = {
+            # (kinds, provider kind) -> (english_label, phrase in english.md, forbidden phrase)
+            "original captions": (["original"] * 3, "captions", "original English", "verbatim English captions",
+                                  "clean"),
+            "original manual": (["original"] * 3, "manual", "original English", "verbatim English transcript",
+                                "clean"),
+            "default clean": ([None] * 3, "transcription", "clean English", "cleaned", "verbatim English"),
+            "mixed": (["original", "clean", "original"], "captions", "mixed English", "partly cleaned",
+                      "verbatim english captions"),
+        }
+        for name, (kinds, provider_kind, label, phrase, forbidden) in cases.items():
+            with self.subTest(name):
+                self.init()
+                data = transcript(provider={"name": "fixture", "kind": provider_kind})
+                for segment, kind in zip(data["segments"], kinds):
+                    if kind:
+                        segment["english_kind"] = kind
+                result = self.import_transcript(data, name=f"{provider_kind}-{label}.json")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                stored = json.loads((self.ws / "sources/v0/transcript/segments.json").read_text())
+                self.assertEqual(stored["english_label"], label)
+                english = (self.ws / "sources/v0/transcript/english.md").read_text().lower()
+                self.assertIn(phrase.lower(), english)
+                self.assertNotIn(forbidden.lower(), english)
+                self.assertEqual(evidence.english_label(stored["language"], stored["segments"]), label)
+
     def test_non_english_requires_translation_label(self):
         self.init()
         data = transcript("ja")

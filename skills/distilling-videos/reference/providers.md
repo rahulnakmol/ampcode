@@ -64,7 +64,9 @@ measured quality bar; otherwise the cheapest provider that meets it. Write the r
 ## English alignment and translation
 
 - English source: `english` is clean English. Remove fillers and false starts only; keep every
-  claim, number, caveat, example, and instruction. `english_kind` defaults to `clean`.
+  claim, number, caveat, example, and instruction. `english_kind` defaults to `clean`. When
+  `english` is the unedited original (captions imported as-is), set `english_kind: "original"` on
+  every segment so nothing is labeled "cleaned".
 - Non-English source: `english` is a translation per segment, `english_kind: "translation"`.
   Record who translated in `translation_provider`. Keep terms of art, and add the original term in
   parentheses when the translation is lossy. Mark uncertain translations.
