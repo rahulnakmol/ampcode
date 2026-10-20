@@ -32,6 +32,8 @@ GSAP = "vendor/gsap-3.15.0.min.js"
 ASSET_FILES = ("article.css", "article.js", "theme-init.js", ALPINE, GSAP, "vendor/LICENSE-alpinejs.md",
                "vendor/LICENSE-gsap.md", "vendor/PROVENANCE.md")
 PDF_PAGE = "article.html"
+# The only link to article.pdf. `package` removes it from draft packages that carry no current PDF.
+PDF_LINK = '<span class="pdf-link"><a href="article.pdf">PDF</a> · </span>'
 GLOSSARY_LIMIT = 320
 CSP = ("default-src 'none'; script-src 'self' 'unsafe-eval'; style-src 'self'; img-src 'self' data:; "
        "font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'")
@@ -246,6 +248,18 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
             elif cid not in used:
                 used.append(cid)
 
+    def inline(text: Any, where: str) -> None:
+        """Every inline text field is checked before rendering: each [@...] marker must name defined ids."""
+        if not isinstance(text, str):
+            return
+        for kind, value in tokens(text):
+            if kind == "cite":
+                if not value:
+                    problems.append(f"{where} has an empty citation marker")
+                cite(value, where)
+
+    inline(data.get("dek"), "article.dek")
+
     figures: Dict[str, Dict[str, Any]] = {}
     for index, figure in enumerate(_list(data, "figures")):
         label = f"figures[{index}]"
@@ -263,6 +277,7 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
                 problems += _fields(step, f"{label}.steps[{step_index}]", ("frame_id", "alt", "caption"))
                 if isinstance(step, dict):
                     problems += _texts(step, ("alt", "caption"), f"{label}.steps[{step_index}]")
+                    inline(step.get("caption"), f"{label}.steps[{step_index}].caption")
                     frames.append((figure.get("video_id"), step.get("frame_id")))
         elif kind == "original":
             problems += _fields(figure, label, ("id", "kind", "image", "alt", "caption", "assumptions", "sources"),
@@ -292,6 +307,8 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
             assumptions = _list(figure, "assumptions")
             if not assumptions or not all(isinstance(a, str) and a.strip() for a in assumptions):
                 problems.append(f"{label} original figures must state their assumptions")
+            for assumption_index, assumption in enumerate(assumptions):
+                inline(assumption, f"{label}.assumptions[{assumption_index}]")
             if not _list(figure, "sources"):
                 problems.append(f"{label} original figures must cite their sources")
             problems += _strings(figure, "sources", label)
@@ -301,6 +318,7 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
             continue
         if isinstance(figure, dict):
             problems += _texts(figure, ("alt", "caption"), label)
+            inline(figure.get("caption"), f"{label}.caption")
         for video_id, frame_id in frames:
             if not isinstance(video_id, str) or not isinstance(frame_id, str):
                 problems.append(f"{label} video_id and frame_id must be strings")
@@ -328,7 +346,7 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
                 continue
             if kind == "p":
                 problems.extend(_fields(block, where, ("type", "text")) + _texts(block, ("text",), where))
-                cite(text_cites(block.get("text")), where)
+                inline(block.get("text"), where)
             elif kind == "list":
                 problems.extend(_fields(block, where, ("type", "items"), ("ordered",)))
                 if "ordered" in block and not isinstance(block["ordered"], bool):
@@ -336,7 +354,7 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
                 if not _list(block, "items") or not all(isinstance(i, str) and i.strip() for i in block["items"]):
                     problems.append(f"{where} items must be non-empty text")
                 for item in _list(block, "items"):
-                    cite(text_cites(item), where)
+                    inline(item, where)
             elif kind == "quote":
                 problems.extend(_fields(block, where, ("type", "text", "cite")) + _texts(block, ("text", "cite"), where))
                 citation = citations.get(block["cite"]) if isinstance(block.get("cite"), str) else None
@@ -362,6 +380,7 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
                     placed.append(block["figure"])
             else:
                 problems.extend(_fields(block, where, ("type", "summary", "blocks")) + _texts(block, ("summary",), where))
+                inline(block.get("summary"), f"{where}.summary")
                 blocks(block.get("blocks"), f"{where}.blocks", nested=True)
 
     if not _list(data, "sections"):
@@ -373,6 +392,7 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
         if not isinstance(section, dict):
             continue
         problems += _texts(section, ("heading",), label)
+        inline(section.get("heading"), f"{label}.heading")
         try:
             if check_id(section.get("id"), f"{label}.id") in section_ids:
                 problems.append(f"duplicate section id {section['id']!r}")
@@ -383,11 +403,14 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
     if not isinstance(data.get("limitations"), list) or not all(
             isinstance(x, str) and x.strip() for x in data.get("limitations", [])):
         problems.append("article.limitations must be a list of text (empty only if there truly are none)")
+    for index, limitation in enumerate(_list(data, "limitations")):
+        inline(limitation, f"article.limitations[{index}]")
 
     brief = data.get("brief")
     problems += _fields(brief, "brief", ("evidence", "proposals"), ("question",))
     if isinstance(brief, dict):
         problems += _texts(brief, ("question",), "brief")
+        inline(brief.get("question"), "brief.question")
     evidence_ids: List[str] = []
     if isinstance(brief, dict):
         for index, item in enumerate(_list(brief, "evidence")):
@@ -402,7 +425,8 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
                 problems.append(f"{label} basis must be one of {sorted(BASIS_LABELS)}")
             if item.get("kind") != "unknown" and not _list(item, "citations"):
                 problems.append(f"{label} ({item.get('id')}) needs citations; uncited observations are unknowns")
-            cite(_list(item, "citations") + text_cites(item.get("text")), label)
+            inline(item.get("text"), label)
+            cite(_list(item, "citations"), label)
             evidence_ids.append(item.get("id"))
         for index, item in enumerate(_list(brief, "proposals")):
             label = f"brief.proposals[{index}]"
@@ -448,7 +472,7 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
             if len(plain(entry["definition"]).strip()) > GLOSSARY_LIMIT:
                 problems.append(f"{label}.definition is longer than {GLOSSARY_LIMIT} characters; glossary "
                                 "definitions must be short")
-            cite(text_cites(entry["definition"]), label)
+            inline(entry["definition"], label)
 
     cited_videos = {citations[c].get("video_id") for c in used
                     if citations[c].get("kind", "video") == "video" and isinstance(citations[c].get("video_id"), str)}
@@ -581,13 +605,64 @@ class Context:
         return terms
 
     def number(self, cid: str) -> int:
+        """The citation's number in the current document. The order is fixed by start(), so the HTML page,
+        its Markdown twin, and its references list always agree, whatever order the renderer visits text in."""
         if cid not in self.order:
-            self.order.append(cid)
+            raise RuntimeError(f"citation {cid!r} is not in this document's citation order")
         return self.order.index(cid) + 1
 
-    def reset(self) -> None:
-        self.order = []
+    def start(self, ids: List[str]) -> None:
+        """Begin a document whose citations, in reading order, are ids (first use wins)."""
+        self.order = list(dict.fromkeys(ids))
         self.figure_numbers = {}
+
+
+# Citation order per document: first use in reading order. HTML and Markdown share these lists.
+
+
+def blocks_cites(blocks: List[Dict[str, Any]], figures: Dict[str, Dict[str, Any]]) -> List[str]:
+    out: List[str] = []
+    for block in blocks:
+        if block["type"] == "p":
+            out += text_cites(block["text"])
+        elif block["type"] == "list":
+            out += [c for item in block["items"] for c in text_cites(item)]
+        elif block["type"] == "quote":
+            out.append(block["cite"])
+        elif block["type"] == "figure":
+            out += figure_cites(figures[block["figure"]])
+        else:
+            out += text_cites(block["summary"]) + blocks_cites(block["blocks"], figures)
+    return out
+
+
+def figure_cites(figure: Dict[str, Any]) -> List[str]:
+    out = text_cites(figure["caption"])
+    out += [c for step in figure.get("steps", []) for c in text_cites(step["caption"])]
+    out += list(figure.get("sources", []))
+    return out + [c for a in figure.get("assumptions", []) for c in text_cites(a)]
+
+
+def limitation_cites(article: Dict[str, Any]) -> List[str]:
+    return [c for x in article["limitations"] for c in text_cites(x)]
+
+
+def article_cites(article: Dict[str, Any]) -> List[str]:
+    figures = {f["id"]: f for f in article["figures"]}
+    out = text_cites(article["dek"])
+    for section in article["sections"]:
+        out += text_cites(section["heading"]) + blocks_cites(section["blocks"], figures)
+    return list(dict.fromkeys(out + limitation_cites(article)))
+
+
+def brief_cites(article: Dict[str, Any]) -> List[str]:
+    brief = article["brief"]
+    out = text_cites(article["dek"]) + text_cites(brief.get("question"))
+    for kind in EVIDENCE_KINDS:
+        for item in brief["evidence"]:
+            if item["kind"] == kind:
+                out += text_cites(item["text"]) + list(item.get("citations", []))
+    return list(dict.fromkeys(out + limitation_cites(article)))
 
 
 def cite_marker(ids: List[str]) -> str:
@@ -781,14 +856,14 @@ def page(ctx: Context, title: str, body: str, kind: str, md_name: str, md_text: 
                f'<button type="button" class="toolbar-search js-only" @click="openSearch()" aria-haspopup="dialog">'
                f'Search</button>'
                f'<div class="page-tools" x-data="copyPage"><button type="button" class="copy-page js-only" '
-               f'@click="copy()" aria-describedby="copy-status">{COPY_ICON}<span x-text="label">Copy page</span></button>'
+               f'@click="copy()" aria-describedby="copy-status">{COPY_ICON}<span x-text="label">Copy Page</span></button>'
                f'<a class="download-md" href="{md_name}" download>Download Markdown</a>'
                f'<span class="copy-status" id="copy-status" role="status" aria-live="polite" x-text="status"></span>'
                f'</div></div>')
     source = (f'<details class="md-source" id="md-source"><summary>Page Markdown</summary>'
               f'<p>The complete Markdown of this page ({E(md_name)}), independent of filters and open panels. '
               f'Select it and copy, or download it.</p><textarea id="page-markdown" readonly rows="14" '
-              f'spellcheck="false" aria-label="Markdown source of this page">{E(md_text)}</textarea></details>')
+              f'spellcheck="false" aria-label="Markdown source of this page">\n{E(md_text)}</textarea></details>')
     panel = ('<aside class="evidence-panel" id="evidence-panel" role="dialog" aria-modal="false" '
              'aria-labelledby="evidence-title" hidden><div class="ev-head"><h2 id="evidence-title" tabindex="-1">'
              'Evidence</h2><button type="button" class="ev-close" @click="closeEvidence()">Close</button></div>'
@@ -809,7 +884,9 @@ def page(ctx: Context, title: str, body: str, kind: str, md_name: str, md_text: 
             f'<script src="assets/theme-init.js"></script>'
             f'<link rel="stylesheet" href="assets/themes.css"><link rel="stylesheet" href="assets/article.css">'
             f'<script defer src="assets/search-index.js"></script><script defer src="assets/{GSAP}"></script>'
-            f'<script defer src="assets/article.js"></script><script defer src="assets/{ALPINE}"></script>'
+            # article.js registers the Alpine components and then loads assets/{ALPINE} itself, so Alpine
+            # never runs without them (half-initialized directives could hide demo steps or leave dead controls).
+            f'<script defer src="assets/article.js"></script>'
             f'</head><body class="page-{kind}" x-data="shell" @keydown.window="onKey($event)">'
             f'<a class="skip" href="#main">Skip to content</a>'
             '<svg class="defs" aria-hidden="true" focusable="false"><defs><pattern id="hatch" width="6" height="6" '
@@ -940,7 +1017,8 @@ def eyebrow(ctx: Context) -> str:
 def article_body(ctx: Context) -> str:
     """The article (article.html, printed to article.pdf)."""
     article = ctx.article
-    ctx.reset()
+    ctx.start(article_cites(article))
+    head = masthead(ctx, eyebrow(ctx), article["title"], article["dek"])
     sections = []
     for section in article["sections"]:
         sections.append(f'<section id="s-{section["id"]}" aria-labelledby="h-{section["id"]}" class="reveal">'
@@ -952,17 +1030,19 @@ def article_body(ctx: Context) -> str:
             f'<li><a href="#s-{s["id"]}">{E(plain(s["heading"]))}</a></li>' for s in article["sections"]) + "</ol></nav>"
     body = "".join(sections)
     tail = method_html(ctx) + references_html(ctx) + evidence_templates(ctx)
-    head = masthead(ctx, eyebrow(ctx), article["title"], article["dek"])
     footer = ('<footer class="colophon"><p>Rendered offline from timestamped evidence. Also available: '
               '<a href="index.html">overview</a> · <a href="brief.html">research brief</a> · '
-              '<a href="article.md">Markdown</a> · <a href="article.pdf">PDF</a> · '
+              f'<a href="article.md">Markdown</a> · {PDF_LINK}'
               '<a href="coverage.json">coverage report</a>.</p></footer>')
     return f'{head}<main id="main"><article>{toc}{body}{tail}</article></main>{footer}'
 
 
 def brief_body(ctx: Context) -> str:
     article, brief = ctx.article, ctx.article["brief"]
-    ctx.reset()
+    ctx.start(brief_cites(article))
+    head = masthead(ctx, eyebrow(ctx) + " · research brief", f"Brief: {article['title']}", article["dek"])
+    question = f'<p class="question">Question: {inline_html(brief["question"], ctx, [])}</p>' \
+        if brief.get("question") else ""
     groups = []
     for kind, label in EVIDENCE_KINDS.items():
         items = [i for i in brief["evidence"] if i["kind"] == kind]
@@ -985,14 +1065,11 @@ def brief_body(ctx: Context) -> str:
         proposals.append(f'<div class="proposal" role="listitem" id="{E(item["id"])}"><p class="slug">'
                          f'{E(item["id"])} · Proposal, not evidence · {E(item["kind"])}</p>'
                          f'<p>{inline_html(item["text"], ctx, [])}</p><p class="rests">Rests on: {basis}</p>{risks}</div>')
-    question = f'<p class="question">Question: {inline_html(brief["question"], ctx, [])}</p>' \
-        if brief.get("question") else ""
     body = (f'<section aria-labelledby="h-evidence"><h2 id="h-evidence">What the sources establish</h2>'
             f'{"".join(groups)}</section><section class="proposals" aria-labelledby="h-proposals">'
             f'<h2 id="h-proposals">What we propose</h2><p class="proposal-note">These are our conclusions and '
             f'next steps. They are not established by the sources; each names the evidence it rests on.</p>'
             f'<div role="list">{"".join(proposals) or "<p>No proposals.</p>"}</div></section>')
-    head = masthead(ctx, eyebrow(ctx) + " · research brief", f"Brief: {article['title']}", article["dek"])
     footer = ('<footer class="colophon"><p><a href="article.html">Read the article</a> · '
               '<a href="brief.md">Markdown</a></p></footer>')
     return (f'{head}<main id="main"><article>{question}{body}{method_html(ctx)}{references_html(ctx)}'
@@ -1070,13 +1147,19 @@ def method_md(ctx: Context) -> List[str]:
     return lines
 
 
-def render_article_md(ctx: Context) -> str:
+def md_head(ctx: Context, title: str) -> List[str]:
+    """Title, dek, and partial notice: the same opening, in the same order, as the HTML masthead."""
     article = ctx.article
-    ctx.reset()
-    lines = [f"# {evidence.escape_markdown(article['title'])}", "", f"*{inline_md(article['dek'], ctx)}*", ""]
+    lines = [f"# {evidence.escape_markdown(title)}", "", f"*{inline_md(article['dek'], ctx)}*", ""]
     if article["status"] == "partial":
         lines += [f"> **Partial publication.** {evidence.escape_markdown(article['partial_reason'])}", ""]
-    lines += ["Sources:", "", *sources_md(ctx), ""]
+    return lines
+
+
+def render_article_md(ctx: Context) -> str:
+    article = ctx.article
+    ctx.start(article_cites(article))
+    lines = md_head(ctx, article["title"]) + ["Sources:", "", *sources_md(ctx), ""]
     for section in article["sections"]:
         lines += [f"## {inline_md(section['heading'], ctx)}", ""] + blocks_md(section["blocks"], ctx)
     return "\n".join(lines + method_md(ctx) + references_md(ctx)) + "\n"
@@ -1084,11 +1167,11 @@ def render_article_md(ctx: Context) -> str:
 
 def render_brief_md(ctx: Context) -> str:
     article, brief = ctx.article, ctx.article["brief"]
-    ctx.reset()
-    lines = [f"# Brief: {evidence.escape_markdown(article['title'])}", ""]
+    ctx.start(brief_cites(article))
+    lines = md_head(ctx, f"Brief: {article['title']}") + ["Sources:", "", *sources_md(ctx), ""]
     if brief.get("question"):
         lines += [f"Question: {inline_md(brief['question'], ctx)}", ""]
-    lines += ["Sources:", "", *sources_md(ctx), "", "## What the sources establish", ""]
+    lines += ["## What the sources establish", ""]
     for kind, label in EVIDENCE_KINDS.items():
         items = [i for i in brief["evidence"] if i["kind"] == kind]
         if items:
@@ -1126,13 +1209,6 @@ def reel_facet(ctx: Context) -> List[Tuple[str, str, List[Tuple[str, str]]]]:
 # --- Cover -------------------------------------------------------------------
 
 
-def article_order(ctx: Context) -> List[str]:
-    article_body(ctx)
-    order = list(ctx.order)
-    ctx.reset()
-    return order
-
-
 def brief_counts(ctx: Context) -> str:
     brief = ctx.article["brief"]
     parts = [f"{sum(1 for i in brief['evidence'] if i['kind'] == k)} {label.lower()}"
@@ -1142,7 +1218,8 @@ def brief_counts(ctx: Context) -> str:
 
 def render_cover(ctx: Context) -> Tuple[str, str]:
     article = ctx.article
-    order = article_order(ctx)
+    order = article_cites(article)  # the tape maps tick every moment the article cites
+    ctx.start(text_cites(article["dek"]))
     head = masthead(ctx, eyebrow(ctx), article["title"], article["dek"], moments_from=order)
     sections = "".join(f'<li><a href="article.html#s-{E(s["id"])}">{E(plain(s["heading"]))}</a></li>'
                        for s in article["sections"])
@@ -1168,10 +1245,7 @@ def render_cover(ctx: Context) -> Tuple[str, str]:
     body = (f'{head}<main id="main"><p class="start"><a class="start-link" href="article.html">Start reading the '
             f'article</a></p><section class="contents" aria-labelledby="h-contents"><h2 id="h-contents">In this '
             f'publication</h2><ul class="cards">{items}</ul></section>{cited_tail(ctx)}</main>')
-    ctx.reset()
-    md = [f"# {evidence.escape_markdown(article['title'])}", "", f"*{inline_md(article['dek'], ctx)}*", ""]
-    if article["status"] == "partial":
-        md += [f"> **Partial publication.** {evidence.escape_markdown(article['partial_reason'])}", ""]
+    md = md_head(ctx, article["title"])
     md += [eyebrow(ctx) + ".", "", "Sources:", "", *sources_md(ctx), "", "## In this publication", ""]
     for href, name, text, _ in cards:
         md.append(f"- [{name}]({href}): {evidence.escape_markdown(text)}")
@@ -1310,7 +1384,7 @@ def provenance(item: Dict[str, Any], ctx: Context) -> Tuple[str, str]:
 
 
 def render_gallery(ctx: Context) -> Tuple[str, str]:
-    ctx.reset()
+    ctx.start([c for item in ctx.gallery if item["caption"] for c in text_cites(item["caption"])])
     items, md = [], ["# Gallery", "", "Every image in this publication with its provenance. Source captures are "
                      "untouched frames; original figures are our reconstructions.", ""]
     for index, item in enumerate(ctx.gallery):
@@ -1356,7 +1430,7 @@ def render_gallery(ctx: Context) -> Tuple[str, str]:
 
 
 def render_glossary(ctx: Context) -> Tuple[str, str]:
-    ctx.reset()
+    ctx.start([c for term in ctx.terms for c in text_cites(term["definition"])])
     entries, md = [], ["# Glossary", ""]
     for term in ctx.terms:
         entries.append(f'<div class="term reveal" id="{E(term["anchor"])}" data-filter-item><dt>{E(term["term"])}</dt>'
@@ -1382,7 +1456,7 @@ SOFTWARE = (
 
 
 def render_references(ctx: Context) -> Tuple[str, str]:
-    ctx.reset()
+    ctx.start([])
     sources, md = [], ["# References", "", "## Original videos", ""]
     for source in ctx.sources.values():
         url = evidence.timestamp_url(source["youtube_id"], 0)
@@ -1519,6 +1593,7 @@ def render_documents(ctx: Context) -> Dict[str, str]:
 
     def add(name: str, body: str, md: str, page_title: str, kind: str, current: str) -> None:
         md_name = name[:-5] + ".md"
+        md = normalize_markdown(md)
         out[md_name] = md
         out[name] = page(ctx, page_title, body, kind, md_name, md, current)
 
@@ -1545,24 +1620,61 @@ def render_documents(ctx: Context) -> Dict[str, str]:
 
 
 LINK = re.compile(r'\s(?:href|src)="([^"]*)"')
+MD_LINK = re.compile(r"(?<!\\)\]\(([^)\s]+)\)")
 IDS = re.compile(r'\sid="([^"]+)"')
+TEXTAREA = re.compile(r'<textarea id="page-markdown"[^>]*>(.*?)</textarea>', re.S)
+UNSTABLE_CONTROLS = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
 
-def link_problems(root: Path, html_names: List[str]) -> List[str]:
-    """Every local href/src must resolve to a rendered file, and every cross-page #fragment to an id."""
+def normalize_markdown(text: str) -> str:
+    """Markdown in the form a browser keeps in a textarea: LF line endings, and NUL and other C0 controls
+    (except tab and LF) replaced by U+FFFD. The .md twin, the embedded text, and Copy Page then agree byte for
+    byte; HTML parsing would otherwise turn CR into LF and NUL into U+FFFD in the embedded copy only."""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    return UNSTABLE_CONTROLS.sub("\ufffd", text)
+
+
+def embedded_markdown(page_html: str) -> Optional[str]:
+    """The textarea value a browser would build from a page: entities decoded, one leading LF dropped, CR
+    normalized to LF, and NUL replaced (HTML parsing rules for RCDATA)."""
+    match = TEXTAREA.search(page_html)
+    if not match:
+        return None
+    value = html.unescape(match.group(1)).replace("\r\n", "\n").replace("\r", "\n").replace("\x00", "\ufffd")
+    return value[1:] if value.startswith("\n") else value
+
+
+def markdown_problems(documents: Dict[str, str]) -> List[str]:
+    """Every page must embed exactly its .md twin, as the browser will parse it."""
     problems = []
-    ids = {name: set(map(html.unescape, IDS.findall((root / name).read_text()))) for name in html_names}
-    for name in html_names:
+    for name in sorted(n for n in documents if n.endswith(".html")):
+        md_name = name[:-5] + ".md"
+        if embedded_markdown(documents[name]) != documents.get(md_name):
+            problems.append(f"{name} does not embed exactly {md_name}; Copy Page and the download would differ")
+    return problems
+
+
+def link_problems(root: Path, names: List[str], later: Tuple[str, ...] = tuple(LATER_OUTPUTS)) -> List[str]:
+    """Every local link in HTML (href/src) and Markdown (](target)) must resolve to a file under root, and
+    every #fragment on an HTML target to an id. Files in `later` (written after render) may be missing."""
+    problems = []
+    pages = sorted({n for n in names if n.endswith(".html")} |
+                   {p.relative_to(root).as_posix() for p in root.glob("*.html")})
+    ids = {name: set(map(html.unescape, IDS.findall((root / name).read_text()))) for name in pages}
+    for name in names:
         text = (root / name).read_text()
-        for raw in LINK.findall(text):
-            target = html.unescape(raw)
+        markdown = name.endswith(".md")
+        for raw in (MD_LINK if markdown else LINK).findall(text):
+            target = raw if markdown else html.unescape(raw)
+            if markdown and target.startswith("<") and target.endswith(">"):
+                target = target[1:-1]
             if re.match(r"^(?:https?:|mailto:)", target, re.I):
                 continue
             path, _, fragment = target.partition("#")
             if path and re.match(r"^[a-z][a-z0-9+.-]*:|^/|(?:^|/)\.\.(?:/|$)", path, re.I):
                 problems.append(f"{name} links outside the package: {target}")
                 continue
-            if path and path not in LATER_OUTPUTS and not (root / path).is_file():
+            if path and path not in later and not (root / path).is_file():
                 problems.append(f"{name} links to a missing file: {target}")
             elif fragment and (path or name) in ids and fragment not in ids[path or name]:
                 problems.append(f"{name} links to a missing anchor: {target}")
@@ -1570,9 +1682,7 @@ def link_problems(root: Path, html_names: List[str]) -> List[str]:
 
 
 def coverage_report(ctx: Context, warnings: List[str]) -> Dict[str, Any]:
-    ctx.reset()
-    article_body(ctx)
-    article_used = list(ctx.order)
+    article_used = article_cites(ctx.article)
     sources = []
     for source in ctx.sources.values():
         sources.append({
@@ -1629,6 +1739,11 @@ def cmd_render(args: Any) -> int:
     plan, pub_dir = _publication(workspace, args.publication)
     article_path = safe_path(pub_dir, "article.json")
     article = evidence.read_json(article_path)
+    try:
+        json.dumps(article, ensure_ascii=False).encode("utf-8")
+    except UnicodeEncodeError:
+        raise ContractError("article.json contains an unpaired surrogate escape (such as \\ud800); "
+                            "text must be valid Unicode") from None
     sources, problems, inputs = load_sources(workspace, plan)
     if problems:
         raise ContractError(problems)
@@ -1644,6 +1759,10 @@ def cmd_render(args: Any) -> int:
     for name in html_names:
         if REMOTE_RESOURCE.search(documents[name]):
             raise ContractError(f"{name} would load a remote resource; refusing to render")
+    problems = markdown_problems(documents)
+    if problems:
+        raise ContractError(problems)
+    page_names = html_names + sorted(n for n in documents if n.endswith(".md") and "/" not in n)
     partial = pub_dir / f".dist-partial-{os.getpid()}"
     if partial.exists():
         shutil.rmtree(partial)
@@ -1666,7 +1785,7 @@ def cmd_render(args: Any) -> int:
             if figure["kind"] == "original":
                 (partial / figure["image"]).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(safe_path(pub_dir, figure["image"]), partial / figure["image"])
-        problems = link_problems(partial, html_names)
+        problems = link_problems(partial, page_names)
         if problems:
             raise ContractError(problems)
         outputs = _tree_digests(partial)
@@ -1820,7 +1939,15 @@ def cmd_package(args: Any) -> int:
                 problems.append(f"refusing to package {rel}: it contains secret-like content (SAS, key, or token)")
             target = partial / rel
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source, target)
+            if not pdf_ok and "/" not in rel and rel.endswith(".html"):
+                # A draft package has no PDF: drop the link to it rather than ship a dead link.
+                evidence.atomic_write_text(target, source.read_text(encoding="utf-8").replace(PDF_LINK, ""))
+            else:
+                shutil.copyfile(source, target)
+        if problems:
+            raise ContractError(problems)
+        problems = link_problems(partial, sorted(p.name for p in partial.iterdir()
+                                                 if p.is_file() and p.suffix in (".html", ".md")), later=())
         if problems:
             raise ContractError(problems)
         files = [{"path": rel, "sha256": evidence.sha256_file(partial / rel), "bytes": (partial / rel).stat().st_size}

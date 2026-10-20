@@ -1,8 +1,10 @@
-// distilling-videos publication behavior. Loaded before the bundled Alpine.js; GSAP is optional.
+// distilling-videos publication behavior. Registers the Alpine components, then loads the bundled
+// Alpine.js itself, so Alpine never starts without them. GSAP is optional.
 // No network access: this file never fetches or posts. It reads the bundled search index from a
 // global set by search-index.js and stores only the theme and navigation state in localStorage.
 (() => {
   const root = document.documentElement;
+  const self = document.currentScript && document.currentScript.src;
   root.classList.replace("no-js", "js");
   const printing = new URLSearchParams(window.location.search).has("print");
   if (printing) root.classList.add("print-mode");
@@ -22,13 +24,38 @@
   const narrow = () => media("(max-width: 52rem)");
   const reduced = () => media("(prefers-reduced-motion: reduce)");
   const motion = () => !!window.gsap && !reduced() && !printing && !root.classList.contains("printing");
+  // Tweens only the properties named in `from` and clears only those, so an opacity-only entrance never
+  // touches (or later clears) a transform the reader sets meanwhile, such as viewer zoom and pan.
   const animate = (element, from) => {
     if (!element || !motion()) return;
+    const to = { duration: 0.22, ease: "power2.out" };
+    Object.keys(from).forEach((key) => { to[key] = key === "opacity" || key === "scale" ? 1 : 0; });
+    const transform = Object.keys(from).some((key) => key !== "opacity");
+    to.clearProps = transform ? "opacity,transform" : "opacity";
     try {
-      window.gsap.fromTo(element, from, { opacity: 1, x: 0, y: 0, scale: 1, duration: 0.22, ease: "power2.out",
-        clearProps: "opacity,transform" });
+      window.gsap.fromTo(element, from, to);
     } catch (error) { /* motion is decoration; never block the control */ }
   };
+  // A linked target must be visible: clear any local filter that hides it and open enclosing details.
+  const revealTarget = (element) => {
+    if (!element) return;
+    if (element.closest("[data-filter-item][hidden]")) {
+      document.dispatchEvent(new CustomEvent("distill:reveal", { detail: element }));
+    }
+    for (let details = element.closest("details"); details; details = details.parentElement.closest("details")) {
+      if (!details.open && !details.classList.contains("md-source")) details.open = true;
+    }
+  };
+  const hashTarget = () => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    return id ? document.getElementById(id) : null;
+  };
+  window.addEventListener("hashchange", () => {
+    const element = hashTarget();
+    if (!element || !element.closest("[hidden], details:not([open])")) return;
+    revealTarget(element);
+    element.scrollIntoView({ block: "start" });
+  });
   const fold = (text) => (text || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
   // Print and PDF: open every expanded explanation, finish every tween, show everything.
@@ -75,10 +102,6 @@
         } catch (error) { /* ignore */ }
       });
     }, { rootMargin: "0px 0px -6% 0px" });
-    const target = () => {
-      const id = decodeURIComponent(window.location.hash.slice(1));
-      return id ? document.getElementById(id) : null;
-    };
     const skipTarget = (element) => {
       if (!element) return;
       observed.forEach((candidate) => {
@@ -89,7 +112,7 @@
         }
       });
     };
-    const initial = target();
+    const initial = hashTarget();
     document.querySelectorAll(".reveal").forEach((element) => {
       if (element.getBoundingClientRect().top < window.innerHeight) return; // visible at load: never animate
       if (initial && element.contains(initial)) return;
@@ -104,7 +127,7 @@
       if (url.pathname !== window.location.pathname) return;
       skipTarget(document.getElementById(decodeURIComponent(url.hash.slice(1))));
     }, true);
-    window.addEventListener("hashchange", () => skipTarget(target()));
+    window.addEventListener("hashchange", () => skipTarget(hashTarget()));
   };
 
   document.addEventListener("alpine:init", () => {
@@ -127,6 +150,9 @@
         };
         if (query.addEventListener) query.addEventListener("change", changed);
         this.sync();
+        // From here the navigation can always be shown again, so a saved collapse may apply and the
+        // JavaScript-only controls may appear (see theme-init.js and html:not(.ready) in article.css).
+        root.classList.add("ready");
         this.initTheme();
         document.addEventListener("click", (event) => this.citation(event));
         reveals();
@@ -247,7 +273,7 @@
 
     // Copy Page: the full Markdown twin of this page, whatever is filtered, collapsed, or open.
     Alpine.data("copyPage", () => ({
-      label: "Copy page",
+      label: "Copy Page",
       status: "",
       timer: null,
       async copy() {
@@ -267,11 +293,11 @@
           this.label = "Copied";
           this.status = `Copied this page's Markdown (${text.length.toLocaleString("en")} characters).`;
           animate(document.getElementById("copy-status"), { opacity: 0, y: 4 });
-          this.timer = setTimeout(() => { this.label = "Copy page"; this.status = ""; }, 2500);
+          this.timer = setTimeout(() => { this.label = "Copy Page"; this.status = ""; }, 2500);
         } else {
           const details = area.closest("details");
           details.open = true;
-          this.label = "Copy page";
+          this.label = "Copy Page";
           area.focus({ preventScroll: true });
           area.select();
           area.scrollIntoView({ block: "center" });
@@ -305,7 +331,20 @@
     Alpine.data("filter", (target) => ({
       q: "",
       summary: "",
-      init() { this.$nextTick(() => this.apply()); },
+      init() {
+        this.$nextTick(() => this.apply());
+        document.addEventListener("distill:reveal", (event) => {
+          const list = document.getElementById(target);
+          if (list && list.contains(event.detail)) this.clear();
+        });
+      },
+      // A link (search result, hash) points at an item the filter hides: show everything again.
+      clear() {
+        this.q = "";
+        this.$root.querySelectorAll("select[data-facet]").forEach((select) => { select.value = ""; });
+        this.apply();
+        this.summary += " · filter cleared to show the linked item";
+      },
       apply() {
         const list = document.getElementById(target);
         if (!list) return;
@@ -404,7 +443,10 @@
         const link = event.target.closest("a");
         if (!link) return;
         const url = new URL(link.href, window.location.href);
-        if (url.pathname === window.location.pathname) this.close();
+        if (url.pathname !== window.location.pathname) return;
+        this.close();
+        // Same page: reveal the target before the browser scrolls to it (the hash may not even change).
+        revealTarget(document.getElementById(decodeURIComponent(url.hash.slice(1))));
       },
       close() { document.getElementById("search-dialog").close(); },
     }));
@@ -441,7 +483,7 @@
         const caption = link.closest("figure").querySelector("figcaption");
         this.$refs.caption.replaceChildren(...[...caption.childNodes].map((node) => node.cloneNode(true)));
         this.fit();
-        animate(image, { opacity: 0, scale: 0.98 });
+        animate(image, { opacity: 0 });
       },
       prev() { this.show(this.index - 1); },
       next() { this.show(this.index + 1); },
@@ -536,4 +578,12 @@
       go(k) { this.i = k; },
     }));
   });
+
+  // Alpine is loaded only after every component above is registered. If it fails to load, the page stays
+  // in its static form: html.ready is never set, so no Alpine-only control appears (see theme-init.js).
+  if (self) {
+    const alpine = document.createElement("script");
+    alpine.src = new URL("vendor/alpine-3.17.4.min.js", self).href;
+    document.head.append(alpine);
+  }
 })();

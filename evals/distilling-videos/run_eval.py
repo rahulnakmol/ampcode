@@ -587,8 +587,9 @@ def scenario_publication(env, ws, browser):
                 'class="start-link"' in (dist / "index.html").read_text()
                 and 'id="method"' in (dist / "article.html").read_text()
                 and 'id="method"' not in (dist / "index.html").read_text())
+        # A browser drops the textarea's first newline (the renderer emits one so leading newlines survive).
         twins = [n for n in pages if not (dist / (n[:-5] + ".md")).is_file() or
-                 html_lib.unescape(re.search(r'<textarea id="page-markdown"[^>]*>(.*?)</textarea>',
+                 html_lib.unescape(re.search(r'<textarea id="page-markdown"[^>]*>\n(.*?)</textarea>',
                                              (dist / n).read_text(), re.S).group(1))
                  != (dist / (n[:-5] + ".md")).read_text(encoding="utf-8")]
         R.check(cat, "site", f"{pub} every page embeds exactly its Markdown twin (Copy Page source)", not twins,
@@ -604,6 +605,15 @@ def scenario_publication(env, ws, browser):
         evil_links = [str(p.relative_to(dist)) for p in texts if re.search(r'href="https?://evil\.example', p.read_text())]
         R.check(cat, "injection as data", f"{pub} no raw <script> bait in outputs", not raw_script, actual=raw_script)
         R.check(cat, "injection as data", f"{pub} bait URL never becomes a link", not evil_links, actual=evil_links)
+        # Draft package first (no PDF yet): it must not link the PDF it does not contain.
+        code, draft, err = env.cli("package", "--workspace", ws, "--publication", pub, "--allow-missing-pdf")
+        draft_pages = sorted((pub_dir / pub / "package").glob("*.html")) if code == 0 else []
+        dead_pdf = [p.name for p in draft_pages if "article.pdf" in p.read_text()]
+        R.check(cat, "package", f"{pub} draft package without a PDF has no link to article.pdf",
+                bool(code == 0 and draft_pages and not dead_pdf and draft.get("complete") is False),
+                err.strip()[:300], actual=dead_pdf)
+        if code == 0:
+            Path(draft["zip"]).unlink()
         if browser:
             code, data, err = env.cli("pdf", "--workspace", ws, "--publication", pub, "--browser", browser, timeout=300)
             pdf = dist / "article.pdf"

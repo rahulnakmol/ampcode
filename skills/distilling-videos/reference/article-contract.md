@@ -35,12 +35,12 @@ distill.py package --workspace W --publication P [--allow-missing-pdf]
 
 `package` re-verifies `render.json` input and output checksums and fails if the render is stale. It then checks the PDF:
 
-- The PDF must match the current `article.html` (`pdf.json` `page` and `page_sha256`). A `pdf.json` written by renderer 1 (which printed `index.html` and recorded `index_sha256`) counts as stale. Otherwise packaging fails, unless you pass `--allow-missing-pdf`. That flag produces `complete: false`.
+- The PDF must match the current `article.html` (`pdf.json` `page` and `page_sha256`). A `pdf.json` written by renderer 1 (which printed `index.html` and recorded `index_sha256`) counts as stale. Otherwise packaging fails, unless you pass `--allow-missing-pdf`. That flag produces `complete: false`, and the packaged pages drop their link to `article.pdf` (the only one, in the article footer) so a draft never links a missing file. Every package page's local links are rechecked with no exceptions.
 - A `partial` article also produces `complete: false`.
 
 ## `article.json`
 
-Unknown fields are rejected at every level. Text fields must not be empty. Optional fields are type-checked when present: `partial_reason`, `audience`, `brief.question`, proposal `risks`, quote `cite`, citation `frame_id`, `note`, `publisher`, and `accessed` are non-empty strings; `segment_ids`, figure `sources`, evidence `citations`, and proposal `basis` are lists of non-empty strings; list `ordered` is a boolean. A wrong type is a contract error (exit 2), never a traceback.
+Unknown fields are rejected at every level. Text fields must not be empty. Optional fields are type-checked when present: `partial_reason`, `audience`, `brief.question`, proposal `risks`, quote `cite`, citation `frame_id`, `note`, `publisher`, and `accessed` are non-empty strings; `segment_ids`, figure `sources`, evidence `citations`, and proposal `basis` are lists of non-empty strings; list `ordered` is a boolean. A wrong type is a contract error (exit 2), never a traceback. Unpaired surrogate escapes (such as `\ud800`) anywhere in `article.json` are a contract error.
 
 ```json
 {
@@ -100,10 +100,10 @@ There are two kinds:
 
 Additional rules:
 
-- Every citation ID used anywhere must be defined.
+- Every citation ID used anywhere must be defined. This is checked before rendering in every inline field: `dek`, section `heading`, `p` text, `list` items, `details` `summary`, figure `caption`, sequence step `caption`, original-figure `assumptions`, `limitations`, `brief.question`, evidence `text`, and glossary `definition`. An empty marker (`[@]`) is an error too.
 - Every video in the publication must be cited at least once, so a synthesis cannot silently drop a group member. A citation of a video outside the publication is an error.
 - Unused citations and unplaced figures produce warnings.
-- Numbering follows first use within each document (article and brief separately).
+- Numbering follows first use in reading order within each document, and the HTML page, its Markdown twin, and its references list share one order. Article: dek, then each section (heading, then blocks; a figure counts caption, steps, sources, assumptions), then limitations. Brief: dek, question, evidence (Findings, Requirements, Open unknowns), limitations. Cover: dek. Gallery and glossary: captions and definitions in page order. A dek-only citation is therefore reference 1, with a working `#ref-1` anchor.
 - In the HTML, each passage has a left rail of timecode chips that link to the cited moment. Each chip has the form `<n> <reel> <H:MM:SS>`.
 - Reels are lettered A, B, and so on, in the publication's `video_ids` order.
 
@@ -146,11 +146,12 @@ The tape map draws ticks at cited moments and hatching over transcript gaps. It 
 - Pages load only relative `assets/` files and run under the CSP `default-src 'none'; script-src 'self' 'unsafe-eval'; style-src 'self'; img-src 'self' data:; connect-src 'none'; ...`. `unsafe-eval` is required by Alpine's expression evaluator.
 - `render` refuses output that references a remote script, style, image, or frame.
 - Links to YouTube and web references are ordinary navigation links with `rel="noopener noreferrer"`.
-- `render` refuses output with a broken local link: every relative `href`/`src` must resolve to a rendered file (except `article.pdf`, written later by `pdf`), and every cross-page `#fragment` must exist on its target page. Links that leave the package (`../`, absolute paths, other schemes) are errors.
+- `render` refuses output with a broken local link: every relative `href`/`src` in a page, and every `](target)` link in a Markdown twin, must resolve to a rendered file (except `article.pdf`, written later by `pdf`), and every cross-page `#fragment` must exist on its target page. Links that leave the package (`../`, absolute paths, other schemes) are errors.
 - Search uses `assets/search-index.js`, loaded with `<script src>`; nothing is fetched. HTML-significant characters in the index are `\u` escaped.
-- Every page embeds its full Markdown twin in a read-only `<textarea>` ("Page Markdown"). Copy page copies exactly that text whatever is filtered or open; it falls back to `execCommand('copy')`, then to selecting the text for manual copying. Download Markdown is an ordinary `<a download>` link to the twin.
+- Every page embeds its full Markdown twin in a read-only `<textarea>` ("Page Markdown"). Twins are normalized to the form a browser keeps in a textarea (LF line endings; NUL and other C0 controls except tab replaced by U+FFFD), and the textarea content starts with one newline that HTML parsing drops, so the downloaded `.md`, the textarea value, and the copied text are identical; `render` refuses a page whose embedded text would differ. Copy Page copies exactly that text whatever is filtered or open; it falls back to `execCommand('copy')`, then to selecting the text for manual copying. Download Markdown is an ordinary `<a download>` link to the twin.
 - Inline citation links stay `#ref-n` links. With JavaScript, a plain click opens the evidence panel (desktop) or sheet (mobile) from an inert `<template>` without navigating; modifier clicks and no-JS readers follow the link.
-- Navigation, theme, search, filters, panel, viewer, and copy state live in Alpine components; only the theme and the desktop navigation collapse are stored, in `localStorage`, guarded so blocked storage falls back to defaults. GSAP is optional decoration: once-only section reveals start only as content enters the viewport and never from hidden; with reduced motion, print, or GSAP missing, nothing animates.
+- Progressive enhancement: `article.js` registers the Alpine components and only then loads the bundled Alpine, so Alpine never runs without them. The page shell marks `<html class="ready">` once it can show the navigation again; until then (or forever, if a script fails) every Alpine-only control (`.js-only`) stays hidden, the mobile menu is not moved off-canvas, and a saved navigation collapse is not honored: `theme-init.js` applies it before paint and removes it at `load` unless the page is ready. Links, Download Markdown, all demo steps, and the references stay usable. A link or search result to an item hidden by a local filter clears that filter and opens enclosing `details`, on the same page too.
+- Navigation, theme, search, filters, panel, viewer, and copy state live in Alpine components; only the theme and the desktop navigation collapse are stored, in `localStorage`, guarded so blocked storage falls back to defaults. GSAP is optional decoration: once-only section reveals start only as content enters the viewport and never from hidden; with reduced motion, print, or GSAP missing, nothing animates. Tweens touch only the properties they animate, so zooming the gallery viewer during its opacity-only entrance keeps the zoom.
 - `article.js` adds static print equivalents: `?print=1` and `beforeprint` open every `details` element, and print CSS shows every sequence step as a contact sheet.
 
 ## Package (`package/` and ZIP)

@@ -197,6 +197,44 @@ async function main() {
     await navigate(url("article.html"));
     checks["collapsed navigation persists across pages"] = await evaluate("document.documentElement.classList.contains('nav-collapsed') && getComputedStyle(document.getElementById('site-nav')).display === 'none'");
     await shot(join(dir, "desktop-article-nav-collapsed.png"));
+    checks["Copy Page button has the exact label"] = await evaluate("document.querySelector('.copy-page').textContent.trim() === 'Copy Page'");
+
+    // ---- Script failure with a saved collapse and theme: navigation and content stay usable.
+    await evaluate("localStorage.setItem('distill.theme', 'nord')");
+    const failureState = "({ready: document.documentElement.classList.contains('ready'), collapsed: document.documentElement.classList.contains('nav-collapsed'), nav: (() => { const n = document.getElementById('site-nav'); const r = n.getBoundingClientRect(); const s = getComputedStyle(n); return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.left >= 0 && r.right <= innerWidth; })(), links: [...document.querySelectorAll('.nav-list a')].filter(a => a.getClientRects().length).length, jsOnlyShown: [...document.querySelectorAll('.js-only')].filter(e => getComputedStyle(e).display !== 'none').map(e => e.className), theme: document.documentElement.dataset.theme || '', paper: getComputedStyle(document.documentElement).backgroundColor, download: !!document.querySelector('a.download-md[download]')?.getClientRects().length, steps: [...document.querySelectorAll('.fig-sequence .step')].every(s => getComputedStyle(s).display !== 'none'), alpine: !!window.Alpine})";
+    const logMark = [log.console.length, log.exceptions.length];
+    details.blocked = {};
+    for (const [label, blocked] of [["Alpine", ["*/vendor/alpine-3.17.4.min.js"]], ["article.js and Alpine", ["*/assets/article.js", "*/vendor/alpine-3.17.4.min.js"]], ["article.js", ["*/assets/article.js"]]]) {
+      await send("Network.setBlockedURLs", { urls: blocked });
+      await viewport(1280, 900);
+      await navigate(url("article.html"));
+      const desktop = await evaluate(failureState);
+      await viewport(390, 844, true, 2);
+      await navigate(url("article.html"));
+      const mobile = await evaluate(failureState);
+      if (label === "Alpine") {
+        await shot(join(dir, "blocked-alpine-mobile.png"));
+        await viewport(1280, 900);
+        await navigate(url("article.html"));
+        await shot(join(dir, "blocked-alpine-desktop.png"));
+        await evaluate("document.querySelector('sup.cite a').scrollIntoView({block: 'center'})");
+        await click("sup.cite a");
+        details.blockedCite = await evaluate("({hash: location.hash, target: !!document.getElementById(location.hash.slice(1)), panel: document.getElementById('evidence-panel').hidden})");
+        checks["blocked Alpine: citations stay ordinary links to the references"] = /^#ref-\d+$/.test(details.blockedCite.hash) && details.blockedCite.target && details.blockedCite.panel;
+      }
+      details.blocked[label] = { desktop, mobile };
+      checks[`blocked ${label} with a saved collapse: navigation visible on desktop and mobile, no dead controls`] =
+        [desktop, mobile].every((v) => !v.ready && !v.collapsed && v.nav && v.links === 7 && !v.jsOnlyShown.length && v.download && v.steps);
+      checks[`blocked ${label}: the saved theme still applies`] = [desktop, mobile].every((v) => v.theme === "nord" && v.paper === "rgb(46, 52, 64)");
+    }
+    await send("Network.setBlockedURLs", { urls: [] });
+    // Blocking article.js leaves Alpine to report its missing components; those are expected here only.
+    details.blockedConsole = log.console.splice(logMark[0]).concat(log.exceptions.splice(logMark[1]));
+    await viewport(1280, 900);
+    await navigate(url("article.html"));
+    await evaluate("localStorage.removeItem('distill.theme')");
+    checks["with scripts restored the saved collapse applies again"] = await evaluate("document.documentElement.classList.contains('ready') && document.documentElement.classList.contains('nav-collapsed') && getComputedStyle(document.getElementById('site-nav')).display === 'none'");
+    await navigate(url("article.html"));
     await click(".menu-button");
     checks["Show navigation restores the sidebar"] = await evaluate("!document.documentElement.classList.contains('nav-collapsed') && getComputedStyle(document.getElementById('site-nav')).display !== 'none' && localStorage.getItem('distill.nav') === null");
 
@@ -261,9 +299,9 @@ async function main() {
     await sleep(300);
     details.clipboard = await evaluate("navigator.clipboard.readText().then(t => ({ok: true, length: t.length, text: t}), e => ({ok: false, error: String(e)}))");
     details.copyStatus = await evaluate("document.getElementById('copy-status').textContent");
-    checks["Copy page writes the full Markdown to the real clipboard"] = details.clipboard.ok && details.clipboard.text === articleMd && /Copied/.test(details.copyStatus);
+    checks["Copy Page writes the full Markdown to the real clipboard"] = details.clipboard.ok && details.clipboard.text === articleMd && /Copied/.test(details.copyStatus);
     details.clipboard.text = undefined;
-    checks["Copy page label confirms the copy"] = await evaluate("document.querySelector('.copy-page').textContent.trim() === 'Copied'");
+    checks["Copy Page label confirms the copy"] = await evaluate("document.querySelector('.copy-page').textContent.trim() === 'Copied'");
     await elementShot(join(dir, "desktop-copy-status.png"), ".toolbar", 4);
     await evaluate("navigator.clipboard.writeText = () => Promise.reject(new Error('denied'))");
     await click(".copy-page");
@@ -274,7 +312,7 @@ async function main() {
     await click(".copy-page");
     await sleep(400);
     details.manual = await evaluate("(() => { const a = document.getElementById('page-markdown'); return {open: document.getElementById('md-source').open, focused: document.activeElement === a, selected: a.selectionEnd - a.selectionStart, length: a.value.length, status: document.getElementById('copy-status').textContent, label: document.querySelector('.copy-page').textContent.trim(), inView: (() => { const r = a.getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; })()}; })()");
-    checks["blocked copying selects the full Markdown for manual copy"] = details.manual.open && details.manual.focused && details.manual.selected === articleMd.length && /Ctrl\+C/.test(details.manual.status) && details.manual.inView && details.manual.label === "Copy page";
+    checks["blocked copying selects the full Markdown for manual copy"] = details.manual.open && details.manual.focused && details.manual.selected === articleMd.length && /Ctrl\+C/.test(details.manual.status) && details.manual.inView && details.manual.label === "Copy Page";
     await shot(join(dir, "desktop-copy-manual-fallback.png"));
 
     // ---- Reveals: once-only, subtle, never leave content hidden; hash targets arrive visible.
@@ -335,6 +373,35 @@ async function main() {
     checks["filtered page still copies its full Markdown"] = (await evaluate("window.__copied")) === md(transcript);
     await shot(join(dir, "desktop-transcript-filtered.png"));
 
+    // ---- Search to a segment the filter hides, on the same page and with the same hash: it is revealed.
+    const hiddenSeg = await evaluate("document.querySelector('#seg-list .seg[hidden]')?.id || null");
+    if (hiddenSeg) {
+      const href = `${transcript}#${hiddenSeg}`;
+      await navigate(url(transcript) + "#" + hiddenSeg);
+      await evaluate("(() => { const s = document.querySelector('.filter-bar select'); s.value = 'true'; s.dispatchEvent(new Event('change')); })()");
+      await sleep(200);
+      details.filterSearch = { before: await evaluate(`({hidden: document.getElementById(${JSON.stringify(hiddenSeg)}).hidden, hash: location.hash})`) };
+      const words = await evaluate(`DISTILL_SEARCH.entries.find(e => e[0] === ${JSON.stringify(href)})[3].split(/\\s+/).slice(0, 4).join(' ')`);
+      await key("/", "Slash", 191);
+      await send("Input.insertText", { text: words });
+      await sleep(400);
+      details.filterSearch.words = words;
+      details.filterSearch.found = await click(`.search-results a[href="${href}"]`);
+      await sleep(600);
+      details.filterSearch.after = await evaluate(`(() => { const t = document.getElementById(${JSON.stringify(hiddenSeg)}); const r = t.getBoundingClientRect(); return {hidden: t.hidden, inView: r.top >= 0 && r.top < innerHeight, dialog: document.getElementById('search-dialog').open, hash: location.hash, summary: document.querySelector('.filter-count').textContent, select: document.querySelector('.filter-bar select').value}; })()`);
+      checks["search to a filtered-out segment on the same page reveals and shows it"] = details.filterSearch.before.hidden && details.filterSearch.found &&
+        !details.filterSearch.after.hidden && details.filterSearch.after.inView && !details.filterSearch.after.dialog && details.filterSearch.after.select === "" && /cleared/.test(details.filterSearch.after.summary);
+      await shot(join(dir, "desktop-search-reveals-filtered.png"));
+      await evaluate("(() => { const s = document.querySelector('.filter-bar select'); s.value = 'true'; s.dispatchEvent(new Event('change')); })()");
+      await navigate(url("article.html"));
+      await navigate(url(transcript) + "#" + hiddenSeg);
+      await evaluate("(() => { const s = document.querySelector('.filter-bar select'); s.value = 'true'; s.dispatchEvent(new Event('change')); location.hash = ''; })()");
+      await sleep(200);
+      await evaluate(`location.hash = ${JSON.stringify(hiddenSeg)}`);
+      await sleep(400);
+      checks["a hash link to a filtered-out segment reveals it"] = await evaluate(`(() => { const t = document.getElementById(${JSON.stringify(hiddenSeg)}); const r = t.getBoundingClientRect(); return !t.hidden && r.top >= 0 && r.top < innerHeight; })()`);
+    }
+
     // ---- Gallery viewer: buttons, keyboard, zoom, pan, drag swipe, focus return, filters.
     await navigate(url("gallery.html"));
     await loadLazy();
@@ -344,6 +411,17 @@ async function main() {
       await click(".g-open");
       await sleep(400);
       details.viewer = await evaluate("(() => { const d = document.querySelector('dialog.viewer'); const i = d.querySelector('.viewer-stage img'); return {open: d.open, loaded: i.complete && i.naturalWidth > 0, count: d.querySelector('.viewer-count').textContent, focus: document.activeElement.textContent, caption: d.querySelector('.viewer-caption').textContent.slice(0, 200)}; })()");
+      details.zoomDuringEntrance = await evaluate(`(async () => {
+        const d = document.querySelector('dialog.viewer'); const img = d.querySelector('.viewer-stage img');
+        d.close(); await new Promise(r => setTimeout(r, 100));
+        document.querySelector('.g-open').click(); await new Promise(r => setTimeout(r, 40));
+        const tweening = !!window.gsap && gsap.isTweening(img);
+        d.dispatchEvent(new KeyboardEvent('keydown', {key: '+', bubbles: true}));
+        await new Promise(r => setTimeout(r, 700));
+        return {tweening, transform: img.style.transform, scale: d.querySelector('.viewer-scale').textContent, opacity: getComputedStyle(img).opacity};
+      })()`);
+      checks["zooming during the entrance animation keeps the zoom"] = details.zoomDuringEntrance.tweening && /scale\(1\.5\)/.test(details.zoomDuringEntrance.transform) && details.zoomDuringEntrance.scale === "150%" && details.zoomDuringEntrance.opacity === "1";
+      await key("0", "Digit0", 48);
       checks["gallery viewer opens with the image, counter, and provenance"] = details.viewer.open && details.viewer.loaded && details.viewer.count === `1 of ${count}` && /untouched|reconstruction/.test(details.viewer.caption);
       const counter = () => evaluate("document.querySelector('.viewer-count').textContent");
       const scale = () => evaluate("document.querySelector('.viewer-scale').textContent");
@@ -440,10 +518,13 @@ async function main() {
     await viewport(390, 844, true, 2);
     await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
     details.mobileOverflow = {};
+    details.textareaMismatch = [];
     for (const name of pages) {
       await navigate(url(name), 300);
       details.mobileOverflow[name] = await evaluate("document.documentElement.scrollWidth - window.innerWidth");
+      if ((await evaluate("document.getElementById('page-markdown').value")) !== md(name)) details.textareaMismatch.push(name);
     }
+    checks["every page's Markdown textarea value equals its downloaded .md byte for byte"] = !details.textareaMismatch.length;
     checks["mobile layout has no horizontal overflow on any page"] = Object.values(details.mobileOverflow).every((v) => v <= 1);
     await navigate(url("index.html"));
     await loadLazy();

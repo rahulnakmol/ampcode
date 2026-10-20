@@ -532,7 +532,11 @@ NAV_LABELS = ["Overview", "Article", "Brief", "Transcripts", "Gallery", "Glossar
 
 def embedded_markdown(page):
     match = re.search(r'<textarea id="page-markdown"[^>]*>(.*?)</textarea>', page, re.S)
-    return html.unescape(match.group(1)) if match else None
+    if not match:
+        return None
+    # As a browser parses a textarea: one leading newline is dropped, CR becomes LF, NUL becomes U+FFFD.
+    value = html.unescape(match.group(1)).replace("\r\n", "\n").replace("\r", "\n").replace("\x00", "\ufffd")
+    return value[1:] if value.startswith("\n") else value
 
 
 class SitePages(PublicationFixture):
@@ -548,6 +552,7 @@ class SitePages(PublicationFixture):
             md_name = name[:-5] + ".md"
             self.assertIn(f'<a class="download-md" href="{md_name}" download>', page)
             self.assertIn('class="copy-page js-only"', page)
+            self.assertIn('<span x-text="label">Copy Page</span>', page)
             self.assertIn('role="status" aria-live="polite"', page)
             self.assertEqual(embedded_markdown(page), (dist / md_name).read_text(encoding="utf-8"), name)
         self.assertIn("Start reading", (dist / "index.html").read_text())
@@ -657,6 +662,160 @@ class Glossary(PublicationFixture):
         self.assertIn("No glossary terms were defined", (self.pub / "dist" / "glossary.html").read_text())
 
 
+def references(page_html):
+    """[(number, label)] from an HTML references list."""
+    return [(int(n), html.unescape(label)) for n, label in
+            re.findall(r'<li id="ref-(\d+)">(.*?)\. <a class="url"', page_html)]
+
+
+def footnotes(markdown):
+    """[(number, label)] from Markdown footnote definitions, unescaped to plain text."""
+    return [(int(n), re.sub(r"\\(.)", r"\1", label)) for n, label in
+            re.findall(r"^\[\^(\d+)\]: (.*)\. <[^>]+>$", markdown, re.M)]
+
+
+class OptionalFieldCitations(PublicationFixture):
+    """Citations in optional and secondary inline fields are validated, numbered, and resolvable."""
+
+    def cited_everywhere(self):
+        data = article()
+        data["citations"].append({"id": "c4", "kind": "web", "url": "https://example.org/dek", "title": "Dek source"})
+        data["citations"].append({"id": "c5", "kind": "web", "url": "https://example.org/limit", "title": "Limit"})
+        data["dek"] = "Two talks disagree [@c4]."
+        data["sections"][1]["heading"] = "One mechanism [@c3]"
+        data["sections"][1]["blocks"][3]["summary"] = "Deeper: timing [@c1]"
+        data["figures"][2]["steps"][1]["caption"] = "After [@c2]"
+        data["limitations"] = ["Only two talks [@c5]."]
+        data["brief"]["question"] = "When does invalidation happen [@c3]?"
+        return data
+
+    def test_dek_only_citation_is_number_one_with_a_working_anchor(self):
+        self.write_article(self.cited_everywhere())
+        self.ok(self.render())
+        dist = self.pub / "dist"
+        for name in ("index", "article", "brief"):
+            page = (dist / f"{name}.html").read_text()
+            dek = re.search(r'<p class="dek">(.*?)</p>', page).group(1)
+            self.assertIn('<a href="#ref-1">1</a>', dek, name)
+            self.assertEqual(references(page)[0], (1, "“Dek source”"), name)
+            self.assertIn('<template id="ev-1">', page, name)
+            markdown = (dist / f"{name}.md").read_text()
+            self.assertIn("*Two talks disagree[^1].*", markdown, name)
+            self.assertEqual(footnotes(markdown)[0], (1, "“Dek source”"), name)
+
+    def test_html_and_markdown_number_citations_identically(self):
+        data = self.cited_everywhere()
+        data["glossary"] = [{"term": "Race", "definition": "Two writers [@c3] and a reader [@c1]."}]
+        self.write_article(data)
+        self.ok(self.render())
+        dist = self.pub / "dist"
+        for page_path in sorted(dist.glob("*.html")):
+            page = page_path.read_text()
+            markdown = (dist / (page_path.stem + ".md")).read_text()
+            refs, notes = references(page), footnotes(markdown)
+            self.assertEqual(refs, notes, page_path.name)
+            self.assertEqual([n for n, _ in refs], list(range(1, len(refs) + 1)), page_path.name)
+            used_html = {int(n) for n in re.findall(r'href="#ref-(\d+)"', page)}
+            used_md = {int(n) for n in re.findall(r"\[\^(\d+)\](?!:)", markdown)}
+            self.assertEqual(used_html, {n for n, _ in refs}, page_path.name)
+            self.assertEqual(used_md, {n for n, _ in notes}, page_path.name)
+        article_refs = [label for _, label in references((dist / "article.html").read_text())]
+        self.assertEqual(article_refs[:2], ["“Dek source”", "Reel A — unknown creator, “Talk one "
+                                                              + HOSTILE + "”, 0:00:00–0:00:09 (segments s1)"])
+        self.assertEqual(article_refs[-1], "“Limit”")
+        brief = [label for _, label in references((dist / "brief.html").read_text())]
+        self.assertEqual(brief[:2], ["“Dek source”", "“Cache docs " + HOSTILE + "” — Example"])  # dek, then question
+
+    def test_unknown_or_empty_citations_in_any_inline_field_are_contract_errors(self):
+        cases = [
+            (lambda a: a.update(dek="Dek [@nope]."), r"article\.dek references unknown citation 'nope'"),
+            (lambda a: a["sections"][0].update(heading="H [@nope]"), r"sections\[0\]\.heading references unknown"),
+            (lambda a: a.update(limitations=["L [@nope]"]), r"limitations\[0\] references unknown"),
+            (lambda a: a["brief"].update(question="Q [@nope]?"), r"brief\.question references unknown"),
+            (lambda a: a["sections"][1]["blocks"][3].update(summary="S [@nope]"), r"\.summary references unknown"),
+            (lambda a: a["figures"][0].update(caption="C [@nope]"), r"figures\[0\]\.caption references unknown"),
+            (lambda a: a["figures"][2]["steps"][0].update(caption="C [@nope]"), r"steps\[0\]\.caption references"),
+            (lambda a: a["figures"][1].update(assumptions=["A [@nope]"]), r"assumptions\[0\] references unknown"),
+            (lambda a: a.update(glossary=[{"term": "T", "definition": "D [@nope]."}]), r"glossary\[0\] references"),
+            (lambda a: a["brief"]["evidence"][0].update(text="E [@nope]."), r"evidence\[0\] references unknown"),
+            (lambda a: a.update(dek="Dek [@]."), r"article\.dek has an empty citation marker"),
+            (lambda a: a["sections"][0]["blocks"][0].update(text="P [@ ; ]."), r"empty citation marker"),
+        ]
+        for change, pattern in cases:
+            data = article()
+            change(data)
+            self.write_article(data)
+            result = self.render()
+            self.assertNotIn("Traceback", result.stderr)
+            self.assert_contract_error(result, pattern)
+            self.assertFalse((self.pub / "dist").exists(), pattern)
+
+
+class MarkdownTwins(PublicationFixture):
+    def test_carriage_returns_and_nul_are_normalized_in_the_twin_and_the_embedded_copy(self):
+        data = article()
+        data["sections"][0]["blocks"][0]["text"] = "Line one\r\nline two\rline three \x00 nul \x07 bell [@c1] [@c2]."
+        self.write_article(data)
+        self.ok(self.render())
+        dist = self.pub / "dist"
+        markdown = (dist / "article.md").read_bytes()
+        self.assertNotIn(b"\r", markdown)
+        self.assertNotIn(b"\x00", markdown)
+        self.assertIn("Line one\nline two\nline three \ufffd nul \ufffd bell".encode(), markdown)
+        for page_path in dist.glob("*.html"):
+            page = page_path.read_text(encoding="utf-8")
+            self.assertIn('aria-label="Markdown source of this page">\n', page)
+            self.assertEqual(embedded_markdown(page), (dist / (page_path.stem + ".md")).read_text(encoding="utf-8"))
+        data["limitations"] = ["Lone surrogate \ud800 here."]
+        (self.pub / "article.json").write_text(json.dumps(data))  # ASCII JSON can carry a lone surrogate
+        result = self.render()
+        self.assertNotIn("Traceback", result.stderr)
+        self.assert_contract_error(result, "surrogate")
+
+
+class DraftPackage(PublicationFixture):
+    def test_draft_package_without_pdf_does_not_link_the_missing_pdf(self):
+        self.ok(self.render())
+        self.assertIn('<a href="article.pdf">PDF</a>', (self.pub / "dist" / "article.html").read_text())
+        result = self.ok(self.cli("package", "--workspace", self.ws, "--publication", "g1", "--allow-missing-pdf"))
+        package = Path(result["package_dir"])
+        self.assertFalse((package / "article.pdf").exists())
+        for page_path in package.glob("*.html"):
+            self.assertNotIn("article.pdf", page_path.read_text(), page_path.name)
+        manifest = json.loads((package / "manifest.json").read_text())
+        listed = {f["path"]: f["sha256"] for f in manifest["files"]}
+        self.assertEqual(listed["article.html"], hashlib.sha256((package / "article.html").read_bytes()).hexdigest())
+        with zipfile.ZipFile(result["zip"]) as bundle:
+            self.assertNotIn(b"article.pdf", bundle.read("article.html"))
+        self.ok(self.pdf())
+        result = self.ok(self.cli("package", "--workspace", self.ws, "--publication", "g1"))
+        self.assertTrue(result["complete"])
+        self.assertIn('<a href="article.pdf">PDF</a>', (Path(result["package_dir"]) / "article.html").read_text())
+
+
+class ProgressiveEnhancement(PublicationFixture):
+    def test_enhanced_controls_and_saved_collapse_wait_for_the_initialized_shell(self):
+        assets = SCRIPTS.parent / "assets"
+        style = (assets / "article.css").read_text()
+        self.assertIn("html:not(.ready) .js-only { display: none !important; }", style)
+        self.assertNotRegex(style, r"\.js[ .]")  # html.js only means article.js ran, not that Alpine works
+        self.assertRegex(style, r"\.ready \.site-nav \{ position: fixed")
+        init = (assets / "theme-init.js").read_text()
+        self.assertRegex(init, r'addEventListener\("load"[\s\S]*contains\("ready"\)[\s\S]*remove\("nav-collapsed"')
+        script = (assets / "article.js").read_text()
+        self.assertIn('root.classList.add("ready")', script)
+        self.assertIn('label: "Copy Page"', script)
+        # Alpine is loaded by article.js after the components exist, never directly by the page.
+        self.assertIn('new URL("vendor/alpine-3.17.4.min.js", self)', script)
+        self.assertTrue((assets / "vendor" / "alpine-3.17.4.min.js").is_file())
+        self.assertNotIn("Copy page", script)
+        self.ok(self.render())
+        for page_path in (self.pub / "dist").glob("*.html"):
+            page = page_path.read_text()
+            self.assertNotIn("alpine", page.split("</head>")[0], page_path.name)
+            self.assertIn('<script defer src="assets/article.js"></script>', page)
+
+
 class LinkIntegrity(unittest.TestCase):
     def test_broken_local_links_and_anchors_are_reported(self):
         import publication
@@ -673,6 +832,23 @@ class LinkIntegrity(unittest.TestCase):
         self.assertIn("missing anchor: #nope", joined)
         self.assertIn("outside the package: ../escape.png", joined)
         self.assertEqual(len(problems), 4, problems)
+
+    def test_markdown_twin_links_are_checked(self):
+        import publication
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.html").write_text('<p id="x"></p>')
+            (root / "media").mkdir()
+            (root / "media" / "f.jpg").write_bytes(b"x")
+            (root / "a.md").write_text("[ok](a.html#x) ![f](media/f.jpg) <https://e.org/> [^1]\n"
+                                       "Escaped text \\[not\\]\\(a link\\) stays text.\n"
+                                       "[gone](missing.html) [bad](a.html#nope) ![up](../f.jpg)\n\n[^1]: Note.\n")
+            problems = publication.link_problems(root, ["a.html", "a.md"])
+        joined = "\n".join(problems)
+        self.assertIn("a.md links to a missing file: missing.html", joined)
+        self.assertIn("a.md links to a missing anchor: a.html#nope", joined)
+        self.assertIn("a.md links outside the package: ../f.jpg", joined)
+        self.assertEqual(len(problems), 3, problems)
 
 
 class Themes(unittest.TestCase):

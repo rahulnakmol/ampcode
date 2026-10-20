@@ -9,4 +9,10 @@
   } catch (error) {
     /* storage blocked: keep the system default theme and an expanded navigation */
   }
+  // The saved collapse is only honored once the page shell (Alpine) has initialized and marked the page
+  // ready, because only the shell can show the navigation again. If Alpine or article.js failed to load or
+  // run, the navigation comes back by the load event and the JavaScript-only controls stay hidden.
+  window.addEventListener("load", function () {
+    if (!root.classList.contains("ready")) root.classList.remove("nav-collapsed", "nav-open");
+  });
 })();

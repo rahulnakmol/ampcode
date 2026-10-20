@@ -280,7 +280,7 @@ $D package --workspace "$W" --publication talk1          # --allow-missing-pdf =
 Before claiming visual completion, open `dist/index.html` (the cover) and `dist/article.html` (the
 article, which is what the PDF prints) via `file://` and inspect desktop and mobile widths, the
 navigation, an expanded `details`, a sequence step-through, a citation's evidence panel, the gallery
-viewer, a transcript page, `dist/brief.html`, Copy page, and PDF pages. Optional: add short
+viewer, a transcript page, `dist/brief.html`, Copy Page, and PDF pages. Optional: add short
 `glossary` definitions (`reference/article-contract.md`).
 Fix `article.json` and re-render rather than editing `dist/`. Record `manifest_sha256` and
 `zip_sha256` from the `package` output.

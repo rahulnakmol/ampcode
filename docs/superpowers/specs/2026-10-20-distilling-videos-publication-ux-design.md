@@ -78,7 +78,7 @@ glossary text, references kind) hide items with `hidden`; print shows everything
 ## Copy Page
 
 Modeled on aihero.dev's "Copy page" button (clipboard icon, label swaps to "Copied", Markdown of
-the whole page). Every page has Copy page and Download Markdown in its page toolbar. The copied text
+the whole page). Every page has Copy Page and Download Markdown in its page toolbar. The copied text
 is always the full Markdown twin, embedded in a read-only `<textarea>` inside a "Page Markdown"
 disclosure, regardless of filters, collapsed sections, or panels. Status is announced in a polite
 live region. If the Clipboard API is unavailable or denied, `execCommand('copy')` is tried; if that

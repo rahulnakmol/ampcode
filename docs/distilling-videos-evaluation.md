@@ -211,7 +211,7 @@ python3 evals/distilling-videos/run_eval.py --tools-bin .amp/in/tools/bin \
 Spec: `docs/superpowers/specs/2026-10-20-distilling-videos-publication-ux-design.md`. The renderer
 now writes an offline site: `index.html` is an editorial cover and `article.html` is the article,
 which `pdf` prints (`pdf.json` records `page` and `page_sha256`; an older `index_sha256` record is
-stale). Every page has the collapsible navigation, Copy page, Download Markdown, and its embedded
+stale). Every page has the collapsible navigation, Copy Page, Download Markdown, and its embedded
 Markdown twin. The package, manifest, ZIP, archive, and sign-off contracts are unchanged; the new
 files are ordinary allowlisted `.html`, `.md`, `.js`, and `.css` files.
 
@@ -231,7 +231,7 @@ Observed in the real browser, per publication: no remote requests, console error
 no horizontal overflow at 390 px on any page; desktop navigation collapse persists across pages;
 the mobile menu traps Tab and returns focus; a citation opens the evidence panel (desktop) or
 bottom sheet (mobile) with the URL and scroll position unchanged and focus returned on Escape;
-Copy page wrote the exact Markdown twin to the real clipboard, fell back to `execCommand` when the
+Copy Page wrote the exact Markdown twin to the real clipboard, fell back to `execCommand` when the
 Clipboard API was denied, and selected the full text for manual copying when both were blocked;
 filtered transcripts still copy the full Markdown; search found transcript text, including Japanese
 original text, and its links landed on visible targets; the gallery viewer worked by buttons,
@@ -247,6 +247,54 @@ Limits of this evidence: one browser engine (Chrome Canary on macOS); touch was 
 DevTools, not a physical device; theme contrast is computed for the seven tokens and their tinted
 grounds, not for every pixel of every screenshot; screen readers were not run; the `execCommand`
 fallback and manual-selection paths were forced by stubbing browser APIs.
+
+## Publication review fixes (2026-10-20)
+
+Review defects fixed before the real-video evaluation:
+
+- Citation numbers come from one reading-order list per document, and the HTML page, its Markdown
+  twin, and its references list all use it. Previously the article HTML numbered the dek after the
+  references were built, so a citation used only in the dek had a broken `#ref-n` anchor, and the
+  brief numbered its question last while its Markdown left out the dek.
+- Every inline field (dek, headings, captions, step captions, assumptions, `details` summaries,
+  limitations, brief question, evidence, glossary) has its citations checked before rendering.
+  Unknown or empty markers are contract errors, not tracebacks.
+- Progressive enhancement: `article.js` loads Alpine after it registers the components. The page is
+  marked `ready` only once the shell has initialized. Until then, Alpine-only controls stay hidden,
+  the mobile menu stays in the page flow, and a saved navigation collapse is dropped at `load`.
+- Markdown twins are normalized (CR to LF, NUL and C0 controls to U+FFFD), and the textarea starts
+  with a newline that HTML parsing discards. `render` refuses a page whose embedded text differs
+  from its `.md` twin, and it checks the twins' local `](target)` links.
+- A search result or hash link to an item hidden by a filter clears the filter. This also works on
+  the same page with the same hash.
+- Viewer entrance tweens animate opacity only, so zooming during the entrance keeps the zoom.
+- `package --allow-missing-pdf` removes the article footer's PDF link and rechecks every package
+  page's links.
+- The button label is "Copy Page".
+
+```sh
+make check   # exit 0: bun 4 pass; Python 118 tests OK; "All checks passed."
+python3 evals/distilling-videos/run_eval.py --tools-bin .amp/in/tools/bin \
+  --browser "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary" --capture
+# exit 0; 471 pass, 0 fail (publication 64, rendered pages 211: tech-demo 72, ja-talk 69, g-bio 69)
+```
+
+New browser checks, all passing on every publication:
+
+- Alpine, `article.js`, or both are blocked with a saved collapse and the Nord theme: the
+  navigation is visible at 1280 px and 390 px, no `.js-only` control shows, all demo steps and
+  Download Markdown are present, the theme still applies, and citations stay `#ref-n` links.
+- With scripts restored, the saved collapse applies again.
+- A search result to a filtered-out transcript segment on the same page (same hash) reveals the
+  segment and scrolls it into view. A hash change does the same.
+- Pressing + while the viewer's entrance tween is running keeps `scale(1.5)`, shows 150%, and ends
+  at opacity 1.
+- On every page, the textarea value equals the `.md` file read from disk.
+- The Copy Page label is exact.
+
+Harness check: each publication's draft package (before the PDF exists) has no `article.pdf`
+link. Captures are in `.amp/in/artifacts/distilling-videos-publication-review-fixes/`, which is
+ignored.
 
 ## Not tested
 
