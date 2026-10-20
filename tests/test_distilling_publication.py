@@ -6,6 +6,7 @@ No network or paid calls.
 """
 
 import copy
+import html
 import hashlib
 import json
 import re
@@ -194,14 +195,16 @@ class RenderSafety(PublicationFixture):
     def test_hostile_source_and_article_text_is_inert(self):
         self.ok(self.render())
         dist = self.pub / "dist"
-        for name in ("index.html", "brief.html"):
+        pages = sorted(p.name for p in dist.glob("*.html"))
+        self.assertGreaterEqual(len(pages), 9, pages)
+        for name in pages:
             page = (dist / name).read_text()
             self.assertNotIn("<script>alert", page)
             self.assertNotIn("<img src=x", page)
             self.assertIn("&lt;script&gt;alert", page)
             scripts = re.findall(r"<script[^>]*>", page)
             self.assertTrue(all("src=\"assets/" in tag for tag in scripts), scripts)
-        index = (dist / "index.html").read_text()
+        index = (dist / "article.html").read_text()
         self.assertIn("https://example.org/docs?a=1&amp;b=2", index)
         markdown = (dist / "article.md").read_text()
         self.assertNotIn("<script>", markdown)
@@ -209,12 +212,16 @@ class RenderSafety(PublicationFixture):
     def test_no_remote_assets_or_fetch(self):
         self.ok(self.render())
         dist = self.pub / "dist"
-        page = (dist / "index.html").read_text()
-        for tag in re.findall(r"<(?:script|link|img|source|iframe)\b[^>]*>", page):
-            self.assertNotRegex(tag, r"(?:src|href)=\"(?:https?:)?//", tag)
-        self.assertIn("connect-src 'none'", page)
-        self.assertNotRegex((dist / "assets" / "article.js").read_text(), r"\bfetch\(|XMLHttpRequest")
+        for path in dist.glob("*.html"):
+            page = path.read_text()
+            for tag in re.findall(r"<(?:script|link|img|source|iframe)\b[^>]*>", page):
+                self.assertNotRegex(tag, r"(?:src|href)=\"(?:https?:)?//", tag)
+            self.assertIn("connect-src 'none'", page)
+        for script in ("article.js", "theme-init.js", "search-index.js", "vendor/gsap-3.15.0.min.js",
+                       "vendor/alpine-3.17.4.min.js"):
+            self.assertNotRegex((dist / "assets" / script).read_text(), r"\bfetch\(|XMLHttpRequest|sendBeacon|WebSocket")
         self.assertTrue((dist / "assets" / "vendor" / "LICENSE-alpinejs.md").is_file())
+        self.assertTrue((dist / "assets" / "vendor" / "LICENSE-gsap.md").is_file())
 
     def test_unsafe_urls_and_paths_rejected(self):
         bad = article()
@@ -258,7 +265,7 @@ class RenderReferences(PublicationFixture):
 
     def test_stable_citations_resolve_to_timestamps(self):
         self.ok(self.render())
-        index = (self.pub / "dist" / "index.html").read_text()
+        index = (self.pub / "dist" / "article.html").read_text()
         self.assertIn('href="#ref-1"', index)
         self.assertIn('id="ref-1"', index)
         self.assertIn("https://www.youtube.com/watch?v=abcdefghi01&amp;t=0s", index)
@@ -331,7 +338,7 @@ class CitationMarkers(PublicationFixture):
         data["brief"]["evidence"][0]["citations"] = ["c1", "c2"]
         self.write_article(data)
         self.ok(self.render())
-        index = (self.pub / "dist" / "index.html").read_text()
+        index = (self.pub / "dist" / "article.html").read_text()
         assumptions = re.search(r'<div class="assumptions"><p>Assumptions(.*?)</p>', index).group(1)
         self.assertEqual(assumptions.count("<sup"), 1, assumptions)
         self.assertRegex(assumptions, r'<sup class="cite"><a href="#ref-1">1</a>, <a href="#ref-2">2</a></sup>')
@@ -393,7 +400,7 @@ class GroupedAttribution(PublicationFixture):
     def test_reels_attribute_each_source(self):
         result = self.ok(self.render())
         self.assertEqual(result["status"], "rendered")
-        index = (self.pub / "dist" / "index.html").read_text()
+        index = (self.pub / "dist" / "article.html").read_text()
         self.assertIn("Reel A", index)
         self.assertIn("Reel B", index)
         self.assertIn("Talk one &lt;script&gt;", index)
@@ -424,8 +431,13 @@ class PdfCommand(PublicationFixture):
         self.assertEqual(result["status"], "rendered")
         self.assertTrue((self.pub / "dist" / "article.pdf").read_bytes().startswith(b"%PDF-"))
         log = (self.root / "browser.log").read_text()
-        self.assertIn("index.html?print=1", log)
+        self.assertIn("article.html?print=1", log)
+        self.assertNotIn("index.html", log)
         self.assertIn("--headless", log)
+        record = json.loads((self.pub / "pdf.json").read_text())
+        self.assertEqual(record["page"], "article.html")
+        self.assertEqual(record["page_sha256"],
+                         hashlib.sha256((self.pub / "dist" / "article.html").read_bytes()).hexdigest())
 
 
 class Packaging(PublicationFixture):
@@ -442,7 +454,12 @@ class Packaging(PublicationFixture):
         package = Path(result["package_dir"])
         manifest = json.loads((package / "manifest.json").read_text())
         paths = {f["path"] for f in manifest["files"]}
-        for required in ("index.html", "article.md", "brief.md", "brief.html", "article.pdf", "coverage.json",
+        dist_files = {p.relative_to(self.pub / "dist").as_posix() for p in (self.pub / "dist").rglob("*") if p.is_file()}
+        self.assertLessEqual(dist_files, paths, "every rendered page, Markdown twin, and asset is packaged")
+        for required in ("index.html", "index.md", "article.html", "article.md", "brief.md", "brief.html",
+                         "transcripts.md", "transcript-v1.html", "transcript-v1.original.md", "gallery.md",
+                         "glossary.md", "references.md", "assets/search-index.js", "assets/themes.css",
+                         "assets/THEMES.md", "assets/vendor/gsap-3.15.0.min.js", "article.pdf", "coverage.json",
                          "article.json", "sources/v1/transcript/original.md", "sources/v1/transcript/english.md",
                          "sources/v1/transcript/segments.json", "sources/v2/transcript/english.md",
                          "sources/v2/frames/full/f000012000.jpg", "sources/v2/frames/thumbs/f000015000.jpg",
@@ -505,6 +522,234 @@ class Packaging(PublicationFixture):
         self.ok(self.pdf())
         result = self.ok(self.package())
         self.assertFalse(result["complete"])
+
+
+PAGES = ("index.html", "article.html", "brief.html", "transcripts.html", "transcript-v1.html",
+         "transcript-v1.original.html", "transcript-v2.html", "transcript-v2.original.html", "gallery.html",
+         "glossary.html", "references.html")
+NAV_LABELS = ["Overview", "Article", "Brief", "Transcripts", "Gallery", "Glossary", "References"]
+
+
+def embedded_markdown(page):
+    match = re.search(r'<textarea id="page-markdown"[^>]*>(.*?)</textarea>', page, re.S)
+    return html.unescape(match.group(1)) if match else None
+
+
+class SitePages(PublicationFixture):
+    def test_every_page_has_nav_tools_and_its_full_markdown(self):
+        self.ok(self.render())
+        dist = self.pub / "dist"
+        self.assertEqual(sorted(p.name for p in dist.glob("*.html")), sorted(PAGES))
+        for name in PAGES:
+            page = (dist / name).read_text()
+            nav = re.search(r'<ul class="nav-list">(.*?)</ul>', page).group(1)
+            self.assertEqual(re.findall(r">([A-Za-z]+)</a>", nav), NAV_LABELS, name)
+            self.assertEqual(nav.count('aria-current="page"'), 1, name)
+            md_name = name[:-5] + ".md"
+            self.assertIn(f'<a class="download-md" href="{md_name}" download>', page)
+            self.assertIn('class="copy-page js-only"', page)
+            self.assertIn('role="status" aria-live="polite"', page)
+            self.assertEqual(embedded_markdown(page), (dist / md_name).read_text(encoding="utf-8"), name)
+        self.assertIn("Start reading", (dist / "index.html").read_text())
+        self.assertIn('id="s-hook"', (dist / "article.html").read_text())
+        self.assertNotIn('id="s-hook"', (dist / "index.html").read_text())
+
+    def test_transcript_pages_keep_every_segment(self):
+        self.ok(self.render())
+        dist = self.pub / "dist"
+        workspace = self.ws / "sources" / "v2" / "transcript"
+        segments = json.loads((workspace / "segments.json").read_text())["segments"]
+        english = (dist / "transcript-v2.html").read_text()
+        original = (dist / "transcript-v2.original.html").read_text()
+        for segment in segments:
+            self.assertIn(f'id="seg-{segment["id"]}"', english)
+            self.assertIn(html.escape(segment["english"]), english)
+            self.assertIn(html.escape(segment["text"]), original)
+        self.assertIn('lang="en"', original.split("<body", 1)[0])
+        self.assertIn("Transcript gap", english)
+        self.assertNotIn("<script>alert", english + original)
+        # The Markdown twin is the verified evidence file, with frame links pointed at dist/media.
+        evidence_md = (workspace / "english.md").read_text()
+        twin = (dist / "transcript-v2.md").read_text()
+        self.assertEqual(twin.replace("](media/v2/thumbs/", "](../frames/thumbs/")
+                         .replace("](media/v2/f0", "](../frames/full/f0"), evidence_md + ("" if evidence_md.endswith("\n") else "\n"))
+        for target in re.findall(r"\]\((media/[^)]+)\)", twin):
+            self.assertTrue((dist / target).is_file(), target)
+
+    def test_citation_evidence_templates_and_references_page(self):
+        self.ok(self.render())
+        dist = self.pub / "dist"
+        article = (dist / "article.html").read_text()
+        templates = re.findall(r'<template id="ev-(\d+)">(.*?)</template>', article, re.S)
+        self.assertEqual([int(n) for n, _ in templates], list(range(1, len(templates) + 1)))
+        first = templates[0][1]
+        self.assertIn('href="transcript-v1.html#seg-s1"', first)
+        self.assertIn("So writes invalidate eagerly", first)
+        self.assertIn('href="#ref-1"', first)
+        self.assertIn('id="evidence-panel"', article)
+        self.assertNotIn("<script>alert", "".join(t for _, t in templates))
+        references = (dist / "references.html").read_text()
+        for anchor in ("src-v1", "src-v2", "cite-c1", "cite-c3", "credit-g-1"):
+            self.assertIn(f'id="{anchor}"', references)
+        self.assertIn("assets/vendor/LICENSE-gsap.md", references)
+        gallery = (dist / "gallery.html").read_text()
+        self.assertEqual(gallery.count('class="g-item'), 4)  # capture, two demo steps, original figure
+        self.assertIn("untouched", gallery)
+        self.assertIn("our reconstruction", gallery)
+
+    def test_search_index_is_bundled_data(self):
+        self.ok(self.render())
+        script = (self.pub / "dist" / "assets" / "search-index.js").read_text()
+        prefix = "window.DISTILL_SEARCH = "
+        body = script.split(prefix, 1)[1].rstrip().rstrip(";")
+        entries = json.loads(body)["entries"]
+        hrefs = {e[0] for e in entries}
+        self.assertIn("transcript-v2.html#seg-s2", hrefs)
+        self.assertIn("article.html#s-mechanism", hrefs)
+        self.assertIn("brief.html#E1", hrefs)
+        self.assertTrue(any("stale value" in e[3] for e in entries))
+        self.assertNotIn("</script", script)
+        self.assertNotRegex(script, r"\bfetch\(|XMLHttpRequest")
+
+
+class Glossary(PublicationFixture):
+    def test_glossary_renders_short_cited_definitions(self):
+        data = article()
+        data["glossary"] = [{"term": "Stale read " + HOSTILE, "definition": "A read of an old value [@c2]."},
+                            {"term": "Invalidation", "definition": "Removing a cached entry."}]
+        self.write_article(data)
+        self.ok(self.render())
+        page = (self.pub / "dist" / "glossary.html").read_text()
+        self.assertIn('id="term-invalidation"', page)
+        self.assertIn("Stale read &lt;script&gt;", page)
+        self.assertIn('<sup class="cite"><a href="#ref-1">1</a></sup>', page)
+        self.assertIn('<template id="ev-1">', page)
+        self.assertIn("[^1]", (self.pub / "dist" / "glossary.md").read_text())
+        index = json.loads((self.pub / "dist" / "assets" / "search-index.js").read_text()
+                           .split("= ", 1)[1].rstrip().rstrip(";"))
+        self.assertIn("glossary.html#term-invalidation", {e[0] for e in index["entries"]})
+
+    def test_glossary_contract_errors(self):
+        cases = [
+            ({"term": "X", "definition": "y" * 321}, r"320"),
+            ({"term": "X", "definition": "Short [@nope]."}, r"nope"),
+            ({"term": "X", "definition": "ok", "see": "Y"}, r"unknown field"),
+            ({"term": 5, "definition": "ok"}, r"term"),
+            ({"term": "X"}, r"definition"),
+        ]
+        for entry, pattern in cases:
+            data = article()
+            data["glossary"] = [entry]
+            self.write_article(data)
+            result = self.render()
+            self.assertNotIn("Traceback", result.stderr)
+            self.assert_contract_error(result, pattern)
+        data = article()
+        data["glossary"] = [{"term": "Cache", "definition": "a"}, {"term": " cache ", "definition": "b"}]
+        self.write_article(data)
+        self.assert_contract_error(self.render(), "duplicate glossary term")
+        data["glossary"] = "Cache: a store"
+        self.write_article(data)
+        self.assert_contract_error(self.render(), "glossary must be a list")
+
+    def test_absent_glossary_renders_an_honest_empty_page(self):
+        self.ok(self.render())
+        self.assertIn("No glossary terms were defined", (self.pub / "dist" / "glossary.html").read_text())
+
+
+class LinkIntegrity(unittest.TestCase):
+    def test_broken_local_links_and_anchors_are_reported(self):
+        import publication
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.html").write_text('<p id="x"></p><a href="b.html#y">b</a><a href="#x">x</a>'
+                                         '<a href="missing.md">m</a><a href="#nope">n</a><a href="https://e.org/">e</a>'
+                                         '<a href="article.pdf">pdf</a><img src="../escape.png">')
+            (root / "b.html").write_text('<p id="z"></p>')
+            problems = publication.link_problems(root, ["a.html", "b.html"])
+        joined = "\n".join(problems)
+        self.assertIn("missing anchor: b.html#y", joined)
+        self.assertIn("missing file: missing.md", joined)
+        self.assertIn("missing anchor: #nope", joined)
+        self.assertIn("outside the package: ../escape.png", joined)
+        self.assertEqual(len(problems), 4, problems)
+
+
+class Themes(unittest.TestCase):
+    FAMILIES = {"tokyo-night", "github", "catppuccin", "gruvbox", "nord", "dracula", "solarized", "one", "rose-pine",
+                "kanagawa", "everforest", "ayu", "material", "night-owl", "monokai", "synthwave-84", "cobalt2",
+                "palenight", "tomorrow", "zenburn"}
+
+    def test_every_variant_meets_aa_contrast_and_adaptations_are_labeled(self):
+        import themes
+        resolved = themes.resolved()
+        self.assertEqual({v["family"] for v in resolved} - {"house"}, self.FAMILIES)
+        self.assertEqual(len({v["id"] for v in resolved}), len(resolved))
+        css = themes.css()
+        labels = dict(entry for _, entries in themes.options() for entry in entries)
+        for variant in resolved:
+            values = variant["values"]
+            for ground, color in themes.grounds(values).items():
+                for token in themes.TEXT_TOKENS:
+                    ratio = themes.contrast(values[token], color)
+                    self.assertGreaterEqual(ratio, 4.5, f"{variant['id']} {token} on {ground}: {ratio:.2f}")
+            self.assertIn(f'html[data-theme="{variant["id"]}"]', css)
+            self.assertEqual("(adapted)" in labels[variant["id"]], bool(variant["adaptations"]), variant["id"])
+            for adaptation in variant["adaptations"]:
+                self.assertEqual(adaptation["official"], variant["tokens"][adaptation["token"]][0].lower())
+                self.assertNotEqual(adaptation["official"], adaptation["value"])
+        self.assertFalse([v for v in resolved if v["family"] == "house" and v["adaptations"]])
+        provenance = themes.provenance_md()
+        for family in themes.FAMILIES.values():
+            self.assertIn(f"## {family['name']}", provenance)
+            self.assertTrue(family["source"] and family["license"])
+        self.assertIn("Adapted muted: official #6272a4 (Comment)", provenance)
+
+    def test_default_follows_system_and_print_is_house_light(self):
+        import themes
+        css = themes.css()
+        house = dict(themes.resolve(next(v for v in themes.VARIANTS if v["id"] == "house-light"))[0])
+        self.assertIn("prefers-color-scheme: dark", css)
+        printed = css.split("@media print", 1)[1]
+        self.assertIn(f"--paper: {house['bg']}", printed)
+        self.assertIn("html[data-theme], html:not([data-theme])", printed)
+        style = (SCRIPTS.parent / "assets" / "article.css").read_text()
+        self.assertNotRegex(style, r"img[^{]*\{[^}]*\bfilter\s*:")
+
+    def test_theme_storage_is_guarded(self):
+        for name in ("theme-init.js", "article.js"):
+            script = (SCRIPTS.parent / "assets" / name).read_text()
+            for access in re.finditer(r"localStorage\.(?:get|set|remove)Item", script):
+                before = script[:access.start()]
+                self.assertGreater(before.count("try {"), before.count("catch ("), f"{name}: unguarded storage access")
+
+
+class VendoredMotion(unittest.TestCase):
+    def test_gsap_is_pinned_licensed_and_offline(self):
+        vendor = SCRIPTS.parent / "assets" / "vendor"
+        data = (vendor / "gsap-3.15.0.min.js").read_bytes()
+        provenance = (vendor / "PROVENANCE.md").read_text()
+        self.assertIn(hashlib.sha256(data).hexdigest(), provenance)
+        self.assertTrue(data.startswith(b"/*!\n * GSAP 3.15.0"))
+        self.assertIn(b"Subject to the terms at https://gsap.com/standard-license.", data[:400])
+        self.assertIn("standard-license", (vendor / "LICENSE-gsap.md").read_text())
+        self.assertNotRegex(data.decode(), r"\bfetch\(|XMLHttpRequest|sendBeacon")
+        script = (SCRIPTS.parent / "assets" / "article.js").read_text()
+        self.assertIn("!!window.gsap", script)
+        self.assertIn("prefers-reduced-motion: reduce", script)
+        self.assertNotIn("ScrollTrigger", script)
+
+
+class PdfRecordCompatibility(PublicationFixture):
+    def test_old_index_pdf_record_is_stale(self):
+        self.ok(self.render())
+        self.ok(self.pdf())
+        record = json.loads((self.pub / "pdf.json").read_text())
+        old = {"schema_version": 1, "index_sha256": hashlib.sha256((self.pub / "dist" / "index.html").read_bytes())
+               .hexdigest(), "pdf_sha256": record["pdf_sha256"], "browser": "x", "pages": 1, "rendered_at": "t"}
+        (self.pub / "pdf.json").write_text(json.dumps(old))
+        result = self.cli("package", "--workspace", self.ws, "--publication", "g1")
+        self.assert_contract_error(result, "PDF")
 
 
 class SinglePublication(PublicationFixture):

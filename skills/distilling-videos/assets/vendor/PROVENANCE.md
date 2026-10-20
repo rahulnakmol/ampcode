@@ -14,3 +14,25 @@
 
 To upgrade, repeat `npm pack`, copy `dist/cdn.min.js` under a new versioned name, update `ALPINE` in
 `scripts/publication.py`, and update the hashes above.
+
+## gsap-3.15.0.min.js
+
+- Package: `gsap@3.15.0` from the npm registry (`npm pack gsap@3.15.0`).
+- Source file: `package/dist/gsap.min.js` (core only; no ScrollTrigger or other plugins), copied byte for byte.
+- npm tarball integrity: `sha512-dMW4CWBTUK1AEEDeZc1g4xpPGIrSf9fJF960qbTZmN/QwZIWY5wgliS6JWl9/25fpTGJrMRtSjGtOmPnfjZB+A==`
+  (tarball SHA-256 `d2e33ad202d4811e9084883f7ff9a27967ac4095caef51ca4c9d20697a253b1c`).
+- File SHA-256: `92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb`
+- Project: https://gsap.com, https://github.com/greensock/GSAP
+- License: Standard "No Charge" GSAP License, https://gsap.com/standard-license (not OSI). See
+  `LICENSE-gsap.md`. The header notice in the file is kept unaltered.
+- Network behavior: the bundle makes no requests. Its only URLs are the license header and an SVG
+  namespace string.
+- Use: optional motion. `article.js` checks for `window.gsap` and works without it.
+
+To upgrade, repeat `npm pack`, copy `dist/gsap.min.js` under a new versioned name, update `GSAP` in
+`scripts/publication.py`, and update the hashes above.
+
+## Generated, not vendored
+
+`themes.css` and `THEMES.md` are generated at render time by `scripts/themes.py`, which records each
+theme's original source, license, token mapping, and contrast adaptations.

@@ -14,8 +14,8 @@ distill.py package --workspace W --publication P [--allow-missing-pdf]
 
 | Command | Reads | Writes | Status |
 | --- | --- | --- | --- |
-| `render` | `article.json`, `figures/`, and evidence for every video in the publication | `dist/` (replaced atomically) and `render.json`. Deletes `pdf.json`, because a new render invalidates the old PDF. | `rendered` |
-| `pdf` | `dist/index.html?print=1` | `dist/article.pdf` and `pdf.json` (`index_sha256`, `pdf_sha256`, `browser`, `pages`) | `rendered` |
+| `render` | `article.json`, `figures/`, and evidence for every video in the publication | `dist/` (replaced atomically) and `render.json` (`renderer: 2`). Deletes `pdf.json`, because a new render invalidates the old PDF. | `rendered` |
+| `pdf` | `dist/article.html?print=1` (the article, not the cover) | `dist/article.pdf` and `pdf.json` (`page: "article.html"`, `page_sha256`, `pdf_sha256`, `browser`, `pages`) | `rendered` |
 | `package` | `dist/`, `render.json`, `pdf.json`, and the evidence | `package/` with `manifest.json`, plus `<P>-<revision>.zip` | `packaged` |
 
 ### Render preconditions
@@ -35,7 +35,7 @@ distill.py package --workspace W --publication P [--allow-missing-pdf]
 
 `package` re-verifies `render.json` input and output checksums and fails if the render is stale. It then checks the PDF:
 
-- The PDF must match the current `index.html`. Otherwise packaging fails, unless you pass `--allow-missing-pdf`. That flag produces `complete: false`.
+- The PDF must match the current `article.html` (`pdf.json` `page` and `page_sha256`). A `pdf.json` written by renderer 1 (which printed `index.html` and recorded `index_sha256`) counts as stale. Otherwise packaging fails, unless you pass `--allow-missing-pdf`. That flag produces `complete: false`.
 - A `partial` article also produces `complete: false`.
 
 ## `article.json`
@@ -55,9 +55,12 @@ Unknown fields are rejected at every level. Text fields must not be empty. Optio
   "figures": [],
   "citations": [],
   "brief": {"question": "optional", "evidence": [], "proposals": []},
-  "limitations": ["inline text"]
+  "limitations": ["inline text"],
+  "glossary": [{"term": "plain text", "definition": "optional; inline text, at most 320 characters"}]
 }
 ```
+
+`glossary` is optional. Terms are plain text and unique (case-insensitive); definitions are short inline text (at most 320 characters, citations allowed and validated). Without it, the glossary page says that no terms were defined.
 
 ### Inline text
 
@@ -122,12 +125,18 @@ The brief must contain both `evidence` and `proposals`, even if `proposals` is e
 
 | File | Contents |
 | --- | --- |
-| `index.html` | The article: masthead, source slate with a tape map per reel, sections, method and limits, references |
+| `index.html` | Cover: headline, dek, partial notice, source slate with tape maps, "Start reading", and a card for every page |
+| `article.html` | The article: masthead, source slate, sections, method and limits, references. Printed to `article.pdf` |
 | `brief.html` | The research brief |
-| `article.md`, `brief.md` | Readable Markdown with escaped text, `[^n]` footnotes, and timestamped URLs |
+| `transcripts.html` | Transcript index: per-source coverage, gaps, uncertainty, links |
+| `transcript-<video>.html`, `transcript-<video>.original.html` | Complete English (labeled translation or clean English) and original-language transcripts; anchors `seg-<id>`, gaps, uncertainty, attached selected frames; filterable |
+| `gallery.html` | Every placed figure, sequence step, and selected or cited frame, with provenance; viewer with zoom, pan, fit, previous/next by buttons, keyboard, pointer, and touch |
+| `glossary.html` | Optional short definitions |
+| `references.html` | Original videos, video citations (`cite-<id>`), external sources, visual credits, bundled software and theme credits |
+| `*.md` | One Markdown twin per page (`index.md`, `article.md`, `brief.md`, `transcripts.md`, `transcript-<video>[.original].md`, `gallery.md`, `glossary.md`, `references.md`). Escaped text, `[^n]` footnotes, timestamped URLs. Transcript twins are the verified evidence Markdown with frame links pointed at `media/` |
 | `coverage.json` | Per-source transcript coverage, gaps, uncertain segments, and frame counts (with `semantic_completeness: false`); citation, figure, and brief counts; limitations and warnings |
-| `assets/` | `article.css`, `article.js`, `vendor/alpine-3.17.4.min.js`, its MIT license, and `PROVENANCE.md` |
-| `media/`, `figures/` | Copied images |
+| `assets/` | `article.css`, `article.js`, `theme-init.js`, generated `themes.css`, `THEMES.md` (theme sources, licenses, contrast adaptations), and `search-index.js`; `vendor/alpine-3.17.4.min.js` (MIT), `vendor/gsap-3.15.0.min.js` (Standard "No Charge" GSAP License), their license files, and `PROVENANCE.md` |
+| `media/`, `figures/` | Copied images: placed, selected, and cited frames (full and thumbnail), and original figures |
 | `article.pdf` | Written by `pdf` |
 
 The tape map draws ticks at cited moments and hatching over transcript gaps. It has a text equivalent, so the meaning is not carried by color alone.
@@ -137,6 +146,11 @@ The tape map draws ticks at cited moments and hatching over transcript gaps. It 
 - Pages load only relative `assets/` files and run under the CSP `default-src 'none'; script-src 'self' 'unsafe-eval'; style-src 'self'; img-src 'self' data:; connect-src 'none'; ...`. `unsafe-eval` is required by Alpine's expression evaluator.
 - `render` refuses output that references a remote script, style, image, or frame.
 - Links to YouTube and web references are ordinary navigation links with `rel="noopener noreferrer"`.
+- `render` refuses output with a broken local link: every relative `href`/`src` must resolve to a rendered file (except `article.pdf`, written later by `pdf`), and every cross-page `#fragment` must exist on its target page. Links that leave the package (`../`, absolute paths, other schemes) are errors.
+- Search uses `assets/search-index.js`, loaded with `<script src>`; nothing is fetched. HTML-significant characters in the index are `\u` escaped.
+- Every page embeds its full Markdown twin in a read-only `<textarea>` ("Page Markdown"). Copy page copies exactly that text whatever is filtered or open; it falls back to `execCommand('copy')`, then to selecting the text for manual copying. Download Markdown is an ordinary `<a download>` link to the twin.
+- Inline citation links stay `#ref-n` links. With JavaScript, a plain click opens the evidence panel (desktop) or sheet (mobile) from an inert `<template>` without navigating; modifier clicks and no-JS readers follow the link.
+- Navigation, theme, search, filters, panel, viewer, and copy state live in Alpine components; only the theme and the desktop navigation collapse are stored, in `localStorage`, guarded so blocked storage falls back to defaults. GSAP is optional decoration: once-only section reveals start only as content enters the viewport and never from hidden; with reduced motion, print, or GSAP missing, nothing animates.
 - `article.js` adds static print equivalents: `?print=1` and `beforeprint` open every `details` element, and print CSS shows every sequence step as a contact sheet.
 
 ## Package (`package/` and ZIP)
@@ -169,3 +183,5 @@ The manifest has this shape:
 - Coverage numbers describe the transcript and the frame sampling. They do not show that the content was understood.
 - PDF output depends on a locally installed Chromium-family browser. Tests use a fake browser, and a real-browser render is a manual or integration check.
 - The publication uses system font stacks rather than bundled fonts, so typography varies slightly across operating systems.
+- Theme palettes are mapped to seven tokens; they recolor text, rules, and backgrounds only. Many official muted or accent colors fail WCAG AA on a reading page and are adapted (labeled in the picker and listed in `THEMES.md`). Print and PDF always use house light.
+- Search is substring matching over the bundled index (no stemming or ranking model). Very long publications produce a larger `search-index.js` and larger pages, because every page carries its Markdown twin.

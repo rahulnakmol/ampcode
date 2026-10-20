@@ -20,7 +20,7 @@ Say this plainly to the user before starting. Never imply more automation than e
 | YouTube download, audio extraction, frame sampling | Implemented; needs `yt-dlp`, `ffmpeg`, `ffprobe`, and a JavaScript runtime for YouTube. One real macOS evaluation (one public video, 2026-10-19): the first download failed with HTTP 403 while yt-dlp warned that no JavaScript runtime was found; with node enabled it succeeded, and four later runs succeeded. Treat 403s as intermittent, not proof the video is gone. Not tested in orbs or on Linux |
 | **Transcription and translation** | **No provider adapter exists, and no provider is selected.** Amp must supply a normalized transcript JSON (manual, captions-derived, agent-produced, or from a provider the user runs). No transcription, caption, or translation accuracy has been measured. Fully unattended URL-to-package is **not** available |
 | Frame selection, research, article and brief writing | Amp's job, guided by this skill |
-| Offline HTML, Markdown, coverage report, ZIP | Implemented, tested offline |
+| Offline site (cover, article, brief, transcripts, gallery, glossary, references), Markdown twins, search, themes, coverage report, ZIP | Implemented, tested offline; real-browser checks with Chrome Canary in the evaluation |
 | PDF | Implemented; needs a local Chromium-family browser. A real Chrome Canary PDF was produced and inspected on macOS in the evaluation |
 | Sign-off, Azure archive, verify, safe cleanup | Implemented against a fake Blob transport. Live Azure is **not tested** and needs user-authorized credentials |
 | Amp orbs (Linux) | **Not tested**. Paths and fonts have Linux fallbacks, but no orb run has happened |
@@ -277,8 +277,11 @@ $D pdf     --workspace "$W" --publication talk1          # exit 3: no browser
 $D package --workspace "$W" --publication talk1          # --allow-missing-pdf => complete:false
 ```
 
-Before claiming visual completion, open `dist/index.html` via `file://` and inspect desktop and
-mobile widths, an expanded `details`, a sequence step-through, `dist/brief.html`, and PDF pages.
+Before claiming visual completion, open `dist/index.html` (the cover) and `dist/article.html` (the
+article, which is what the PDF prints) via `file://` and inspect desktop and mobile widths, the
+navigation, an expanded `details`, a sequence step-through, a citation's evidence panel, the gallery
+viewer, a transcript page, `dist/brief.html`, Copy page, and PDF pages. Optional: add short
+`glossary` definitions (`reference/article-contract.md`).
 Fix `article.json` and re-render rather than editing `dist/`. Record `manifest_sha256` and
 `zip_sha256` from the `package` output.
 

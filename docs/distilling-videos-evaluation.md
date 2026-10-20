@@ -206,6 +206,48 @@ python3 evals/distilling-videos/run_eval.py --tools-bin .amp/in/tools/bin \
 # (same dimensions, max channel delta 16/255, under 0.1% of pixels)
 ```
 
+## Publication UX extension (2026-10-20)
+
+Spec: `docs/superpowers/specs/2026-10-20-distilling-videos-publication-ux-design.md`. The renderer
+now writes an offline site: `index.html` is an editorial cover and `article.html` is the article,
+which `pdf` prints (`pdf.json` records `page` and `page_sha256`; an older `index_sha256` record is
+stale). Every page has the collapsible navigation, Copy page, Download Markdown, and its embedded
+Markdown twin. The package, manifest, ZIP, archive, and sign-off contracts are unchanged; the new
+files are ordinary allowlisted `.html`, `.md`, `.js`, and `.css` files.
+
+The harness was adjusted for the split: the publication category checks that every expected page
+exists, that the cover and article are separate, that each page embeds exactly its `.md` twin, and
+that every page is offline. `capture.mjs` was extended to the interactions listed in the eval
+README. Commands and results (Chrome Canary, offline via a dead proxy):
+
+```sh
+make check   # exit 0: bun 4 pass; Python 111 tests OK; "All checks passed."
+python3 evals/distilling-videos/run_eval.py --tools-bin .amp/in/tools/bin \
+  --browser "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary" --capture
+# exit 0; 429 pass, 0 fail (publication 61, rendered pages 172: tech-demo 59, ja-talk 56, g-bio 56)
+```
+
+Observed in the real browser, per publication: no remote requests, console errors, or exceptions;
+no horizontal overflow at 390 px on any page; desktop navigation collapse persists across pages;
+the mobile menu traps Tab and returns focus; a citation opens the evidence panel (desktop) or
+bottom sheet (mobile) with the URL and scroll position unchanged and focus returned on Escape;
+Copy page wrote the exact Markdown twin to the real clipboard, fell back to `execCommand` when the
+Clipboard API was denied, and selected the full text for manual copying when both were blocked;
+filtered transcripts still copy the full Markdown; search found transcript text, including Japanese
+original text, and its links landed on visible targets; the gallery viewer worked by buttons,
+keys, zoom, pan, drag, and touch swipe; Dracula and four other themes applied and persisted, an
+unknown saved theme and blocked storage fell back safely, system dark selected house dark, and
+print used house light; with GSAP blocked or reduced motion requested, nothing animated and every
+section stayed visible; print emulation and the real PDFs (6, 4, and 7 pages) contain the article
+only, with every sequence step and expanded explanation and no navigation or toolbar text; without
+JavaScript every page showed navigation, steps, the Markdown, and the download link, and citations
+were ordinary links to references.
+
+Limits of this evidence: one browser engine (Chrome Canary on macOS); touch was emulated over
+DevTools, not a physical device; theme contrast is computed for the seven tokens and their tinted
+grounds, not for every pixel of every screenshot; screen readers were not run; the `execCommand`
+fallback and manual-selection paths were forced by stubbing browser APIs.
+
 ## Not tested
 
 - Accuracy of audio transcription, captions, or translation, and any provider. No reference audio

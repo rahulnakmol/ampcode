@@ -2,6 +2,8 @@
 
 Registers `render`, `pdf`, and `package` into distill.py. Reads verified evidence from the
 workspace and an Amp-authored publications/<id>/article.json; see ../reference/article-contract.md.
+Renders an offline multi-page site (cover, article, brief, transcripts, gallery, glossary, references),
+each page with a Markdown twin; the article page is printed to the PDF.
 """
 
 from __future__ import annotations
@@ -20,12 +22,17 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 from urllib.parse import urlsplit
 
 import evidence
+import themes
 from evidence import ContractError, Workspace, check_id, safe_path
 
-RENDERER = 1
+RENDERER = 2
 ASSETS = Path(__file__).resolve().parent.parent / "assets"
 ALPINE = "vendor/alpine-3.17.4.min.js"
-ASSET_FILES = ("article.css", "article.js", ALPINE, "vendor/LICENSE-alpinejs.md", "vendor/PROVENANCE.md")
+GSAP = "vendor/gsap-3.15.0.min.js"
+ASSET_FILES = ("article.css", "article.js", "theme-init.js", ALPINE, GSAP, "vendor/LICENSE-alpinejs.md",
+               "vendor/LICENSE-gsap.md", "vendor/PROVENANCE.md")
+PDF_PAGE = "article.html"
+GLOSSARY_LIMIT = 320
 CSP = ("default-src 'none'; script-src 'self' 'unsafe-eval'; style-src 'self'; img-src 'self' data:; "
        "font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'")
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
@@ -156,6 +163,8 @@ def load_sources(workspace: Workspace, plan: Dict[str, Any]) -> Tuple[List[Dict[
             "max_sampling_gap": frames.get("max_sampling_gap_seconds") if frames else None,
             "selected": (evidence.read_json(base / "selection.json")["frame_ids"]
                          if "selection.json" in files else []),
+            "english_md": (base / "transcript" / "english.md").read_text(encoding="utf-8"),
+            "original_md": (base / "transcript" / "original.md").read_text(encoding="utf-8"),
         })
     return sources, problems, inputs
 
@@ -169,7 +178,7 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
     """Validate structure and every reference. Adds referenced figure files to inputs."""
     top = ("schema_version", "publication_id", "title", "dek", "status", "sections", "figures", "citations",
            "brief", "limitations")
-    problems = _fields(data, "article", top, ("partial_reason", "audience"))
+    problems = _fields(data, "article", top, ("partial_reason", "audience", "glossary"))
     if not isinstance(data, dict):
         return problems, []
     warnings: List[str] = []
@@ -421,6 +430,26 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
         if len(all_ids) != len(set(all_ids)):
             problems.append("brief evidence and proposal ids must be unique")
 
+    glossary = data.get("glossary")
+    if glossary is not None and not isinstance(glossary, list):
+        problems.append("article.glossary must be a list of {term, definition}")
+    terms = set()
+    for index, entry in enumerate(glossary if isinstance(glossary, list) else []):
+        label = f"glossary[{index}]"
+        problems += _fields(entry, label, ("term", "definition"))
+        if not isinstance(entry, dict):
+            continue
+        problems += _texts(entry, ("term", "definition"), label)
+        if isinstance(entry.get("term"), str) and entry["term"].strip():
+            if _normalize(entry["term"]) in terms:
+                problems.append(f"duplicate glossary term {entry['term']!r}")
+            terms.add(_normalize(entry["term"]))
+        if isinstance(entry.get("definition"), str):
+            if len(plain(entry["definition"]).strip()) > GLOSSARY_LIMIT:
+                problems.append(f"{label}.definition is longer than {GLOSSARY_LIMIT} characters; glossary "
+                                "definitions must be short")
+            cite(text_cites(entry["definition"]), label)
+
     cited_videos = {citations[c].get("video_id") for c in used
                     if citations[c].get("kind", "video") == "video" and isinstance(citations[c].get("video_id"), str)}
     for video_id in plan["video_ids"]:
@@ -435,6 +464,25 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
 # Rendering
 
 
+NAV = (("index.html", "Overview", "overview"), ("article.html", "Article", "article"), ("brief.html", "Brief", "brief"),
+       ("transcripts.html", "Transcripts", "transcripts"), ("gallery.html", "Gallery", "gallery"),
+       ("glossary.html", "Glossary", "glossary"), ("references.html", "References", "references"))
+LATER_OUTPUTS = {"article.pdf"}  # written by `pdf` after render; links to it are expected
+
+
+def plain(text: str) -> str:
+    """Inline text without markup or citation markers, for search and length checks."""
+    return "".join(v for k, v in tokens(text) if k != "cite") if isinstance(text, str) else ""
+
+
+def lang_code(language: str) -> str:
+    return language if re.fullmatch(r"[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*", language or "") else "und"
+
+
+def slug(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", text.casefold()).strip("-")[:48]
+
+
 class Context:
     def __init__(self, article: Dict[str, Any], sources: List[Dict[str, Any]]):
         self.article = article
@@ -443,6 +491,9 @@ class Context:
         self.figures = {f["id"]: f for f in article["figures"]}
         self.order: List[str] = []
         self.figure_numbers: Dict[str, int] = {}
+        self.media = self._media_frames()
+        self.gallery = self._gallery()
+        self.terms = self._terms()
 
     def _resolve(self, citation: Dict[str, Any]) -> Dict[str, Any]:
         if citation.get("kind") == "web":
@@ -464,6 +515,71 @@ class Context:
                 "url": evidence.timestamp_url(source["youtube_id"], start),
                 "chip": f"{source['reel']} {evidence.timestamp(start)}"}
 
+    def _media_frames(self) -> Dict[Tuple[str, str], Dict[str, Any]]:
+        """Frames copied into dist/media: placed, selected, cited, and linked from transcript Markdown."""
+        wanted = set()
+        for f in self.article["figures"]:
+            if f["kind"] == "capture":
+                wanted.add((f["video_id"], f["frame_id"]))
+            elif f["kind"] == "sequence":
+                wanted |= {(f["video_id"], s["frame_id"]) for s in f["steps"]}
+        wanted |= {(c["video_id"], c["frame_id"]) for c in self.article["citations"] if c.get("frame_id")}
+        for source in self.sources.values():
+            frames = source["frames"] or {}
+            wanted |= {(source["id"], fid) for fid in source["selected"] if fid in frames}
+            by_path = {p: fid for fid, f in frames.items() for p in (f["path"], f["thumbnail"])}
+            for rel in re.findall(r"\]\(\.\./([^)\s]+)\)", source["english_md"]):
+                if rel in by_path:
+                    wanted.add((source["id"], by_path[rel]))
+        return {key: self.sources[key[0]]["frames"][key[1]] for key in sorted(wanted)}
+
+    def _gallery(self) -> List[Dict[str, Any]]:
+        items: List[Dict[str, Any]] = []
+        shown = set()
+        numbers = {}
+        for figure in self.article["figures"]:
+            numbers[figure["id"]] = len(numbers) + 1
+            if figure["kind"] == "original":
+                items.append({"kind": "original", "figure": figure, "src": figure["image"], "thumb": figure["image"],
+                              "alt": figure["alt"], "caption": figure["caption"], "number": numbers[figure["id"]]})
+                continue
+            steps = ([{"frame_id": figure["frame_id"], "alt": figure["alt"], "caption": figure["caption"]}]
+                     if figure["kind"] == "capture" else figure["steps"])
+            for index, step in enumerate(steps):
+                full, thumb = frame_media(figure["video_id"], step["frame_id"])
+                shown.add((figure["video_id"], step["frame_id"]))
+                items.append({"kind": figure["kind"], "figure": figure, "video_id": figure["video_id"],
+                              "frame_id": step["frame_id"], "src": full, "thumb": thumb, "alt": step["alt"],
+                              "caption": step["caption"], "number": numbers[figure["id"]],
+                              "step": index + 1 if figure["kind"] == "sequence" else None,
+                              "steps": len(steps)})
+        for (video_id, frame_id), frame in self.media.items():
+            if (video_id, frame_id) in shown:
+                continue
+            source = self.sources[video_id]
+            full, thumb = frame_media(video_id, frame_id)
+            items.append({"kind": "frame", "video_id": video_id, "frame_id": frame_id, "src": full, "thumb": thumb,
+                          "alt": f"Source frame {frame_id} from Reel {source['reel']} at "
+                                 f"{evidence.timestamp(frame['t'])} (no description recorded)",
+                          "caption": None})
+        for index, item in enumerate(items, 1):
+            item["id"] = f"g-{index}"
+            if item.get("video_id"):
+                source = self.sources[item["video_id"]]
+                item["reel"] = source["reel"]
+                item["t"] = source["frames"][item["frame_id"]]["t"]
+        return items
+
+    def _terms(self) -> List[Dict[str, Any]]:
+        terms, seen = [], set()
+        for index, entry in enumerate(self.article.get("glossary") or [], 1):
+            anchor = "term-" + (slug(entry["term"]) or str(index))
+            while anchor in seen:
+                anchor = f"{anchor}-{index}"
+            seen.add(anchor)
+            terms.append({**entry, "anchor": anchor})
+        return terms
+
     def number(self, cid: str) -> int:
         if cid not in self.order:
             self.order.append(cid)
@@ -471,6 +587,7 @@ class Context:
 
     def reset(self) -> None:
         self.order = []
+        self.figure_numbers = {}
 
 
 def cite_marker(ids: List[str]) -> str:
@@ -565,8 +682,8 @@ def figure_html(figure: Dict[str, Any], ctx: Context) -> str:
         t = source["frames"][figure["frame_id"]]["t"]
         src, _ = frame_media(figure["video_id"], figure["frame_id"])
         link = evidence.timestamp_url(source["youtube_id"], t)
-        slug = (f'Fig. {number} · Source capture · <a href="{E(link)}" rel="noopener noreferrer">Reel '
-                f'{source["reel"]} {evidence.timestamp(t)}</a> · {E(figure["frame_id"])}')
+        slug_text = (f'Fig. {number} · Source capture · <a href="{E(link)}" rel="noopener noreferrer">Reel '
+                     f'{source["reel"]} {evidence.timestamp(t)}</a> · {E(figure["frame_id"])}')
         notes = ""
     else:
         src = figure["image"]
@@ -578,13 +695,13 @@ def figure_html(figure: Dict[str, Any], ctx: Context) -> str:
             t = ctx.sources[d["video_id"]]["frames"][d["frame_id"]]["t"]
             derived = (f' · annotated from Reel {ctx.sources[d["video_id"]]["reel"]} {evidence.timestamp(t)}; '
                        "the untouched capture is kept in the evidence archive")
-        slug = f"Fig. {number} · Original figure — our reconstruction, not a source capture{E(derived)}"
+        slug_text = f"Fig. {number} · Original figure — our reconstruction, not a source capture{E(derived)}"
         assumptions = "".join(f"<li>{inline_html(a, ctx, [])}</li>" for a in figure["assumptions"])
         notes = f'<div class="assumptions"><p>Assumptions{refs}</p><ul>{assumptions}</ul></div>'
     return (f'<figure class="fig fig-{kind}" id="{E(figure["id"])}" x-data="zoom">'
             f'<a class="frame" href="{src}" @click.prevent="open()" aria-label="Enlarge figure {number}">'
             f'<img src="{src}" alt="{E(figure["alt"])}" loading="lazy"></a>'
-            f'<figcaption><span class="slug">{slug}</span> {caption}{notes}</figcaption>'
+            f'<figcaption><span class="slug">{slug_text}</span> {caption}{notes}</figcaption>'
             f'<dialog class="lightbox" x-ref="dialog" @click.self="close()" aria-label="Figure {number}">'
             f'<img src="{src}" alt="{E(figure["alt"])}"><p>{caption}</p>'
             f'<button type="button" class="close" @click="close()">Close</button></dialog></figure>')
@@ -632,17 +749,74 @@ def tape(source: Dict[str, Any], moments: List[float]) -> str:
             f'{"".join(parts)}</svg><p class="tape-legend">{E(label)}</p>')
 
 
-def page(title: str, body: str, kind: str) -> str:
+COPY_ICON = ('<svg class="icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">'
+             '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 '
+             '1-2-2V6a2 2 0 0 1 2-2h2"/></svg>')
+
+
+def theme_select() -> str:
+    groups = ['<option value="">System (House light or dark)</option>']
+    for family, entries in themes.options():
+        opts = "".join(f'<option value="{E(i)}">{E(label)}</option>' for i, label in entries)
+        groups.append(f'<optgroup label="{E(family)}">{opts}</optgroup>')
+    return (f'<div class="theme-pick"><label for="theme-select">Theme</label>'
+            f'<select id="theme-select" @change="setTheme($event.target.value)">{"".join(groups)}</select>'
+            f'<a class="theme-credits" href="assets/THEMES.md">Theme sources and licenses</a></div>')
+
+
+def page(ctx: Context, title: str, body: str, kind: str, md_name: str, md_text: str, current: str) -> str:
+    current_attr = ' aria-current="page"'
+    links = "".join(f'<li><a href="{href}"{current_attr if key == current else ""}>{label}</a></li>'
+                    for href, label, key in NAV)
+    nav = (f'<nav class="site-nav" id="site-nav" aria-label="Publication">'
+           f'<div class="nav-head"><a class="nav-title" href="index.html">{E(ctx.article["title"])}</a>'
+           f'<button type="button" class="nav-close js-only" @click="closeNav()" aria-controls="site-nav" '
+           f'x-text="mobile ? \'Close menu\' : \'Hide navigation\'">Hide navigation</button></div>'
+           f'<ul class="nav-list">{links}</ul>'
+           f'<div class="nav-tools js-only"><button type="button" class="nav-search" @click="openSearch()" '
+           f'aria-haspopup="dialog">Search <kbd>/</kbd></button>{theme_select()}</div></nav>')
+    toolbar = (f'<div class="toolbar"><button type="button" class="menu-button js-only" @click="toggleNav()" '
+               f'aria-controls="site-nav" :aria-expanded="navVisible ? \'true\' : \'false\'" '
+               f'x-text="mobile ? \'Menu\' : \'Show navigation\'">Menu</button>'
+               f'<button type="button" class="toolbar-search js-only" @click="openSearch()" aria-haspopup="dialog">'
+               f'Search</button>'
+               f'<div class="page-tools" x-data="copyPage"><button type="button" class="copy-page js-only" '
+               f'@click="copy()" aria-describedby="copy-status">{COPY_ICON}<span x-text="label">Copy page</span></button>'
+               f'<a class="download-md" href="{md_name}" download>Download Markdown</a>'
+               f'<span class="copy-status" id="copy-status" role="status" aria-live="polite" x-text="status"></span>'
+               f'</div></div>')
+    source = (f'<details class="md-source" id="md-source"><summary>Page Markdown</summary>'
+              f'<p>The complete Markdown of this page ({E(md_name)}), independent of filters and open panels. '
+              f'Select it and copy, or download it.</p><textarea id="page-markdown" readonly rows="14" '
+              f'spellcheck="false" aria-label="Markdown source of this page">{E(md_text)}</textarea></details>')
+    panel = ('<aside class="evidence-panel" id="evidence-panel" role="dialog" aria-modal="false" '
+             'aria-labelledby="evidence-title" hidden><div class="ev-head"><h2 id="evidence-title" tabindex="-1">'
+             'Evidence</h2><button type="button" class="ev-close" @click="closeEvidence()">Close</button></div>'
+             '<div class="ev-body" id="evidence-body"></div></aside>')
+    search = ('<dialog class="search-dialog" id="search-dialog" aria-labelledby="search-title" x-data="search">'
+              '<div class="search-head"><h2 id="search-title">Search this publication</h2>'
+              '<button type="button" class="search-close" @click="close()">Close</button></div>'
+              '<label class="visually-hidden" for="search-input">Search terms</label>'
+              '<input type="search" id="search-input" x-model="q" @input="run()" @keydown.arrow-down.prevent="first()" '
+              'autocomplete="off" placeholder="Article, transcripts, glossary, references…" '
+              'aria-describedby="search-count">'
+              '<p class="search-count" id="search-count" role="status" aria-live="polite" x-text="summary"></p>'
+              '<ol class="search-results" x-ref="results" @click="picked($event)"></ol></dialog>')
     return (f'<!doctype html>\n<html lang="en" class="no-js"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width, initial-scale=1">'
             f'<meta http-equiv="Content-Security-Policy" content="{CSP}">'
             f'<meta name="referrer" content="no-referrer"><title>{E(title)}</title>'
-            f'<link rel="stylesheet" href="assets/article.css">'
+            f'<script src="assets/theme-init.js"></script>'
+            f'<link rel="stylesheet" href="assets/themes.css"><link rel="stylesheet" href="assets/article.css">'
+            f'<script defer src="assets/search-index.js"></script><script defer src="assets/{GSAP}"></script>'
             f'<script defer src="assets/article.js"></script><script defer src="assets/{ALPINE}"></script>'
-            f'</head><body class="page-{kind}"><a class="skip" href="#main">Skip to content</a>'
+            f'</head><body class="page-{kind}" x-data="shell" @keydown.window="onKey($event)">'
+            f'<a class="skip" href="#main">Skip to content</a>'
             '<svg class="defs" aria-hidden="true" focusable="false"><defs><pattern id="hatch" width="6" height="6" '
             'patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect class="hatch-line" width="2" '
-            f'height="6"/></pattern></defs></svg>{body}</body></html>\n')
+            f'height="6"/></pattern></defs></svg><div class="shell">{nav}'
+            f'<div class="nav-backdrop js-only" @click="closeNav()"></div>'
+            f'<div class="page" id="page">{toolbar}{body}{source}</div></div>{panel}{search}</body></html>\n')
 
 
 def references_html(ctx: Context) -> str:
@@ -654,6 +828,58 @@ def references_html(ctx: Context) -> str:
                      f'rel="noopener noreferrer">{E(url)}</a></li>')
     return f'<section class="references" id="references" aria-labelledby="h-references">' \
            f'<h2 id="h-references">References</h2><ol>{"".join(items)}</ol></section>'
+
+
+def evidence_templates(ctx: Context) -> str:
+    """Inert, escaped evidence for the citation panel. No-JS readers use the references list instead."""
+    out = []
+    for n, cid in enumerate(ctx.order, 1):
+        c = ctx.citations[cid]
+        back = f'<a class="ev-ref" href="#ref-{n}">Show in references</a>'
+        note = f'<p class="ev-note">{E(c["note"])}</p>' if c.get("note") else ""
+        if c["kind"] == "web":
+            meta = " · ".join(E(x) for x in (c.get("publisher"), c.get("accessed") and f"accessed {c['accessed']}") if x)
+            body = (f'<p class="slug">Reference {n} · External source</p><p class="ev-label">{E(c["title"])}</p>'
+                    f'{f"<p class=ev-meta>{meta}</p>" if meta else ""}{note}<p class="ev-links">'
+                    f'<a href="{E(c["url"])}" rel="noopener noreferrer">{E(c["url"])}</a> · {back}</p>')
+        else:
+            source = ctx.sources[c["video_id"]]
+            language = lang_code(source["language"])
+            english = "English translation" if source["english_label"] == "translation" else "Clean English"
+            segments = []
+            for sid in c.get("segment_ids", []):
+                s = source["segments"][sid]
+                original = "" if _normalize(s["text"]) == _normalize(s["english"]) else (
+                    f'<p class="ev-orig" lang="{language}"><span class="slug">Original ({E(source["language"])})</span> '
+                    f'{E(s["text"])}</p>')
+                uncertain = (f'<p class="ev-uncertain"><strong>Uncertain:</strong> '
+                             f'{E(s.get("uncertainty") or "contains inline uncertainty markers")}</p>'
+                             if s.get("uncertain") or s.get("inline_markers") else "")
+                segments.append(
+                    f'<li><p class="slug"><a href="{E(evidence.timestamp_url(source["youtube_id"], s["start"]))}" '
+                    f'rel="noopener noreferrer">{evidence.timestamp(s["start"])}</a> · <a href="transcript-'
+                    f'{E(source["id"])}.html#seg-{E(sid)}">Transcript segment {E(sid)}</a></p>'
+                    f'<p class="ev-en"><span class="slug">{english}</span> {E(s["english"])}</p>{original}{uncertain}</li>')
+            frame = ""
+            if c.get("frame_id"):
+                t = source["frames"][c["frame_id"]]["t"]
+                full, thumb = frame_media(source["id"], c["frame_id"])
+                frame = (f'<figure class="ev-frame"><a href="{full}"><img src="{thumb}" alt="Source frame '
+                         f'{E(c["frame_id"])} from Reel {source["reel"]} at {evidence.timestamp(t)}"></a>'
+                         f'<figcaption class="slug">Frame {E(c["frame_id"])} · Reel {source["reel"]} '
+                         f'{evidence.timestamp(t)} · untouched capture</figcaption></figure>')
+            body = (f'<p class="slug">Reference {n} · Reel {source["reel"]} · {E(source["creator"])}</p>'
+                    f'<p class="ev-label">{E(c["label"])}</p>'
+                    f'{f"<ol class=ev-segments>{chr(10).join(segments)}</ol>" if segments else ""}{frame}{note}'
+                    f'<p class="ev-links"><a href="{E(c["url"])}" rel="noopener noreferrer">Watch at '
+                    f'{evidence.timestamp(c["start"])} on YouTube</a> · {back}</p>')
+        out.append(f'<template id="ev-{n}">{body}</template>')
+    return "".join(out)
+
+
+def cited_tail(ctx: Context) -> str:
+    """References and evidence templates for any page whose text cites sources."""
+    return references_html(ctx) + evidence_templates(ctx) if ctx.order else ""
 
 
 def method_html(ctx: Context) -> str:
@@ -678,13 +904,21 @@ def method_html(ctx: Context) -> str:
             '</section>')
 
 
-def masthead(ctx: Context, eyebrow: str, title: str, dek: str) -> str:
+def masthead(ctx: Context, eyebrow_text: str, title: str, dek: str, moments_from: Optional[List[str]] = None,
+             compact: bool = False) -> str:
     article = ctx.article
     moments: Dict[str, List[float]] = {}
-    for cid in ctx.order:
+    for cid in (ctx.order if moments_from is None else moments_from):
         citation = ctx.citations[cid]
         if citation["kind"] == "video":
             moments.setdefault(citation["video_id"], []).append(citation["start"])
+    partial = ""
+    if article["status"] == "partial":
+        partial = (f'<p class="status-partial"><strong>Partial publication.</strong> '
+                   f'{E(article["partial_reason"])}</p>')
+    if compact:
+        return (f'<header class="masthead masthead-compact"><p class="eyebrow">{E(eyebrow_text)}</p><h1>{E(title)}</h1>'
+                f'{f"<p class=dek>{dek}</p>" if dek else ""}{partial}</header>')
     reels = []
     for source in ctx.sources.values():
         link = evidence.timestamp_url(source["youtube_id"], 0)
@@ -692,11 +926,7 @@ def masthead(ctx: Context, eyebrow: str, title: str, dek: str) -> str:
         reels.append(f'<li class="reel"><p class="reel-id">Reel {source["reel"]}</p><p class="reel-title">'
                      f'<a href="{E(link)}" rel="noopener noreferrer">{E(source["title"])}</a></p>'
                      f'<p class="reel-meta">{E(meta)}</p>{tape(source, moments.get(source["id"], []))}</li>')
-    partial = ""
-    if article["status"] == "partial":
-        partial = (f'<p class="status-partial"><strong>Partial publication.</strong> '
-                   f'{E(article["partial_reason"])}</p>')
-    return (f'<header class="masthead"><p class="eyebrow">{E(eyebrow)}</p><h1>{E(title)}</h1>'
+    return (f'<header class="masthead"><p class="eyebrow">{E(eyebrow_text)}</p><h1>{E(title)}</h1>'
             f'<p class="dek">{inline_html(dek, ctx, [])}</p>{partial}'
             f'<section class="slate" aria-label="Source videos"><ol class="reels">{"".join(reels)}</ol>'
             f'<p class="slate-note">Ticks mark cited moments; hatching marks transcript gaps.</p></section></header>')
@@ -707,30 +937,30 @@ def eyebrow(ctx: Context) -> str:
     return f"Distilled from {count} video{'s' if count > 1 else ''}" + (" · synthesis" if count > 1 else "")
 
 
-def render_article_html(ctx: Context) -> str:
+def article_body(ctx: Context) -> str:
+    """The article (article.html, printed to article.pdf)."""
     article = ctx.article
     ctx.reset()
-    ctx.figure_numbers = {}
     sections = []
     for section in article["sections"]:
-        sections.append(f'<section id="s-{section["id"]}" aria-labelledby="h-{section["id"]}">'
+        sections.append(f'<section id="s-{section["id"]}" aria-labelledby="h-{section["id"]}" class="reveal">'
                         f'<h2 id="h-{section["id"]}">{inline_html(section["heading"], ctx, [])}</h2>'
                         f'{blocks_html(section["blocks"], ctx)}</section>')
     toc = ""
     if len(article["sections"]) >= 3:
         toc = '<nav class="toc" aria-label="Contents"><ol>' + "".join(
-            f'<li><a href="#s-{s["id"]}">{E(s["heading"])}</a></li>' for s in article["sections"]) + "</ol></nav>"
+            f'<li><a href="#s-{s["id"]}">{E(plain(s["heading"]))}</a></li>' for s in article["sections"]) + "</ol></nav>"
     body = "".join(sections)
-    tail = method_html(ctx) + references_html(ctx)
+    tail = method_html(ctx) + references_html(ctx) + evidence_templates(ctx)
     head = masthead(ctx, eyebrow(ctx), article["title"], article["dek"])
     footer = ('<footer class="colophon"><p>Rendered offline from timestamped evidence. Also available: '
-              '<a href="brief.html">research brief</a> · <a href="article.md">Markdown</a> · '
-              '<a href="article.pdf">PDF</a> · <a href="coverage.json">coverage report</a>.</p></footer>')
-    return page(article["title"], f'{head}<main id="main"><article>{toc}{body}{tail}</article></main>{footer}',
-                "article")
+              '<a href="index.html">overview</a> · <a href="brief.html">research brief</a> · '
+              '<a href="article.md">Markdown</a> · <a href="article.pdf">PDF</a> · '
+              '<a href="coverage.json">coverage report</a>.</p></footer>')
+    return f'{head}<main id="main"><article>{toc}{body}{tail}</article></main>{footer}'
 
 
-def render_brief_html(ctx: Context) -> str:
+def brief_body(ctx: Context) -> str:
     article, brief = ctx.article, ctx.article["brief"]
     ctx.reset()
     groups = []
@@ -763,13 +993,15 @@ def render_brief_html(ctx: Context) -> str:
             f'next steps. They are not established by the sources; each names the evidence it rests on.</p>'
             f'<div role="list">{"".join(proposals) or "<p>No proposals.</p>"}</div></section>')
     head = masthead(ctx, eyebrow(ctx) + " · research brief", f"Brief: {article['title']}", article["dek"])
-    footer = '<footer class="colophon"><p><a href="index.html">Read the article</a> · <a href="brief.md">Markdown</a></p></footer>'
-    return page(f"Brief: {article['title']}",
-                f'{head}<main id="main"><article>{question}{body}{method_html(ctx)}{references_html(ctx)}</article>'
-                f'</main>{footer}', "brief")
+    footer = ('<footer class="colophon"><p><a href="article.html">Read the article</a> · '
+              '<a href="brief.md">Markdown</a></p></footer>')
+    return (f'{head}<main id="main"><article>{question}{body}{method_html(ctx)}{references_html(ctx)}'
+            f'{evidence_templates(ctx)}</article></main>{footer}')
 
 
 def references_md(ctx: Context) -> List[str]:
+    if not ctx.order:
+        return []
     lines = ["## References", ""]
     for n, cid in enumerate(ctx.order, 1):
         citation = ctx.citations[cid]
@@ -841,7 +1073,6 @@ def method_md(ctx: Context) -> List[str]:
 def render_article_md(ctx: Context) -> str:
     article = ctx.article
     ctx.reset()
-    ctx.figure_numbers = {}
     lines = [f"# {evidence.escape_markdown(article['title'])}", "", f"*{inline_md(article['dek'], ctx)}*", ""]
     if article["status"] == "partial":
         lines += [f"> **Partial publication.** {evidence.escape_markdown(article['partial_reason'])}", ""]
@@ -875,9 +1106,472 @@ def render_brief_md(ctx: Context) -> str:
     return "\n".join(lines + [""] + method_md(ctx) + references_md(ctx)) + "\n"
 
 
+def filter_bar(target: str, facets: List[Tuple[str, str, List[Tuple[str, str]]]], placeholder: str) -> str:
+    selects = "".join(
+        f'<label>{E(label)} <select data-facet="{name}" @change="apply()"><option value="">All</option>'
+        + "".join(f'<option value="{E(v)}">{E(t)}</option>' for v, t in options) + "</select></label>"
+        for name, label, options in facets)
+    return (f'<div class="filter-bar js-only" x-data="filter(\'{target}\')" role="search">'
+            f'<label>Filter <input type="search" x-model="q" @input="apply()" placeholder="{E(placeholder)}" '
+            f'autocomplete="off"></label>{selects}'
+            f'<span class="filter-count" role="status" aria-live="polite" x-text="summary"></span></div>')
+
+
+def reel_facet(ctx: Context) -> List[Tuple[str, str, List[Tuple[str, str]]]]:
+    if len(ctx.sources) < 2:
+        return []
+    return [("reel", "Reel", [(s["reel"], f"Reel {s['reel']}") for s in ctx.sources.values()])]
+
+
+# --- Cover -------------------------------------------------------------------
+
+
+def article_order(ctx: Context) -> List[str]:
+    article_body(ctx)
+    order = list(ctx.order)
+    ctx.reset()
+    return order
+
+
+def brief_counts(ctx: Context) -> str:
+    brief = ctx.article["brief"]
+    parts = [f"{sum(1 for i in brief['evidence'] if i['kind'] == k)} {label.lower()}"
+             for k, label in EVIDENCE_KINDS.items()]
+    return ", ".join(parts) + f", {len(brief['proposals'])} proposal{'s' if len(brief['proposals']) != 1 else ''}"
+
+
+def render_cover(ctx: Context) -> Tuple[str, str]:
+    article = ctx.article
+    order = article_order(ctx)
+    head = masthead(ctx, eyebrow(ctx), article["title"], article["dek"], moments_from=order)
+    sections = "".join(f'<li><a href="article.html#s-{E(s["id"])}">{E(plain(s["heading"]))}</a></li>'
+                       for s in article["sections"])
+    reels = "".join(f'<li>Reel {s["reel"]}: <a href="transcript-{E(s["id"])}.html">English</a> · '
+                    f'<a href="transcript-{E(s["id"])}.original.html">Original ({E(s["language"])})</a></li>'
+                    for s in ctx.sources.values())
+    web = sum(1 for c in ctx.citations.values() if c["kind"] == "web")
+    cards = [
+        ("article.html", "Article", f"{len(article['sections'])} section{'s' if len(article['sections']) != 1 else ''}"
+         f", {len(article['figures'])} figure{'s' if len(article['figures']) != 1 else ''}.", f"<ol>{sections}</ol>"),
+        ("brief.html", "Research brief", brief_counts(ctx) + ". Evidence and proposals are kept apart.", ""),
+        ("transcripts.html", "Transcripts", "Complete original-language and English transcripts with timestamps, "
+         "gaps, and uncertainty.", f"<ul>{reels}</ul>"),
+        ("gallery.html", "Gallery", f"{len(ctx.gallery)} image{'s' if len(ctx.gallery) != 1 else ''}, each with "
+         "its provenance.", ""),
+        ("glossary.html", "Glossary", f"{len(ctx.terms)} term{'s' if len(ctx.terms) != 1 else ''}.", ""),
+        ("references.html", "References", f"{len(ctx.sources)} source video{'s' if len(ctx.sources) != 1 else ''}, "
+         f"{len(ctx.citations)} citation{'s' if len(ctx.citations) != 1 else ''} ({web} external), visual credits.",
+         ""),
+    ]
+    items = "".join(f'<li class="card reveal"><h3><a href="{href}">{E(name)}</a></h3><p>{E(text)}</p>{extra}</li>'
+                    for href, name, text, extra in cards)
+    body = (f'{head}<main id="main"><p class="start"><a class="start-link" href="article.html">Start reading the '
+            f'article</a></p><section class="contents" aria-labelledby="h-contents"><h2 id="h-contents">In this '
+            f'publication</h2><ul class="cards">{items}</ul></section>{cited_tail(ctx)}</main>')
+    ctx.reset()
+    md = [f"# {evidence.escape_markdown(article['title'])}", "", f"*{inline_md(article['dek'], ctx)}*", ""]
+    if article["status"] == "partial":
+        md += [f"> **Partial publication.** {evidence.escape_markdown(article['partial_reason'])}", ""]
+    md += [eyebrow(ctx) + ".", "", "Sources:", "", *sources_md(ctx), "", "## In this publication", ""]
+    for href, name, text, _ in cards:
+        md.append(f"- [{name}]({href}): {evidence.escape_markdown(text)}")
+        if href == "article.html":
+            md += [f"  - [{evidence.escape_markdown(plain(s['heading']))}](article.html#s-{s['id']})"
+                   for s in article["sections"]]
+        if href == "transcripts.html":
+            md += [f"  - Reel {s['reel']}: [English](transcript-{s['id']}.html) · "
+                   f"[Original ({evidence.escape_markdown(s['language'])})](transcript-{s['id']}.original.html)"
+                   for s in ctx.sources.values()]
+    md += [""] + references_md(ctx)
+    return body, "\n".join(md).rstrip("\n") + "\n"
+
+
+# --- Transcripts ---------------------------------------------------------------
+
+
+def transcript_markdown(source: Dict[str, Any], original: bool) -> str:
+    """The verified evidence Markdown, with frame links pointed at the copied dist/media files."""
+    text = source["original_md" if original else "english_md"]
+    for frame_id, frame in (source["frames"] or {}).items():
+        full, thumb = frame_media(source["id"], frame_id)
+        text = text.replace(f"](../{frame['thumbnail']})", f"]({thumb})").replace(f"](../{frame['path']})",
+                                                                                f"]({full})")
+    return text if text.endswith("\n") else text + "\n"
+
+
+def render_transcripts_index(ctx: Context) -> Tuple[str, str]:
+    cards, md = [], ["# Transcripts", "", "Complete transcripts for every source video. English is labeled as a "
+                     "translation or a cleaned English transcript; the original-language transcript is verbatim.", ""]
+    for source in ctx.sources.values():
+        coverage = source["coverage"]
+        gaps = len(coverage["gaps"])
+        uncertain = len(coverage["uncertain_segment_ids"])
+        english = "English translation" if source["english_label"] == "translation" else "Clean English"
+        stats = (f"{coverage['segment_count']} segments · {coverage['covered_seconds']:.0f} s covered · {gaps} gap"
+                 f"{'s' if gaps != 1 else ''} · {uncertain} uncertain segment{'s' if uncertain != 1 else ''} · "
+                 f"language {source['language']} · provider {source['provider_kind']}")
+        cards.append(f'<li class="card reveal" id="reel-{E(source["id"])}"><p class="slug">Reel {source["reel"]} · '
+                     f'{E(source["creator"])}</p><h3>{E(source["title"])}</h3><p>{E(stats)}</p><ul>'
+                     f'<li><a href="transcript-{E(source["id"])}.html">{english} transcript</a></li>'
+                     f'<li><a href="transcript-{E(source["id"])}.original.html">Original transcript '
+                     f'({E(source["language"])})</a></li><li><a href="{E(evidence.timestamp_url(source["youtube_id"], 0))}" '
+                     f'rel="noopener noreferrer">Watch on YouTube</a></li></ul></li>')
+        md += [f"## Reel {source['reel']}: {evidence.escape_markdown(source['title'])}", "",
+               f"{evidence.escape_markdown(stats)}.", "",
+               f"- [{english} transcript](transcript-{source['id']}.html)",
+               f"- [Original transcript ({evidence.escape_markdown(source['language'])})]"
+               f"(transcript-{source['id']}.original.html)",
+               f"- <{evidence.timestamp_url(source['youtube_id'], 0)}>", ""]
+    head = masthead(ctx, eyebrow(ctx), "Transcripts", E("Every word that was transcribed, with its timing, gaps, and "
+                                                        "uncertainty."), compact=True)
+    body = f'{head}<main id="main" class="sheet"><ul class="cards">{"".join(cards)}</ul></main>'
+    return body, "\n".join(md).rstrip("\n") + "\n"
+
+
+def render_transcript_page(ctx: Context, source: Dict[str, Any], original: bool) -> str:
+    language = lang_code(source["language"])
+    field = "text" if original else "english"
+    english = "English translation" if source["english_label"] == "translation" else "Clean English"
+    kind = f"Original transcript ({source['language']})" if original else f"{english} transcript"
+    starts = [s["start"] for s in source["segments"].values()]
+    attached: Dict[int, List[Tuple[str, Dict[str, Any]]]] = {}
+    if not original:
+        for (video_id, frame_id), frame in ctx.media.items():
+            if video_id == source["id"] and frame_id in source["selected"]:
+                index = max(sum(1 for s in starts if s <= frame["t"]) - 1, 0)
+                attached.setdefault(index, []).append((frame_id, frame))
+    gaps = list(source["coverage"]["gaps"])
+    items = []
+    other = f'transcript-{source["id"]}{"" if original else ".original"}.html'
+    for index, segment in enumerate(source["segments"].values()):
+        while gaps and gaps[0]["start"] < segment["start"] + 1e-6 and gaps[0]["end"] <= segment["start"] + 1e-6:
+            gap = gaps.pop(0)
+            items.append(f'<li class="gap" data-filter-item data-uncertain="gap"><p><strong>Transcript gap</strong> '
+                         f'{evidence.timestamp(gap["start"])}–{evidence.timestamp(gap["end"])}: no transcribed speech '
+                         'over the 2 s threshold.</p></li>')
+        uncertain = bool(segment.get("uncertain") or segment.get("inline_markers"))
+        flag = (f'<p class="seg-flag"><strong>Uncertain:</strong> '
+                f'{E(segment.get("uncertainty") or "contains inline uncertainty markers")}</p>' if uncertain else "")
+        frames = "".join(
+            f'<a class="seg-frame" href="{frame_media(source["id"], fid)[0]}"><img src="{frame_media(source["id"], fid)[1]}" '
+            f'alt="Source frame {E(fid)} at {evidence.timestamp(frame["t"])}" loading="lazy"></a>'
+            for fid, frame in sorted(attached.get(index, []), key=lambda x: x[1]["t"]))
+        link = evidence.timestamp_url(source["youtube_id"], segment["start"])
+        items.append(
+            f'<li class="seg" id="seg-{E(segment["id"])}" data-filter-item data-uncertain="{str(uncertain).lower()}">'
+            f'<p class="seg-meta"><a class="ts" href="{E(link)}" rel="noopener noreferrer">'
+            f'{evidence.timestamp(segment["start"])}</a> <span class="seg-id">{E(segment["id"])}</span> '
+            f'<a class="seg-other" href="{other}#seg-{E(segment["id"])}">{"English" if original else "Original"}</a></p>'
+            f'<div class="seg-body"><p class="seg-text"{f" lang={language}" if original else ""}>{E(segment[field])}</p>'
+            f'{flag}{f"<div class=seg-frames>{frames}</div>" if frames else ""}</div></li>')
+    items += [f'<li class="gap" data-filter-item data-uncertain="gap"><p><strong>Transcript gap</strong> '
+              f'{evidence.timestamp(g["start"])}–{evidence.timestamp(g["end"])}: no transcribed speech over the 2 s '
+              'threshold.</p></li>' for g in gaps]
+    note = ("Verbatim original-language transcript." if original else
+            ("This is a translation; consult the original transcript for source wording." if source["english_label"] ==
+             "translation" else "This is a cleaned transcript; consult the original transcript for verbatim wording."))
+    dek = (f'{E(note)} {len(source["segments"])} segments from Reel {source["reel"]}, '
+           f'{E(source["creator"])}, provider {E(source["provider_kind"])}. '
+           f'<a href="{other}">{"English transcript" if original else "Original transcript"}</a> · '
+           f'<a href="{E(evidence.timestamp_url(source["youtube_id"], 0))}" rel="noopener noreferrer">YouTube</a>')
+    head = masthead(ctx, f"Reel {source['reel']} · {kind}", source["title"], dek, compact=True)
+    bar = filter_bar(f"seg-list", [("uncertain", "Show", [("true", "Uncertain segments"), ("false", "Certain segments"),
+                                                          ("gap", "Gaps")])], "Words in this transcript")
+    return (f'{head}<main id="main" class="sheet">{bar}<ol class="transcript" id="seg-list">{"".join(items)}</ol>'
+            f'</main>')
+
+
+# --- Gallery, glossary, references ------------------------------------------------
+
+
+def provenance(item: Dict[str, Any], ctx: Context) -> Tuple[str, str]:
+    """(slug HTML, plain Markdown) provenance for a gallery item."""
+    if item["kind"] == "original":
+        figure = item["figure"]
+        derived = ""
+        if figure.get("derived_from"):
+            d = figure["derived_from"]
+            source = ctx.sources[d["video_id"]]
+            t = source["frames"][d["frame_id"]]["t"]
+            derived = f"; annotated from Reel {source['reel']} {evidence.timestamp(t)} ({d['frame_id']})"
+        text = f"Fig. {item['number']} · Original figure by this publication, our reconstruction{derived}"
+        return E(text), text
+    source = ctx.sources[item["video_id"]]
+    t = evidence.timestamp(item["t"])
+    link = evidence.timestamp_url(source["youtube_id"], item["t"])
+    what = {"capture": f"Fig. {item.get('number')} · Source capture",
+            "sequence": f"Fig. {item.get('number')} · Demo step {item.get('step')} of {item.get('steps')}",
+            "frame": "Selected source frame"}[item["kind"]]
+    html_text = (f'{E(what)} · untouched · <a href="{E(link)}" rel="noopener noreferrer">Reel {source["reel"]} '
+                 f'{t}</a> · {E(item["frame_id"])} · {E(source["creator"])}, “{E(source["title"])}”')
+    md_text = (f"{what} · untouched · Reel {source['reel']} {t} ({item['frame_id']}) · {source['creator']}, "
+               f"“{source['title']}” <{link}>")
+    return html_text, md_text
+
+
+def render_gallery(ctx: Context) -> Tuple[str, str]:
+    ctx.reset()
+    items, md = [], ["# Gallery", "", "Every image in this publication with its provenance. Source captures are "
+                     "untouched frames; original figures are our reconstructions.", ""]
+    for index, item in enumerate(ctx.gallery):
+        prov_html, prov_md = provenance(item, ctx)
+        caption = inline_html(item["caption"], ctx, []) if item["caption"] else ""
+        mat = "g-original" if item["kind"] == "original" else "g-capture"
+        items.append(
+            f'<li class="g-item reveal {mat}" id="{item["id"]}" data-filter-item data-kind="{item["kind"]}" '
+            f'data-reel="{item.get("reel", "")}"><figure><a class="g-open" href="{E(item["src"])}" data-index="{index}">'
+            f'<img src="{E(item["thumb"])}" alt="{E(item["alt"])}" loading="lazy"></a>'
+            f'<figcaption><span class="slug">{prov_html}</span> {caption}</figcaption></figure></li>')
+        caption_md = (" " + inline_md(item["caption"], ctx)) if item["caption"] else ""
+        md += [f"![{evidence.escape_markdown(item['alt'])}]({item['src']})", "",
+               f"**{evidence.escape_markdown(prov_md)}.**{caption_md}", ""]
+    kinds = [(k, label) for k, label in (("capture", "Source captures"), ("sequence", "Demo steps"),
+                                         ("original", "Original figures"), ("frame", "Other selected frames"))
+             if any(i["kind"] == k for i in ctx.gallery)]
+    bar = filter_bar("gallery-list", [("kind", "Kind", kinds)] + reel_facet(ctx), "Captions and provenance")
+    empty = "" if ctx.gallery else '<p>No images were placed or selected for this publication.</p>'
+    viewer = ('<dialog class="viewer" x-ref="viewer" aria-labelledby="viewer-title" @keydown="key($event)" '
+              '@close="closed()"><div class="viewer-bar"><h2 id="viewer-title" class="visually-hidden">Image viewer</h2>'
+              '<button type="button" @click="prev()" aria-label="Previous image">Previous</button>'
+              '<output class="viewer-count" aria-live="polite" x-text="(index + 1) + \' of \' + count"></output>'
+              '<button type="button" @click="next()" aria-label="Next image">Next</button>'
+              '<span class="viewer-gap"></span>'
+              '<button type="button" @click="zoom(1 / 1.5)" aria-label="Zoom out">−</button>'
+              '<output class="viewer-scale" x-text="Math.round(scale * 100) + \'%\'"></output>'
+              '<button type="button" @click="zoom(1.5)" aria-label="Zoom in">+</button>'
+              '<button type="button" @click="fit()">Fit</button>'
+              '<button type="button" class="viewer-close" @click="close()">Close</button></div>'
+              '<div class="viewer-stage" x-ref="stage" @pointerdown="down($event)" @pointermove="move($event)" '
+              '@pointerup="up($event)" @pointercancel="up($event)" @wheel="wheel($event)" @dblclick="toggleZoom()">'
+              '<img x-ref="image" alt="" draggable="false"></div>'
+              '<div class="viewer-caption" x-ref="caption"></div>'
+              '<p class="viewer-help">Arrow keys: previous and next (pan when zoomed) · + and −: zoom · 0: fit · '
+              'drag to pan · swipe to change image · Esc: close</p></dialog>')
+    head = masthead(ctx, eyebrow(ctx), "Gallery", E("Source captures, demo steps, original figures, and selected "
+                                                    "frames, with provenance."), compact=True)
+    body = (f'{head}<main id="main" class="sheet" x-data="gallery">{bar}{empty}<ol class="gallery" id="gallery-list" '
+            f'@click="open($event)">{"".join(items)}</ol>{viewer}{cited_tail(ctx)}</main>')
+    md += references_md(ctx)
+    return body, "\n".join(md).rstrip("\n") + "\n"
+
+
+def render_glossary(ctx: Context) -> Tuple[str, str]:
+    ctx.reset()
+    entries, md = [], ["# Glossary", ""]
+    for term in ctx.terms:
+        entries.append(f'<div class="term reveal" id="{E(term["anchor"])}" data-filter-item><dt>{E(term["term"])}</dt>'
+                       f'<dd>{inline_html(term["definition"], ctx, [])}</dd></div>')
+        md.append(f"- **{evidence.escape_markdown(term['term'])}**: {inline_md(term['definition'], ctx)}")
+    if not entries:
+        md.append("No glossary terms were defined for this publication.")
+    md.append("")
+    bar = filter_bar("glossary-list", [], "Terms and definitions") if entries else ""
+    listing = (f'<dl class="glossary" id="glossary-list">{"".join(entries)}</dl>' if entries else
+               '<p>No glossary terms were defined for this publication.</p>')
+    head = masthead(ctx, eyebrow(ctx), "Glossary", E("Short definitions of the terms this publication relies on."),
+                    compact=True)
+    body = f'{head}<main id="main" class="sheet">{bar}{listing}{cited_tail(ctx)}</main>'
+    md += references_md(ctx)
+    return body, "\n".join(md).rstrip("\n") + "\n"
+
+
+SOFTWARE = (
+    ("Alpine.js 3.17.4", "MIT", "assets/vendor/LICENSE-alpinejs.md", "https://alpinejs.dev"),
+    ("GSAP 3.15.0 (core)", "Standard “No Charge” GSAP License", "assets/vendor/LICENSE-gsap.md", "https://gsap.com"),
+)
+
+
+def render_references(ctx: Context) -> Tuple[str, str]:
+    ctx.reset()
+    sources, md = [], ["# References", "", "## Original videos", ""]
+    for source in ctx.sources.values():
+        url = evidence.timestamp_url(source["youtube_id"], 0)
+        meta = " · ".join([source["creator"], evidence.timestamp(source["duration"] or 0), source["language"]])
+        sources.append(f'<li id="src-{E(source["id"])}" data-filter-item data-kind="video">Reel {source["reel"]}: '
+                       f'“{E(source["title"])}”, {E(meta)}. <a class="url" href="{E(url)}" rel="noopener noreferrer">'
+                       f'{E(url)}</a> · <a href="transcript-{E(source["id"])}.html">English transcript</a> · '
+                       f'<a href="transcript-{E(source["id"])}.original.html">Original transcript</a></li>')
+        md.append(f"- Reel {source['reel']}: “{evidence.escape_markdown(source['title'])}”, "
+                  f"{evidence.escape_markdown(meta)}. <{url}>")
+    cites, web = [], []
+    md += ["", "## Video citations", ""]
+    for cid, c in ctx.citations.items():
+        note = f" {E(c['note'])}" if c.get("note") else ""
+        item = (f'<li id="cite-{E(cid)}" data-filter-item data-kind="{"web" if c["kind"] == "web" else "cite"}">'
+                f'<span class="ev-id">{E(cid)}</span> {E(c["label"])}.{note} <a class="url" href="{E(c["url"])}" '
+                f'rel="noopener noreferrer">{E(c["url"])}</a></li>')
+        line = (f"- **{evidence.escape_markdown(cid)}** {evidence.escape_markdown(c['label'])}."
+                f"{' ' + evidence.escape_markdown(c['note']) if c.get('note') else ''} <{c['url']}>")
+        (web if c["kind"] == "web" else cites).append((item, line))
+    md += [line for _, line in cites] or ["None."]
+    md += ["", "## External sources", ""] + ([line for _, line in web] or ["None."])
+    credits = []
+    md += ["", "## Visual credits", ""]
+    for item in ctx.gallery:
+        _, prov_md = provenance(item, ctx)
+        prov_html, _ = provenance(item, ctx)
+        credits.append(f'<li id="credit-{item["id"]}" data-filter-item data-kind="visual"><a href="gallery.html#'
+                       f'{item["id"]}">{E(item["id"].upper())}</a> {prov_html}</li>')
+        md.append(f"- {item['id'].upper()}: {evidence.escape_markdown(prov_md)}")
+    if not credits:
+        md.append("None.")
+    software = [f'<li data-filter-item data-kind="software">{E(name)}, {E(lic)}. <a href="{path}">License and '
+                f'provenance</a> · <a class="url" href="{url}" rel="noopener noreferrer">{url}</a></li>'
+                for name, lic, path, url in SOFTWARE]
+    families = sorted({themes.FAMILIES[v["family"]]["name"] for v in themes.VARIANTS if v["family"] != "house"})
+    software.append(f'<li data-filter-item data-kind="software">Reader themes adapted from the original palettes of '
+                    f'{E(", ".join(families))}. <a href="assets/THEMES.md">Sources, licenses, and contrast '
+                    'adaptations</a></li>')
+    md += ["", "## Software and themes", ""]
+    md += [f"- {name}, {lic}. [License and provenance]({path}) <{url}>" for name, lic, path, url in SOFTWARE]
+    md += [f"- Reader themes adapted from the original palettes of {', '.join(families)}. "
+           "[Sources, licenses, and contrast adaptations](assets/THEMES.md)", ""]
+    kinds = [("video", "Original videos"), ("cite", "Video citations"), ("web", "External sources"),
+             ("visual", "Visual credits"), ("software", "Software and themes")]
+    bar = filter_bar("reference-list", [("kind", "Kind", kinds)], "Titles, creators, URLs")
+
+    def block(id_: str, heading: str, rows: List[str]) -> str:
+        return (f'<section class="ref-block" id="{id_}" aria-labelledby="h-{id_}"><h2 id="h-{id_}">{heading}</h2>'
+                f'<ol>{"".join(rows) or "<li>None.</li>"}</ol></section>')
+
+    head = masthead(ctx, eyebrow(ctx), "References", E("Original videos, every citation, visual credits, and bundled "
+                                                       "software."), compact=True)
+    body = (f'{head}<main id="main" class="sheet">{bar}<div id="reference-list" class="references-page">'
+            f'{block("sources", "Original videos", sources)}'
+            f'{block("citations", "Video citations", [i for i, _ in cites])}'
+            f'{block("external", "External sources", [i for i, _ in web])}'
+            f'{block("credits", "Visual credits", credits)}{block("software", "Software and themes", software)}'
+            f'</div></main>')
+    return body, "\n".join(md).rstrip("\n") + "\n"
+
+
+# --- Search index ---------------------------------------------------------------
+
+
+def blocks_text(blocks: List[Dict[str, Any]], ctx: Context) -> List[str]:
+    out = []
+    for block in blocks:
+        if block["type"] == "p":
+            out.append(plain(block["text"]))
+        elif block["type"] == "list":
+            out += [plain(i) for i in block["items"]]
+        elif block["type"] == "quote":
+            out.append(block["text"])
+        elif block["type"] == "figure":
+            figure = ctx.figures[block["figure"]]
+            out.append(plain(figure["caption"]))
+            out += [plain(s["caption"]) for s in figure.get("steps", [])]
+            out += [plain(a) for a in figure.get("assumptions", [])]
+        else:
+            out.append(plain(block["summary"]))
+            out += blocks_text(block["blocks"], ctx)
+    return out
+
+
+def search_index(ctx: Context) -> str:
+    article = ctx.article
+    entries: List[List[str]] = [["index.html#main", "Overview", article["title"], plain(article["dek"])]]
+    for section in article["sections"]:
+        entries.append([f"article.html#s-{section['id']}", "Article", plain(section["heading"]),
+                        " ".join(blocks_text(section["blocks"], ctx))])
+    entries.append(["article.html#method", "Article", "How this was made, and its limits",
+                    " ".join(plain(x) for x in article["limitations"])])
+    for item in article["brief"]["evidence"]:
+        entries.append([f"brief.html#{item['id']}", "Brief", f"{item['id']} · {EVIDENCE_KINDS[item['kind']]}",
+                        plain(item["text"])])
+    for item in article["brief"]["proposals"]:
+        entries.append([f"brief.html#{item['id']}", "Brief", f"{item['id']} · Proposal ({item['kind']})",
+                        plain(item["text"]) + " " + plain(item.get("risks", ""))])
+    for source in ctx.sources.values():
+        for segment in source["segments"].values():
+            stamp = evidence.timestamp(segment["start"])
+            entries.append([f"transcript-{source['id']}.html#seg-{segment['id']}", f"Reel {source['reel']} English",
+                            f"{stamp} · {segment['id']}", segment["english"]])
+            if _normalize(segment["text"]) != _normalize(segment["english"]):
+                entries.append([f"transcript-{source['id']}.original.html#seg-{segment['id']}",
+                                f"Reel {source['reel']} Original", f"{stamp} · {segment['id']}", segment["text"]])
+    for item in ctx.gallery:
+        entries.append([f"gallery.html#{item['id']}", "Gallery", provenance(item, ctx)[1],
+                        f"{item['alt']} {plain(item['caption'] or '')}"])
+    for term in ctx.terms:
+        entries.append([f"glossary.html#{term['anchor']}", "Glossary", term["term"], plain(term["definition"])])
+    for source in ctx.sources.values():
+        entries.append([f"references.html#src-{source['id']}", "References", f"Reel {source['reel']}: {source['title']}",
+                        source["creator"]])
+    for cid, c in ctx.citations.items():
+        entries.append([f"references.html#cite-{cid}", "References", c["label"], c.get("note") or ""])
+    entries = [[re.sub(r"\s+([.,;:!?])", r"\1", re.sub(r"\s+", " ", field)).strip() for field in entry]
+               for entry in entries]
+    payload = json.dumps({"version": 1, "entries": entries}, ensure_ascii=True, separators=(",", ":"))
+    # Data, not markup: keep "</script" and other HTML-significant characters out of the file entirely.
+    payload = payload.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    return ("// Generated offline search index for this publication. Loaded with <script src>; never fetched.\n"
+            f"window.DISTILL_SEARCH = {payload};\n")
+
+
+# --- All pages ------------------------------------------------------------------
+
+
+def render_documents(ctx: Context) -> Dict[str, str]:
+    """Every HTML page and its Markdown twin, plus the search index."""
+    title = ctx.article["title"]
+    out: Dict[str, str] = {}
+
+    def add(name: str, body: str, md: str, page_title: str, kind: str, current: str) -> None:
+        md_name = name[:-5] + ".md"
+        out[md_name] = md
+        out[name] = page(ctx, page_title, body, kind, md_name, md, current)
+
+    body, md = render_cover(ctx)
+    add("index.html", body, md, title, "cover", "overview")
+    add("article.html", article_body(ctx), render_article_md(ctx), title, "article", "article")
+    add("brief.html", brief_body(ctx), render_brief_md(ctx), f"Brief: {title}", "brief", "brief")
+    body, md = render_transcripts_index(ctx)
+    add("transcripts.html", body, md, f"Transcripts · {title}", "transcripts", "transcripts")
+    for source in ctx.sources.values():
+        for original in (False, True):
+            name = f"transcript-{source['id']}{'.original' if original else ''}.html"
+            label = "Original transcript" if original else "English transcript"
+            add(name, render_transcript_page(ctx, source, original), transcript_markdown(source, original),
+                f"Reel {source['reel']} {label} · {title}", "transcript", "transcripts")
+    body, md = render_gallery(ctx)
+    add("gallery.html", body, md, f"Gallery · {title}", "gallery", "gallery")
+    body, md = render_glossary(ctx)
+    add("glossary.html", body, md, f"Glossary · {title}", "glossary", "glossary")
+    body, md = render_references(ctx)
+    add("references.html", body, md, f"References · {title}", "references", "references")
+    out["assets/search-index.js"] = search_index(ctx)
+    return out
+
+
+LINK = re.compile(r'\s(?:href|src)="([^"]*)"')
+IDS = re.compile(r'\sid="([^"]+)"')
+
+
+def link_problems(root: Path, html_names: List[str]) -> List[str]:
+    """Every local href/src must resolve to a rendered file, and every cross-page #fragment to an id."""
+    problems = []
+    ids = {name: set(map(html.unescape, IDS.findall((root / name).read_text()))) for name in html_names}
+    for name in html_names:
+        text = (root / name).read_text()
+        for raw in LINK.findall(text):
+            target = html.unescape(raw)
+            if re.match(r"^(?:https?:|mailto:)", target, re.I):
+                continue
+            path, _, fragment = target.partition("#")
+            if path and re.match(r"^[a-z][a-z0-9+.-]*:|^/|(?:^|/)\.\.(?:/|$)", path, re.I):
+                problems.append(f"{name} links outside the package: {target}")
+                continue
+            if path and path not in LATER_OUTPUTS and not (root / path).is_file():
+                problems.append(f"{name} links to a missing file: {target}")
+            elif fragment and (path or name) in ids and fragment not in ids[path or name]:
+                problems.append(f"{name} links to a missing anchor: {target}")
+    return problems
+
+
 def coverage_report(ctx: Context, warnings: List[str]) -> Dict[str, Any]:
     ctx.reset()
-    render_article_html(ctx)
+    article_body(ctx)
     article_used = list(ctx.order)
     sources = []
     for source in ctx.sources.values():
@@ -943,9 +1637,11 @@ def cmd_render(args: Any) -> int:
     if problems:
         raise ContractError(problems)
     ctx = Context(article, sources)
-    documents = {"index.html": render_article_html(ctx), "brief.html": render_brief_html(ctx),
-                 "article.md": render_article_md(ctx), "brief.md": render_brief_md(ctx)}
-    for name in ("index.html", "brief.html"):
+    documents = render_documents(ctx)
+    documents["assets/themes.css"] = themes.css()
+    documents["assets/THEMES.md"] = themes.provenance_md()
+    html_names = sorted(n for n in documents if n.endswith(".html"))
+    for name in html_names:
         if REMOTE_RESOURCE.search(documents[name]):
             raise ContractError(f"{name} would load a remote resource; refusing to render")
     partial = pub_dir / f".dist-partial-{os.getpid()}"
@@ -959,11 +1655,7 @@ def cmd_render(args: Any) -> int:
             target = partial / "assets" / name
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ASSETS / name, target)
-        frames = {(f["video_id"], f["frame_id"]) for f in article["figures"] if f["kind"] == "capture"}
-        frames |= {(f["video_id"], s["frame_id"]) for f in article["figures"] if f["kind"] == "sequence"
-                   for s in f["steps"]}
-        for video_id, frame_id in sorted(frames):
-            frame = ctx.sources[video_id]["frames"][frame_id]
+        for (video_id, frame_id), frame in ctx.media.items():
             base = workspace.source_dir(video_id)
             for rel, target in zip((frame["path"], frame["thumbnail"]), frame_media(video_id, frame_id)):
                 path = safe_path(base, rel)
@@ -974,6 +1666,9 @@ def cmd_render(args: Any) -> int:
             if figure["kind"] == "original":
                 (partial / figure["image"]).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(safe_path(pub_dir, figure["image"]), partial / figure["image"])
+        problems = link_problems(partial, html_names)
+        if problems:
+            raise ContractError(problems)
         outputs = _tree_digests(partial)
         _swap(partial, pub_dir / "dist")
     finally:
@@ -1028,7 +1723,7 @@ def cmd_pdf(args: Any) -> int:
               "or pass --browser PATH / set DISTILL_BROWSER. No PDF was written.", file=sys.stderr)
         return 3
     dist = pub_dir / "dist"
-    index = dist / "index.html"
+    index = dist / PDF_PAGE
     target = dist / "article.pdf"
     partial = dist / f".article-{os.getpid()}.pdf"
     secret_env = re.compile(r"SAS|SECRET|TOKEN|PASSWORD|API_KEY|ACCESS_KEY|CONNECTION_STRING|AZURE_STORAGE", re.I)
@@ -1057,7 +1752,7 @@ def cmd_pdf(args: Any) -> int:
     finally:
         if partial.exists():
             partial.unlink()
-    record = {"schema_version": evidence.SCHEMA_VERSION, "index_sha256": evidence.sha256_file(index),
+    record = {"schema_version": evidence.SCHEMA_VERSION, "page": PDF_PAGE, "page_sha256": evidence.sha256_file(index),
               "pdf_sha256": evidence.sha256_file(target), "browser": Path(browser).name,
               "pages": len(re.findall(rb"/Type\s*/Page\b", data)), "rendered_at": evidence.now()}
     evidence.atomic_write_json(pub_dir / "pdf.json", record)
@@ -1097,9 +1792,11 @@ def cmd_package(args: Any) -> int:
     article = evidence.read_json(pub_dir / "article.json")
     reasons = []
     pdf_record = evidence.read_json(pub_dir / "pdf.json") if (pub_dir / "pdf.json").exists() else None
-    pdf_ok = bool(pdf_record and (dist / "article.pdf").is_file()
-                  and pdf_record["index_sha256"] == evidence.sha256_file(dist / "index.html")
-                  and pdf_record["pdf_sha256"] == evidence.sha256_file(dist / "article.pdf"))
+    # A pdf.json from renderer 1 (printed index.html, no page_sha256) is treated as stale.
+    pdf_ok = bool(pdf_record and (dist / "article.pdf").is_file() and pdf_record.get("page") == PDF_PAGE
+                  and (dist / PDF_PAGE).is_file()
+                  and pdf_record.get("page_sha256") == evidence.sha256_file(dist / PDF_PAGE)
+                  and pdf_record.get("pdf_sha256") == evidence.sha256_file(dist / "article.pdf"))
     if not pdf_ok:
         if not args.allow_missing_pdf:
             raise ContractError("PDF is missing or stale for the current render; run pdf, or pass "
@@ -1157,11 +1854,13 @@ def cmd_package(args: Any) -> int:
 
 
 def register(subparsers: Any) -> None:
-    render = subparsers.add_parser("render", help="render offline HTML, Markdown, brief, and coverage report")
+    render = subparsers.add_parser("render", help="render the offline site (cover, article, brief, transcripts, "
+                                                  "gallery, glossary, references), Markdown twins, and coverage report")
     render.add_argument("--workspace", required=True)
     render.add_argument("--publication", required=True, help="publication id from the assignment")
     render.set_defaults(func=cmd_render)
-    pdf = subparsers.add_parser("pdf", help="print the rendered article to PDF with a headless Chromium browser")
+    pdf = subparsers.add_parser("pdf", help="print the rendered article (article.html) to PDF with a headless "
+                                            "Chromium browser")
     pdf.add_argument("--workspace", required=True)
     pdf.add_argument("--publication", required=True)
     pdf.add_argument("--browser", help="Chromium-compatible executable (default: DISTILL_BROWSER, PATH, /Applications)")

@@ -20,6 +20,7 @@ import base64
 import contextlib
 import hashlib
 import io
+import html as html_lib
 import json
 import os
 import re
@@ -576,9 +577,27 @@ def scenario_publication(env, ws, browser):
         if data and data.get("warnings"):
             R.note(cat, "render", f"{pub} render warnings", data["warnings"])
         dist = pub_dir / pub / "dist"
-        html = (dist / "index.html").read_text()
-        R.check(cat, "offline", f"{pub} index.html has a CSP with connect-src 'none'", "connect-src 'none'" in html)
-        remote = re.findall(r'<(?:script|link|img|iframe|source|video|audio)[^>]+(?:src|href)="(https?:)?//', html)
+        pages = sorted(p.name for p in dist.glob("*.html"))
+        expected = {"index.html", "article.html", "brief.html", "transcripts.html", "gallery.html", "glossary.html",
+                    "references.html"} | {f"transcript-{v}{s}.html" for v in ({"g-bio": ["bio-a", "bio-b"]}.get(pub, [pub]))
+                                         for s in ("", ".original")}
+        R.check(cat, "site", f"{pub} renders the cover, article, and every site page", set(pages) == expected,
+                actual=pages, expected=sorted(expected))
+        R.check(cat, "site", f"{pub} cover (index.html) and article (article.html) are split",
+                'class="start-link"' in (dist / "index.html").read_text()
+                and 'id="method"' in (dist / "article.html").read_text()
+                and 'id="method"' not in (dist / "index.html").read_text())
+        twins = [n for n in pages if not (dist / (n[:-5] + ".md")).is_file() or
+                 html_lib.unescape(re.search(r'<textarea id="page-markdown"[^>]*>(.*?)</textarea>',
+                                             (dist / n).read_text(), re.S).group(1))
+                 != (dist / (n[:-5] + ".md")).read_text(encoding="utf-8")]
+        R.check(cat, "site", f"{pub} every page embeds exactly its Markdown twin (Copy Page source)", not twins,
+                actual=twins)
+        csp_missing = [n for n in pages if "connect-src 'none'" not in (dist / n).read_text()]
+        R.check(cat, "offline", f"{pub} every page has a CSP with connect-src 'none'", not csp_missing,
+                actual=csp_missing)
+        remote = [m for n in pages for m in re.findall(
+            r'<(?:script|link|img|iframe|source|video|audio)[^>]+(?:src|href)="(?:https?:)?//[^"]*', (dist / n).read_text())]
         R.check(cat, "offline", f"{pub} no remote script/style/image references", not remote, actual=remote)
         texts = [p for p in dist.rglob("*") if p.suffix in {".html", ".md", ".json"}]
         raw_script = [str(p.relative_to(dist)) for p in texts if "<script>alert" in p.read_text()]

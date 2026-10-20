@@ -51,7 +51,7 @@ The [realistic async-cache benchmark](./docs/amp-custom-mode-dials-benchmark.md)
 
 ## Distilling videos
 
-[`skills/distilling-videos/`](./skills/distilling-videos/SKILL.md) turns up to ten public YouTube videos into reusable evidence (timed original and English transcripts, selected frames, checksummed manifests), an evidence-backed brief, and an offline HTML/PDF article, packaged as a ZIP with optional verified Azure Blob archival. Amp does the listening, visual judgment, research, and writing; a standard-library Python CLI (`scripts/distill.py`) does download, frames, validation, rendering, packaging, sign-off, archival, and guarded media cleanup.
+[`skills/distilling-videos/`](./skills/distilling-videos/SKILL.md) turns up to ten public YouTube videos into reusable evidence (timed original and English transcripts, selected frames, checksummed manifests), an evidence-backed brief, and an offline HTML site (cover, article, brief, per-video transcripts, gallery, glossary, references, with offline search, Copy Page Markdown, and house light/dark plus 20 attributed reader theme families) plus an article PDF, packaged as a ZIP with optional verified Azure Blob archival. Amp does the listening, visual judgment, research, and writing; a standard-library Python CLI (`scripts/distill.py`) does download, frames, validation, rendering, packaging, sign-off, archival, and guarded media cleanup.
 
 | Area | Status |
 | --- | --- |
