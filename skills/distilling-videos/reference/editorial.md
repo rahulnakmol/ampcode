@@ -8,7 +8,11 @@ structure; everything here is your judgment. Read this before choosing an angle.
 - Reader: technically comfortable, unfamiliar with this specific domain. Respect an explicit
   `audience` or `goal` in the assignment instead.
 - Voice: opinionated and evidence-led. Say what you conclude and why, and keep it attributable.
-- Length follows explanatory need. No word targets, no padding, no summary-of-the-summary.
+- Length: a complete primary article has at least 1000 narrative body words, and targets 1200–1500
+  or more when the evidence supports it (the renderer counts section paragraphs and lists only; see
+  `article-contract.md`, "Narrative length gate"). Reach it by explaining concepts, mechanisms, and
+  examples in depth. No padding, no repetition, no summary-of-the-summary, no restating the brief.
+  If the evidence cannot honestly support 1000 words, publish `partial` and say why.
 - The article is not a transcript replacement. It may reorganize sources around one coherent
   question; it never invents demonstrations, quotations, measurements, or experiment results.
 
@@ -32,6 +36,22 @@ structure; everything here is your judgment. Read this before choosing an angle.
    the main line stays readable; print and PDF show them expanded.
 10. **Finish with changed understanding**: what the reader now knows, practical implications for the
     goal, and the limits of the evidence.
+
+## Entice, engage, empower (rubric)
+
+Every complete article is written, and independently judged, against three goals. They describe
+honest depth, not hype: never manufacture opposition, outrage, or suspense ("everyone is wrong",
+"the truth they hide") that the evidence does not contain.
+
+| Goal | The article does | It fails when |
+| --- | --- | --- |
+| **Entice** | Opens on an honest hook: a real question, surprising result, or concrete failure from the evidence. Makes an early promise (in the dek or first paragraphs) of what the reader will understand by the end, and keeps it | Clickbait, invented conflict, a hook the body never pays off, or a slow throat-clearing opening |
+| **Engage** | Builds the concepts and mechanisms one at a time, with concrete examples from the sources (a command, number, frame, demo step), and a progressive payoff: each section answers something the previous one raised | Topic-by-topic summary, a transcript retold in order, abstractions without examples, or length from repetition |
+| **Empower** | Leaves the reader with something to act on: steps or checks to try, a transferable mental model that works beyond this video, conditions where the advice applies, and plainly stated limitations | Vague takeaways, advice with no conditions, or limits hidden in the colophon |
+
+Search and sharing: the title is a claim; the dek, or an optional `seo.description` of about 160
+characters, states the honest promise in plain words. Never promise rankings or traffic, and never
+invent authors, dates, or a canonical URL. An offline package is not crawlable until it is hosted.
 
 ## Attribution and uncertainty rules
 
@@ -125,6 +145,11 @@ evidence IDs.
 ## Pre-render checklist
 
 - [ ] Angle answers the goal (or the most interesting honest question for URL-only work).
+- [ ] Complete article: at least 1000 narrative body words (target 1200–1500+) earned by concepts,
+      mechanisms, and examples, with no padding; otherwise `partial` with the reason.
+- [ ] Entice: honest hook and an early promise the body keeps. Engage: one mechanism at a time,
+      concrete examples, progressive payoff. Empower: actionable steps, a transferable model,
+      conditions, and limitations. No forced sensational opposition.
 - [ ] Every video in the publication is cited; conflicts are surfaced, not averaged away.
 - [ ] Each claim is attributed to presenter, screen, external source, or you.
 - [ ] Every central rebuttal or comparison passed the central-claim gate: primary source read in

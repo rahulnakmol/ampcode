@@ -20,7 +20,8 @@ Driven by `fixtures/ground-truth.json`. For each publication:
 | Demo reconstruction | Sequence figures are in time order, contain no talking heads, and cover input → action → output |
 
 The renderer independently enforces verbatim quotes, citation resolution, every-member citation in
-a synthesis, and proposals that cite no sources directly (category "publication").
+a synthesis, proposals that cite no sources directly, and the 1000-word narrative floor for a
+complete article (category "publication").
 
 ## 2. Negative controls (category "editorial rubric negative controls")
 
@@ -53,6 +54,11 @@ someone independent scores it again:
 - **Traceability**: citations resolve to the right moment; figures state provenance.
 - **Separation**: brief evidence vs proposals; presenter vs screen vs external vs agent conclusion.
 - **Explanation**: honest hook, one mechanism at a time, payoffs, changed understanding, limits.
+- **Entice / Engage / Empower**: honest hook and early promise; concepts, mechanisms, examples, and
+  progressive payoff; actionable steps, a transferable model, and limitations, with no forced
+  sensational opposition (`editorial.md`).
+- **Depth**: a complete article's `narrative_words` (in `coverage.json`) is at least 1000 and earned,
+  not padded. The renderer enforces the floor; only judgment can tell depth from filler.
 - **Accessibility**: alt text, labeled figures, works without JS and in print (see "rendered pages").
 
 5 = no defect found; 4 = minor defect that does not mislead; 3 = a defect a careful reader would

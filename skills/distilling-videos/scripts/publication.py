@@ -9,6 +9,7 @@ each page with a Markdown twin; the article page is printed to the PDF.
 from __future__ import annotations
 
 import html
+import ipaddress
 import json
 import os
 import re
@@ -26,7 +27,7 @@ import evidence
 import themes
 from evidence import ContractError, Workspace, check_id, safe_path
 
-RENDERER = 2
+RENDERER = 3
 ASSETS = Path(__file__).resolve().parent.parent / "assets"
 ALPINE = "vendor/alpine-3.17.4.min.js"
 GSAP = "vendor/gsap-3.15.0.min.js"
@@ -59,6 +60,16 @@ MAC_BROWSERS = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
 EVIDENCE_KINDS = {"finding": "Findings", "requirement": "Requirements", "unknown": "Open unknowns"}
 BASIS_LABELS = {"presenter": "Presenter claim", "screen": "Screen observation", "external": "External source"}
 PROPOSAL_KINDS = {"architecture", "implementation", "investigation"}
+# A complete (publishable) primary article needs this many narrative body words; 1200-1500+ is the target.
+NARRATIVE_MIN_WORDS = 1000
+NARRATIVE_TARGET_WORDS = (1200, 1500)
+WORD = re.compile(r"[^\W_]+(?:['’.-][^\W_]+)*")
+SEO_DESCRIPTION_LIMIT = 300
+SEO_DESCRIPTION_SNIPPET = 160
+# Hosts that cannot be a real public canonical: local names and reserved example/test domains (RFC 2606, 6761).
+NON_PUBLIC_SUFFIXES = (".localhost", ".local", ".internal", ".lan", ".home", ".arpa", ".test", ".example",
+                       ".invalid", ".onion")
+EXAMPLE_HOSTS = {"localhost", "example.com", "example.net", "example.org"}
 E = html.escape
 
 
@@ -176,16 +187,105 @@ def _normalize(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip().casefold()
 
 
+def canonical_problems(url: str) -> List[str]:
+    """A canonical URL is the user's real public https address for the hosted article. Never invented,
+    never local (file://, localhost, private or literal IPs), never a reserved example or test domain."""
+    bad = "article.seo.canonical_url must be the public https URL where the article is hosted"
+    if url != url.strip() or re.search(r"[\s\"'<>\\`\x00-\x1f\x7f]", url):
+        return [f"{bad}; it contains whitespace, quotes, angle brackets, or control characters"]
+    try:
+        parts = urlsplit(url)
+        host = (parts.hostname or "").rstrip(".")
+        parts.port  # noqa: B018 - raises ValueError on a malformed port
+    except ValueError:
+        return [f"{bad}; it is not a valid URL"]
+    if parts.scheme != "https":
+        return [f"{bad}; scheme {parts.scheme or '(none)'!r} is not https"]
+    if parts.username or parts.password or parts.fragment:
+        return [f"{bad}; it must not carry credentials or a #fragment"]
+    try:
+        ipaddress.ip_address(host.strip("[]"))
+        return [f"{bad}; an IP address is not a public canonical host"]
+    except ValueError:
+        pass
+    if ("." not in host or host in EXAMPLE_HOSTS or host.endswith(NON_PUBLIC_SUFFIXES)
+            or any(host.endswith("." + h) for h in EXAMPLE_HOSTS)):
+        return [f"{bad}; host {host or '(none)'!r} is local, reserved, or an example domain"]
+    return []
+
+
+def narrative_stats(article: Dict[str, Any]) -> Dict[str, Any]:
+    """Narrative body words: author prose on the article's main reading path (section paragraphs and
+    list items). Headings, dek, quotes, figures, collapsed `details`, limitations, brief, glossary,
+    references, navigation, and transcripts do not count; `details` prose is reported as deeper_words.
+    A paragraph or item repeated verbatim (case and whitespace folded) counts once."""
+    seen: set = set()
+    stats = {"narrative_words": 0, "deeper_words": 0, "repeated_blocks": 0, "minimum": NARRATIVE_MIN_WORDS,
+             "target": list(NARRATIVE_TARGET_WORDS)}
+
+    def visit(blocks: List[Dict[str, Any]], field: str) -> None:
+        for block in blocks:
+            if block["type"] == "details":
+                visit(block["blocks"], "deeper_words")
+                continue
+            texts = [block["text"]] if block["type"] == "p" else block["items"] if block["type"] == "list" else []
+            for text in texts:
+                key = _normalize(plain(text))
+                if key in seen:
+                    stats["repeated_blocks"] += 1
+                    continue
+                seen.add(key)
+                stats[field] += len(WORD.findall(plain(text)))
+
+    for section in article["sections"]:
+        visit(section["blocks"], "narrative_words")
+    return stats
+
+
+def narrative_gate(article: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
+    """Refuse a complete article below the floor; warn on partial drafts, the target band, and repeats."""
+    stats = narrative_stats(article)
+    words, low, high = stats["narrative_words"], *NARRATIVE_TARGET_WORDS
+    if article["status"] == "complete" and words < NARRATIVE_MIN_WORDS:
+        raise ContractError(
+            f"article is complete but its narrative body is {words} words; a complete primary article needs at "
+            f"least {NARRATIVE_MIN_WORDS} (target {low}-{high}+) of real explanation in section paragraphs and "
+            "lists, without padding. Deepen the concepts, mechanisms, and examples the evidence supports, or "
+            "set status partial with a partial_reason.")
+    warnings = []
+    if words < NARRATIVE_MIN_WORDS:
+        warnings.append(f"partial draft: narrative body is {words} words, below the {NARRATIVE_MIN_WORDS}-word "
+                        "floor; it cannot be published as complete")
+    elif words < low:
+        warnings.append(f"narrative body is {words} words, below the {low}-{high}+ target")
+    if stats["repeated_blocks"]:
+        warnings.append(f"{stats['repeated_blocks']} repeated paragraph(s) or list item(s) were not counted")
+    return stats, warnings
+
+
 def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]], pub_dir: Path,
                   inputs: Dict[str, str]) -> Tuple[List[str], List[str]]:
     """Validate structure and every reference. Adds referenced figure files to inputs."""
     top = ("schema_version", "publication_id", "title", "dek", "status", "sections", "figures", "citations",
            "brief", "limitations")
-    problems = _fields(data, "article", top, ("partial_reason", "audience", "glossary"))
+    problems = _fields(data, "article", top, ("partial_reason", "audience", "glossary", "seo"))
     if not isinstance(data, dict):
         return problems, []
     warnings: List[str] = []
     problems += _texts(data, ("title", "dek", "partial_reason", "audience"), "article")
+    if "seo" in data:
+        seo = data["seo"]
+        problems += _fields(seo, "article.seo", (), ("description", "canonical_url"))
+        if isinstance(seo, dict):
+            problems += _texts(seo, ("description", "canonical_url"), "article.seo")
+            description = seo.get("description")
+            if isinstance(description, str) and description.strip():
+                if "[@" in description:
+                    problems.append("article.seo.description is plain text; it must not cite sources")
+                elif len(description.strip()) > SEO_DESCRIPTION_LIMIT:
+                    problems.append(f"article.seo.description is longer than {SEO_DESCRIPTION_LIMIT} characters")
+            if isinstance(seo.get("canonical_url"), str) and seo["canonical_url"].strip():
+                problems += canonical_problems(seo["canonical_url"])
     if data.get("schema_version") != evidence.SCHEMA_VERSION:
         problems.append("article schema_version must be 1")
     if data.get("publication_id") != plan["id"]:
@@ -863,7 +963,47 @@ def theme_select() -> str:
             f'<a class="theme-credits" href="assets/THEMES.md">Theme sources and licenses</a></div>')
 
 
-def page(ctx: Context, title: str, body: str, kind: str, md_name: str, md_text: str, current: str) -> str:
+def seo_description(article: Dict[str, Any]) -> str:
+    seo = article.get("seo") or {}
+    return re.sub(r"\s+", " ", seo.get("description") or plain(article["dek"])).strip()
+
+
+def json_ld(data: Any) -> str:
+    """JSON for a <script type="application/ld+json"> data block: no character can end the element."""
+    text = json.dumps(data, ensure_ascii=True, separators=(",", ":"))
+    return text.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+
+
+def seo_head(ctx: Context) -> str:
+    """Search and share metadata for article.html only. Everything here is stated by the article or the
+    user (title, dek or seo.description, an optional real canonical URL); no authors, dates, or images
+    are invented. Offline packages are not crawlable until the user hosts them."""
+    article = ctx.article
+    title, description = article["title"], seo_description(article)
+    canonical = (article.get("seo") or {}).get("canonical_url")
+    tags = [f'<meta name="description" content="{E(description)}">']
+    if article["status"] != "complete":
+        tags.append('<meta name="robots" content="noindex">')
+    if canonical:
+        tags.append(f'<link rel="canonical" href="{E(canonical)}">')
+    tags += ['<meta property="og:type" content="article">', f'<meta property="og:title" content="{E(title)}">',
+             f'<meta property="og:description" content="{E(description)}">']
+    if canonical:
+        tags.append(f'<meta property="og:url" content="{E(canonical)}">')
+    tags += ['<meta name="twitter:card" content="summary">', f'<meta name="twitter:title" content="{E(title)}">',
+             f'<meta name="twitter:description" content="{E(description)}">']
+    data: Dict[str, Any] = {"@context": "https://schema.org", "@type": "Article", "headline": title,
+                            "description": description, "inLanguage": "en",
+                            "isBasedOn": [f"https://www.youtube.com/watch?v={s['youtube_id']}"
+                                          for s in ctx.sources.values()]}
+    if canonical:
+        data["url"] = data["mainEntityOfPage"] = canonical
+    tags.append(f'<script type="application/ld+json">{json_ld(data)}</script>')
+    return "".join(tags)
+
+
+def page(ctx: Context, title: str, body: str, kind: str, md_name: str, md_text: str, current: str,
+         head: str = "") -> str:
     current_attr = ' aria-current="page"'
     links = "".join(f'<li><a href="{href}"{current_attr if key == current else ""}>{label}</a></li>'
                     for href, label, key in NAV)
@@ -904,7 +1044,7 @@ def page(ctx: Context, title: str, body: str, kind: str, md_name: str, md_text: 
     return (f'<!doctype html>\n<html lang="en" class="no-js"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width, initial-scale=1">'
             f'<meta http-equiv="Content-Security-Policy" content="{CSP}">'
-            f'<meta name="referrer" content="no-referrer"><title>{E(title)}</title>'
+            f'<meta name="referrer" content="no-referrer"><title>{E(title)}</title>{head}'
             f'<script src="assets/theme-init.js"></script>'
             f'<link rel="stylesheet" href="assets/themes.css"><link rel="stylesheet" href="assets/article.css">'
             f'<script defer src="assets/search-index.js"></script><script defer src="assets/{GSAP}"></script>'
@@ -1625,15 +1765,15 @@ def render_documents(ctx: Context) -> Dict[str, str]:
     title = ctx.article["title"]
     out: Dict[str, str] = {}
 
-    def add(name: str, body: str, md: str, page_title: str, kind: str, current: str) -> None:
+    def add(name: str, body: str, md: str, page_title: str, kind: str, current: str, head: str = "") -> None:
         md_name = name[:-5] + ".md"
         md = normalize_markdown(md)
         out[md_name] = md
-        out[name] = page(ctx, page_title, body, kind, md_name, md, current)
+        out[name] = page(ctx, page_title, body, kind, md_name, md, current, head)
 
     body, md = render_cover(ctx)
     add("index.html", body, md, title, "cover", "overview")
-    add("article.html", article_body(ctx), render_article_md(ctx), title, "article", "article")
+    add("article.html", article_body(ctx), render_article_md(ctx), title, "article", "article", seo_head(ctx))
     add("brief.html", brief_body(ctx), render_brief_md(ctx), f"Brief: {title}", "brief", "brief")
     body, md = render_transcripts_index(ctx)
     add("transcripts.html", body, md, f"Transcripts · {title}", "transcripts", "transcripts")
@@ -1654,6 +1794,7 @@ def render_documents(ctx: Context) -> Dict[str, str]:
 
 
 LINK = re.compile(r'\s(?:href|src)="([^"]*)"')
+CANONICAL_LINK = re.compile(r'<link rel="canonical" href="https://[^"<>]*">')
 MD_LINK = re.compile(r"(?<!\\)\]\(([^)\s]+)\)")
 IDS = re.compile(r'\sid="([^"]+)"')
 TEXTAREA = re.compile(r'<textarea id="page-markdown"[^>]*>(.*?)</textarea>', re.S)
@@ -1715,7 +1856,7 @@ def link_problems(root: Path, names: List[str], later: Tuple[str, ...] = tuple(L
     return problems
 
 
-def coverage_report(ctx: Context, warnings: List[str]) -> Dict[str, Any]:
+def coverage_report(ctx: Context, warnings: List[str], narrative: Dict[str, Any]) -> Dict[str, Any]:
     article_used = article_cites(ctx.article)
     sources = []
     for source in ctx.sources.values():
@@ -1735,7 +1876,7 @@ def coverage_report(ctx: Context, warnings: List[str]) -> Dict[str, Any]:
             "figures": {k: sum(1 for f in article["figures"] if f["kind"] == k) for k in ("capture", "sequence",
                                                                                          "original")},
             "brief": {"evidence": len(article["brief"]["evidence"]), "proposals": len(article["brief"]["proposals"])},
-            "limitations": article["limitations"], "warnings": warnings}
+            "narrative": narrative, "limitations": article["limitations"], "warnings": warnings}
 
 
 # ---------------------------------------------------------------------------
@@ -1785,13 +1926,16 @@ def cmd_render(args: Any) -> int:
     problems, warnings = check_article(article, plan, sources, pub_dir, inputs)
     if problems:
         raise ContractError(problems)
+    narrative, narrative_warnings = narrative_gate(article)
+    warnings += narrative_warnings
     ctx = Context(article, sources)
     documents = render_documents(ctx)
     documents["assets/themes.css"] = themes.css()
     documents["assets/THEMES.md"] = themes.provenance_md()
     html_names = sorted(n for n in documents if n.endswith(".html"))
     for name in html_names:
-        if REMOTE_RESOURCE.search(documents[name]):
+        # The validated canonical <link> names the hosted page; it is never fetched.
+        if REMOTE_RESOURCE.search(CANONICAL_LINK.sub("", documents[name])):
             raise ContractError(f"{name} would load a remote resource; refusing to render")
     problems = markdown_problems(documents)
     if problems:
@@ -1803,7 +1947,7 @@ def cmd_render(args: Any) -> int:
     try:
         for name, text in documents.items():
             evidence.atomic_write_text(partial / name, text)
-        evidence.atomic_write_json(partial / "coverage.json", coverage_report(ctx, warnings))
+        evidence.atomic_write_json(partial / "coverage.json", coverage_report(ctx, warnings, narrative))
         for name in ASSET_FILES:
             target = partial / "assets" / name
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -1834,7 +1978,7 @@ def cmd_render(args: Any) -> int:
     if with_pdf.exists():
         with_pdf.unlink()
     emit({"status": "rendered", "publication": plan["id"], "dist": str(pub_dir / "dist"),
-          "files": sorted(outputs), "warnings": warnings})
+          "files": sorted(outputs), "narrative": narrative, "warnings": warnings})
     return 0
 
 
@@ -1957,6 +2101,8 @@ def cmd_package(args: Any) -> int:
         reasons.append("PDF missing or stale for the current render")
     if article["status"] != "complete":
         reasons.append(f"article is partial: {article.get('partial_reason')}")
+    else:
+        narrative_gate(article)  # a render from an older renderer cannot package a too-short complete article
     partial = pub_dir / f".package-partial-{os.getpid()}"
     if partial.exists():
         shutil.rmtree(partial)

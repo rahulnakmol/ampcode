@@ -14,7 +14,7 @@ distill.py package --workspace W --publication P [--allow-missing-pdf]
 
 | Command | Reads | Writes | Status |
 | --- | --- | --- | --- |
-| `render` | `article.json`, `figures/`, and evidence for every video in the publication | `dist/` (replaced atomically) and `render.json` (`renderer: 2`). Deletes `pdf.json`, because a new render invalidates the old PDF. | `rendered` |
+| `render` | `article.json`, `figures/`, and evidence for every video in the publication | `dist/` (replaced atomically) and `render.json` (`renderer: 3`). Deletes `pdf.json`, because a new render invalidates the old PDF. | `rendered` |
 | `pdf` | `dist/article.html?print=1` (the article, not the cover) | `dist/article.pdf` and `pdf.json` (`page: "article.html"`, `page_sha256`, `pdf_sha256`, `browser`, `pages`) | `rendered` |
 | `package` | `dist/`, `render.json`, `pdf.json`, and the evidence | `package/` with `manifest.json`, plus a readable `<title-slug>.zip` | `packaged` |
 
@@ -23,6 +23,17 @@ distill.py package --workspace W --publication P [--allow-missing-pdf]
 - Every video in the publication must have complete, checksum-valid `transcript` and `transcript-markdown` stages.
 - When a `frames` stage exists, it must also be valid. Changing any evidence after it is recorded blocks the render.
 - `render.json` records SHA-256 digests of every input: the article, its figures, the source files, and the frames used. It also records digests of every `dist/` output.
+
+### Narrative length gate
+
+A `complete` article is a publishable primary article: its **narrative body** must be at least 1000 words, and the target is 1200–1500 or more when the evidence supports it. Length comes from explaining concepts, mechanisms, and examples in depth, never from padding.
+
+- Narrative body words are the words of section `p` text and `list` items, after removing citation markers and `**`, `*`, and backtick markup. Words are runs of letters and digits (internal apostrophes, hyphens, and periods join one word).
+- Not counted: the title, dek, headings, `quote` blocks (source words, not explanation), figure captions, steps, and assumptions, `details` content (reported separately as `deeper_words`, because it is collapsed on screen), `limitations`, the brief, the glossary, citation notes, references, navigation, transcripts, and `seo`.
+- A paragraph or list item repeated verbatim (case and whitespace folded) counts once; repeats are reported.
+- `render` refuses (exit 2, nothing written) a `complete` article below 1000 words. A `partial` draft below the floor renders with the warning `partial draft: narrative body is N words, below the 1000-word floor; it cannot be published as complete`, its pages show the partial notice, `article.html` carries `robots: noindex`, and `package` reports `complete: false`. A complete article between 1000 and 1199 words renders with a below-target warning. There is no bypass flag.
+- `render` output and `coverage.json` report `narrative: {narrative_words, deeper_words, repeated_blocks, minimum: 1000, target: [1200, 1500]}`. `package` re-applies the gate, so a render from an older renderer cannot package a too-short complete article.
+- The count is a floor, not a quality judgment: the editorial rubric (`editorial.md`) and an independent review decide whether the words earn their place.
 
 ### PDF behavior
 
@@ -36,7 +47,7 @@ distill.py package --workspace W --publication P [--allow-missing-pdf]
 `package` re-verifies `render.json` input and output checksums and fails if the render is stale. It then checks the PDF:
 
 - The PDF must match the current `article.html` (`pdf.json` `page` and `page_sha256`). A `pdf.json` written by renderer 1 (which printed `index.html` and recorded `index_sha256`) counts as stale. Otherwise packaging fails, unless you pass `--allow-missing-pdf`. That flag produces `complete: false`, and the packaged pages drop their link to `article.pdf` (the only one, in the article footer) so a draft never links a missing file. Every package page's local links are rechecked with no exceptions.
-- A `partial` article also produces `complete: false`.
+- A `partial` article also produces `complete: false`. A `complete` article below the narrative floor is refused (exit 2).
 
 ## `article.json`
 
@@ -56,9 +67,12 @@ Unknown fields are rejected at every level. Text fields must not be empty. Optio
   "citations": [],
   "brief": {"question": "optional", "evidence": [], "proposals": []},
   "limitations": ["inline text"],
-  "glossary": [{"term": "plain text", "definition": "optional; inline text, at most 320 characters"}]
+  "glossary": [{"term": "plain text", "definition": "optional; inline text, at most 320 characters"}],
+  "seo": {"description": "optional plain text, at most 300 characters", "canonical_url": "optional; https URL"}
 }
 ```
+
+`seo` is optional. `description` is plain text (no citation markers), at most 300 characters; aim for about 160, which search snippets usually show. `canonical_url` is the user's real public `https` address for the hosted `article.html`: only set it when the user gives it. It is rejected when it is not `https`, carries credentials or a `#fragment`, contains whitespace, quotes, angle brackets, or control characters, has a malformed port, names an IP address, a dotless host, `localhost`, a local or reserved suffix (`.local`, `.internal`, `.lan`, `.home`, `.arpa`, `.localhost`, `.test`, `.example`, `.invalid`, `.onion`), or an example domain (`example.com`, `.net`, `.org`, and their subdomains). Never invent a host or use a `file://` path.
 
 `glossary` is optional. Terms are plain text and unique (case-insensitive); definitions are short inline text (at most 320 characters, citations allowed and validated). Without it, the glossary page says that no terms were defined.
 
@@ -134,12 +148,23 @@ The brief must contain both `evidence` and `proposals`, even if `proposals` is e
 | `glossary.html` | Optional short definitions |
 | `references.html` | Original videos, video citations (`cite-<id>`), external sources, visual credits, bundled software and theme credits |
 | `*.md` | One Markdown twin per page (`index.md`, `article.md`, `brief.md`, `transcripts.md`, `transcript-<video>[.original].md`, `gallery.md`, `glossary.md`, `references.md`). Escaped text, `[^n]` footnotes, timestamped URLs. Transcript twins are the verified evidence Markdown with frame links pointed at `media/` |
-| `coverage.json` | Per-source transcript coverage, gaps, uncertain segments, and frame counts (with `semantic_completeness: false`); citation, figure, and brief counts; limitations and warnings |
+| `coverage.json` | Per-source transcript coverage, gaps, uncertain segments, and frame counts (with `semantic_completeness: false`); citation, figure, and brief counts; the `narrative` word count; limitations and warnings |
 | `assets/` | `article.css`, `article.js`, `theme-init.js`, generated `themes.css`, `THEMES.md` (theme sources, licenses, contrast adaptations), and `search-index.js`; `vendor/alpine-3.17.4.min.js` (MIT), `vendor/gsap-3.15.0.min.js` (Standard "No Charge" GSAP License), their license files, and `PROVENANCE.md` |
 | `media/`, `figures/` | Copied images: placed, selected, and cited frames (full and thumbnail), and original figures |
 | `article.pdf` | Written by `pdf` |
 
 The tape map draws ticks at cited moments and hatching over transcript gaps. It has a text equivalent, so the meaning is not carried by color alone.
+
+### Search and share metadata
+
+Only `article.html` carries it; the other pages are unchanged. All values are HTML-escaped attributes:
+
+- `<meta name="description">`, `og:description`, and `twitter:description`: `seo.description`, or the dek as plain text (markup and citation markers removed, whitespace folded).
+- `og:type` `article`, `og:title` and `twitter:title` (the title), and `twitter:card` `summary`. No image tags: share images would need an absolute hosted URL.
+- With `seo.canonical_url`: `<link rel="canonical">` and `og:url`. Without it, neither is emitted. The canonical link is never fetched, so the remote-resource refusal ignores exactly that validated tag.
+- `<meta name="robots" content="noindex">` when the article is `partial`.
+- One `<script type="application/ld+json">` data block (not executed, so the CSP is unchanged): schema.org `Article` with `headline`, `description`, `inLanguage` `en`, `isBasedOn` (the source videos' YouTube URLs), and `url`/`mainEntityOfPage` only with a canonical URL. `<`, `>`, and `&` are `\u` escaped, so no text can close the element. No author, publisher, dates, or images are emitted, because the article does not state them; never add invented ones.
+- Metadata does not make anything discoverable: an offline package or ZIP is not crawlable until the user hosts it at the canonical URL. Nothing here promises ranking or traffic.
 
 ### Offline safety
 

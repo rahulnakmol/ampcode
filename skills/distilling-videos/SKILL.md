@@ -224,12 +224,21 @@ diagrams go in `$W/publications/<P>/figures/` as SVG/PNG with stated assumptions
 Quotes must be verbatim from the cited segments. Every publication video must be cited. Brief
 evidence is what sources establish; proposals are your recommendations and cite evidence IDs only.
 
+**Depth gate:** a `complete` article needs at least 1000 narrative body words in section
+paragraphs and lists (target 1200–1500+); `render` refuses less and reports the count. Earn the
+length with concepts, mechanisms, examples, and actionable takeaways, judged by the entice /
+engage / empower rubric in `editorial.md`; never pad. Optional `seo.description` (plain, about
+160 characters) and `seo.canonical_url` (only a real public https URL the user gives) feed the
+article page's search and share metadata. The example below is a deliberately short `partial`
+draft, so it renders with a warning and packages `complete: false`.
+
 <!-- example: article -->
 ```json
 {
   "schema_version": 1,
   "publication_id": "talk1",
-  "status": "complete",
+  "status": "partial",
+  "partial_reason": "Outline draft: the explanation is below the 1000-word narrative floor.",
   "title": "Why an eager cache can still serve a stale read",
   "dek": "Invalidating on write narrows the window. The demo shows it does not close it.",
   "sections": [
@@ -273,7 +282,8 @@ evidence is what sources establish; proposals are your recommendations and cite 
 }
 ```
 
-Set `"status": "partial"` with `partial_reason` when necessary evidence is unresolved.
+Set `"status": "partial"` with `partial_reason` when necessary evidence is unresolved or the
+article is still a short draft.
 
 ### 6. Render, PDF, inspect, package
 

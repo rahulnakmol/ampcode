@@ -50,6 +50,18 @@ class SkillDocs(unittest.TestCase):
         self.assertIn("Central-claim gate", (SKILL / "SKILL.md").read_text())
         self.assertIn("not approved by\ndefault", (SKILL / "reference" / "evaluations.md").read_text())
 
+    def test_depth_floor_and_entice_engage_empower_rubric_are_documented(self):
+        import publication
+        editorial = (SKILL / "reference" / "editorial.md").read_text()
+        rubric = editorial.split("## Entice, engage, empower", 1)[1].split("\n## ", 1)[0]
+        for phrase in ("**Entice**", "**Engage**", "**Empower**", "early promise", "progressive payoff",
+                       "transferable mental model", "never manufacture opposition"):
+            self.assertIn(phrase, rubric, phrase)
+        self.assertEqual(publication.NARRATIVE_MIN_WORDS, 1000)
+        for path in (SKILL / "reference" / "editorial.md", SKILL / "reference" / "article-contract.md",
+                     SKILL / "reference" / "evaluations.md", SKILL / "SKILL.md"):
+            self.assertIn("1000", path.read_text(), path.name)
+
     def test_documented_cli_flags_exist(self):
         help_text = {}
         text = (SKILL / "SKILL.md").read_text() + (SKILL / "reference" / "providers.md").read_text() \

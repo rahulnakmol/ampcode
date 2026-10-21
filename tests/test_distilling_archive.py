@@ -29,9 +29,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "skills" / "distilling-videos" / "scripts"
 DISTILL = SCRIPTS / "distill.py"
 sys.path.insert(0, str(SCRIPTS))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import distill  # noqa: E402
 import evidence  # noqa: E402
+from test_distilling_publication import DEPTH  # noqa: E402  realistic prose above the narrative floor
 
 CONTAINER = "https://acct.blob.core.windows.net/distilled"
 SIGNATURE = "TopSecretSignatureValue0123456789abcdef%3D"
@@ -86,7 +88,8 @@ def article(status="complete"):
         "dek": "What the talk shows.",
         "sections": [{"id": "hook", "heading": "The claim", "blocks": [
             {"type": "p", "text": "The speaker states line one [@c1]."},
-            {"type": "figure", "figure": "fig1"}]}],
+            {"type": "figure", "figure": "fig1"}]},
+            {"id": "depth", "heading": "Why the claim matters", "blocks": [{"type": "p", "text": t} for t in DEPTH]}],
         "figures": [{"id": "fig1", "kind": "capture", "video_id": "v1", "frame_id": "f000020000",
                      "alt": "A frame", "caption": "The screen"}],
         "citations": [{"id": "c1", "video_id": "v1", "segment_ids": ["s1"], "frame_id": "f000020000"}],

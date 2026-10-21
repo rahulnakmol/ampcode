@@ -29,6 +29,73 @@ import evidence  # noqa: E402
 
 HOSTILE = '<script>alert("x")</script><img src=x onerror=alert(1)>'
 
+# Realistic explanatory prose so the fixture is a complete article above the 1000-word narrative floor.
+# Every paragraph is distinct: the renderer counts a repeated paragraph once.
+DEPTH = [
+    "Start with what a cache promises. It keeps a copy of a value close to the reader so the next read skips "
+    "the slow trip to the database. The copy is only useful while it still matches the source of truth, and "
+    "the whole difficulty of invalidation is deciding when that stops being the case. Both talks agree on the "
+    "goal. They disagree about how quickly a write makes the old copy disappear, and that gap is where a stale "
+    "read lives.",
+    "Eager invalidation means the writer deletes or overwrites the cached entry as part of the write itself. "
+    "In the first talk this is presented as the end of the problem: once the write lands, the cache cannot "
+    "serve the old value. The claim is attractive because it is simple to reason about. It treats the write "
+    "and the purge as one atomic event, and that assumption is exactly what the second talk puts under "
+    "pressure on screen.",
+    "The second talk shows a different timeline. A reader asks the cache for a key, misses, and goes to the "
+    "database. While that read is in flight, a writer updates the row and purges the cache. The reader then "
+    "returns with the value it fetched before the write and stores it in the cache. Nothing in that sequence "
+    "is a bug in either component taken alone. The stale value arrives because two correct operations "
+    "interleave in an unlucky order.",
+    "It helps to name the window. The race is open from the moment the reader fetches from the database until "
+    "the moment it writes its result back into the cache. Any write that completes and purges inside that "
+    "window is undone by the late fill. Eager invalidation shortens the time during which the cache disagrees "
+    "with the database after a write, but it does nothing about fills that started before the write and "
+    "finished after it.",
+    "This is why the two talks can both be honest and still disagree. The first presenter is describing the "
+    "common case, where reads and writes do not overlap and the purge really does clear the entry. The second "
+    "presenter is describing the rare case, where they do overlap. A system that serves millions of reads a "
+    "day will meet the rare case regularly, so the question for a reader is not which talk is right but how "
+    "often the overlap happens in their own traffic.",
+    "There are several standard ways to close or narrow the window, and each costs something. A version "
+    "number stored with each entry lets the cache refuse a fill that is older than the last write. A short "
+    "lease handed out on a miss lets the cache reject fills from readers whose lease was revoked by a write. "
+    "A delayed second purge, issued a little after the write, removes most late fills at the price of an "
+    "extra round trip. None of these appear in the talks, so treat them as background rather than as claims "
+    "the sources make.",
+    "A useful way to test your own system is to reproduce the second talk's demo deliberately. Run two "
+    "clients against a local cache. Make the reader slow on purpose, for example by adding a delay between "
+    "the database read and the cache fill. Issue a write during that delay and then read the key again. If "
+    "the old value comes back, you have reproduced the race. If it does not, check whether your client "
+    "library already uses versions or leases before concluding that the race cannot happen.",
+    "The transferable model is short. A cache entry is correct only if no write happened between the moment "
+    "its value was read from the source and the moment it was stored. Eager invalidation protects entries "
+    "stored before a write. It does not protect fills that straddle one. Whenever someone tells you that "
+    "invalidation is solved, ask which of those two cases they measured, and over what traffic.",
+    "Time to live is often offered as the fallback answer, and it is worth being precise about what it buys. "
+    "An expiry bounds how long a stale entry can survive, because the entry eventually disappears whether or "
+    "not anyone purged it. It does not prevent the stale fill in the first place. A long expiry keeps hit "
+    "rates high and stale values alive for longer; a short one shortens the damage and sends more traffic to "
+    "the database. The right setting depends on how much staleness the product can tolerate.",
+    "Consider what a reader of the page actually experiences. Most of the time the cached value is fresh and "
+    "the page is fast. Occasionally, just after an edit, the page shows the old value, and refreshing does "
+    "not help until the entry expires or another write purges it again. That pattern is a useful diagnostic "
+    "clue: a stale value that persists across refreshes points to a late fill, while one that clears on the "
+    "next request points to replication lag or a client-side cache instead.",
+    "Finally, notice what the disagreement teaches about reading technical talks in general. A presenter "
+    "summarizing a design usually describes the path they expect, not every interleaving the system allows. "
+    "A demo, by contrast, shows one concrete path, which may be the unexpected one. When a claim and a demo "
+    "seem to conflict, look for the condition under which both are true before deciding that one of them is "
+    "wrong. Here that condition is concurrency, and naming it turns a contradiction into a design question.",
+    "If you take one action from this, make it a measurement rather than a debate. Log, for a sample of "
+    "keys, when each fill read the database and when it wrote the cache, alongside the time of each write. "
+    "Any fill whose read precedes a write and whose store follows it is a stale entry waiting to be served.",
+    "Keep the limits in view. These are two short talks, one demo, and one external document. The demo shows "
+    "that a stale read is possible; it does not show how often it occurs, how long the stale value survives, "
+    "or whether the presenter's production system sees it at all. The exact time to live of the cache is "
+    "unreadable on screen. Any estimate of real-world frequency would be our guess, and we do not make one.",
+]
+
 
 def transcript(video_id, lines, language="en"):
     segments = []
@@ -57,6 +124,7 @@ def article(pub="g1"):
                 {"type": "figure", "figure": "fig-demo"},
                 {"type": "details", "summary": "Deeper: timing assumptions",
                  "blocks": [{"type": "p", "text": "The model assumes one writer [@c3]."}]},
+                *({"type": "p", "text": text} for text in DEPTH),
             ]},
         ],
         "figures": [
@@ -203,7 +271,8 @@ class RenderSafety(PublicationFixture):
             self.assertNotIn("<script>alert", page)
             self.assertNotIn("<img src=x", page)
             self.assertIn("&lt;script&gt;alert", page)
-            scripts = re.findall(r"<script[^>]*>", page)
+            scripts = [tag for tag in re.findall(r"<script[^>]*>", page)
+                       if not (name == "article.html" and tag == '<script type="application/ld+json">')]
             self.assertTrue(all("src=\"assets/" in tag for tag in scripts), scripts)
         index = (dist / "article.html").read_text()
         self.assertIn("https://example.org/docs?a=1&amp;b=2", index)
@@ -1081,9 +1150,151 @@ class SinglePublication(PublicationFixture):
         data["citations"] = [{"id": "c1", "video_id": "v3", "segment_ids": ["s1"]}]
         data["brief"] = {"evidence": [{"id": "E1", "kind": "finding", "basis": "presenter",
                                        "text": "Unrelated.", "citations": ["c1"]}], "proposals": []}
+        data["status"], data["partial_reason"] = "partial", "One-line fixture talk; a deliberately short draft."
         (pub / "article.json").write_text(json.dumps(data))
-        self.ok(self.render("v3"))
+        result = self.ok(self.render("v3"))
         self.assertIn("A single talk", (pub / "dist" / "index.html").read_text())
+        self.assertIn("partial draft", " ".join(result["warnings"]))
+
+
+def short_article():
+    data = article()
+    data["sections"][1]["blocks"] = [b for b in data["sections"][1]["blocks"] if b.get("text") not in DEPTH]
+    return data
+
+
+class ArticleDepthAndSeo(PublicationFixture):
+    def test_narrative_count_is_reported(self):
+        result = self.ok(self.render())
+        narrative = result["narrative"]
+        self.assertGreaterEqual(narrative["narrative_words"], 1000)
+        self.assertEqual((narrative["minimum"], narrative["target"]), (1000, [1200, 1500]))
+        self.assertEqual(json.loads((self.pub / "dist" / "coverage.json").read_text())["narrative"], narrative)
+        self.assertIn("below the 1200-1500+ target", " ".join(result["warnings"]))
+
+    def test_complete_article_below_the_floor_is_refused(self):
+        self.write_article(short_article())
+        result = self.render()
+        self.assert_contract_error(result, r"complete but its narrative body is \d+ words.*at least 1000")
+        self.assertFalse((self.pub / "dist").exists())
+
+    def test_partial_draft_below_the_floor_renders_clearly_warned(self):
+        data = short_article()
+        data["status"], data["partial_reason"] = "partial", "Draft: the explanation is not yet written in full."
+        self.write_article(data)
+        result = self.ok(self.render())
+        self.assertRegex(" ".join(result["warnings"]), r"partial draft: narrative body is \d+ words, below the "
+                                                         r"1000-word floor; it cannot be published as complete")
+        page = (self.pub / "dist" / "article.html").read_text()
+        self.assertIn("Partial publication.", page)
+        self.assertIn('<meta name="robots" content="noindex">', page)
+        self.ok(self.pdf())
+        packaged = self.ok(self.cli("package", "--workspace", self.ws, "--publication", "g1"))
+        self.assertFalse(packaged["complete"])
+
+    def test_references_brief_and_hidden_padding_do_not_count(self):
+        import publication
+        data = short_article()
+        base = publication.narrative_stats(data)["narrative_words"]
+        filler = " ".join(f"word{i}" for i in range(400))
+        data["dek"] += " " + filler
+        data["sections"][0]["heading"] += " " + filler
+        data["sections"][0]["blocks"].append({"type": "quote", "text": "writes invalidate eagerly", "cite": "c1"})
+        data["sections"][1]["blocks"].append({"type": "details", "summary": filler,
+                                              "blocks": [{"type": "p", "text": filler}]})
+        data["figures"][0]["caption"] += " " + filler
+        data["figures"][1]["assumptions"].append(filler)
+        data["citations"][0]["note"] = filler
+        data["brief"]["question"] += " " + filler
+        data["brief"]["evidence"][0]["text"] += " " + filler
+        data["brief"]["proposals"][0]["text"] += " " + filler
+        data["limitations"].append(filler)
+        data["glossary"] = [{"term": "Cache", "definition": "A nearby copy of a value. " * 10}]
+        data["seo"] = {"description": "Short summary of the race."}
+        # Repeating a real paragraph, or padding it with citation markers and markup, adds nothing.
+        first = data["sections"][0]["blocks"][0]["text"]
+        data["sections"][1]["blocks"] += [{"type": "p", "text": first}] * 20
+        data["sections"][1]["blocks"].append({"type": "p", "text": "**Short** `x` [@c1; @c2] [@c3] [@c1]."})
+        stats = publication.narrative_stats(data)
+        self.assertEqual(stats["narrative_words"], base + 2)
+        self.assertEqual(stats["deeper_words"], 400 + 5)
+        self.assertEqual(stats["repeated_blocks"], 20)
+        self.write_article(data)
+        self.assert_contract_error(self.render(), r"narrative body is \d+ words")
+
+    def test_seo_metadata_is_escaped_and_only_on_the_article(self):
+        data = article()
+        hostile = '</script><script>alert(1)</script> "quoted" & <b>'
+        data["seo"] = {"description": "Why eager invalidation leaves a race " + hostile}
+        self.write_article(data)
+        self.ok(self.render())
+        dist = self.pub / "dist"
+        page = (dist / "article.html").read_text()
+        head = page.split("</head>", 1)[0]
+        description = html.escape("Why eager invalidation leaves a race " + hostile)
+        for tag in (f'<meta name="description" content="{description}">',
+                    '<meta property="og:type" content="article">',
+                    f'<meta property="og:title" content="{html.escape(data["title"])}">',
+                    f'<meta property="og:description" content="{description}">',
+                    '<meta name="twitter:card" content="summary">',
+                    f'<meta name="twitter:description" content="{description}">'):
+            self.assertIn(tag, head)
+        self.assertNotIn("<script>alert", page)
+        self.assertNotIn("noindex", head)
+        self.assertNotIn("canonical", head)
+        self.assertNotIn("og:url", head)
+        blocks = re.findall(r'<script type="application/ld\+json">(.*?)</script>', head, re.S)
+        self.assertEqual(len(blocks), 1)
+        self.assertNotRegex(blocks[0], r"[<>&]")
+        ld = json.loads(blocks[0])
+        self.assertEqual(ld["@type"], "Article")
+        self.assertEqual(ld["headline"], data["title"])
+        self.assertEqual(ld["description"], "Why eager invalidation leaves a race " + hostile)
+        self.assertEqual(ld["isBasedOn"], ["https://www.youtube.com/watch?v=abcdefghi01",
+                                           "https://www.youtube.com/watch?v=abcdefghi02"])
+        for invented in ("author", "datePublished", "dateModified", "publisher", "image", "url"):
+            self.assertNotIn(invented, ld)
+        for name in ("index.html", "brief.html", "references.html"):
+            other = (dist / name).read_text()
+            self.assertNotIn("og:title", other)
+            self.assertNotIn("application/ld+json", other)
+
+    def test_description_defaults_to_the_plain_dek(self):
+        self.ok(self.render())
+        head = (self.pub / "dist" / "article.html").read_text().split("</head>", 1)[0]
+        self.assertIn('<meta name="description" content="Two talks disagree about when invalidation happens.">',
+                      head)
+
+    def test_canonical_url_must_be_a_real_public_https_url(self):
+        for url in ("file:///Users/me/article.html", "http://rahul.dev/a", "https://localhost/a",
+                    "https://127.0.0.1/a", "https://[::1]/a", "https://10.0.0.5/a", "https://example.com/a",
+                    "https://blog.example.org/a", "https://site.test/a", "https://intranet/a",
+                    "https://me:pw@rahul.dev/a", "https://rahul.dev/a#top", '"https://rahul.dev/a"',
+                    'https://rahul.dev/a"><script>alert(1)</script>', "https://rahul.dev/a b", "/article.html",
+                    "https://rahul.dev:99999/a", "article.html"):
+            data = article()
+            data["seo"] = {"canonical_url": url}
+            self.write_article(data)
+            self.assert_contract_error(self.render(), r"canonical_url")
+        for bad in ({"canonical": "https://rahul.dev/a"}, {"description": 7}, {"description": "x [@c1]"},
+                    {"description": "x" * 301}, "text"):
+            data = article()
+            data["seo"] = bad
+            self.write_article(data)
+            self.assert_contract_error(self.render(), r"seo")
+
+    def test_valid_canonical_is_linked_and_not_treated_as_a_remote_resource(self):
+        data = article()
+        url = "https://rahul.dev/notes/cache-race/article.html?v=1&lang=en"
+        data["seo"] = {"canonical_url": url}
+        self.write_article(data)
+        self.ok(self.render())
+        head = (self.pub / "dist" / "article.html").read_text().split("</head>", 1)[0]
+        self.assertIn(f'<link rel="canonical" href="{html.escape(url)}">', head)
+        self.assertIn(f'<meta property="og:url" content="{html.escape(url)}">', head)
+        ld = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', head).group(1))
+        self.assertEqual((ld["url"], ld["mainEntityOfPage"]), (url, url))
+        self.assertNotIn("canonical", (self.pub / "dist" / "index.html").read_text())
 
 
 if __name__ == "__main__":

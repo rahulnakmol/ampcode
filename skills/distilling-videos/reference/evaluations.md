@@ -103,10 +103,28 @@ real-video transcription results. The source repository keeps fixtures and recor
 - **Separation**: brief evidence vs proposals; presenter vs screen vs external vs agent conclusion.
 - **Explanation**: honest hook, one mechanism at a time, payoffs, changed understanding, limits
   (`editorial.md`).
+- **Entice**: honest hook and an early promise the body keeps; no clickbait or forced opposition.
+- **Engage**: concepts and mechanisms built one at a time with concrete source examples and a
+  progressive payoff; not a retold transcript.
+- **Empower**: actionable steps or checks, a transferable model, conditions, and limitations.
+- **Depth**: the reported `narrative_words` (at least 1000 for `complete`, target 1200–1500+) is
+  earned; the judge flags padding, repetition, or filler the counter cannot see.
 - **Accessibility**: alt text, labeled figures, works without JS and in print.
 
 Use an independent reviewer (a separate thread or subagent) who receives the fixtures,
 deliverables, and this rubric, but not the author's self-assessment.
+
+### Independent LLM judge for a primary article
+
+After a baseline change (such as the 2026-10-21 depth and SEO amendment), rerun the newest real
+article and have it judged by an independent LLM in a fresh thread or subagent that did not write
+or revise it. Give the judge `article.json`, `dist/article.html` or `article.md`, `coverage.json`
+(including `narrative`), the transcripts, and this rubric and `editorial.md`; withhold the author's
+notes and scores. The judge returns a 1–5 score with a one-line justification for each dimension
+above, every fidelity defect with its citation, and any padding it finds. Record the judge's model
+and scores as the judge's, not the author's; revisions after judging are re-judged, never
+self-approved. SEO is judged only for honesty (a plain, accurate description; no invented
+canonical, author, or date); no one can promise ranking.
 
 After the author applies the reviewer's findings, the revised publication is **not approved by
 default**, even where the reviewer supplied replacement text. The author re-checks each changed
