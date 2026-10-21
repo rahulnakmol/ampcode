@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import unicodedata
 import zipfile
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Tuple
@@ -505,6 +506,29 @@ def lang_code(language: str) -> str:
 
 def slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.casefold()).strip("-")[:48]
+
+
+ZIP_SLUG_MAX = 80
+WINDOWS_RESERVED = {"con", "prn", "aux", "nul", *(f"com{i}" for i in range(1, 10)), *(f"lpt{i}" for i in range(1, 10))}
+
+
+def readable_slug(text: str, limit: int = ZIP_SLUG_MAX) -> str:
+    """ASCII, lowercase, hyphen-separated, path-safe slug; cut at a word boundary."""
+    text = "".join(c for c in unicodedata.normalize("NFKD", text or "") if not unicodedata.combining(c))
+    text = re.sub(r"['\u2018\u2019`]", "", text.casefold())
+    base = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
+    if len(base) > limit:
+        cut = base[:limit + 1]
+        base = (cut.rsplit("-", 1)[0] if "-" in cut else cut[:limit]).strip("-")
+    return base
+
+
+def package_zip_names(title: Optional[str], publication_id: str, revision: str) -> List[str]:
+    """Readable ZIP names in preference order: the title slug, then short and full revision on collision."""
+    base = readable_slug(title or "") or readable_slug(publication_id) or "publication"
+    if base in WINDOWS_RESERVED:
+        base += "-article"
+    return [f"{base}.zip", f"{base}-{revision[:8]}.zip", f"{base}-{revision}.zip"]
 
 
 class Context:
@@ -1974,15 +1998,28 @@ def cmd_package(args: Any) -> int:
         if partial.exists():
             shutil.rmtree(partial)
     package = pub_dir / "package"
-    archive = pub_dir / f"{plan['id']}-{revision}.zip"
-    temp = pub_dir / f".{archive.name}.tmp"
+    temp = pub_dir / f".{plan['id']}-{revision}.zip.tmp"
     with zipfile.ZipFile(temp, "w", zipfile.ZIP_DEFLATED) as bundle:
         for rel in ["manifest.json"] + [f["path"] for f in files]:
             info = zipfile.ZipInfo(rel, date_time=(1980, 1, 1, 0, 0, 0))
             info.external_attr = 0o644 << 16
             info.compress_type = zipfile.ZIP_DEFLATED
             bundle.writestr(info, (package / rel).read_bytes())
-    os.replace(temp, archive)
+    # Readable name from the title; never overwrite a different ZIP (another revision) already using it.
+    archive = None
+    for name in package_zip_names(article.get("title"), plan["id"], revision):
+        candidate = pub_dir / name
+        if not candidate.exists() and not candidate.is_symlink():
+            os.replace(temp, candidate)
+            archive = candidate
+            break
+        if not candidate.is_symlink() and candidate.is_file() and candidate.read_bytes() == temp.read_bytes():
+            temp.unlink()
+            archive = candidate
+            break
+    if archive is None:
+        temp.unlink()
+        raise ContractError(f"every readable ZIP name for revision {revision} is taken by different bytes")
     emit({"status": "packaged", "publication": plan["id"], "revision": revision, "complete": not reasons,
           "incomplete_reasons": reasons, "package_dir": str(package), "manifest": str(package / "manifest.json"),
           "manifest_sha256": evidence.sha256_file(package / "manifest.json"), "zip": str(archive),

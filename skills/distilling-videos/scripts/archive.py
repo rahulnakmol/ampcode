@@ -327,7 +327,9 @@ def load_package(directory: Path, zip_path: Optional[Path] = None, signoff_path:
         if len(data) != entry["bytes"] or evidence.sha256_bytes(data) != entry["sha256"]:
             raise ContractError(f"package file {rel} checksum mismatch with manifest")
         _secret_check(rel, data)
-    if zip_path is None or not Path(zip_path).name == zip_name:
+    # A workspace ZIP may carry a readable local name; its bytes are verified below and it is
+    # always archived under the canonical zip_name. A standalone package must use zip_name.
+    if zip_path is None or (standalone and Path(zip_path).name != zip_name):
         raise ContractError(f"package ZIP must be named {zip_name}")
     zip_bytes = _read_regular(Path(zip_path), MAX_PACKAGE_BYTES)
     _verify_zip(zip_bytes, manifest_bytes, manifest)
@@ -396,8 +398,24 @@ def _workspace_package(workspace: Workspace, publication_id: str) -> Tuple[Dict[
         raise ContractError(f"publication {publication_id} has no package; run package first")
     manifest = evidence.read_json(package_dir / "manifest.json")
     revision = manifest.get("revision") if isinstance(manifest, dict) else None
-    zip_path = pub_dir / f"{publication_id}-{revision}.zip"
-    package = load_package(package_dir, zip_path, pub_dir / SIGNOFF)
+    legacy = pub_dir / f"{publication_id}-{revision}.zip"
+    candidates = [legacy]
+    if isinstance(revision, str) and re.match(r"^[0-9a-f]{16}$", revision):
+        try:
+            title = evidence.read_json(package_dir / "article.json").get("title")
+        except Exception:
+            title = None
+        candidates = [pub_dir / n for n in publication.package_zip_names(title, publication_id, revision)] + [legacy]
+    existing = [p for p in candidates if p.exists() or p.is_symlink()]
+    package = error = None
+    for zip_path in existing or [legacy]:
+        try:
+            package = load_package(package_dir, zip_path, pub_dir / SIGNOFF)
+            break
+        except ContractError as exc:
+            error = error or exc
+    if package is None:
+        raise error
     if package["manifest"]["publication_id"] != plan["id"] or package["manifest"]["video_ids"] != plan["video_ids"]:
         raise ContractError("package manifest does not match the assignment publication")
     return package, pub_dir, plan

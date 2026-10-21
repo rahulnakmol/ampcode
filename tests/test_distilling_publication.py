@@ -484,6 +484,45 @@ class Packaging(PublicationFixture):
         again = self.ok(self.package())
         self.assertEqual(again["zip_sha256"], result["zip_sha256"])
 
+    def test_zip_is_named_from_title_and_never_overwrites_another_revision(self):
+        data = article()
+        data["title"] = "A Software Factory Is a Measurement Loop — With Agents Attached?!"
+        self.write_article(data)
+        self.ok(self.render())
+        self.ok(self.pdf())
+        first = self.ok(self.package())
+        base = "a-software-factory-is-a-measurement-loop-with-agents-attached"
+        self.assertEqual(Path(first["zip"]).resolve(), (self.pub / f"{base}.zip").resolve())
+        self.assertEqual(self.ok(self.package())["zip"], first["zip"])  # deterministic rerun reuses the name
+        self.assertEqual(sorted(p.name for p in self.pub.glob("*.zip")), [f"{base}.zip"])
+        manifest = json.loads((self.pub / "package" / "manifest.json").read_text())
+        self.assertEqual((manifest["publication_id"], manifest["revision"]), ("g1", first["revision"]))
+        data["dek"] = "A revised dek."
+        self.write_article(data)
+        self.ok(self.render())
+        self.ok(self.pdf())
+        second = self.ok(self.package())
+        self.assertNotEqual(second["revision"], first["revision"])
+        self.assertEqual(Path(second["zip"]).name, f"{base}-{second['revision'][:8]}.zip")
+        self.assertEqual(hashlib.sha256(Path(first["zip"]).read_bytes()).hexdigest(), first["zip_sha256"])
+        self.assertEqual(self.ok(self.package())["zip"], second["zip"])
+        self.assertEqual(list(self.pub.glob(".*.tmp")), [])
+
+    def test_readable_zip_names_are_path_safe(self):
+        import publication
+        cases = {"Café déjà vu: naïve “quotes” & ½ / ..\\back": "cafe-deja-vu-naive-quotes-1-2-back",
+                 "What's a Software Factory, Actually?": "whats-a-software-factory-actually",
+                 "日本語のみ": "g1", "": "g1", "CON": "con-article", "../../etc/passwd": "etc-passwd"}
+        for title, expected in cases.items():
+            names = publication.package_zip_names(title, "g1", "0123456789abcdef")
+            self.assertEqual(names[0], expected + ".zip", title)
+            self.assertEqual(names[1:], [f"{expected}-01234567.zip", f"{expected}-0123456789abcdef.zip"])
+            for name in names:
+                self.assertRegex(name, r"^[a-z0-9]+(?:-[a-z0-9]+)*\.zip$")
+        long = publication.readable_slug("word " * 40)
+        self.assertLessEqual(len(long), publication.ZIP_SLUG_MAX)
+        self.assertFalse(long.endswith("-") or long.endswith("-wor"))
+
     def test_package_requires_pdf_unless_explicitly_incomplete(self):
         self.ok(self.render())
         self.assert_contract_error(self.package(), "PDF")

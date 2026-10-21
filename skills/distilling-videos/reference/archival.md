@@ -184,6 +184,8 @@ After deletion:
 <dir>/manifest.json, <dir>/<every manifest file>, <dir>/<P>-<revision>.zip, optional <dir>/signoff.json
 ```
 
+Stage the local `<title-slug>.zip` from the `package` output under the canonical name `<P>-<revision>.zip`. The archive always stores the ZIP under that canonical name.
+
 **Archiving from an orb.** For the normal orb path, archive directly from the orb with its own Amp project secret: `DISTILL_ARCHIVE_SAS=... distill.py archive ...`. Actions is not required. Do not commit packages to Git or use public temporary upload URLs to reach Actions.
 
 **Required configuration.** The workflow fails closed when any of these is missing:

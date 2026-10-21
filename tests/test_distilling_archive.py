@@ -547,6 +547,28 @@ class Archival(ArchiveFixture):
                            "--container", CONTAINER)
         self.assertTrue(verified["ok"])
 
+    def test_readable_local_zip_archives_under_canonical_name(self):
+        revision = json.loads((self.pub / "package" / "manifest.json").read_text())["revision"]
+        readable = self.pub / "a-talk.zip"
+        self.assertTrue(readable.is_file())
+        self.assertFalse((self.pub / f"v1-{revision}.zip").exists())
+        # A stale ZIP from another revision on the readable name must not be chosen or block archival.
+        readable.rename(self.pub / f"a-talk-{revision[:8]}.zip")
+        readable.write_bytes(b"older revision bytes")
+        self.signoff()
+        result = self.archive()
+        self.assertEqual(result["status"], "archived")
+        local = evidence.sha256_file(self.pub / f"a-talk-{revision[:8]}.zip")
+        receipt = json.loads((self.pub / "archive-receipt.json").read_text())
+        self.assertEqual(receipt["marker"]["zip"]["sha256"], local)
+        self.assertTrue(receipt["marker"]["zip"]["blob"].endswith(f"/v1-{revision}.zip"))
+
+    def test_legacy_revision_zip_name_still_archives(self):
+        revision = json.loads((self.pub / "package" / "manifest.json").read_text())["revision"]
+        (self.pub / "a-talk.zip").rename(self.pub / f"v1-{revision}.zip")
+        self.signoff()
+        self.assertEqual(self.archive()["status"], "archived")
+
     def test_unique_revision_prefix_per_attempt(self):
         self.archive()
         first = {n for n in self.blob.objects if n.endswith("_COMPLETE.json")}
@@ -813,7 +835,8 @@ class ActionsHandoff(ArchiveFixture):
             for item in sorted(package.rglob("*")):
                 if item.is_file():
                     bundle.write(item, item.relative_to(package).as_posix())
-            bundle.write(self.pub / f"v1-{manifest['revision']}.zip", f"v1-{manifest['revision']}.zip")
+            # A producer stages the readable local ZIP under the canonical <P>-<revision>.zip name.
+            bundle.write(self.pub / "a-talk.zip", f"v1-{manifest['revision']}.zip")
             if (self.pub / "signoff.json").exists():
                 bundle.write(self.pub / "signoff.json", "signoff.json")
             for name, data in (extra or {}).items():

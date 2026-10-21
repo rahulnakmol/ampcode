@@ -16,7 +16,7 @@ distill.py package --workspace W --publication P [--allow-missing-pdf]
 | --- | --- | --- | --- |
 | `render` | `article.json`, `figures/`, and evidence for every video in the publication | `dist/` (replaced atomically) and `render.json` (`renderer: 2`). Deletes `pdf.json`, because a new render invalidates the old PDF. | `rendered` |
 | `pdf` | `dist/article.html?print=1` (the article, not the cover) | `dist/article.pdf` and `pdf.json` (`page: "article.html"`, `page_sha256`, `pdf_sha256`, `browser`, `pages`) | `rendered` |
-| `package` | `dist/`, `render.json`, `pdf.json`, and the evidence | `package/` with `manifest.json`, plus `<P>-<revision>.zip` | `packaged` |
+| `package` | `dist/`, `render.json`, `pdf.json`, and the evidence | `package/` with `manifest.json`, plus a readable `<title-slug>.zip` | `packaged` |
 
 ### Render preconditions
 
@@ -175,7 +175,7 @@ The manifest has this shape:
 
 - The manifest contains no timestamps.
 - The ZIP is deterministic: entries are sorted, with fixed 1980 timestamps and mode 0644. Repackaging unchanged inputs produces the same ZIP digest.
-- The ZIP is written to `publications/<P>/<P>-<revision>.zip`. It contains `manifest.json` and exactly the listed files, all with relative paths.
+- The ZIP is written to `publications/<P>/<title-slug>.zip`, where the slug is the article title in lowercase ASCII words joined by hyphens (accents folded, punctuation dropped, at most 80 characters, falling back to `<P>`). Repackaging the same revision reuses that file. A different revision never overwrites it: it gets `<title-slug>-<first 8 revision chars>.zip` (then the full revision). The `zip` output field gives the path. Older packages named `<P>-<revision>.zip` still archive. The ZIP contains `manifest.json` and exactly the listed files, all with relative paths; the manifest's publication id, revision, and checksums do not depend on the ZIP name.
 - Command output includes `manifest_sha256` and `zip_sha256` for archive verification (Task 3).
 
 ## Known limits
