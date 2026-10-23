@@ -1,6 +1,7 @@
 # Editorial guide
 
-How to turn verified evidence into an article and brief worth reading. The scripts only check
+Write an original analyst-authored article or whitepaper in your own voice and point of view.
+Videos and transcripts are research inputs, not the organizing subject. The scripts only check
 structure; everything here is your judgment. Read this before choosing an angle.
 
 ## Default reader and voice
@@ -13,8 +14,23 @@ structure; everything here is your judgment. Read this before choosing an angle.
   `article-contract.md`, "Narrative length gate"). Reach it by explaining concepts, mechanisms, and
   examples in depth. No padding, no repetition, no summary-of-the-summary, no restating the brief.
   If the evidence cannot honestly support 1000 words, publish `partial` and say why.
-- The article is not a transcript replacement. It may reorganize sources around one coherent
-  question; it never invents demonstrations, quotations, measurements, or experiment results.
+- Organize around a reader decision and an independent thesis, not the presenter, timestamps,
+  or a verdict on the video's accuracy. Synthesize concepts, mechanisms, implications, comparisons,
+  and conditional recommendations. Originality is in the argument, not invented facts or novelty.
+- Never invent demonstrations, quotations, measurements, experiments, or institutional affiliation.
+  An analyst voice does not imply you conducted the source research or represent a consultancy.
+
+## Prewriting analytical brief (required)
+
+Before drafting, write a short internal note with: **question**, **audience**, **thesis**,
+**argument** (the causal or comparative steps), **evidence** (IDs supporting each step),
+**counterevidence** (strongest alternative and what would change the thesis), and **decisions**
+(what the reader should do differently, under which conditions). For URL-only work, infer and
+state a useful reader decision. Revise the thesis if evidence does not support it; do not force
+contrarianism. This note is not the rendered evidence/proposals brief and adds no renderer fields.
+
+Test the outline: without the video titles, presenter names, and timestamps, does a coherent
+argument still answer that decision? If not, rebuild it. Rearranging a recap by topic is not enough.
 
 ## Storytelling principles
 
@@ -22,16 +38,16 @@ structure; everything here is your judgment. Read this before choosing an angle.
    failure. No manufactured suspense or controversy.
 2. **One mechanism at a time.** Introduce a single idea, show it, then add the next complication.
    Each section should pay off something the reader now understands.
-3. **Prediction, then consequence.** Where useful, let the reader anticipate an outcome, then show
-   what the source actually demonstrated.
+3. **Prediction, then consequence.** Where useful, derive an expectation from the mechanism,
+   compare it with evidence, and explain what follows for the reader's decision.
 4. **Running example.** Carry one concrete case (a command, dataset, experiment) through sections.
 5. **Name misconceptions only when supported** by a cited source or the demo itself.
 6. **Claim headings and captions.** Headings and captions state the substance ("Eager invalidation
    does not close the race"), not topics ("Invalidation").
 7. **Human-scale numbers.** Translate magnitudes into comparisons the reader can hold, showing the
    arithmetic and its source.
-8. **Tradeoffs and conditions.** Recommendations say when they apply and when they do not; include
-   rejected alternatives when the source discusses them.
+8. **Tradeoffs and conditions.** Recommendations say when they apply and when they do not; compare
+   plausible alternatives against evidence, not merely alternatives the presenter listed.
 9. **Optional depth.** Put derivations, edge cases, and long command output in `details` blocks so
    the main line stays readable; print and PDF show them expanded.
 10. **Finish with changed understanding**: what the reader now knows, practical implications for the
@@ -45,7 +61,7 @@ honest depth, not hype: never manufacture opposition, outrage, or suspense ("eve
 
 | Goal | The article does | It fails when |
 | --- | --- | --- |
-| **Entice** | Opens on an honest hook: a real question, surprising result, or concrete failure from the evidence. Makes an early promise (in the dek or first paragraphs) of what the reader will understand by the end, and keeps it | Clickbait, invented conflict, a hook the body never pays off, or a slow throat-clearing opening |
+| **Entice** | Opens on the reader's stakes and decision. Makes an early promise (in the dek or first paragraphs) of what the argument will help the reader decide, and keeps it | Clickbait, invented conflict, a numerical gotcha substituted for stakes, or a slow throat-clearing opening |
 | **Engage** | Builds the concepts and mechanisms one at a time, with concrete examples from the sources (a command, number, frame, demo step), and a progressive payoff: each section answers something the previous one raised | Topic-by-topic summary, a transcript retold in order, abstractions without examples, or length from repetition |
 | **Empower** | Leaves the reader with something to act on: steps or checks to try, a transferable mental model that works beyond this video, conditions where the advice applies, and plainly stated limitations | Vague takeaways, advice with no conditions, or limits hidden in the colophon |
 
@@ -62,15 +78,23 @@ Keep four kinds of statement visibly distinct, in prose and in the brief `basis`
 | Presenter claim | "The presenter says…" + segment citation | `presenter` |
 | Screen observation | "On screen, the second client prints…" + frame citation | `screen` |
 | External evidence | Named source + web citation | `external` |
-| Your conclusion | "This suggests…" / "We think…", built on cited items | proposal or prose, no direct evidence citation |
+| Your conclusion | State your thesis and reasoning directly; cite its premises, distinguish inference from observation | prose may cite sources; brief proposals cite evidence IDs only |
+
+Attribution need not make every paragraph presenter commentary. Put provenance in citations and
+evidence panels; name a source in prose when authorship or disagreement matters to the argument.
+Keep detailed source critique, timestamp tours, and correction logs in the research archive, not
+as the article's spine. A material discrepancy belongs beside the inference it changes, with its
+consequence explained. Do not hide evidence that weakens the thesis in an appendix.
 
 - Cite at the moment of the claim. Quotes must be verbatim from cited segments (the renderer checks).
 - Repetition across several videos is not independent corroboration; say when sources share an
   origin.
 - Prefer primary research and official documentation. Use practitioner posts (including X) only as
   leads or clearly labeled practitioner accounts.
-- Uncertain segments and unreadable frames remain uncertain in the article, brief, and
-  limitations. Do not "fix" them by guessing.
+- Uncertain segments and unreadable frames remain recorded in the research archive and review.
+  Surface uncertainty in the article and brief wherever it materially affects an inference or
+  decision; name coverage limits in limitations. Do not guess or inventory irrelevant defects
+  in the narrative merely to demonstrate diligence.
 - Translations are labeled as translations; keep the original term where meaning is lossy.
   Verbatim captions are labeled verbatim, never "cleaned": the label comes from each segment's
   `english_kind` (see `contracts.md`), so set it truthfully at import.
@@ -78,20 +102,20 @@ Keep four kinds of statement visibly distinct, in prose and in the brief `basis`
 - Public availability does not grant republishing rights. Deliver privately, attribute every
   source, and quote only what the argument needs.
 
-## Central-claim gate (rebuttals and comparisons)
+## Central-claim gate (thesis, recommendations, and comparisons)
 
 In a real batch, two central rebuttals inverted the record: both rested on search-result excerpts,
-and both flipped when the sources were read in full. A claim is **central** when the article
-corrects, rebuts, or downgrades the presenter ("not a breach", "hyperbole", "overstated"), or
-when a heading, dek, caption, or brief finding depends on it. Before rendering, every central
+and both flipped when the sources were read in full. A claim is **central** when the thesis,
+recommendation, heading, dek, caption, or brief finding depends on it, including any correction
+of a source. Verification protects the argument; it is not a mandate to write a fact-check. Every central
 claim must pass all of these:
 
 - **Full primary read.** Read the primary source in full: the original write-up, paper, filing,
   changelog, or data page, not a news summary, search excerpt, or objective-guided extract. If
   the primary source cannot be read in full, do not rebut; say what is unverified and attribute.
   Record in the citation `note` how it was read ("full page", "abstract only").
-- **Look for the source that would prove the presenter right.** Search for the presenter's side
-  (the named team's own post, the vendor's announcement) before concluding that a claim fails.
+- **Seek counterevidence.** Look for the strongest evidence against your thesis and for competing
+  explanations. When correcting a presenter, also seek the source that would prove them right.
 - **Date comparability.** Compare like with like in time. Do not set a figure published after the
   recording against something said before it. Do not infer a recording date that the source does
   not state. Do not use post-recording sources as corroboration without saying so. Do not read the
@@ -134,9 +158,10 @@ art direction. Structure that works across topics:
 
 1. Title as a claim; dek as the honest hook in one or two sentences.
 2. Opening section: the question and why it matters for this reader or goal.
-3. Mechanism sections, each with a claim heading, evidence, and a figure where it helps.
-4. A section on what the sources do not show (limits, conflicts, open unknowns).
-5. Implications for the goal; then `limitations`.
+3. Argument sections: mechanisms and comparisons that support the thesis, with evidence and
+   figures where they help. Source chronology belongs inside a necessary demo, not the outline.
+4. Test the thesis against the strongest alternative; weave material limits into affected claims.
+5. Conditional recommendations and decision criteria; then concise `limitations`.
 
 The brief is separate: "What the sources establish" (findings, requirements, unknowns) then
 "What we propose" (architecture, implementation, investigations), each proposal resting on
@@ -144,7 +169,9 @@ evidence IDs.
 
 ## Pre-render checklist
 
-- [ ] Angle answers the goal (or the most interesting honest question for URL-only work).
+- [ ] Prewriting analytical brief exists; thesis and argument answer the reader's decision.
+- [ ] The article stands alone as analysis, not a recap, presenter commentary, or fact-check audit.
+      Unsupported opinion fails too: conclusions follow from cited premises and explicit reasoning.
 - [ ] Complete article: at least 1000 narrative body words (target 1200–1500+) earned by concepts,
       mechanisms, and examples, with no padding; otherwise `partial` with the reason.
 - [ ] Entice: honest hook and an early promise the body keeps. Engage: one mechanism at a time,
@@ -152,7 +179,7 @@ evidence IDs.
       conditions, and limitations. No forced sensational opposition.
 - [ ] Every video in the publication is cited; conflicts are surfaced, not averaged away.
 - [ ] Each claim is attributed to presenter, screen, external source, or you.
-- [ ] Every central rebuttal or comparison passed the central-claim gate: primary source read in
+- [ ] Every central thesis claim, recommendation, or comparison passed the central-claim gate: primary source read in
       full, dates and denominators comparable, the presenter's actual claim targeted.
 - [ ] Judge-revised text was re-checked against primary sources and awaits a fresh independent
       review; it is not treated as approved.

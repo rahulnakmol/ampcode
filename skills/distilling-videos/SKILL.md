@@ -1,11 +1,15 @@
 ---
 name: distilling-videos
-description: "Distills public YouTube videos into reusable evidence (timed original and English transcripts, selected frames, checksummed manifests), an evidence-backed research brief, and an offline HTML/PDF article, then packages and optionally archives them to Azure Blob. Use when asked to distill, deeply analyze, research, or write an article or brief from one or more YouTube videos."
+description: "Uses public YouTube videos as research inputs for original analyst-authored articles or whitepapers, with reusable evidence, a research brief, and offline HTML/PDF packaging and optional Azure Blob archival. Use when asked to distill, deeply analyze, research, or write an article or brief from one or more YouTube videos."
 ---
 
 # Distilling videos
 
-Turns up to ten public YouTube videos into evidence archives, briefs, and standalone articles.
+Uses up to ten public YouTube videos as research inputs for an original analyst-authored article
+or whitepaper in your own voice and point of view, supported by evidence archives and briefs.
+The primary output is an independent argument around a reader decision, not a video recap,
+presenter commentary, or fact-check audit. Entice with stakes, engage through reasoning, empower
+decisions. Preserve attribution; never invent experiments, affiliation, or contrarianism.
 Amp does the interpretation: listening/reading, visual judgment, research, writing, and review.
 `scripts/distill.py` does the repeatable work: download, probe, frames, transcript import,
 manifests, validation, rendering, packaging, sign-off binding, archival, and cleanup.
@@ -204,16 +208,19 @@ $D validate --workspace "$W" --require-complete
 
 Read `reference/editorial.md` now. Then:
 
-- URL-only: verify key claims and supply context with targeted primary sources.
+- URL-only: infer a useful reader decision; research the concepts and mechanisms needed to answer it.
 - Goal-driven or "deep dive": add primary research, official docs, competing explanations,
   limitations, and practical implications for the stated goal.
 - Repeated claims across grouped videos are not independent corroboration.
-- **Central-claim gate:** every rebuttal or comparison the article rests on needs the primary
+- **Central-claim gate:** every thesis claim, recommendation, or comparison the article rests on needs the primary
   source read in full (never a search excerpt) and comparable dates and denominators. Text revised
   after an independent review is re-checked and re-reviewed, not auto-approved (`editorial.md`).
 - Record every outside source you rely on as a web citation with a `note` on what it supports.
+- Before drafting, write a short **prewriting analytical brief**: question, audience, thesis,
+  argument, evidence IDs, counterevidence, and decisions with conditions. It can be an internal
+  research artifact; do not add fields to `article.json`. See `editorial.md` for the outline test.
 
-**Editorial approval mode** (when the user asked to review the outline): post the angle, hook,
+**Editorial approval mode** (when the user asked to review the outline): post the analytical brief, hook,
 section headings, planned figures, and open unknowns in the thread, then stop until approved.
 Otherwise proceed unattended.
 
@@ -223,6 +230,9 @@ Write `$W/publications/<P>/article.json` (contract: `reference/article-contract.
 diagrams go in `$W/publications/<P>/figures/` as SVG/PNG with stated assumptions and sources.
 Quotes must be verbatim from the cited segments. Every publication video must be cited. Brief
 evidence is what sources establish; proposals are your recommendations and cite evidence IDs only.
+Build sections from the argument, synthesizing mechanisms, comparisons, implications, and
+recommendations. Put provenance in citations/panels and detailed source critique in the research
+archive. Surface uncertainty beside the inference it materially changes, not as a defect tour.
 
 **Depth gate:** a `complete` article needs at least 1000 narrative body words in section
 paragraphs and lists (target 1200–1500+); `render` refuses less and reports the count. Earn the
@@ -239,16 +249,16 @@ draft, so it renders with a warning and packages `complete: false`.
   "publication_id": "talk1",
   "status": "partial",
   "partial_reason": "Outline draft: the explanation is below the 1000-word narrative floor.",
-  "title": "Why an eager cache can still serve a stale read",
-  "dek": "Invalidating on write narrows the window. The demo shows it does not close it.",
+  "title": "Choose a freshness requirement before choosing invalidation",
+  "dek": "For a read-heavy service, eager invalidation alone is not a freshness guarantee. Define the tolerable stale window before deciding whether it is enough.",
   "sections": [
     {"id": "hook", "heading": "Eager invalidation does not close the race", "blocks": [
-      {"type": "p", "text": "The talk frames caching as one question: is this value still true? [@c1]"},
+      {"type": "p", "text": "Freshness is the decision criterion [@c1]: if a read can race invalidation [@c2], triggering a purge is not by itself proof that every returned value is current. My recommendation is to specify acceptable staleness before choosing this strategy."},
       {"type": "quote", "text": "writes invalidate eagerly, but reads can still race", "cite": "c2"},
       {"type": "figure", "figure": "fig-race"}
     ]},
-    {"id": "limits", "heading": "What the demo cannot show", "blocks": [
-      {"type": "p", "text": "The stale value itself is unreadable [@c3], so its age is unknown. Jittered retries are a separate mitigation [@c4]."},
+    {"id": "limits", "heading": "Measure against the requirement, not the purge event", "blocks": [
+      {"type": "p", "text": "For workloads that tolerate some staleness, measure the stale window against that tolerance. For a requirement of no stale reads, investigate a stronger read/write coordination strategy instead. The unreadable value [@c3] prevents this example from establishing a window size; these are decision criteria, not measured guarantees. Jitter can spread retries [@c4], but does not establish freshness."},
       {"type": "details", "summary": "Why the timing matters", "blocks": [
         {"type": "list", "items": ["A read that starts before the purge can return after it.", "Shorter purge latency shrinks, but does not remove, that window."]}
       ]}

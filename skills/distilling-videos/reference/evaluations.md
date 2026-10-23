@@ -97,13 +97,30 @@ real-video transcription results. The source repository keeps fixtures and recor
 
 ### Editorial rubric (score 1–5, with one-line justification each)
 
+**Non-compensable editorial gate — independent analysis.** Before scoring, identify the reader
+decision, the author's thesis, and the reasoning connecting cited evidence to recommendations.
+Quote passages that demonstrate them (or their absence). Fail a faithful but source-led recap,
+timestamp tour, presenter commentary, or fact-check audit regardless of every other score.
+Thematic rearrangement and adding a takeaway paragraph do not repair a source-led structure.
+Also fail unsupported consultancy prose: confident recommendations and polished headings are not
+analysis without warranted premises, mechanisms, alternatives, and conditions. A numerical
+correction earns no credit as an independent thesis unless it supports a broader reader decision.
+This is semantic judgment, not a keyword, citation-count, or word-count check.
+
+- **Independent argument**: an own-voice thesis organizes concepts, mechanisms, comparisons,
+  implications, and conditional decisions; evidence supports the argument rather than dictating
+  a tour. 1 = recap/audit or unsupported assertion; 3 = some analysis but a source-led spine;
+  4 = coherent grounded argument with minor gaps; 5 = sustained synthesis with tested alternatives.
+  A gate pass requires at least 4 here, as well as no unsupported central inference.
 - **Fidelity**: every claim traceable to a cited segment, frame, or web source; quotes verbatim.
-- **Uncertainty**: gaps and unreadable content labeled in article, brief, and review.
+- **Uncertainty**: material limits visible beside affected inferences and decisions; full gaps
+  and unreadable content preserved in the research archive and review, not a narrative defect list.
 - **Traceability**: citations resolve to the right moment; figures state provenance.
 - **Separation**: brief evidence vs proposals; presenter vs screen vs external vs agent conclusion.
 - **Explanation**: honest hook, one mechanism at a time, payoffs, changed understanding, limits
   (`editorial.md`).
-- **Entice**: honest hook and an early promise the body keeps; no clickbait or forced opposition.
+- **Entice**: reader stakes and an early decision promise the body keeps; no gotcha-led hook,
+  clickbait, or forced opposition.
 - **Engage**: concepts and mechanisms built one at a time with concrete source examples and a
   progressive payoff; not a retold transcript.
 - **Empower**: actionable steps or checks, a transferable model, conditions, and limitations.
@@ -116,12 +133,15 @@ deliverables, and this rubric, but not the author's self-assessment.
 
 ### Independent LLM judge for a primary article
 
-After a baseline change (such as the 2026-10-21 depth and SEO amendment), rerun the newest real
-article and have it judged by an independent LLM in a fresh thread or subagent that did not write
-or revise it. Give the judge `article.json`, `dist/article.html` or `article.md`, `coverage.json`
+For publication approval after a baseline change, rerun the newest real article when authorized
+and have it judged by an independent LLM in a fresh thread or subagent that did not write or revise
+it. A skill-only correction does not authorize modifying generated live articles: use the contrastive
+packet in `evals/distilling-videos/editorial-assessment.md` and leave live validation pending.
+Give a publication judge `article.json`, `dist/article.html` or `article.md`, `coverage.json`
 (including `narrative`), the transcripts, and this rubric and `editorial.md`; withhold the author's
 notes and scores. The judge returns a 1–5 score with a one-line justification for each dimension
-above, every fidelity defect with its citation, and any padding it finds. Record the judge's model
+above, the independent-analysis gate verdict with passage evidence, every fidelity defect with its
+citation, and any padding it finds. An overall pass is forbidden when the gate fails. Record the judge's model
 and scores as the judge's, not the author's; revisions after judging are re-judged, never
 self-approved. SEO is judged only for honesty (a plain, accurate description; no invented
 canonical, author, or date); no one can promise ranking.

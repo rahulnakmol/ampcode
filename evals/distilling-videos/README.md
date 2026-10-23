@@ -8,6 +8,16 @@ refuse unsafe shortcuts?). It is **not** the paid provider benchmark in
 `reference/evaluations.md`, and nothing here measures transcription or translation accuracy: the
 synthetic videos carry a sine tone, not speech, and the transcripts are ground truth by construction.
 
+## Independent-analysis contrastive assessment
+
+Use `editorial-assessment.md` as the handoff to a fresh judge, with
+`fixtures/editorial-contrast.md` (one evidence dossier, four candidate excerpts). Withhold
+`editorial-expected.md` until the judge records verdicts. Expected outcomes distinguish a faithful
+recap, an audit, unsupported consultancy prose, and grounded independent analysis. These short
+excerpts test editorial direction, not full-publication depth or rendering. The existing composed
+articles remain historical mechanical/fidelity fixtures, not exemplars approved under the new gate.
+`run_eval.py` does not judge this semantic distinction; no keyword-only grader is provided.
+
 ## Layout
 
 | Path | What it is |

@@ -1,7 +1,8 @@
 # Editorial rubric for the distilling-videos fixtures
 
-Two layers, reported separately. Neither layer can prove that a paraphrase is fair; that stays a
-judgment, recorded with a one-line justification.
+Mechanical evidence checks and semantic editorial judgment are reported separately. The existing
+articles are historical rendering/fidelity fixtures, not approved models of independent analysis.
+No mechanical pass proves that a paraphrase is fair or an article is analyst-authored.
 
 ## 1. Machine checks (`run_eval.py`, category "editorial (machine rubric)")
 
@@ -23,6 +24,10 @@ The renderer independently enforces verbatim quotes, citation resolution, every-
 a synthesis, proposals that cite no sources directly, and the 1000-word narrative floor for a
 complete article (category "publication").
 
+Required numbers and paired citations are regression checks on these controlled inputs, not a
+mandate to lead with a numerical gotcha or narrate timestamps. Evidence can live in the brief or
+panels where supported by the check. An inventory of correct observations is not an argument.
+
 ## 2. Negative controls (category "editorial rubric negative controls")
 
 Each control mutates a composed article to commit one known failure; the run passes only if the
@@ -43,18 +48,28 @@ named machine check catches it. This shows the checks discriminate rather than p
 
 ## 3. Judgment scores (1–5, one line each)
 
+Apply the **non-compensable independent-analysis gate** in `reference/evaluations.md` first:
+fail a faithful source-led recap, presenter commentary, or fact-check audit regardless of other
+scores. Also fail unsupported opinion dressed as consultancy advice. Cite passage evidence for
+the reader decision, thesis, reasoning, alternatives, and conditional recommendations. Independent
+argument must score at least 4/5 and have no unsupported central inference. Neither a word count
+nor the machine rubric can apply this gate. Use `editorial-assessment.md` for a blind contrastive
+assessment on shared evidence; `editorial-expected.md` is withheld until judgments are recorded.
+
 Recorded in `docs/distilling-videos-evaluation.md`, using the rubric from
 `skills/distilling-videos/reference/evaluations.md`. Each score says who gave it. The evaluator's
 scores are self-assessed. Scores from an independent reviewer are labeled, and they take precedence
 over the evaluator's own scores. An article corrected after review counts as not re-scored until
 someone independent scores it again:
 
+- **Independent argument**: own-voice thesis, grounded reasoning, synthesis, tested alternatives,
+  and decisions; a recap with added takeaways still fails.
 - **Fidelity**: every claim traceable to a cited segment, frame, or web source; quotes verbatim.
-- **Uncertainty**: gaps and unreadable content labeled in article, brief, and review.
+- **Uncertainty**: material limits beside inferences; full defects in research archive and review.
 - **Traceability**: citations resolve to the right moment; figures state provenance.
 - **Separation**: brief evidence vs proposals; presenter vs screen vs external vs agent conclusion.
 - **Explanation**: honest hook, one mechanism at a time, payoffs, changed understanding, limits.
-- **Entice / Engage / Empower**: honest hook and early promise; concepts, mechanisms, examples, and
+- **Entice / Engage / Empower**: reader stakes and early decision promise; concepts, mechanisms, examples, and
   progressive payoff; actionable steps, a transferable model, and limitations, with no forced
   sensational opposition (`editorial.md`).
 - **Depth**: a complete article's `narrative_words` (in `coverage.json`) is at least 1000 and earned,
