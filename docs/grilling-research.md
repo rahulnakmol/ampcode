@@ -30,8 +30,9 @@ which techniques the skill adopted, from where, and which known failure modes it
   to blind "agree with your recommendations" replies (mattpocock/skills discussion #771). The skill
   asks one to three questions per round.
 - **Rewording answered questions** after new context arrives. Answers are treated as settled.
-- **Endless sessions and context exhaustion.** The skill stops when a round changes nothing and
-  offers a file hand-off to a fresh session.
+- **Endless sessions, or stopping too early.** The skill stops at an explicit concreteness gate
+  (final shape, scope, decisions, criteria, edge cases, verification, executable first step). Each
+  round asks only what closes an unchecked item, and it offers a file hand-off to a fresh session.
 - **Grilling trivial work and clarification loops.** The Clear size proceeds with one stated
   assumption.
 - **Asking what could be looked up**, or asking for look-and-feel opinions a prototype answers.

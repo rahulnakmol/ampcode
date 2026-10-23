@@ -1,6 +1,6 @@
 ---
 name: grilling
-description: "Interviews the user to turn a vague or partly detailed requirement, idea, plan, or question into a concrete, agent-ready brief: sizes the request, looks up facts instead of asking, asks a few high-impact questions per round with a recommended answer for each, runs a systematic edge-case and failure-mode analysis, and records every decision until nothing is silently assumed. Use at the start of a session or task when a request is new, ambiguous, under-specified, or high-stakes, before planning or implementing, and whenever the user says grill me, interview me, pressure-test this, poke holes, what am I missing, or help me define this."
+description: "Interviews the user to turn a vague or partly detailed requirement, idea, plan, or question into a concrete, agent-ready brief: sizes the request, looks up facts instead of asking, asks a few high-impact questions per round with a recommended answer for each, runs a systematic edge-case and failure-mode analysis, and keeps grilling until a concreteness gate passes, then presents the final shape, scope, requirements, and a step-by-step work plan with a ready-to-paste prompt so an agent can pick it up. Use at the start of a session or task when a request is new, ambiguous, under-specified, or high-stakes, before planning or implementing, and whenever the user says grill me, interview me, pressure-test this, poke holes, what am I missing, or help me define this."
 ---
 
 # Grilling
@@ -23,7 +23,7 @@ access.
 | Size | Signals | What you do |
 | --- | --- | --- |
 | **Clear** | Fully specified, small, reversible, one obvious reading | Do not grill. State any assumption in one line and proceed with the task. |
-| **Bounded** | A known change with a few open choices | One or two rounds, at most five questions in total, a short edge-case pass, a short brief. |
+| **Bounded** | A known change with a few open choices | Usually one or two rounds and a short edge-case pass, but keep going until the concreteness gate passes; a short brief. |
 | **Open** | New product, subsystem, plan, or vague idea; several stakeholders; hard to reverse; costly if wrong | The full process below. |
 
 - When torn between two sizes, take the heavier one. Hidden complexity found later moves the
@@ -168,25 +168,53 @@ Number decisions D1, D2, and so on, and facts F1, F2, and so on. Mark who decide
 assumed default, or a fact you found with its source. The log is the source of truth. The brief
 is built from it.
 
-## 7. Know when to stop
+## 7. Keep grilling until it is concrete
 
-Stop asking when any of these is true:
+Do not stop because the conversation feels long or a round went quietly. Stop asking only when
+this **concreteness gate** passes, and check it explicitly after every round:
 
-- The frontier is empty: every branch is decided, deferred, or recorded as an assumption.
-- A round changed no decisions. Diminishing returns mean it is time to write the brief.
-- An agent could execute the brief without asking a question whose answer changes the result.
-- The user says they are done. Record what is still open as deferred and move on.
+- [ ] **Final shape**: you can describe in two or three sentences what will exist when the work is
+  done, and the user agrees with that description. Propose it as a round question as soon as the
+  main shape settles, so it is agreed before the brief, not inside it.
+- [ ] **Scope**: what is in, what is out, and the smallest valuable version are stated.
+- [ ] **Decisions**: every decision that changes the result is made by the user, explicitly
+  deferred, or recorded as a labelled assumption. None is silently assumed.
+- [ ] **Requirements**: each one is observable and has an acceptance criterion; no vague word is
+  left unmeasured.
+- [ ] **Edge cases**: every severity-3 or severity-4 case has an agreed handling.
+- [ ] **Verification**: how completion is proven end to end is defined.
+- [ ] **Executable**: an agent could start the first step of the work plan without asking a
+  question whose answer changes the result.
+
+If a round changed nothing but a box is still unchecked, do not stop: name the unchecked item and
+ask the one question that closes it. When you think the gate passes, show the checklist with each
+item ticked and a one-line reason, then write the brief.
+
+The only other way out is the user ending the session early ("enough", "just write it up"). Then
+write the brief anyway, mark it **Not yet concrete**, and list the unchecked items as open
+questions with your recommended defaults.
 
 For a long session, offer to write the brief to a file so a fresh session can implement it
 without carrying the whole interview in its context.
 
 ## 8. Write the brief and confirm it
 
-Present the brief in chat. Write it to a file only when the user asks, the task will continue in
-another session, or the repository has a convention for plans or specs.
+Present the brief in chat. Write it to a file when the user asks, when the work will be picked up
+in another session or by another agent, or when the repository has a convention for plans or
+specs; then point the pick-up prompt at that file instead of asking the user to paste the brief.
+
+Scale the brief to the size. For a Bounded request keep Final shape, Scope, Requirements, Work
+plan, Verification, and Pick-up prompt, and fold the rest into them. For an Open request use every
+section, but state each rule once: in Requirements, with other sections referring to it by number.
 
 ```markdown
 # <Title>
+
+**Status:** Concrete | Not yet concrete (<unchecked gate items>)
+
+## Final shape
+<What will exist when this is done, as the user will see or use it: two or three sentences.
+This is the expected end state the agent works toward.>
 
 ## Goal
 <Outcome, who benefits, and why now: two or three sentences.>
@@ -215,8 +243,20 @@ Out (non-goals): <...>
 ## Verification
 <How completion is proven end to end: checks that must pass, what to inspect, who signs off.>
 
+## Work plan
+<How an agent should do the work: ordered steps, each a small unit that ends in a check.>
+1. <Step>: <what to produce>. Done when <check>.
+2. <Step>: <what to produce>. Done when <check>. Depends on 1.
+<Mark steps that can run in parallel, steps that need a human decision or approval before they
+start, and the first step to take. Start with whatever retires the biggest risk or unknown.>
+
 ## Notes for the executing agent
 <Constraints, conventions, files or systems not to touch, approval gates, delivery expectations.>
+
+## Pick-up prompt
+<A short, self-contained prompt the user can paste into a new agent session: the goal, a pointer
+to this brief (or the brief inline), the first step, and the definition of done. It must make
+sense to an agent that has seen none of this conversation.>
 ```
 
 Before presenting it, review it yourself:
@@ -226,8 +266,13 @@ Before presenting it, review it yourself:
 - No two sections contradict each other, and no requirement can be read two ways.
 - Every requirement has a way to verify it, and every non-goal is stated.
 - It fits one coherent piece of work. If not, split it.
+- Every work-plan step ends in a check, and following the steps in order meets every acceptance
+  criterion.
+- The pick-up prompt works on its own, without this conversation.
 
-Then ask the user to confirm or correct it. Do not implement until they confirm. After
+Then ask the user to confirm or correct it, including any labelled assumption they may want to
+decide themselves. A severity-4 case found while writing the brief may be confirmed in the same
+reply: mark the status "Concrete, pending your yes on <case>". Do not implement until they confirm. After
 confirmation, do what the user asked for next: implement in this session, hand off to another
 session or agent, or stop with the brief.
 
@@ -241,7 +286,7 @@ session or agent, or stop with the brief.
 | Questions without a recommendation | Always recommend, with a reason |
 | Grilling a typo fix | Size it as Clear and proceed |
 | Generic edge cases ("handle errors") | A specific actor, input, or state and its consequence |
-| Endless rounds | Stop when a round changes nothing |
+| Endless rounds, or stopping while gaps remain | Ask only what closes an unchecked gate item; stop when the gate passes |
 | Rewording answered questions | Treat answers as settled unless new facts contradict them |
 | Agreeing with everything | Push back with evidence when a better path exists |
 | Starting implementation before confirmation | Confirm the brief first |
