@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "publication_id": "g-bio",
+  "status": "complete",
+  "title": "One monkey study found calorie restriction extended survival. Its twin did not",
+  "dek": "Two videos about the same pair of experiments reach opposite headlines. Each reports its study accurately; neither study supports the leap to human lifespan.",
+  "sections": [
+    {"id": "hook", "heading": "The proven result has a twin that found no survival effect", "blocks": [
+      {"type": "p", "text": "Video A opens with a strong claim:"},
+      {"type": "quote", "text": "Calorie restriction is the only intervention proven to slow aging in primates.", "cite": "a-proven"},
+      {"type": "p", "text": "Its evidence is the Wisconsin monkey study: 80 percent of restricted monkeys still alive versus half of the controls [@a-wisc]. That matches the published Wisconsin paper at the time point it reported [@colman2009]."},
+      {"type": "p", "text": "Video B points to the parallel study run by the National Institute on Aging, which found no significant effect on survival [@b-nia]. The NIA paper confirms that null result [@mattison2012]. Two studies of the same intervention in the same species disagreed on the outcome that matters most."},
+      {"type": "figure", "figure": "fig-claims"}
+    ]},
+    {"id": "measure", "heading": "A survival percentage is a snapshot, and small groups make it move", "blocks": [{"type": "p", "text": "Before weighing the two studies against each other, it helps to be precise about what the headline number is. The Wisconsin figure compares the share of animals still alive in each group at one reported point in time [@colman2009]. It is a snapshot of a survival curve, not a measure of how much longer each animal lived. Read at a different time point, the same two curves could show a wider gap, a narrower one, or none at all."}, {"type": "p", "text": "Monkey studies of this kind also follow small groups for decades, because rhesus monkeys live a long time and each animal is expensive to care for. With small groups, a handful of deaths can move a percentage by many points. That does not make the Wisconsin result wrong. It does mean a single percentage carries more uncertainty than its round numbers suggest, and it is one reason a second study matters so much. This paragraph is our general reasoning about study design, not a claim made in either video."}]},
+    {"id": "causes", "heading": "The disagreement has named causes, not a winner", "blocks": [
+      {"type": "p", "text": "Video B says a later joint analysis traced the difference to diet, feeding, and starting ages [@b-joint]. The 2017 paper written by both teams lists diet composition, with much more sucrose in the Wisconsin diet, along with feeding regimen, age at onset, and genetic background [@mattison2017; @nia2017]."},
+      {"type": "figure", "figure": "fig-design"},
+      {"type": "p", "text": "Video B also notes that both studies found fewer age-related diseases in the restricted groups [@b-health]. The NIA summary of the joint paper says the same [@nia2017]. The studies disagree about survival, not about health."}
+    ]},
+    {"id": "mechanisms", "heading": "How each named design difference could change the answer", "blocks": [{"type": "p", "text": "The joint analysis names four differences [@mattison2017; @nia2017]. Naming them is not the same as showing which one mattered, and neither video claims to know. What follows is our explanation of why each could plausibly shift a survival comparison, offered as a way to think about the results rather than as a finding."}, {"type": "list", "items": ["**Diet composition.** A restriction effect is measured against a control group. If the control diet is itself less healthy, for example richer in sucrose, part of the apparent benefit of eating less may come from eating less of that diet.", "**Feeding regimen.** How much and how freely the control animals ate defines what the restricted group is restricted from. The same restricted diet is a larger intervention against a generously fed control than against a modestly fed one.", "**Age at onset.** Restriction started early in life and restriction started in later adulthood are different interventions, and there is no reason to expect them to have the same effect.", "**Genetic background.** Animals from different origins may respond differently to the same diet, so an average effect in one colony need not carry over to another."]}, {"type": "p", "text": "Seen this way, the two studies stop looking like a contradiction and start looking like two measurements of related but different interventions. That reading fits the joint paper, whose title reports that calorie restriction improves the health and survival of rhesus monkeys [@mattison2017], and it fits both studies seeing fewer age-related diseases [@b-health]."}]},
+    {"id": "repetition", "heading": "Repeating the Wisconsin result does not make it two results", "blocks": [
+      {"type": "p", "text": "Video B observes that many channels call the Wisconsin result proven [@b-everyone]. Those repetitions share one origin, so they are not independent corroboration. The two videos here are not independent either: both describe the same pair of studies, and only the papers themselves count as evidence."}
+    ]},
+    {"id": "humans", "heading": "Neither video supports the jump to people", "blocks": [
+      {"type": "p", "text": "Video A then extrapolates:"},
+      {"type": "quote", "text": "if it works in monkeys, it will work for you", "cite": "a-you"},
+      {"type": "p", "text": "That is the presenter's inference. No study cited here measured human lifespan, and the Wisconsin authors wrote that the effect of long-term restriction on maximal lifespan in humans may never be known [@colman2009]."},
+      {"type": "p", "text": "It is worth spelling out what the jump skips. A monkey study can show that restriction changes survival and disease in monkeys under particular diets, ages, and colonies. Carrying that to people would need evidence about people, and none of the sources here report it. The honest position is that the human question is open. Treat these results as evidence about monkey health, and at most as a reason to look for human studies, rather than as a forecast for any one person."},
+      {"type": "p", "text": "There is a quieter point in the record that both headlines skip. The studies disagree about survival, but they agree that the restricted animals had fewer age-related diseases [@b-health; @nia2017]. For a reader deciding what to take away, the agreement may matter more than the disagreement: it is the part that held up when two teams with different designs looked."}
+    ]},
+    {"id": "practice", "heading": "How to read the next strong claim about aging", "blocks": [{"type": "p", "text": "The pattern in these two videos is common: a single striking result is repeated until it sounds settled. These questions are our suggestions for checking such a claim before passing it on:"}, {"type": "list", "ordered": true, "items": ["Is there a second study of the same intervention, and what did it find? A result without its replication attempt is half the record.", "What was measured, and in which species? Survival in monkeys, fewer diseases in monkeys, and lifespan in people are three different claims.", "When was it measured? A share alive at one time point is a snapshot, not a lifespan.", "How many independent sources are there? Many videos describing one paper are one source.", "Is there a later or joint analysis? Here the 2017 paper written by both teams is the best single place to start."]}, {"type": "p", "text": "The transferable model is that an intervention effect is always a contrast between two groups. Change what either group eats, when the intervention starts, or who is in the groups, and the size of the contrast can change too. A claim that ignores the comparison group is a claim about only half of the experiment."}]},
+    {"id": "unclear", "heading": "What the videos leave unclear", "blocks": [
+      {"type": "p", "text": "Video A shows a survival chart, but its axes carry no labels or values, and the year the presenter names is unclear in the audio [@a-chart]. The separation point it describes cannot be checked from the video."},
+      {"type": "figure", "figure": "fig-chart"},
+      {"type": "p", "text": "Video B is unsure when the joint paper appeared [@b-year]; the paper itself is dated 2017 [@mattison2017]."}
+    ]}
+  ],
+  "figures": [
+    {"id": "fig-claims", "kind": "capture", "video_id": "bio-b", "frame_id": "f000005000",
+     "alt": "Slide reading: NIA monkey study (2012), no significant survival effect",
+     "caption": "Video B's slide states the NIA result that video A leaves out"},
+    {"id": "fig-design", "kind": "original", "image": "figures/design.svg",
+     "alt": "Two-column comparison of the Wisconsin and NIA studies: reported survival effect, diet, feeding, onset age, and genetic background",
+     "caption": "Same intervention, different designs: the joint analysis names four differences",
+     "assumptions": ["Lists only the factors the 2017 joint analysis and its NIA summary name; it is not a quantitative comparison.", "Survival rows summarize each study's own published conclusion."],
+     "sources": ["colman2009", "mattison2012", "mattison2017", "nia2017"]},
+    {"id": "fig-chart", "kind": "capture", "video_id": "bio-a", "frame_id": "f000030000",
+     "alt": "Line chart titled Survival with two stepped lines and no axis labels or values",
+     "caption": "Video A's chart: two lines separate, but the axes are unlabeled"}
+  ],
+  "citations": [
+    {"id": "a-proven", "video_id": "bio-a", "segment_ids": ["s1"]},
+    {"id": "a-wisc", "video_id": "bio-a", "segment_ids": ["s2"], "frame_id": "f000015000"},
+    {"id": "a-you", "video_id": "bio-a", "segment_ids": ["s3"]},
+    {"id": "a-chart", "video_id": "bio-a", "segment_ids": ["s4"], "frame_id": "f000030000", "note": "axes unlabeled; year unclear"},
+    {"id": "b-everyone", "video_id": "bio-b", "segment_ids": ["s1"]},
+    {"id": "b-nia", "video_id": "bio-b", "segment_ids": ["s2"], "frame_id": "f000005000"},
+    {"id": "b-joint", "video_id": "bio-b", "segment_ids": ["s3"], "frame_id": "f000015000"},
+    {"id": "b-health", "video_id": "bio-b", "segment_ids": ["s4"]},
+    {"id": "b-year", "video_id": "bio-b", "segment_ids": ["s5"], "note": "year unclear"},
+    {"id": "colman2009", "kind": "web", "url": "https://doi.org/10.1126/science.1173635", "title": "Caloric restriction delays disease onset and mortality in rhesus monkeys", "publisher": "Science 325:201-204 (2009)", "accessed": "2026-10-19", "note": "Wisconsin study: 80% CR vs 50% control survival at the reported time point; human maximal lifespan effect may never be known"},
+    {"id": "mattison2012", "kind": "web", "url": "https://doi.org/10.1038/nature11432", "title": "Impact of caloric restriction on health and survival in rhesus monkeys from the NIA study", "publisher": "Nature 489:318-321 (2012)", "accessed": "2026-10-19", "note": "NIA study: no significant survival effect"},
+    {"id": "mattison2017", "kind": "web", "url": "https://doi.org/10.1038/ncomms14063", "title": "Caloric restriction improves health and survival of rhesus monkeys", "publisher": "Nature Communications 8:14063 (2017)", "accessed": "2026-10-19", "note": "joint analysis of both studies"},
+    {"id": "nia2017", "kind": "web", "url": "https://www.nia.nih.gov/news/calorie-restriction-improves-health-survival-rhesus-monkeys", "title": "Calorie restriction improves health, survival in rhesus monkeys", "publisher": "National Institute on Aging", "accessed": "2026-10-19", "note": "names diet composition, feeding, onset age, genetics; both studies saw fewer age-related conditions"}
+  ],
+  "brief": {
+    "question": "Does calorie restriction extend survival in primates, and does that transfer to humans?",
+    "evidence": [
+      {"id": "E1", "kind": "finding", "basis": "presenter", "text": "Video A says restricted Wisconsin monkeys survived at 80 percent versus 50 percent of controls, and calls the effect proven.", "citations": ["a-wisc", "a-proven"]},
+      {"id": "E2", "kind": "finding", "basis": "external", "text": "The Wisconsin paper reports 80 percent versus 50 percent survival at its reported time point.", "citations": ["colman2009"]},
+      {"id": "E3", "kind": "finding", "basis": "external", "text": "The NIA study found no significant survival effect.", "citations": ["mattison2012"]},
+      {"id": "E4", "kind": "finding", "basis": "presenter", "text": "Video B reports the NIA null result and attributes the difference to diet, feeding, and starting ages.", "citations": ["b-nia", "b-joint"]},
+      {"id": "E5", "kind": "finding", "basis": "external", "text": "The 2017 joint analysis names diet composition, feeding regimen, onset age, and genetic background as likely causes, and both studies saw fewer age-related conditions.", "citations": ["mattison2017", "nia2017"]},
+      {"id": "E6", "kind": "unknown", "basis": "screen", "text": "Video A's chart has unlabeled axes and the spoken year is unclear, so the claimed separation point cannot be checked.", "citations": ["a-chart"]},
+      {"id": "E7", "kind": "unknown", "basis": "external", "text": "No cited study measured human lifespan; the Wisconsin authors say the human effect may never be known.", "citations": ["colman2009"]}
+    ],
+    "proposals": [
+      {"id": "P1", "kind": "investigation", "text": "Before citing either video, read the 2017 joint analysis and quote its design comparison instead of either headline.", "basis": ["E3", "E5"]},
+      {"id": "P2", "kind": "implementation", "text": "Present the two studies together in any write-up, and label the step from monkeys to human lifespan as speculation.", "basis": ["E1", "E3", "E7"], "risks": "Readers may still remember the Wisconsin number in isolation."}
+    ]
+  },
+  "limitations": [
+    "Both videos describe the same pair of studies, so they are not independent sources.",
+    "Video A's chart has unlabeled axes and two spoken years are unclear; both stay marked uncertain.",
+    "External checks used the three primary papers and one NIA summary; no wider literature review was done.",
+    "Evaluation fixture: generated slides and a tone for audio, so this synthesis does not test transcription."
+  ]
+}

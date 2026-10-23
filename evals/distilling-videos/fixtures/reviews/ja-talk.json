@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "publication_id": "ja-talk",
+  "reviewer": "eval harness (distilling-videos Task 5)",
+  "decision": "approve",
+  "note": "Compared every Japanese segment with its labeled translation; kept 定石 in the original. Inspected configuration and kubectl frames.",
+  "videos": {
+    "ja-talk": {
+      "transcript_coverage": "verified",
+      "visual_coverage": "verified",
+      "gaps": [],
+      "uncertain_segments": [{"segment_id": "s5", "resolution": "labeled", "note": "Timeout value stays unknown."}]
+    }
+  }
+}

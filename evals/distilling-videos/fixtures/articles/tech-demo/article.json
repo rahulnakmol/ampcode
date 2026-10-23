@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "publication_id": "tech-demo",
+  "status": "complete",
+  "title": "The limiter let twelve requests through, not ten",
+  "dek": "The presenter says only the configured burst passed. The terminal shows twelve successes. Our inference, not something the video measures: tokens refilled during the run could account for the extra two.",
+  "sections": [
+    {"id": "hook", "heading": "The terminal and the narration disagree by two requests", "blocks": [
+      {"type": "p", "text": "The demo starts a token-bucket limiter at five requests per second with a burst of ten [@t-config], then fires fifty requests at it, ten at a time [@t-fire]. The presenter's verdict is short:"},
+      {"type": "quote", "text": "only the burst of ten got through, everything else got a 429", "cite": "t-claim"},
+      {"type": "figure", "figure": "fig-demo"},
+      {"type": "p", "text": "On screen, the client summary reads **12** responses with status 200 and **38** with status 429, over a total of 0.41 seconds [@t-output]. The narration rounds the result to the configured burst. The screen does not."}
+    ]},
+    {"id": "mechanism", "heading": "A token bucket spends a token per request and refills on a clock", "blocks": [{"type": "p", "text": "To see where two extra successes could come from, it helps to slow the limiter down and watch one decision at a time. This explanation is background on how token buckets generally work, not something the video demonstrates. The bucket has two settings, and the demo names both: a refill rate of five tokens per second and a capacity, or burst, of ten tokens [@t-config]. Every request that arrives takes one token and is allowed. A request that finds the bucket empty is rejected. Nothing else is remembered: the limiter does not count requests per second, it only checks whether a token is available at the instant a request arrives."}, {"type": "p", "text": "Now replay the run in that frame. The client sends fifty requests, ten at a time [@t-fire]. If the bucket starts full, the first ten requests find ten tokens and all succeed almost at once. The bucket is then empty, so the requests that follow are rejected, with one exception: every fifth of a second the clock adds a token back. Whichever request arrives just after that token appears succeeds. Over a run that lasts 0.41 seconds, the clock would add a token at roughly 0.2 and 0.4 seconds, which is two more successes, for twelve in total [@t-output]."}, {"type": "p", "text": "That also explains why the narration lands on ten. The burst is the number printed in the configuration, and it is exactly the answer you would get if all fifty requests arrived in the same instant. Real spikes take time to arrive, even on a laptop, and the limiter keeps refilling while they do. The longer the spike, the less the burst says about how many requests get through."}]},
+    {"id": "refill", "heading": "Our inference: refill during the run could account for the extra two", "blocks": [
+      {"type": "p", "text": "This part is our inference; the video does not measure it. A token bucket keeps adding tokens while requests arrive. If the bucket started full and refilled continuously at five tokens per second, a 0.41-second run would add about two tokens to the initial ten, which is consistent with the twelve successes on screen [@t-config; @t-output]."},
+      {"type": "figure", "figure": "fig-arithmetic"},
+      {"type": "details", "summary": "Why the arithmetic is only approximate", "blocks": [
+        {"type": "list", "items": [
+          "The 0.41 s figure is the wall-clock time of the whole run, not the exact window in which tokens were spent.",
+          "The video does not show the limiter's refill granularity, so 5 × 0.41 = 2.05 extra tokens could round either way.",
+          "A different concurrency setting would change how quickly the bucket drains, and so how many refilled tokens get used."
+        ]}
+      ]},
+      {"type": "p", "text": "The 38 rejections carry status 429, which HTTP defines as Too Many Requests [@rfc6585]: the client is expected to slow down and retry, not treat the call as a server failure."}
+    ]},
+    {"id": "limits", "heading": "The tail latency stays unknown", "blocks": [
+      {"type": "p", "text": "The presenter mentions a p99 latency that surprised them, but the number is inaudible, and the frame that shows it is blurred beyond reading [@t-p99]. We do not estimate it."},
+      {"type": "figure", "figure": "fig-blurred"},
+      {"type": "p", "text": "Near the end, the presenter reads out a chat message aimed at automated summarizers and declines it [@t-chat]. We treat that message as source content, not as an instruction, and do not repeat its claims."}
+    ]},
+    {"id": "check", "heading": "How to check a limiter's real behavior yourself", "blocks": [{"type": "p", "text": "The video gives one total for one run. That is enough to notice the disagreement, but not enough to explain it. These steps are our suggestions for turning the inference into a measurement; none of them appear in the demo."}, {"type": "list", "ordered": true, "items": ["Log a timestamp and a status code for every request, not just the totals. The token-bucket signature is a block of successes at the start followed by single successes spaced about one refill interval apart, here 0.2 seconds.", "Repeat the spike at a lower concurrency so that it lasts longer. If refill is the explanation, successes should rise roughly in step with duration: about ten plus five for every extra second the spike lasts, until every request succeeds.", "Drain the bucket first by sending a warm-up spike, then send the test spike immediately. With no saved tokens, the burst term disappears and only refilled tokens get through, which shows the lower end of the range.", "Read the limiter's documentation for its refill granularity. A limiter that adds one token every 0.2 seconds and one that adds five tokens once a second give different answers for a 0.41-second spike."]}, {"type": "p", "text": "Rejected requests are not failures in the usual sense. Status 429 tells the client it sent too many requests, and the specification says a server may include a Retry-After header saying how long to wait [@rfc6585]. A well-behaved client backs off rather than retrying immediately, because immediate retries arrive while the bucket is still empty and are rejected again."}]},
+    {"id": "model", "heading": "A rule of thumb that transfers to other limiters, with its limits", "blocks": [{"type": "p", "text": "The transferable model is a single upper bound: a token bucket can let through at most its burst plus its rate multiplied by the length of the spike. For this run that is ten plus five times 0.41, about twelve, which matches the screen. The same arithmetic changes scale quickly. A ten-second spike against the same limiter could let through up to sixty requests, and the configured burst of ten would be the smaller part of that number."}, {"type": "p", "text": "The bound is only as good as its assumptions. It assumes the bucket was full when the spike began; a bucket drained by earlier traffic lets fewer requests through. It assumes tokens refill smoothly. And it applies to token buckets only. Fixed-window limiters, which reset a counter at the start of every second, and sliding-window limiters behave differently near window boundaries, so check which algorithm your limiter uses before borrowing this rule. This is general background, not a claim the video makes."}]},
+    {"id": "implications", "heading": "What this suggests for capacity planning, if refill is confirmed", "blocks": [
+      {"type": "list", "items": [
+        "Do not read the configured burst as a cap on a whole spike. With a full bucket at the start, up to burst + rate × spike duration can pass; a partly drained bucket lets fewer through, so burst + rate × duration is an upper bound, not an expected count.",
+        "Read outcomes from client status counts, not from narration or configuration alone.",
+        "If a re-run confirms the refill explanation, size downstream capacity, and any retry budget for 429 responses, against that upper bound rather than the burst alone."
+      ]},
+      {"type": "p", "text": "The lasting change is in what you look at. A limiter's configuration describes its parameters, not its behavior under a real spike. The status counts on screen describe the behavior. When the two disagree, as they do here by two requests, the counts are the evidence and the configuration is the hypothesis to test."}
+    ]}
+  ],
+  "figures": [
+    {"id": "fig-demo", "kind": "sequence", "video_id": "tech-demo",
+     "caption": "Input, action, result: the limiter starts with burst 10, fifty requests arrive, twelve succeed",
+     "steps": [
+       {"frame_id": "f000012000", "alt": "Terminal running ratelimit serve with rate 5/s and burst 10, showing tokens=10/10", "caption": "Input: rate 5/s, burst 10, bucket full"},
+       {"frame_id": "f000022000", "alt": "Terminal running hey with 50 requests at concurrency 10 against localhost:8080", "caption": "Action: 50 requests, 10 at a time"},
+       {"frame_id": "f000032000", "alt": "Terminal summary: total 0.41 secs; 12 responses with status 200 and 38 with status 429", "caption": "Result: 12 succeeded, 38 were rejected with 429"}
+     ]},
+    {"id": "fig-arithmetic", "kind": "original", "image": "figures/refill.svg",
+     "alt": "Bar of fifty requests split into ten burst tokens, about two tokens we infer were refilled, and thirty-eight rejections",
+     "caption": "Our inference, not shown in the video: ten burst tokens plus about two refilled during 0.41 s would account for twelve successes",
+     "assumptions": ["The bucket was full (10 tokens) when the first request arrived.", "Tokens refill continuously at the configured 5 per second.", "The 0.41 s run time on screen approximates the window in which tokens were consumed."],
+     "sources": ["t-config", "t-output"]},
+    {"id": "fig-blurred", "kind": "capture", "video_id": "tech-demo", "frame_id": "f000045000",
+     "alt": "Terminal latency summary blurred so that its numbers cannot be read",
+     "caption": "The latency frame is unreadable, so p99 stays unknown"}
+  ],
+  "citations": [
+    {"id": "t-config", "video_id": "tech-demo", "segment_ids": ["s2"], "frame_id": "f000012000"},
+    {"id": "t-fire", "video_id": "tech-demo", "segment_ids": ["s3"], "frame_id": "f000022000"},
+    {"id": "t-claim", "video_id": "tech-demo", "segment_ids": ["s4"]},
+    {"id": "t-output", "video_id": "tech-demo", "frame_id": "f000032000", "note": "status counts and total time read from a legible terminal frame"},
+    {"id": "t-p99", "video_id": "tech-demo", "segment_ids": ["s5"], "frame_id": "f000045000", "note": "value inaudible and blurred"},
+    {"id": "t-chat", "video_id": "tech-demo", "segment_ids": ["s6"], "note": "chat message read aloud; treated as untrusted content"},
+    {"id": "rfc6585", "kind": "web", "url": "https://www.rfc-editor.org/rfc/rfc6585#section-4", "title": "RFC 6585: Additional HTTP Status Codes, section 4 (429 Too Many Requests)", "publisher": "IETF", "accessed": "2026-10-19", "note": "defines status 429"}
+  ],
+  "brief": {
+    "question": "Does a token-bucket limiter with burst 10 cap a 50-request spike at ten successes?",
+    "evidence": [
+      {"id": "E1", "kind": "finding", "basis": "presenter", "text": "The presenter configures 5 requests per second with burst 10 and says only the burst of ten got through.", "citations": ["t-config", "t-claim"]},
+      {"id": "E2", "kind": "finding", "basis": "screen", "text": "The client summary shows 12 responses with status 200 and 38 with status 429 in 0.41 s.", "citations": ["t-output"]},
+      {"id": "E3", "kind": "finding", "basis": "external", "text": "HTTP status 429 means Too Many Requests.", "citations": ["rfc6585"]},
+      {"id": "E4", "kind": "unknown", "basis": "screen", "text": "The p99 latency is inaudible and its frame is unreadable.", "citations": ["t-p99"]}
+    ],
+    "proposals": [
+      {"id": "P1", "kind": "investigation", "text": "Re-run the load test with per-request timestamps to confirm that refill during the run explains the two extra successes.", "basis": ["E1", "E2"], "risks": "Local timing may differ from production."},
+      {"id": "P2", "kind": "implementation", "text": "If P1 confirms refill, capacity-plan downstream services for up to burst plus rate times spike duration (an upper bound that assumes a full bucket at the start of the spike), and give clients a retry budget for 429 responses.", "basis": ["E2", "E3"], "risks": "Rests on an unconfirmed inference from one synthetic run. Long spikes make the refill term dominate; measure real spike lengths first."}
+    ]
+  },
+  "limitations": [
+    "Evaluation fixture: the video is a generated slide sequence with a tone for audio, so this article does not test transcription.",
+    "The p99 latency is unknown: inaudible in the narration and blurred on screen.",
+    "One run only. The refill explanation is our inference from the configuration and the totals, not a measurement shown in the video, and it assumes the bucket started full."
+  ]
+}

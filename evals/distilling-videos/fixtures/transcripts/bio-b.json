@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "video_id": "bio-b",
+  "language": "en",
+  "provider": {"name": "eval-fixture", "kind": "manual"},
+  "duration": 40.0,
+  "notes": "Synthetic evaluation fixture: a presenter who reports the conflicting primate study.",
+  "segments": [
+    {"id": "s1", "start": 0.0, "end": 9.0,
+     "text": "Everyone quotes the Wisconsin result, and lots of channels call it proven.",
+     "english": "Everyone quotes the Wisconsin result, and lots of channels call it proven."},
+    {"id": "s2", "start": 9.0, "end": 18.0,
+     "text": "But the National Institute on Aging ran a parallel monkey study and found no significant effect on survival.",
+     "english": "But the National Institute on Aging ran a parallel monkey study and found no significant effect on survival."},
+    {"id": "s3", "start": 18.0, "end": 28.0,
+     "text": "A later joint analysis pointed to differences: the Wisconsin diet had much more sucrose, and the feeding and the starting ages differed.",
+     "english": "A later joint analysis pointed to differences: the Wisconsin diet had much more sucrose, and the feeding and the starting ages differed."},
+    {"id": "s4", "start": 28.0, "end": 36.0,
+     "text": "Both studies did find fewer age-related diseases in the restricted groups.",
+     "english": "Both studies did find fewer age-related diseases in the restricted groups."},
+    {"id": "s5", "start": 36.0, "end": 40.0,
+     "text": "I think the joint paper came out in, um, twenty [unclear].",
+     "english": "I think the joint paper came out in twenty [unclear].",
+     "uncertain": true,
+     "uncertainty": "Year is unclear in audio."}
+  ]
+}

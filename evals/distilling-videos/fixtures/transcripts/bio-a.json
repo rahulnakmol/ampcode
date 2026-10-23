@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "video_id": "bio-a",
+  "language": "en",
+  "provider": {"name": "eval-fixture", "kind": "manual"},
+  "duration": 40.0,
+  "notes": "Synthetic evaluation fixture: a presenter who overclaims from one primate study.",
+  "segments": [
+    {"id": "s1", "start": 0.0, "end": 8.0,
+     "text": "Calorie restriction is the only intervention proven to slow aging in primates.",
+     "english": "Calorie restriction is the only intervention proven to slow aging in primates."},
+    {"id": "s2", "start": 8.0, "end": 17.0,
+     "text": "The Wisconsin monkey study showed it: eighty percent of the restricted monkeys were still alive, versus half of the controls.",
+     "english": "The Wisconsin monkey study showed it: eighty percent of the restricted monkeys were still alive, versus half of the controls."},
+    {"id": "s3", "start": 17.0, "end": 26.0,
+     "text": "So, uh, if it works in monkeys, it will work for you. Cut your calories by thirty percent and you will live longer.",
+     "english": "So if it works in monkeys, it will work for you. Cut your calories by thirty percent and you will live longer."},
+    {"id": "s4", "start": 26.0, "end": 39.5,
+     "text": "This survival chart is from the paper. See how the lines separate after year [unclear].",
+     "english": "This survival chart is from the paper. See how the lines separate after year [unclear].",
+     "uncertain": true,
+     "uncertainty": "Year is unclear in audio; the chart on screen has no axis labels or values."}
+  ]
+}
