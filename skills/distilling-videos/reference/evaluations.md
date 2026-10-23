@@ -99,10 +99,14 @@ real-video transcription results. The source repository keeps fixtures and recor
 
 **Non-compensable editorial gate — independent analysis.** Before scoring, identify the reader
 decision, the author's thesis, and the reasoning connecting cited evidence to recommendations.
-Quote passages that demonstrate them (or their absence). Fail a faithful but source-led recap,
-timestamp tour, presenter commentary, or fact-check audit regardless of every other score.
+Quote passages that demonstrate them (or their absence). Return **NEEDS REVISION** when a faithful
+recap, timestamp tour, presenter commentary, or fact-check audit dominates the article's structure.
+Accurate recap passages are welcome when they explain evidence within an independent argument;
+their presence alone is not a defect. Preserve useful facts, quotations, and citations, restructure
+around the reader question and supported thesis, then submit the revision to an independent judge.
 Thematic rearrangement and adding a takeaway paragraph do not repair a source-led structure.
-Also fail unsupported consultancy prose: confident recommendations and polished headings are not
+Return **FAIL** for unsupported central claims or materially misleading evidence; repair those
+before editorial approval. Confident recommendations and polished headings are not
 analysis without warranted premises, mechanisms, alternatives, and conditions. A numerical
 correction earns no credit as an independent thesis unless it supports a broader reader decision.
 This is semantic judgment, not a keyword, citation-count, or word-count check.
@@ -141,7 +145,8 @@ Give a publication judge `article.json`, `dist/article.html` or `article.md`, `c
 (including `narrative`), the transcripts, and this rubric and `editorial.md`; withhold the author's
 notes and scores. The judge returns a 1–5 score with a one-line justification for each dimension
 above, the independent-analysis gate verdict with passage evidence, every fidelity defect with its
-citation, and any padding it finds. An overall pass is forbidden when the gate fails. Record the judge's model
+citation, and any padding it finds. Verdicts are PASS, NEEDS REVISION, or FAIL; only PASS permits
+editorial approval, and it does not waive other publication checks. Record the judge's model
 and scores as the judge's, not the author's; revisions after judging are re-judged, never
 self-approved. SEO is judged only for honesty (a plain, accurate description; no invented
 canonical, author, or date); no one can promise ranking.

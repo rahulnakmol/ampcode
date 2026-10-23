@@ -49,8 +49,10 @@ named machine check catches it. This shows the checks discriminate rather than p
 ## 3. Judgment scores (1–5, one line each)
 
 Apply the **non-compensable independent-analysis gate** in `reference/evaluations.md` first:
-fail a faithful source-led recap, presenter commentary, or fact-check audit regardless of other
-scores. Also fail unsupported opinion dressed as consultancy advice. Cite passage evidence for
+mark a recap-dominated article, presenter commentary, or fact-check audit NEEDS REVISION; useful
+accurate recap passages within an independent argument are allowed. Preserve sound evidence while
+restructuring and rejudge. FAIL unsupported central claims or materially misleading evidence.
+Only PASS permits editorial approval. Cite passage evidence for
 the reader decision, thesis, reasoning, alternatives, and conditional recommendations. Independent
 argument must score at least 4/5 and have no unsupported central inference. Neither a word count
 nor the machine rubric can apply this gate. Use `editorial-assessment.md` for a blind contrastive
@@ -63,7 +65,7 @@ over the evaluator's own scores. An article corrected after review counts as not
 someone independent scores it again:
 
 - **Independent argument**: own-voice thesis, grounded reasoning, synthesis, tested alternatives,
-  and decisions; a recap with added takeaways still fails.
+  and decisions; a recap with added takeaways still needs structural revision.
 - **Fidelity**: every claim traceable to a cited segment, frame, or web source; quotes verbatim.
 - **Uncertainty**: material limits beside inferences; full defects in research archive and review.
 - **Traceability**: citations resolve to the right moment; figures state provenance.

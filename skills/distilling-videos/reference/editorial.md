@@ -32,6 +32,12 @@ contrarianism. This note is not the rendered evidence/proposals brief and adds n
 Test the outline: without the video titles, presenter names, and timestamps, does a coherent
 argument still answer that decision? If not, rebuild it. Rearranging a recap by topic is not enough.
 
+Accurate recap passages are useful when they explain evidence within that argument. If the whole
+article remains source-led, mark it **NEEDS REVISION**, preserve its sound facts and citations,
+and rebuild the structure around the reader question, thesis, and implications. Unsupported central
+claims or misleading evidence receive **FAIL** instead. Rejudge after revision; neither verdict
+permits editorial approval. See `evaluations.md` for the independent judge contract.
+
 ## Storytelling principles
 
 1. **Honest hook.** Open on a real question, a surprising result from the evidence, or a concrete

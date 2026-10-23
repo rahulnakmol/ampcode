@@ -17,7 +17,7 @@ shared dossier and hypothetical reader requirement, not against another candidat
 
 For A–D, return:
 
-- Independent-analysis gate: PASS or FAIL, with quoted passage evidence.
+- Independent-analysis gate: PASS, NEEDS REVISION, or FAIL, with quoted passage evidence.
 - Reader decision, thesis, and evidence → reasoning → recommendation chain (or what is missing).
 - Independent argument, fidelity, uncertainty, traceability, separation, explanation, entice,
   engage, empower: 1–5 each, with a one-line reason.
@@ -26,8 +26,9 @@ For A–D, return:
 
 Depth and accessibility are N/A for these short, unrendered excerpts. Passing the editorial gate
 does not approve a complete publication or waive its 1000-word floor. Do not penalize every
-excerpt solely for length. A faithful recap or audit must fail regardless of high fidelity scores;
-independent-looking prose must also fail if its central recommendation outruns the evidence.
+excerpt solely for length. A recap-dominated article or audit needs revision despite high fidelity;
+accurate recap passages supporting an independent argument are allowed. Preserve sound evidence
+when recommending structural revision. Unsupported central recommendations receive FAIL.
 Record reviewer identity/model, date, and whether the answer key was withheld. Only after recording
 judgments compare with `editorial-expected.md`; disagreements need reasons, not changed scores to
 match the key. This packet is ready for independent assessment, not evidence it has occurred.

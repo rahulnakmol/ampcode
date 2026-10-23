@@ -233,6 +233,10 @@ evidence is what sources establish; proposals are your recommendations and cite 
 Build sections from the argument, synthesizing mechanisms, comparisons, implications, and
 recommendations. Put provenance in citations/panels and detailed source critique in the research
 archive. Surface uncertainty beside the inference it materially changes, not as a defect tour.
+Accurate recap passages may support the argument. A recap-dominated article is **NEEDS REVISION**:
+preserve sound evidence, rebuild around the reader question and thesis, then independently rejudge.
+Unsupported central claims or misleading evidence receive **FAIL**. Only **PASS** permits editorial
+approval; neither factual fidelity nor original voice alone is sufficient (`reference/evaluations.md`).
 
 **Depth gate:** a `complete` article needs at least 1000 narrative body words in section
 paragraphs and lists (target 1200–1500+); `render` refuses less and reports the count. Earn the
