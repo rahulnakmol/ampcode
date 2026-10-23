@@ -1,5 +1,5 @@
 # Archive-only hand-off for distilling-videos packages. See
-# skills/distilling-videos/reference/archival.md ("GitHub Actions hand-off").
+# skills/distill/reference/archival.md ("GitHub Actions hand-off").
 #
 # This workflow never runs the editorial pipeline and never executes package content. It accepts
 # exactly one artifact from one completed, successful run of an allowlisted producer workflow in
@@ -73,7 +73,7 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" > "$RUNNER_TEMP/run.json"
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?name=$ARTIFACT_NAME&per_page=100" \
             > "$RUNNER_TEMP/artifacts.json"
-          python3 skills/distilling-videos/scripts/distill.py actions-provenance \
+          python3 skills/distill/scripts/distill.py actions-provenance \
             --run-json "$RUNNER_TEMP/run.json" --artifacts-json "$RUNNER_TEMP/artifacts.json" \
             --repository "$GITHUB_REPOSITORY" --default-branch "$DEFAULT_BRANCH" --run-id "$RUN_ID" \
             --artifact-name "$ARTIFACT_NAME" --allowed-workflows "$ALLOWED_WORKFLOWS" \
@@ -87,7 +87,7 @@ jobs:
           set -euo pipefail
           read -r artifact_id digest < <(python3 -c 'import json, sys; p = json.load(open(sys.argv[1])); print(p["artifact_id"], p["digest"])' "$RUNNER_TEMP/provenance.json")
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > "$RUNNER_TEMP/artifact.zip"
-          python3 skills/distilling-videos/scripts/distill.py unpack-artifact \
+          python3 skills/distill/scripts/distill.py unpack-artifact \
             --zip "$RUNNER_TEMP/artifact.zip" --digest "$digest" --dest "$RUNNER_TEMP/package" \
             --expected-manifest-sha256 "$EXPECTED_MANIFEST"
 
@@ -125,7 +125,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/receipt"
-          python3 skills/distilling-videos/scripts/distill.py archive \
+          python3 skills/distill/scripts/distill.py archive \
             --package-dir "$RUNNER_TEMP/package" --container "$DISTILL_ARCHIVE_CONTAINER" \
             --receipt "$RUNNER_TEMP/receipt/archive-receipt.json"
 

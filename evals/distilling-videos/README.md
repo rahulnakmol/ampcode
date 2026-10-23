@@ -1,6 +1,6 @@
 # distilling-videos evaluation fixtures
 
-Runnable, end-to-end evaluation of `skills/distilling-videos` with controlled inputs and known
+Runnable, end-to-end evaluation of `skills/distill` with controlled inputs and known
 ground truth. Results and interpretation: `docs/distilling-videos-evaluation.md`.
 
 This is a **skill evaluation** (does the workflow produce faithful, traceable, safe deliverables and

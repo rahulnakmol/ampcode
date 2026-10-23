@@ -7,7 +7,7 @@ Branch: `feat/distilling-videos` (isolated worktree). Commit locally; do not pus
 
 1. **Theme sources.** Collect official palettes (repositories, npm packages, or archived official
    documentation) for the 20 families; record source URL, license, and token mapping in
-   `skills/distilling-videos/scripts/themes.py`. Generate `themes.css` and `THEMES.md`; compute
+   `skills/distill/scripts/themes.py`. Generate `themes.css` and `THEMES.md`; compute
    WCAG contrast and record adaptations.
 2. **Vendored motion.** Add `assets/vendor/gsap-3.15.0.min.js` byte for byte from `npm pack
    gsap@3.15.0`, `LICENSE-gsap.md`, and provenance (tarball integrity, file SHA-256, network

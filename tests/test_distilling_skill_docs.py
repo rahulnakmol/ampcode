@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL = ROOT / "skills" / "distilling-videos"
+SKILL = ROOT / "skills" / "distill"
 SCRIPTS = SKILL / "scripts"
 DISTILL = SCRIPTS / "distill.py"
 sys.path.insert(0, str(SCRIPTS))
@@ -38,7 +38,7 @@ class SkillDocs(unittest.TestCase):
     def test_skill_md_is_short_and_has_metadata(self):
         text = (SKILL / "SKILL.md").read_text()
         self.assertLess(len(text.splitlines()), 500)
-        self.assertRegex(text, r"\A---\nname: distilling-videos\ndescription: \"[^\n]+\"\n---\n")
+        self.assertRegex(text, r"\A---\nname: distill\ndescription: \"[^\n]+\"\n---\n")
 
     def test_editorial_gate_requires_full_primary_reads_and_rereview(self):
         # Real batch: two central rebuttals built on search excerpts inverted the record.
