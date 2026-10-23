@@ -73,6 +73,10 @@ editorial approval, followed by the remaining publication checks.
 
 Recommended invocation: Medium mode with Fast where supported (a user preference; the skill cannot enforce modes or cap billing). Run `skills/distilling-videos/scripts/bootstrap.sh` once to create a private venv with `yt-dlp[default]` (including the `yt-dlp-ejs` challenge solver scripts) and check `ffmpeg`, a browser, and the JavaScript runtime yt-dlp needs for YouTube (deno by default; node or quickjs via `download --js-runtime`); it installs nothing globally, edits no yt-dlp config, and handles no credentials.
 
+## Grilling
+
+[`skills/grilling/`](./skills/grilling/SKILL.md) interviews you at the start of a task to turn a vague or partly detailed requirement, plan, or question into a confirmed, agent-ready brief. It sizes the request first (clear requests proceed without questions), looks up facts instead of asking, asks one to three high-impact questions per round with a recommended answer for each, runs an edge-case and pre-mortem pass using [`reference/edge-cases.md`](./skills/grilling/reference/edge-cases.md), and keeps a decision log until nothing is silently assumed. It is model-invoked, so it triggers on new or ambiguous requests and on phrases such as "grill me" or "poke holes in this". Sources and design choices are in [`docs/grilling-research.md`](./docs/grilling-research.md).
+
 ## Using modes without changing the Dial
 
 The standard Low, Medium, High, and Ultra Dial can remain unchanged. Published plugin modes stay available in the complete mode picker and to Puck.
