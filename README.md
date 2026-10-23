@@ -68,7 +68,8 @@ editorial approval, followed by the remaining publication checks.
 | Provider choice and accuracy | Shortlist and benchmark protocol only; paid benchmark not run, no provider recommended, no transcription/caption/translation accuracy measured |
 | Live YouTube download (macOS) | Tested once on one public video: first download HTTP 403 (yt-dlp warned no JavaScript runtime), then succeeded with node; four later runs succeeded. Intermittent. `download --js-runtime` now selects the runtime explicitly |
 | Real PDF (macOS, Chrome Canary) | Tested in the evaluation |
-| Amp orbs (Linux), live Azure Blob | Not tested |
+| Amp orbs (Linux) | Real FFmpeg/Chromium fixture evaluation: 475 checks passed; 141 Python and 4 Bun tests passed. Synthetic media and supplied transcripts; no live-provider accuracy claim |
+| Live Azure Blob | Not tested; requires an authorized disposable container/prefix and private credentials |
 | GitHub Actions archive hand-off | Blocked: needs a producer workflow that does not exist |
 
 Recommended invocation: Medium mode with Fast where supported (a user preference; the skill cannot enforce modes or cap billing). Run `skills/distilling-videos/scripts/bootstrap.sh` once to create a private venv with `yt-dlp[default]` (including the `yt-dlp-ejs` challenge solver scripts) and check `ffmpeg`, a browser, and the JavaScript runtime yt-dlp needs for YouTube (deno by default; node or quickjs via `download --js-runtime`); it installs nothing globally, edits no yt-dlp config, and handles no credentials.

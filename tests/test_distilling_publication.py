@@ -309,6 +309,61 @@ class RenderSafety(PublicationFixture):
         (self.pub / "figures" / "model.svg").write_text('<svg><script>alert(1)</script></svg>')
         self.assert_contract_error(self.render(), "SVG")
 
+    def test_figure_filename_cannot_inject_alpine_directives(self):
+        data = article()
+        name = 'good.png" x-init="alert(1)" data-x=".png'
+        (self.pub / "figures" / name).write_bytes(b"png")
+        (self.pub / "figures" / "good.png").write_bytes(b"png")
+        data["figures"][1]["image"] = "figures/" + name
+        good = copy.deepcopy(data["figures"][1])
+        good.update(id="good", image="figures/good.png")
+        data["figures"].append(good)
+        self.write_article(data)
+        self.assert_contract_error(self.render(), "figure.*path|image")
+
+    def test_svg_active_content_rejected_after_xml_decoding(self):
+        bodies = [
+            '<s:script xmlns:s="http://www.w3.org/2000/svg">alert(1)</s:script>',
+            '<s:foreignObject xmlns:s="http://www.w3.org/2000/svg"><div/></s:foreignObject>',
+            '<use href="&#106;avascript:alert(1)"/>',
+            '<use href="https:&#47;&#47;example.org/remote.svg#x"/>',
+            '<rect style="fill:url(https://example.org/track)"/>',
+            '<style>@import "https://example.org/style.css";</style>',
+            '<set attributeName="onload" to="alert(1)"/>',
+            '<rect onload="alert(1)"/>',
+        ]
+        documents = ['<svg xmlns="http://www.w3.org/2000/svg">' + body + '</svg>' for body in bodies]
+        documents += [
+            '<!DOCTYPE svg [<!ENTITY label "unsafe">]><svg xmlns="http://www.w3.org/2000/svg"><text>&label;</text></svg>',
+            '<?xml-stylesheet href="https://example.org/style.css"?><svg xmlns="http://www.w3.org/2000/svg"/>',
+            '<svg xmlns="http://www.w3.org/2000/svg"><g></svg>',
+        ]
+        for document in documents:
+            with self.subTest(document=document):
+                (self.pub / "figures" / "model.svg").write_text(document)
+                self.assert_contract_error(self.render(), "SVG")
+
+    def test_static_svg_namespace_and_local_references_are_allowed(self):
+        document = ('<?xml version="1.0"?><s:svg xmlns:s="http://www.w3.org/2000/svg" '
+                    'xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 10 10">'
+                    '<s:defs><s:linearGradient id="shade"><s:stop offset="0" stop-color="#fff"/>'
+                    '</s:linearGradient><s:rect id="box" width="10" height="10"/></s:defs>'
+                    '<s:use xlink:href="#box" fill="url(#shade)"/>'
+                    '<s:text x="1" y="5">A &amp; B</s:text></s:svg>')
+        (self.pub / "figures" / "model.svg").write_text(document)
+        self.ok(self.render())
+        self.assertEqual((self.pub / "dist" / "figures" / "model.svg").read_text(), document)
+
+    def test_pre_security_render_must_be_regenerated_before_pdf_or_package(self):
+        self.ok(self.render())
+        path = self.pub / "render.json"
+        record = json.loads(path.read_text())
+        record["renderer"] = 3
+        path.write_text(json.dumps(record))
+        self.assert_contract_error(self.pdf(), "rerun render")
+        self.assert_contract_error(self.cli("package", "--workspace", self.ws,
+                                            "--publication", "g1", "--allow-missing-pdf"), "rerun render")
+
 
 class RenderReferences(PublicationFixture):
     def test_missing_citation_and_image_targets(self):

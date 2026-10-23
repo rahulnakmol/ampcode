@@ -283,6 +283,10 @@ async function main() {
     await sleep(700);
     const before = await evaluate("({y: Math.round(scrollY), hash: location.hash})");
     await click("sup.cite a");
+    // Measure final layout, not an intermediate GSAP transform on a busy browser.
+    for (let i = 0; i < 20 && await evaluate("!!window.gsap?.isTweening(document.getElementById('evidence-panel'))"); i++) {
+      await sleep(50);
+    }
     details.panel = await evaluate("(() => { const p = document.getElementById('evidence-panel'); const r = p.getBoundingClientRect(); return {open: !p.hidden, y: Math.round(scrollY), hash: location.hash, focus: document.activeElement.id, right: Math.round(innerWidth - r.right), width: Math.round(r.width), text: p.textContent.slice(0, 400)}; })()");
     checks["citation opens the evidence panel without navigating or scrolling"] = details.panel.open && details.panel.hash === before.hash && Math.abs(details.panel.y - before.y) <= 2 && details.panel.focus === "evidence-title";
     checks["evidence panel shows the transcript segment or source"] = /Transcript segment|External source/.test(details.panel.text);
@@ -388,7 +392,9 @@ async function main() {
       details.filterSearch.words = words;
       details.filterSearch.found = await click(`.search-results a[href="${href}"]`);
       await sleep(600);
-      details.filterSearch.after = await evaluate(`(() => { const t = document.getElementById(${JSON.stringify(hiddenSeg)}); const r = t.getBoundingClientRect(); return {hidden: t.hidden, inView: r.top >= 0 && r.top < innerHeight, dialog: document.getElementById('search-dialog').open, hash: location.hash, summary: document.querySelector('.filter-count').textContent, select: document.querySelector('.filter-bar select').value}; })()`);
+      // Scroll positions round to pixels; Linux font metrics can leave the target at -0.375px.
+      // Allow only subpixel rounding, not a genuinely offscreen target.
+      details.filterSearch.after = await evaluate(`(() => { const t = document.getElementById(${JSON.stringify(hiddenSeg)}); const r = t.getBoundingClientRect(); return {hidden: t.hidden, inView: Math.round(r.top) >= 0 && r.top < innerHeight && r.bottom > 0, dialog: document.getElementById('search-dialog').open, hash: location.hash, summary: document.querySelector('.filter-count').textContent, select: document.querySelector('.filter-bar select').value}; })()`);
       checks["search to a filtered-out segment on the same page reveals and shows it"] = details.filterSearch.before.hidden && details.filterSearch.found &&
         !details.filterSearch.after.hidden && details.filterSearch.after.inView && !details.filterSearch.after.dialog && details.filterSearch.after.select === "" && /cleared/.test(details.filterSearch.after.summary);
       await shot(join(dir, "desktop-search-reveals-filtered.png"));
@@ -399,7 +405,7 @@ async function main() {
       await sleep(200);
       await evaluate(`location.hash = ${JSON.stringify(hiddenSeg)}`);
       await sleep(400);
-      checks["a hash link to a filtered-out segment reveals it"] = await evaluate(`(() => { const t = document.getElementById(${JSON.stringify(hiddenSeg)}); const r = t.getBoundingClientRect(); return !t.hidden && r.top >= 0 && r.top < innerHeight; })()`);
+      checks["a hash link to a filtered-out segment reveals it"] = await evaluate(`(() => { const t = document.getElementById(${JSON.stringify(hiddenSeg)}); const r = t.getBoundingClientRect(); return !t.hidden && Math.round(r.top) >= 0 && r.top < innerHeight && r.bottom > 0; })()`);
     }
 
     // ---- Gallery viewer: buttons, keyboard, zoom, pan, drag swipe, focus return, filters.

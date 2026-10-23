@@ -14,9 +14,12 @@ distill.py package --workspace W --publication P [--allow-missing-pdf]
 
 | Command | Reads | Writes | Status |
 | --- | --- | --- | --- |
-| `render` | `article.json`, `figures/`, and evidence for every video in the publication | `dist/` (replaced atomically) and `render.json` (`renderer: 3`). Deletes `pdf.json`, because a new render invalidates the old PDF. | `rendered` |
+| `render` | `article.json`, `figures/`, and evidence for every video in the publication | `dist/` (replaced atomically) and `render.json` (`renderer: 4`). Deletes `pdf.json`, because a new render invalidates the old PDF. | `rendered` |
 | `pdf` | `dist/article.html?print=1` (the article, not the cover) | `dist/article.pdf` and `pdf.json` (`page: "article.html"`, `page_sha256`, `pdf_sha256`, `browser`, `pages`) | `rendered` |
 | `package` | `dist/`, `render.json`, `pdf.json`, and the evidence | `package/` with `manifest.json`, plus a readable `<title-slug>.zip` | `packaged` |
+
+PDF and packaging reject older renderer versions. Rerun `render` to apply current figure safety
+validation, then regenerate PDF and ZIP; do not edit version markers to reuse older output.
 
 ### Render preconditions
 
@@ -101,7 +104,7 @@ Every figure needs a safe `id` and a `caption`. Alt text is per image: `capture`
 
 - `capture` takes `video_id`, `frame_id`, and `alt`. It is an untouched source frame from `frames.json`.
 - `sequence` takes `video_id` and `steps: [{frame_id, alt, caption}]`, with at least two steps. It renders as a demo step-through (Previous / Next, arrow keys, and a filmstrip). Without JavaScript, and in print, every step is visible.
-- `original` takes `image`, `alt`, `assumptions` (non-empty), `sources` (citation IDs, non-empty), and optional `derived_from: {video_id, frame_id}`. The image must be a `.png`, `.jpg`, `.jpeg`, `.webp`, or `.svg` file under the publication's `figures/` directory. SVGs that contain scripts, event handlers, `foreignObject`, `javascript:`, or remote references are rejected. Annotated derivatives name their original in `derived_from`, and the untouched frame is packaged with the evidence.
+- `original` takes `image`, `alt`, `assumptions` (non-empty), `sources` (citation IDs, non-empty), and optional `derived_from: {video_id, frame_id}`. The image must be a `.png`, `.jpg`, `.jpeg`, `.webp`, or `.svg` file under the publication's `figures/` directory. Each path component starts with a letter, digit, or underscore and contains only letters, digits, underscores, hyphens, or dots (maximum 255 characters). SVGs must be well-formed UTF-8 XML using the SVG namespace and the static element/attribute allowlists in `publication.py`: shapes, text, groups, gradients, masks, markers, and local fragment references. Scripts, event handlers, animation, embedded content, stylesheets, `style` attributes, DTDs/entities, processing instructions other than the XML declaration, and nonlocal references are rejected, including namespace/character-reference bypasses. Use presentation attributes for styling or supply a raster image for unsupported SVG features. Annotated derivatives name their original in `derived_from`, and the untouched frame is packaged with the evidence.
 
 All frame references must exist in that video's `frames.json`, and the video must belong to this publication. Captures and sequence frames are copied to `dist/media/<video>/<frame>.jpg`, with thumbnails in `dist/media/<video>/thumbs/`.
 

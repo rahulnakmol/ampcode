@@ -19,6 +19,7 @@ import sys
 import tempfile
 import unicodedata
 import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 from urllib.parse import urlsplit
@@ -27,7 +28,7 @@ import evidence
 import themes
 from evidence import ContractError, Workspace, check_id, safe_path
 
-RENDERER = 3
+RENDERER = 4
 ASSETS = Path(__file__).resolve().parent.parent / "assets"
 ALPINE = "vendor/alpine-3.17.4.min.js"
 GSAP = "vendor/gsap-3.15.0.min.js"
@@ -45,8 +46,20 @@ TEXT_EXTENSIONS = {".html", ".md", ".json", ".css", ".js", ".svg"}
 SECRET = re.compile(r"[?&]sig=[A-Za-z0-9%+/=]{10,}|AccountKey=|SharedAccessSignature=|"
                     r"-----BEGIN [A-Z ]*PRIVATE KEY-----|\bgh[pousr]_[A-Za-z0-9]{30,}|\bAKIA[0-9A-Z]{16}\b|"
                     r"\bsk-[A-Za-z0-9_-]{24,}|\bxox[abprs]-[A-Za-z0-9-]{10,}")
-UNSAFE_SVG = re.compile(r"<script|<foreignObject|javascript:|\son[a-z]+\s*=|(?:href|src)\s*=\s*[\"']?(?:https?:)?//",
-                        re.IGNORECASE)
+FIGURE_PATH = re.compile(r"figures/(?:[A-Za-z0-9_][A-Za-z0-9._-]{0,254}/)*[A-Za-z0-9_][A-Za-z0-9._-]{0,254}")
+SVG_NS = "{http://www.w3.org/2000/svg}"
+SVG_ELEMENTS = set("svg g defs title desc path rect circle ellipse line polyline polygon text tspan textPath "
+                   "use symbol marker clipPath mask linearGradient radialGradient stop".split())
+SVG_ATTRIBUTES = set("id role aria-label aria-labelledby aria-describedby viewBox preserveAspectRatio "
+                     "x y x1 y1 x2 y2 cx cy r rx ry width height d points dx dy rotate transform "
+                     "fill fill-opacity fill-rule stroke stroke-width stroke-opacity stroke-linecap "
+                     "stroke-linejoin stroke-miterlimit stroke-dasharray stroke-dashoffset opacity "
+                     "font-family font-size font-weight font-style text-anchor dominant-baseline "
+                     "alignment-baseline letter-spacing word-spacing textLength lengthAdjust "
+                     "clip-path clip-rule mask marker-start marker-mid marker-end markerWidth markerHeight "
+                     "markerUnits refX refY orient gradientUnits gradientTransform spreadMethod "
+                     "offset stop-color stop-opacity fx fy fr patternUnits clipPathUnits maskUnits "
+                     "maskContentUnits startOffset method spacing".split())
 REMOTE_RESOURCE = re.compile(r"<(?:script|link|img|source|iframe|video|audio|object|embed)\b[^>]*"
                              r"(?:src|href|data)=\"(?:https?:)?//", re.IGNORECASE)
 INLINE = re.compile(r"\[@([^\]]*)\]|\*\*(.+?)\*\*|\*(.+?)\*|`([^`\n]+)`")
@@ -75,6 +88,36 @@ E = html.escape
 
 # ---------------------------------------------------------------------------
 # Evidence and article validation
+
+
+def validate_svg(path: Path) -> None:
+    """Accept static diagram XML only, including when opened outside the HTML page's CSP."""
+    try:
+        text = path.read_text(encoding="utf-8")
+        if re.search(r"<!DOCTYPE|<!ENTITY|<\?(?!xml\s)", text, re.IGNORECASE):
+            raise ContractError("SVG declarations and processing instructions are not allowed")
+        root = ET.fromstring(text)
+    except (UnicodeError, ET.ParseError) as error:
+        raise ContractError(f"SVG must be well-formed UTF-8 XML: {error}") from None
+    if root.tag != SVG_NS + "svg":
+        raise ContractError("SVG root must use the SVG namespace")
+    for element in root.iter():
+        if element.tag not in {SVG_NS + name for name in SVG_ELEMENTS}:
+            raise ContractError(f"SVG element is not permitted in a static diagram: {element.tag}")
+        for name, value in element.attrib.items():
+            if name in {"href", "{http://www.w3.org/1999/xlink}href"}:
+                if not re.fullmatch(r"#[A-Za-z_][A-Za-z0-9_.-]*", value):
+                    raise ContractError("SVG references must be local fragment IDs")
+            elif name == "{http://www.w3.org/XML/1998/namespace}space":
+                if value not in {"default", "preserve"}:
+                    raise ContractError("SVG xml:space must be default or preserve")
+            elif name not in SVG_ATTRIBUTES:
+                raise ContractError(f"SVG attribute is not permitted in a static diagram: {name}")
+            # Presentation attributes can contain CSS URLs. No escapes, external URLs, or
+            # encoded CSS functions; XML character references have already been decoded.
+            if "\\" in value or re.search(r"url\s*\(|[<>]", value, re.IGNORECASE):
+                if not re.fullmatch(r"url\(#[A-Za-z_][A-Za-z0-9_.-]*\)", value):
+                    raise ContractError("SVG paint references must be local fragment IDs")
 
 
 def _fields(obj: Any, label: str, required: Tuple[str, ...], optional: Tuple[str, ...] = ()) -> List[str]:
@@ -390,8 +433,9 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
                 if isinstance(derived, dict):
                     frames.append((derived.get("video_id"), derived.get("frame_id")))
             image = figure.get("image")
-            if not isinstance(image, str) or not image.startswith("figures/"):
-                problems.append(f"{label}.image must be a path under the publication's figures/ directory")
+            if not isinstance(image, str) or not FIGURE_PATH.fullmatch(image):
+                problems.append(f"{label}.image must be an archive-safe path under figures/ "
+                                "(letters, digits, underscores, hyphens, and dots only)")
             else:
                 try:
                     path = safe_path(pub_dir, image)
@@ -400,8 +444,8 @@ def check_article(data: Any, plan: Dict[str, Any], sources: List[Dict[str, Any]]
                     elif not path.is_file():
                         problems.append(f"{label}.image target is missing: {image}")
                     else:
-                        if path.suffix.lower() == ".svg" and UNSAFE_SVG.search(path.read_text(errors="replace")):
-                            problems.append(f"{label}.image SVG contains scripts, handlers, or remote references")
+                        if path.suffix.lower() == ".svg":
+                            validate_svg(path)
                         inputs[f"publications/{plan['id']}/{image}"] = evidence.sha256_file(path)
                 except ContractError as error:
                     problems += error.problems
@@ -898,11 +942,11 @@ def figure_html(figure: Dict[str, Any], ctx: Context) -> str:
         assumptions = "".join(f"<li>{inline_html(a, ctx, [])}</li>" for a in figure["assumptions"])
         notes = f'<div class="assumptions"><p>Assumptions{refs}</p><ul>{assumptions}</ul></div>'
     return (f'<figure class="fig fig-{kind}" id="{E(figure["id"])}" x-data="zoom">'
-            f'<a class="frame" href="{src}" @click.prevent="open()" aria-label="Enlarge figure {number}">'
-            f'<img src="{src}" alt="{E(figure["alt"])}" loading="lazy"></a>'
+            f'<a class="frame" href="{E(src)}" @click.prevent="open()" aria-label="Enlarge figure {number}">'
+            f'<img src="{E(src)}" alt="{E(figure["alt"])}" loading="lazy"></a>'
             f'<figcaption><span class="slug">{slug_text}</span> {caption}{notes}</figcaption>'
             f'<dialog class="lightbox" x-ref="dialog" @click.self="close()" aria-label="Figure {number}">'
-            f'<img src="{src}" alt="{E(figure["alt"])}"><p>{caption}</p>'
+            f'<img src="{E(src)}" alt="{E(figure["alt"])}"><p>{caption}</p>'
             f'<button type="button" class="close" @click="close()">Close</button></dialog></figure>')
 
 
@@ -1986,6 +2030,8 @@ def _verify_render(workspace: Workspace, plan: Dict[str, Any], pub_dir: Path) ->
     record = evidence.read_json(pub_dir / "render.json") if (pub_dir / "render.json").exists() else None
     if not record or not (pub_dir / "dist").is_dir():
         raise ContractError(f"publication {plan['id']} has not been rendered; run render first")
+    if record.get("renderer") != RENDERER:
+        raise ContractError("render predates current safety validation; rerun render before PDF or packaging")
     problems = []
     for rel, digest in record["inputs"].items():
         path = workspace.path(rel)
