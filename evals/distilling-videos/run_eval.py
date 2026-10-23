@@ -101,7 +101,8 @@ class Env:
         self.home.mkdir(parents=True, exist_ok=True)
 
     def cli(self, *args, tools=True, extra_env=None, timeout=600):
-        path = (str(self.bin_dir) + ":" if tools else "") + "/usr/bin:/bin"
+        # Linux often installs ffmpeg in /usr/bin; the missing-tool control must hide it too.
+        path = str(self.bin_dir) + ":/usr/bin:/bin" if tools else ""
         env = {"PATH": path, "HOME": str(self.home), "LANG": "en_US.UTF-8"}
         env.update(extra_env or {})
         result = subprocess.run([sys.executable, str(DISTILL), *map(str, args)], capture_output=True, text=True,

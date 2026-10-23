@@ -331,7 +331,7 @@ def load_package(directory: Path, zip_path: Optional[Path] = None, signoff_path:
     # always archived under the canonical zip_name. A standalone package must use zip_name.
     if zip_path is None or (standalone and Path(zip_path).name != zip_name):
         raise ContractError(f"package ZIP must be named {zip_name}")
-    zip_bytes = _read_regular(Path(zip_path), MAX_PACKAGE_BYTES)
+    zip_bytes = _read_regular(Path(zip_path), MAX_OBJECT_BYTES)
     _verify_zip(zip_bytes, manifest_bytes, manifest)
     signoff = signoff_bytes = None
     if signoff_path is not None and (Path(signoff_path).exists() or Path(signoff_path).is_symlink()):

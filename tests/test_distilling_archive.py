@@ -572,6 +572,34 @@ class Archival(ArchiveFixture):
         self.signoff()
         self.assertEqual(self.archive()["status"], "archived")
 
+    def test_zip_object_size_boundary_checked_before_upload(self):
+        zip_path = self.pub / "a-talk.zip"
+        # Store entries without compression so the ZIP, not an individual member, hits the limit.
+        with zipfile.ZipFile(zip_path) as bundle:
+            entries = [(info.filename, bundle.read(info)) for info in bundle.infolist()]
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as bundle:
+            for name, data in entries:
+                bundle.writestr(name, data)
+        size = zip_path.stat().st_size
+        argv = ["archive", "--workspace", str(self.ws), "--publication", "v1", "--container", CONTAINER]
+        # Extensions are freshly imported by build_parser; patch the registered handler's module.
+        parser = distill.build_parser()
+        module_globals = parser.parse_args(argv).func.__globals__
+        for limit, expected_code in ((size - 1, 2), (size, 0), (size + 1, 0)):
+            with self.subTest(limit=limit), mock.patch.dict(module_globals, MAX_OBJECT_BYTES=limit,
+                                                           MAX_PACKAGE_BYTES=size * 4), \
+                    mock.patch.object(distill, "build_parser", return_value=parser):
+                blob = FakeBlob()
+                code, out, err = self.call(*argv, transport=blob)
+                if expected_code == 2:
+                    self.assertEqual(blob.calls, [], f"oversized ZIP reached transport: {err}")
+                    self.assertFalse((self.pub / "archive-receipt.json").exists())
+                    self.assertRegex(err, r"\.zip.*exceeds.*limit")
+                else:
+                    self.assertEqual(out["status"], "archived", err)
+                    self.assertTrue(any(name.endswith("_COMPLETE.json") for name in blob.objects))
+                self.assertEqual(code, expected_code, err)
+
     def test_unique_revision_prefix_per_attempt(self):
         self.archive()
         first = {n for n in self.blob.objects if n.endswith("_COMPLETE.json")}
