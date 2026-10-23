@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""End-to-end evaluation of skills/distilling-videos against controlled fixtures.
+"""End-to-end evaluation of skills/distill against controlled fixtures.
 
 Runs the real CLI (distill.py) on synthetic slide videos rendered with ffmpeg, the fixture
 transcripts, and evaluator-composed article JSON; then scores outputs against ground-truth.json.
@@ -35,7 +35,7 @@ from urllib.parse import unquote, urlsplit
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 FIX = HERE / "fixtures"
-SCRIPTS = REPO / "skills" / "distilling-videos" / "scripts"
+SCRIPTS = REPO / "skills" / "distill" / "scripts"
 DISTILL = SCRIPTS / "distill.py"
 MARKER = ".distill-eval-output"
 CONTAINER = "https://evalacct.blob.core.windows.net/distilled-eval"

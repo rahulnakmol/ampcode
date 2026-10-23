@@ -16,7 +16,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ROOT / "skills" / "distilling-videos" / "scripts"
+SCRIPTS = ROOT / "skills" / "distill" / "scripts"
 DISTILL = SCRIPTS / "distill.py"
 sys.path.insert(0, str(SCRIPTS))
 

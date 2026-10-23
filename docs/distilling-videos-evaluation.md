@@ -4,6 +4,9 @@ Date: 2026-10-19. Skill under test: `skills/distilling-videos` at commit `fa72b5
 (without the network probe) after the review fixes described in "Review fixes and rerun" below.
 Fixtures and harness: `evals/distilling-videos/` (see its `README.md` and `rubric.md`).
 
+The skill is now named `distill` at `skills/distill/`. Historical names and commit paths in this
+report refer to the versions tested; the current evaluation harness uses the new path.
+
 This evaluation does not show the task is complete. Still open: a transcription adapter and
 provider selection (no accuracy has been measured), and the producer workflow that the GitHub
 Actions archive hand-off needs.

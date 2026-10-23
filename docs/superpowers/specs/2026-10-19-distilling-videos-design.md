@@ -2,7 +2,7 @@
 
 Date: 2026-10-19
 Status: written specification approved; implementation and evaluations authorized.
-Destination: rahulnakmol/ampcode, skills/distilling-videos/.
+Destination: rahulnakmol/ampcode, skills/distill/ (renamed from distilling-videos).
 Optional product name: Vyasa.
 
 ## Outcome
