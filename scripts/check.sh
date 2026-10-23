@@ -46,9 +46,23 @@ while IFS= read -r -d '' skill; do
 		echo "error: $skill is missing a description" >&2
 		exit 1
 	fi
+	if (($(wc -l <"$skill") >= 500)); then
+		echo "error: $skill must stay under 500 lines; move detail to reference/" >&2
+		exit 1
+	fi
 	done < <(find "$root/skills" -mindepth 2 -maxdepth 2 -type f -name SKILL.md -print0)
 
+while IFS= read -r -d '' script; do
+	bash -n "$script"
+done < <(find "$root/skills" -path '*/scripts/*' -type f -name '*.sh' -print0)
+
 bun test "$root/tests"
+
+command -v python3 >/dev/null || {
+	echo 'error: python3 is required for skill script tests' >&2
+	exit 1
+}
+python3 -m unittest discover -s "$root/tests" -p 'test_*.py'
 
 git -C "$root" diff --check
 echo 'All checks passed.'

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "video_id": "ja-talk",
+  "language": "ja",
+  "provider": {"name": "eval-fixture", "kind": "manual"},
+  "translation_provider": {"name": "eval-fixture-reference", "kind": "manual"},
+  "duration": 30.0,
+  "notes": "Synthetic evaluation fixture. Japanese text and reference translations were written together as ground truth; this is not a translation-accuracy measurement.",
+  "segments": [
+    {"id": "s1", "start": 0.0, "end": 6.0,
+     "text": "今日はKubernetesのreadinessプローブとlivenessプローブの違いを説明します。",
+     "english": "Today I'll explain the difference between Kubernetes readiness probes and liveness probes.",
+     "english_kind": "translation"},
+    {"id": "s2", "start": 6.0, "end": 13.0,
+     "text": "readinessプローブが失敗すると、Podはサービスのエンドポイントから外されますが、再起動はされません。",
+     "english": "When a readiness probe fails, the Pod is removed from the Service's endpoints, but it is not restarted.",
+     "english_kind": "translation"},
+    {"id": "s3", "start": 13.0, "end": 19.0,
+     "text": "livenessプローブが失敗すると、kubeletがコンテナを再起動します。",
+     "english": "When a liveness probe fails, the kubelet restarts the container.",
+     "english_kind": "translation"},
+    {"id": "s4", "start": 19.0, "end": 25.0,
+     "text": "起動が遅いアプリには、startupプローブを使うのが定石です。",
+     "english": "For slow-starting apps, the standard move (定石, joseki) is to use a startup probe.",
+     "english_kind": "translation"},
+    {"id": "s5", "start": 25.0, "end": 30.0,
+     "text": "タイムアウトは[inaudible]秒に設定しました。",
+     "english": "I set the timeout to [inaudible] seconds.",
+     "english_kind": "translation",
+     "uncertain": true,
+     "uncertainty": "The number of seconds is inaudible and is not shown on screen."}
+  ]
+}

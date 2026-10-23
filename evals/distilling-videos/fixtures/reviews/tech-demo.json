@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "publication_id": "tech-demo",
+  "reviewer": "eval harness (distilling-videos Task 5)",
+  "decision": "approve",
+  "note": "Fixture transcript is ground truth by construction. Inspected periodic, dense, cue, and scene frames over the demo; selected input, action, output, and the unreadable latency frame.",
+  "videos": {
+    "tech-demo": {
+      "transcript_coverage": "verified",
+      "visual_coverage": "verified",
+      "gaps": [{"start": 55.0, "end": 60.0, "resolution": "no-speech", "note": "Outro music card; no speech by construction."}],
+      "uncertain_segments": [{"segment_id": "s5", "resolution": "labeled", "note": "p99 stays unknown in article, brief, and limitations."}]
+    }
+  }
+}
