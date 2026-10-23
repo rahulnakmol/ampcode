@@ -1,6 +1,6 @@
-# Grilling skill: research notes
+# Shaping skill: research notes
 
-Research behind [`skills/grilling/`](../skills/grilling/SKILL.md), compiled 2026-10-23. It records
+Research behind [`skills/shaping/`](../skills/shaping/SKILL.md), compiled 2026-10-23. It records
 which techniques the skill adopted, from where, and which known failure modes it guards against.
 
 ## Sources reviewed

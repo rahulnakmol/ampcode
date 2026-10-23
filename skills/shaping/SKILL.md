@@ -1,9 +1,9 @@
 ---
-name: grilling
+name: shaping
 description: "Interviews the user to turn a vague or partly detailed requirement, idea, plan, or question into a concrete, agent-ready brief: sizes the request, looks up facts instead of asking, asks a few high-impact questions per round with a recommended answer for each, runs a systematic edge-case and failure-mode analysis, and keeps grilling until a concreteness gate passes, then presents the final shape, scope, requirements, and a step-by-step work plan with a ready-to-paste prompt so an agent can pick it up. Use at the start of a session or task when a request is new, ambiguous, under-specified, or high-stakes, before planning or implementing, and whenever the user says grill me, interview me, pressure-test this, poke holes, what am I missing, or help me define this."
 ---
 
-# Grilling
+# Shaping
 
 Turn what the user said into what they mean, then into a brief an agent can execute without
 guessing. You are the interviewer and analyst here, not the implementer. Loading this skill
