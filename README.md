@@ -54,8 +54,10 @@ The [realistic async-cache benchmark](./docs/amp-custom-mode-dials-benchmark.md)
 Videos and transcripts are research inputs. The primary deliverable is an original analyst-authored
 article or whitepaper in its own voice, organized around a reader decision and independent thesis,
 not a recap or fact-check audit. A required prewriting analytical brief maps the argument to evidence
-and counterevidence; citations and panels carry provenance. Independent review must reject even a
-faithful source-led recap, and must also reject unsupported consultancy-style opinion.
+and counterevidence; citations and panels carry provenance. Independent review marks a faithful
+but recap-dominated article NEEDS REVISION, preserving sound evidence while rebuilding the argument.
+Useful recap passages are allowed; unsupported central claims receive FAIL. Only PASS permits
+editorial approval, followed by the remaining publication checks.
 
 [`skills/distilling-videos/`](./skills/distilling-videos/SKILL.md) turns up to ten public YouTube videos into reusable evidence (timed original and English transcripts, selected frames, checksummed manifests), an evidence-backed brief, and an offline HTML site (cover, article, brief, per-video transcripts, gallery, glossary, references, with offline search, Copy Page Markdown, and house light/dark plus 20 attributed reader theme families) plus an article PDF, packaged as a ZIP with optional verified Azure Blob archival. A complete article needs at least 1000 narrative body words (target 1200–1500+, refused below the floor; short drafts must be `partial`), is written to an entice / engage / empower rubric, and its page carries escaped search and share metadata (description, Open Graph, Twitter, JSON-LD, and a canonical link only for a user-supplied public URL); offline packages are not crawlable until hosted. Amp does the listening, visual judgment, research, and writing; a standard-library Python CLI (`scripts/distill.py`) does download, frames, validation, rendering, packaging, sign-off, archival, and guarded media cleanup.
 
