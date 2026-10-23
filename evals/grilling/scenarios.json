@@ -1,0 +1,71 @@
+{
+  "about": "Behavior scenarios. The agent under test sees only `opening` (and the repository when `repo` is set). The simulated user sees `persona` and answers from it; anything not in the persona it answers 'not sure, you pick'. Judges see the transcript, `checks`, and rubric.md. Splits follow SkillOpt's train/val/test convention.",
+  "scenarios": [
+    {
+      "id": "s01-saas-export",
+      "split": "train",
+      "turns": "multi",
+      "opening": "I want to add a way for customers of my SaaS to export their data.",
+      "persona": "B2B project-management SaaS, about 300 customer workspaces, Node/TypeScript API, Postgres, S3, BullMQ queue. Driver: two enterprise deals require a full data export for offboarding and compliance. Only workspace admins should export. Largest workspace has about 2 million rows and 40 GB of attachments. You care most about completeness and not leaking data across workspaces. You have no strong opinion on format; JSON plus CSV sounds fine. Timeline: 6 weeks. You will agree with sensible recommendations. If asked about a UI, a simple status panel is fine. Big attachments over 10 GB can wait.",
+      "checks": ["asks about purpose/driver early", "does not ask for facts the agent could not know without asking only when no repo is available, and says so", "edge cases include cross-tenant access and incomplete export", "final brief has final shape, work plan with done-checks, and pick-up prompt", "does not implement"]
+    },
+    {
+      "id": "s02-offsite",
+      "split": "val",
+      "turns": "multi",
+      "opening": "Help me plan a 2-day offsite for my 40-person engineering team in Goa in February. Budget is 25 lakh rupees.",
+      "persona": "You are an engineering director in Bengaluru. Dates are flexible within February 2027 but must avoid weekends. Goals: team bonding and one day of roadmap planning. Travel is booked centrally by the company and is NOT part of the 25 lakh. Attendance is optional but expected. Three people are vegetarian-only, one uses a wheelchair. You want a single resort. You dislike heavy-drinking culture. You will accept good recommendations.",
+      "checks": ["handles a non-software plan without forcing software framing", "asks about goals and constraints before logistics", "edge cases include accessibility, budget overrun, and production coverage or weekday conflict", "final brief has work plan with owners or checks and a pick-up prompt"]
+    },
+    {
+      "id": "s03-repo-lint",
+      "split": "test",
+      "turns": "single",
+      "repo": true,
+      "opening": "Add a `make lint` target to this repo.",
+      "persona": "You want lint to cover shell scripts and TypeScript. You prefer not to add new heavy dependencies.",
+      "checks": ["inspects Makefile and scripts/check.sh before asking", "does not ask what the Makefile or check script contains", "sizes as Bounded or Clear and says so", "asks at most three questions, each with a recommendation", "does not edit files in this evaluation"]
+    },
+    {
+      "id": "s04-typo",
+      "split": "train",
+      "turns": "single",
+      "repo": true,
+      "opening": "Fix the typo 'recieve' in the README if there is one.",
+      "persona": "You just want the typo fixed.",
+      "checks": ["sizes as Clear", "asks no questions", "checks the file for the typo instead of asking"]
+    },
+    {
+      "id": "s05-just-do-it",
+      "split": "val",
+      "turns": "single",
+      "opening": "No questions please, just do it: add a CONTRIBUTING.md to my open-source CLI project.",
+      "persona": "You do not want to be asked anything.",
+      "checks": ["asks no questions", "states assumptions briefly", "names top risks in a short list at most", "proceeds or states what it will produce"]
+    },
+    {
+      "id": "s06-ai-triage-agent",
+      "split": "test",
+      "turns": "multi",
+      "opening": "Build me an agent that triages GitHub issues automatically.",
+      "persona": "Open-source repo with about 50 new issues a week. You want labels (bug, feature, question, duplicate) and a priority suggestion. The agent must never close issues on its own. It may comment once with a polite triage note. Budget is small: under 20 USD per month in model costs. Runs as a GitHub Action. You worry about prompt injection in issue bodies and about spammy comments. You would accept a human-approval step for the duplicate label only.",
+      "checks": ["asks what 'triage' means concretely", "edge cases include prompt injection, wrong labels, cost, and rate limits", "recommends approval gates for irreversible actions", "final brief has measurable acceptance criteria and an evaluation approach for label accuracy"]
+    },
+    {
+      "id": "s07-premise",
+      "split": "train",
+      "turns": "multi",
+      "opening": "We need to rewrite our Postgres app in MongoDB because it's slow.",
+      "persona": "Rails app on Postgres 15. Slowness is on the dashboard page, which takes 6 seconds. You have not profiled it. Nobody on the team knows MongoDB. If the agent suggests profiling first, you agree. A slow query log shows a missing index on orders.customer_id and N+1 queries on the dashboard.",
+      "checks": ["challenges the premise and asks for evidence of the cause", "recommends measuring before rewriting", "does not simply plan a MongoDB migration", "final brief, if any, targets the real bottleneck"]
+    },
+    {
+      "id": "s08-early-exit",
+      "split": "val",
+      "turns": "multi",
+      "opening": "I want a referral program for our app.",
+      "persona": "Consumer fitness app. After the agent's first round of questions, reply only: 'Enough questions, just write it up.' Afterwards answer nothing new.",
+      "checks": ["stops asking when told", "writes the brief anyway", "marks status Not yet concrete and lists the open gaps with recommended defaults"]
+    }
+  ]
+}
