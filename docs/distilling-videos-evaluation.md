@@ -323,7 +323,7 @@ python3 evals/distilling-videos/run_eval.py --tools-bin .amp/in/tools/bin \
 The deepened fixture articles are self-written and have not been independently judged against the
 entice / engage / empower rubric. The newest real article is rerun and judged separately.
 
-## Not tested
+## Not tested in the original evaluation
 
 - Accuracy of audio transcription, captions, or translation, and any provider. No reference audio
   transcripts and no paid calls.
@@ -351,3 +351,82 @@ original run.
 - `<pub>/article.pdf`, `pdf-page-N.png`, `pdf-text.txt`, the packaged ZIP, and the source frames
   (blurred latency frame, unlabeled chart)
 - `report.json` (browser checks), `results.json`, `summary.md`, `run.log`
+
+## 2026-10-23 release audit and cross-platform validation
+
+Candidate code: `ca9139a` on `fix/distilling-release-gates`, based on `origin/dev` at
+`38a8dd8`. This section supersedes the original "Linux or orb execution" limitation above;
+it does not supersede the live-provider, live-Azure, or Actions limitations.
+
+An independent source audit found three defects, reproduced before correction:
+
+- Original-figure filenames could inject Alpine directives through unescaped HTML attributes.
+  Figure paths now use archive-compatible components and HTML attributes are escaped.
+- Namespaced SVG scripts bypassed a substring blacklist. Static SVG XML now has explicit
+  element/attribute allowlists, local-only references, and rejects DTD/entity declarations,
+  active elements, CSS styling, and processing instructions. Existing renderer-3 outputs must
+  be rendered again before PDF/packaging; editing the version marker is not a migration.
+- ZIPs between 512 MiB and 2 GiB uploaded but could never pass 512-MiB-bounded read-back.
+  Preflight now rejects these before transport activity. Boundary regression tested one byte
+  below, at, and above a reduced object limit; aggregate package limit remains 2 GiB.
+
+Both macOS and a real Linux Amp orb passed `make check` (141 Python tests, 4 Bun tests) and
+the complete FFmpeg/Chromium fixture evaluation with `--capture`:
+
+| Category | Passed on each platform | Failed |
+| --- | ---: | ---: |
+| Contracts | 13 | 0 |
+| Evidence | 65 | 0 |
+| Budget | 13 | 0 |
+| Publication | 68 | 0 |
+| Editorial machine checks | 52 | 0 |
+| Editorial negative controls | 10 | 0 |
+| Sign-off | 8 | 0 |
+| Fake-Blob archive and cleanup | 35 | 0 |
+| Browser interactions | 211 | 0 |
+
+The orb ran Chromium 156.0.8078.47. Its patched `make check` took 103.40 seconds and full
+evaluation 271.40 seconds. Desktop/mobile panels, filtered transcript navigation, original
+diagrams, and Japanese text/PDF were inspected. Linux PDFs had 8/7/10 pages with no detected
+print-layout defects; macOS had 8/6/9 pages. No remote browser requests or console exceptions
+were recorded in the orb run. Three historical mechanical fixtures remain 1012–1033 narrative
+words: above the hard minimum, below the preferred 1200–1500+ target.
+
+The original orb run exposed evaluator assumptions, not silently waived failures: its missing-tool
+control left `/usr/bin` on PATH where FFmpeg was installed, and two navigation checks rejected
+a visible target at -0.375 CSS pixels. The harness now hides all tools for that control and allows
+only subpixel rounding for target visibility. A macOS run also caught panel geometry being read
+during the entrance tween; the harness now waits, bounded to one second, for that tween before
+asserting exact final placement. All corrected checks passed on both platforms.
+
+Capacity probes (not audio/model performance): the orb ingested ten short synthetic videos with
+two five-member groups, frames, transcript import and selection, and complete validation in
+11.32 seconds on the baseline. Eleven videos and a six-member group were rejected. A separate
+macOS CLI probe on the fixed code imported ten synthetic 90-minute transcripts (1080 segments
+each) using three workers in 0.458 seconds; unchanged-input reuse took 0.363 seconds. All 10800
+segments and twenty completed stage records were checked. Neither probe measured five-video
+article synthesis, long-video frame extraction, transcription accuracy, or paid model latency.
+
+Bandit 1.8.6 scanned the Python scripts without suppressions (exit 1: seven findings). Triage:
+one high MD5 warning is Azure's Content-MD5 transport checksum, not the trust mechanism; manifests
+and mandatory read-back use SHA-256. Two XML warnings concern ElementTree: UTF-8 parsing is
+preceded by declaration rejection and followed by static namespace/attribute allowlists; bypass
+regressions pass. Four subprocess import/call warnings use argument arrays, no shell, trusted
+operator-selected executables, and credential-filtered environments. This is a triaged static
+scan, not a claim of zero findings or external penetration testing.
+
+A fresh blind LLM judge assessed the four contrastive editorial excerpts before reading the
+answer key: faithful recap NEEDS REVISION, source audit NEEDS REVISION, unsupported consultancy
+prose FAIL, grounded independent analysis PASS. All four agreed with the key. The exact reviewer
+model ID was unavailable. This validates the rubric distinction on synthetic excerpts, not the
+live portal article, generalized writing quality, or transcription accuracy.
+
+Evidence: local `.amp/in/release-final/`, `.amp/in/release-check.log`, `.amp/in/bandit.json`, and
+`.amp/in/batch-benchmark.json`; Linux results in the
+[orb validation thread](https://ampcode.com/threads/T-01a169bb-a945-7729-bf6a-be7d4a81ad85).
+The orb verified its patched source tree exactly matched the candidate commit.
+
+Outstanding release decisions: live Azure authorization/configuration, whether unavailable
+automatic transcription and Actions producer are excluded from this release's supported scope,
+and stable version/support/EOL commitments. No rolling or stable promotion is established by
+these fixture results alone.
