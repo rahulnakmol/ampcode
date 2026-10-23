@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "videos": [
+    {"id": "tech-demo", "url": "https://www.youtube.com/watch?v=EvalTech001", "title": "Rate limiter burst demo (synthetic fixture)"},
+    {"id": "ja-talk", "url": "https://youtu.be/EvalJapan01", "title": "readiness と liveness (synthetic fixture)"},
+    {"id": "bio-a", "url": "https://www.youtube.com/watch?v=EvalBioA001", "title": "Calorie restriction is proven (synthetic fixture)"},
+    {"id": "bio-b", "url": "https://www.youtube.com/watch?v=EvalBioB001", "title": "The other monkey study (synthetic fixture)"}
+  ],
+  "groups": [
+    {"id": "g-bio", "video_ids": ["bio-a", "bio-b"], "title": "Two videos, two monkey studies"}
+  ],
+  "goal": "Separate what each source demonstrates from what it only claims, so a technically comfortable reader can act on it",
+  "budgets": {"currency": "USD", "batch": 1.0, "per_video": 0.4},
+  "retain_media": false
+}

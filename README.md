@@ -10,6 +10,7 @@ This GitHub repository is the readable source of truth. Amp loads published copi
 plugins/                  TypeScript or JavaScript Amp plugins
 skills/<skill-name>/      Agent Skills, each rooted at SKILL.md
 scripts/check.sh          Repository validation
+tests/                    Bun plugin tests and Python skill-script tests
 ```
 
 See [`plugins/README.md`](./plugins/README.md) and [`skills/README.md`](./skills/README.md) before adding an extension.
@@ -48,6 +49,39 @@ Plugin agent modes cannot enforce a fixed token ceiling, so Prime cannot guarant
 
 The [realistic async-cache benchmark](./docs/amp-custom-mode-dials-benchmark.md) records earlier configurations; it does not validate this new routing.
 
+## Distill
+
+Videos and transcripts are research inputs. The primary deliverable is an original analyst-authored
+article or whitepaper in its own voice, organized around a reader decision and independent thesis,
+not a recap or fact-check audit. A required prewriting analytical brief maps the argument to evidence
+and counterevidence; citations and panels carry provenance. Independent review marks a faithful
+but recap-dominated article NEEDS REVISION, preserving sound evidence while rebuilding the argument.
+Useful recap passages are allowed; unsupported central claims receive FAIL. Only PASS permits
+editorial approval, followed by the remaining publication checks.
+
+[`skills/distill/`](./skills/distill/SKILL.md) turns up to ten public YouTube videos into reusable evidence (timed original and English transcripts, selected frames, checksummed manifests), an evidence-backed brief, and an offline HTML site (cover, article, brief, per-video transcripts, gallery, glossary, references, with offline search, Copy Page Markdown, and house light/dark plus 20 attributed reader theme families) plus an article PDF, packaged as a ZIP with optional verified Azure Blob archival. A complete article needs at least 1000 narrative body words (target 1200–1500+, refused below the floor; short drafts must be `partial`), is written to an entice / engage / empower rubric, and its page carries escaped search and share metadata (description, Open Graph, Twitter, JSON-LD, and a canonical link only for a user-supplied public URL); offline packages are not crawlable until hosted. Amp does the listening, visual judgment, research, and writing; a standard-library Python CLI (`scripts/distill.py`) does download, frames, validation, rendering, packaging, sign-off, archival, and guarded media cleanup.
+
+Invoke with “distill this video” or “distill these videos” and the YouTube URLs. Formerly
+`distilling-videos`; the runtime cache and archive format identifiers retain their old names for
+compatibility. Historical evaluation/spec filenames are unchanged.
+
+| Area | Status |
+| --- | --- |
+| Evidence, rendering, packaging, sign-off, archive/cleanup logic | Implemented; unit-tested offline with fake media tools, browser, and Blob transport; end-to-end evaluation with real ffmpeg and Chrome Canary in [`docs/distilling-videos-evaluation.md`](./docs/distilling-videos-evaluation.md) |
+| Transcription | No provider adapter and no provider selected: Amp must supply a normalized transcript (manual, captions, agent, or a provider the user runs). Captions and agent transcripts need recorded audio checks covering every transcript segment before sign-off releases media; partial spot checks are recorded but block sign-off. Neither is a measured accuracy rate. Not unattended end to end |
+| Provider choice and accuracy | Shortlist and benchmark protocol only; paid benchmark not run, no provider recommended, no transcription/caption/translation accuracy measured |
+| Live YouTube download (macOS) | Tested once on one public video: first download HTTP 403 (yt-dlp warned no JavaScript runtime), then succeeded with node; four later runs succeeded. Intermittent. `download --js-runtime` now selects the runtime explicitly |
+| Real PDF (macOS, Chrome Canary) | Tested in the evaluation |
+| Amp orbs (Linux) | Real FFmpeg/Chromium fixture evaluation: 475 checks passed; 141 Python and 4 Bun tests passed. Synthetic media and supplied transcripts; no live-provider accuracy claim |
+| Live Azure Blob | Not tested; requires an authorized disposable container/prefix and private credentials |
+| GitHub Actions archive hand-off | Blocked: needs a producer workflow that does not exist |
+
+Recommended invocation: Medium mode with Fast where supported (a user preference; the skill cannot enforce modes or cap billing). Run `skills/distill/scripts/bootstrap.sh` once to create a private venv with `yt-dlp[default]` (including the `yt-dlp-ejs` challenge solver scripts) and check `ffmpeg`, a browser, and the JavaScript runtime yt-dlp needs for YouTube (deno by default; node or quickjs via `download --js-runtime`); it installs nothing globally, edits no yt-dlp config, and handles no credentials.
+
+## Grilling
+
+[`skills/grilling/`](./skills/grilling/SKILL.md) interviews you at the start of a task to turn a vague or partly detailed requirement, plan, or question into a confirmed, agent-ready brief. It sizes the request first (clear requests proceed without questions), looks up facts instead of asking, asks one to three high-impact questions per round with a recommended answer for each, runs an edge-case and pre-mortem pass using [`reference/edge-cases.md`](./skills/grilling/reference/edge-cases.md), and keeps grilling until a concreteness checklist passes. It ends with a confirmed brief covering the final shape, scope, requirements, edge cases, and verification, plus a step-by-step work plan and a ready-to-paste prompt for the agent that picks it up. It is model-invoked, so it triggers on new or ambiguous requests and on phrases such as "grill me" or "poke holes in this". Sources and design choices are in [`docs/grilling-research.md`](./docs/grilling-research.md).
+
 ## Using modes without changing the Dial
 
 The standard Low, Medium, High, and Ultra Dial can remain unchanged. Published plugin modes stay available in the complete mode picker and to Puck.
@@ -66,7 +100,7 @@ Run:
 make check
 ```
 
-The check loads every plugin through the installed Amp CLI, runs advisory-team wiring and tool-allowlist tests with Bun, verifies formatting errors detectable by Git, and validates the required metadata of every skill package. It does not run paid model evaluations.
+The check loads every plugin through the installed Amp CLI, runs advisory-team wiring and tool-allowlist tests with Bun, runs the Python skill-script tests (including executing every documented `distill` JSON example through the CLI), syntax-checks skill shell scripts, verifies formatting errors detectable by Git, and validates the required metadata and 500-line limit of every skill package. It needs `amp`, `bun`, and `python3`; the tests make no network, paid, or cloud calls.
 
 ## Publish
 

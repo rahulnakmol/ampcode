@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "publication_id": "g-bio",
+  "reviewer": "eval harness (distilling-videos Task 5)",
+  "decision": "approve",
+  "note": "Both members cited; conflict surfaced with both citations; external claims checked against the three primary papers and the NIA summary.",
+  "videos": {
+    "bio-a": {
+      "transcript_coverage": "verified",
+      "visual_coverage": "verified",
+      "gaps": [],
+      "uncertain_segments": [{"segment_id": "s4", "resolution": "labeled", "note": "Chart axes and spoken year stay unknown."}]
+    },
+    "bio-b": {
+      "transcript_coverage": "verified",
+      "visual_coverage": "verified",
+      "gaps": [],
+      "uncertain_segments": [{"segment_id": "s5", "resolution": "labeled", "note": "Spoken year stays unclear; the article dates the paper from the paper itself."}]
+    }
+  }
+}

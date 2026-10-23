@@ -1,0 +1,137 @@
+# Archive-only hand-off for distilling-videos packages. See
+# skills/distill/reference/archival.md ("GitHub Actions hand-off").
+#
+# This workflow never runs the editorial pipeline and never executes package content. It accepts
+# exactly one artifact from one completed, successful run of an allowlisted producer workflow in
+# this same repository on the default branch, checks the artifact digest and the expected manifest
+# digest, and only then archives it with an environment-scoped SAS.
+#
+# Required setup (fails closed when missing):
+#   - Environment "distilled-video-archive" restricted to the default branch (deployment branch
+#     policy), ideally with required reviewers.
+#   - Environment secret DISTILL_ARCHIVE_SAS: HTTPS-only, expiring, read+create, no delete.
+#   - Environment variable DISTILL_ARCHIVE_CONTAINER: https://<account>.blob.core.windows.net/<container>.
+#   - Repository variable DISTILL_PRODUCER_WORKFLOWS: allowlisted producer workflow paths.
+name: Archive distilled videos
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Producer workflow run ID in this repository
+        required: true
+        type: string
+      artifact_name:
+        description: Name of the package artifact in that run
+        required: true
+        type: string
+      expected_manifest_sha256:
+        description: manifest_sha256 printed by `distill.py package`
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: archive-distilled-videos
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    name: Fetch and validate package (no archive secret)
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate dispatch inputs
+        env:
+          RUN_ID: ${{ inputs.run_id }}
+          ARTIFACT_NAME: ${{ inputs.artifact_name }}
+          EXPECTED_MANIFEST: ${{ inputs.expected_manifest_sha256 }}
+        run: |
+          set -euo pipefail
+          [[ $RUN_ID =~ ^[0-9]{1,20}$ ]] || { echo '::error::run_id must be numeric'; exit 1; }
+          [[ $ARTIFACT_NAME =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$ ]] || { echo '::error::invalid artifact_name'; exit 1; }
+          [[ $EXPECTED_MANIFEST =~ ^[0-9a-f]{64}$ ]] || { echo '::error::invalid manifest digest'; exit 1; }
+
+      - name: Check producer provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id }}
+          ARTIFACT_NAME: ${{ inputs.artifact_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          ALLOWED_WORKFLOWS: ${{ vars.DISTILL_PRODUCER_WORKFLOWS }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" > "$RUNNER_TEMP/run.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?name=$ARTIFACT_NAME&per_page=100" \
+            > "$RUNNER_TEMP/artifacts.json"
+          python3 skills/distill/scripts/distill.py actions-provenance \
+            --run-json "$RUNNER_TEMP/run.json" --artifacts-json "$RUNNER_TEMP/artifacts.json" \
+            --repository "$GITHUB_REPOSITORY" --default-branch "$DEFAULT_BRANCH" --run-id "$RUN_ID" \
+            --artifact-name "$ARTIFACT_NAME" --allowed-workflows "$ALLOWED_WORKFLOWS" \
+            > "$RUNNER_TEMP/provenance.json"
+
+      - name: Download and verify artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_MANIFEST: ${{ inputs.expected_manifest_sha256 }}
+        run: |
+          set -euo pipefail
+          read -r artifact_id digest < <(python3 -c 'import json, sys; p = json.load(open(sys.argv[1])); print(p["artifact_id"], p["digest"])' "$RUNNER_TEMP/provenance.json")
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > "$RUNNER_TEMP/artifact.zip"
+          python3 skills/distill/scripts/distill.py unpack-artifact \
+            --zip "$RUNNER_TEMP/artifact.zip" --digest "$digest" --dest "$RUNNER_TEMP/package" \
+            --expected-manifest-sha256 "$EXPECTED_MANIFEST"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: validated-distilled-package
+          path: ${{ runner.temp }}/package
+          if-no-files-found: error
+          include-hidden-files: false
+          retention-days: 1
+
+  archive:
+    name: Archive validated package
+    needs: fetch
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: distilled-video-archive
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: validated-distilled-package
+          path: ${{ runner.temp }}/package
+
+      - name: Archive to Azure Blob
+        env:
+          DISTILL_ARCHIVE_SAS: ${{ secrets.DISTILL_ARCHIVE_SAS }}
+          DISTILL_ARCHIVE_CONTAINER: ${{ vars.DISTILL_ARCHIVE_CONTAINER }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/receipt"
+          python3 skills/distill/scripts/distill.py archive \
+            --package-dir "$RUNNER_TEMP/package" --container "$DISTILL_ARCHIVE_CONTAINER" \
+            --receipt "$RUNNER_TEMP/receipt/archive-receipt.json"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: distilled-archive-receipt
+          path: ${{ runner.temp }}/receipt/archive-receipt.json
+          if-no-files-found: error
+          retention-days: 30
