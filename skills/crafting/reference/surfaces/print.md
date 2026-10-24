@@ -28,7 +28,10 @@ Craft:
   An invented event name never outranks what the event is. Put these in the legibility table and
   treat a miss as blocking.
 - **Bleed and safety.** Extend backgrounds about 3 mm (0.125 in) past the trim; keep text and key
-  content at least 3 to 5 mm inside it. Account for folds, binding, and perforations.
+  content at least 3 to 5 mm inside it, and at least 10 mm on A2 and larger. Account for folds,
+  binding, and perforations.
+- **Spot and two-colour jobs.** State the overprint, knockout, and trap decision for black over the
+  spot ink (black text usually overprints), and use K-only greys on photocopy versions.
 - **Images at 300 ppi at final size** for photos (line art higher), in the correct color space.
 - **Files the printer can use.** PDF/X (for example PDF/X-4) with fonts embedded, crop marks and bleed,
   and no RGB or low-resolution surprises. Ask the printer for their specification. Try to produce

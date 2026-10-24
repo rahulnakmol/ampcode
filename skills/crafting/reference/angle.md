@@ -50,8 +50,11 @@ Before designing anything new, ask whether the need is better met with less:
 
 - Could a default, a removed step, or a better order of steps meet it?
 - Could an agent or the system do it in the background and report only exceptions?
-- Could one message at the right moment replace a screen people have to visit?
+- Could one message at the right moment replace a screen people have to visit? Send it where the
+  person already is (Slack, WhatsApp, the lock screen), not a channel you assume.
 - Could it live inside a surface people already use (the lock screen, the share sheet, the chat)?
+- Who else is in the moment? Close the loop for the person helped at the end (the engineer whose
+  blocker got an owner, the partner who signed) with a rendered touchpoint, not only copy.
 
 "No new screen" is a valid, often the best, answer. If you still design the requested touchpoint,
 write why checking or visiting it is the job.
@@ -80,8 +83,17 @@ Write eight to twelve angles, one line each, before judging any. Use several of 
 Score each angle 1 to 5 on **truth** (serves the job and the hard moment), **distance** (how far it
 is from the category default), and **feasibility** (this team, this platform, this budget). Pick
 the angle with the best truth and distance that is still feasible; keep a safe angle as a fallback.
-Then apply the hindsight test: once explained, would a senior designer say "of course"? If not, it
-is novelty, not an angle.
+Then test it:
+
+- **Hindsight**: once explained, would a senior designer say "of course"? If not, it is novelty,
+  not an angle.
+- **Nearest analogue**: search for the mechanic itself outside the category ("answer privately,
+  reveal together", "agenda that ends when every item has an owner") and name the closest thing
+  that exists. Distance is claimed against it, not only against the category.
+- **Connotation**: read the metaphor as the most reluctant actor would (a partner who did not choose
+  the app, the person being assigned work). A contract can read as a prenup; a receipt as a bill.
+- **Proof state**: name the state that proves the angle (the reveal, the live meeting). It gets the
+  most design, and the change it shows is legible at thumbnail size, not a hairline.
 
 Write it into `.design/BRIEF.md`; `design_kit.py check` requires this section when `BRIEF.md`
 exists:

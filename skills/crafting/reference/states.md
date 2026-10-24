@@ -116,9 +116,11 @@ For `cli`, `ideal` is the successful run, `empty` is "nothing to do or no result
 is progress output. For `api`, `mcp`, and `a2a`, `loading` is the accepted-and-in-progress response.
 A state that cannot occur on a touchpoint gets a `skip` reason.
 
-Every non-skipped `social` state also needs a non-empty `"alt"`: the alt text that ships with that
-asset. `check` reports a gap when it is missing, so the square, story, and link preview get alt text
-too, not only the carousel.
+Every non-skipped `social` state also needs a non-empty `"alt"` (the alt text that ships with that
+asset) and `"copy"` (the words that go out with it: the caption, the forward message for a square,
+the overlay or sticker text for a story, the title and description for a link preview). `check`
+reports a gap when either is missing, so every asset that can be posted or forwarded alone carries
+both, not only the carousel.
 
 ## State catalog
 

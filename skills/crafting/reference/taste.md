@@ -50,7 +50,11 @@ view that serves the chosen angle, not a pattern library:
   only what it actually shows.
 - Every image, including anti-references, links to its source.
 - Assumptions keep their label on the board.
-- Each section gets its own readable capture, which you inspect.
+- Labels in the frames do not use words the board refuses (an anti-reference's "Ours"), and counts
+  quoted in copy match what is drawn ("four of five" over four rows is a defect).
+- Each section gets its own readable capture, which you inspect. Check that the font that rendered
+  is the font the board names: headless Chromium lacks Apple's system serifs, so label stand-ins
+  ("Georgia standing in for New York") or capture in Safari.
 
 ## Proposing directions
 
@@ -90,6 +94,8 @@ Rules:
   not a vote).
 - Label each direction's position (expected, adjacent, or unexpected) and name the category
   baseline the unexpected one beats.
+- Directions differ in structure or interaction, not only in skin: if you swapped their colours
+  and type, you could still tell the frames apart.
 - Every direction's lo-fi frame shows the same moment (the brief's top moment of truth), so they
   compare like for like; show the recommended one before and after its key action.
 - An invite or consent frame always has a pressure-free exit ("Not now", "Decline"). A softer

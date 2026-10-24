@@ -52,8 +52,14 @@ Typical formats to plan for (verify current values):
 Render every asset at its real pixel size, then inspect: each format the brief needs, the image
 inside a feed mockup next to typical neighbors, with the platform's safe-zone overlay, at thumbnail
 size, and the link preview through a preview debugger or a local render of the metadata. Record alt
-text (`"alt"` on each state, which `check` requires) and post copy for every asset you produce,
-including the square, the story, and the link preview, in `touchpoints.json`.
+text (`"alt"`) and post copy (`"copy"`) on each state in `touchpoints.json`; `check` requires both,
+including the square's forward message, the story's overlay text, and the link preview's title and
+description.
+
+Give every variable field (venue, host, deadline, names) a copy-fit rule on every asset, and check
+the long-copy render for collisions with rules and footers. When the angle depends on a real
+subject (a species, a place, an object), draw it from a sourced reference photo and check at
+thumbnail size that a cold reader can name it.
 
 Run the typesetting check (widows, orphans, wraps, collisions, one date format) on every derived
 asset (square, story, link preview), not only the primary. Any image likely to be forwarded on its

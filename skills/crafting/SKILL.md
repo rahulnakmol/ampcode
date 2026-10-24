@@ -222,6 +222,11 @@ Produce each state in its surface file's medium. Save one file per touchpoint st
 - Accessibility is designed in, per [reference/accessibility.md](reference/accessibility.md): names,
   focus order, announcements, alt text, captions, and contrast are part of each state's spec.
 
+Keep it proportional. For a request for one screen or one asset, render the required states, the
+hard states the job implies, the proof state of the angle, and two or three variants; list the
+rest in `touchpoints.json` as specified with a `skip` reason ("specified, not rendered: ..."). Make
+the mood board only when the direction is genuinely open.
+
 Parallelize only independent surface families, for example one subagent per family once
 `DESIGN.md` is fixed, each given the brief, `DESIGN.md`, its touchpoints, and its surface file.
 Never split one surface's states across agents.
@@ -268,6 +273,11 @@ replying, check:
   not show the claim, fix the work or soften the claim.
 - Every principle in `DESIGN.md` (for example "every failure names what still works") holds in
   every state: search the mockups and transcripts for it.
+- Every sentence the design shows is true for the data in that state, including after the key
+  action (generate summaries from one function, re-render after changes), and every promise holds
+  under simple arithmetic.
+- Each critic finding you report as fixed is fixed everywhere: search every file for the flagged
+  phrase or element before saying so.
 - After any copy or content change, search all sources and derived assets (feeds, grids, context
   mockups, captions) for the old wording and re-render them.
 - Numbers repeated across files (scores, counts, sizes, dates) agree, and sample content agrees with

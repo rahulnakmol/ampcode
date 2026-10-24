@@ -127,16 +127,18 @@ class Coverage(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout)
             self.assertIn("1 touchpoints, 6 states mocked, 1 skipped", result.stdout)
 
-    def test_check_requires_alt_text_on_every_social_asset(self):
+    def test_check_requires_alt_text_and_post_copy_on_every_social_asset(self):
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
             self.assertEqual(run(work, "init", "--surfaces", "social").returncode, 0)
             design = work / ".design"
             (design / "mockups").mkdir(exist_ok=True)
             (design / "mockups" / "a.png").write_bytes(b"png")
-            states = {state: {"mockup": "mockups/a.png", "alt": "Poster: five open issues"}
+            states = {state: {"mockup": "mockups/a.png", "alt": "Poster: five open issues",
+                              "copy": "Five open issues. Pick one."}
                       for state in design_kit.required_states("social")}
-            states["square"] = {"mockup": "mockups/a.png"}
+            states["square"] = {"mockup": "mockups/a.png", "copy": "Forward to your team"}
+            states["vertical"] = {"mockup": "mockups/a.png", "alt": "Story: five open issues"}
             states["sound-off"] = {"skip": "No video in this campaign"}
             (design / "critique").mkdir()
             (design / "critique" / "1-critic.md").write_text("Verdict: ship\n")
@@ -147,9 +149,11 @@ class Coverage(unittest.TestCase):
             path.write_text(json.dumps(data))
             result = run(work, "check")
             gaps = [line for line in result.stdout.splitlines() if line.startswith("gap:")]
-            self.assertEqual(gaps, ["gap: launch-post.square: needs alt text (\"alt\") for this asset"])
+            self.assertEqual(gaps, ["gap: launch-post.square: needs alt text (\"alt\") for this asset",
+                                    "gap: launch-post.vertical: needs post copy (\"copy\") for this asset"])
 
             states["square"]["alt"] = "Square crop of the poster"
+            states["vertical"]["copy"] = "Swipe up to register"
             path.write_text(json.dumps(data))
             self.assertEqual(run(work, "check").returncode, 0)
 

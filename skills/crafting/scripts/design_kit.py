@@ -204,8 +204,10 @@ def has_critic_pass(root):
     return any(VERDICT.search(path.read_text()) for path in (root / "critique").glob("*.md"))
 
 
-# Published image assets ship with alt text, so every non-skipped state records it.
-ALT_SURFACES = ("social",)
+# Published image assets ship with alt text and the words that go out with them (caption, forward
+# message, story overlay), so every non-skipped state records both.
+PUBLISHED_SURFACES = ("social",)
+PUBLISHED_FIELDS = (("alt", "alt text"), ("copy", "post copy"))
 
 
 def check_touchpoints(root):
@@ -248,9 +250,10 @@ def check_touchpoints(root):
                 gaps.append(f"{tid}.{state}: mockup {spec['mockup']} not found under {root}")
             else:
                 covered += 1
-            if surface in ALT_SURFACES and not str(spec.get("skip", "")).strip() \
-                    and not str(spec.get("alt", "")).strip():
-                gaps.append(f"{tid}.{state}: needs alt text (\"alt\") for this asset")
+            if surface in PUBLISHED_SURFACES and not str(spec.get("skip", "")).strip():
+                for field, label in PUBLISHED_FIELDS:
+                    if not str(spec.get(field, "")).strip():
+                        gaps.append(f"{tid}.{state}: needs {label} (\"{field}\") for this asset")
         for position, interaction in enumerate(touchpoint.get("interactions", [])):
             name = interaction.get("id", f"#{position}")
             for field in INTERACTION_FIELDS:
