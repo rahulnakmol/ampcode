@@ -94,6 +94,29 @@ Requires the Mobbin, Parallel Search, Firecrawl, and Figma MCP servers, plus the
 
 LLM-judged routing and behavior evaluations live in [`evals/crafting/`](./evals/crafting/README.md), with results and consolidated judge feedback in [`docs/crafting-evaluation.md`](./docs/crafting-evaluation.md).
 
+## Delivering
+
+[`skills/delivering/`](./skills/delivering/SKILL.md) carries a major feature, use case, or concrete
+requirement through outcome-driven delivery. `grilling` confirms expectations; `crafting` can
+shape the experience; `delivering` executes the approved brief without repeating the interview.
+Invoke it with “use delivering for this feature” or “deliver this approved brief.”
+
+Each small slice follows assessment, measurable outcome, meaningful failing harness, minimal
+implementation and working commits, real user journeys, correctness/security review, regression
+repair and revalidation, a distinct second review, customer-value assessment, and authorized dev
+integration. Consequential changes require independent reviews. Compact mission records support
+safe resumption; missing evidence, stale approvals, and ambiguous side effects do not become passes.
+
+This is an instruction-only skill, not programmatic enforcement or a background coordinator.
+Its [mission record](./skills/delivering/reference/mission-record.md) and
+[review/recovery guidance](./skills/delivering/reference/review-and-recovery.md) use existing Amp
+tools. [Research](./docs/delivering-research.md) records the design rationale;
+[evaluations](./evals/delivering/README.md) distinguish simulated decisions from live execution.
+Install/publish `grilling` alongside it for the expectation loop; if unavailable, the agent reports
+the dependency rather than silently installing it. Source integration does not publish either
+skill to Amp Personal Skills. Rolling, stable release, deployment, and Personal publication retain
+their separate gates.
+
 ## Using modes without changing the Dial
 
 The standard Low, Medium, High, and Ultra Dial can remain unchanged. Published plugin modes stay available in the complete mode picker and to Puck.
