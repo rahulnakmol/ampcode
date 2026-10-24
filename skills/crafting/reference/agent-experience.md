@@ -7,10 +7,15 @@ is good UX made explicit.
 
 There are two kinds of touchpoint here:
 
-1. **Agent-facing surfaces**: APIs, MCP servers, CLIs, machine-readable pages, and the
-   accessibility layer of every UI. The agent is the direct user.
-2. **Human-agent surfaces**: chat, voice, copilots, and agentic workflows, where a person works
-   with or supervises an agent. Both are users.
+1. **Agent-facing surfaces**: APIs, MCP servers, agent-to-agent endpoints, webhooks and events,
+   docs written for agents, CLIs, machine-readable pages, and the accessibility layer of every UI
+   that computer-use and browser agents operate. The agent is the direct user.
+2. **Human-agent surfaces**: chat, voice, copilots, agentic workflows, delegation and consent
+   screens, and agent-driven checkout, where a person works with, authorizes, or supervises an
+   agent. Both are users.
+
+Protocols in this space change quickly (MCP, Agent2Agent, agentic commerce and payment protocols).
+Check the current specifications by research before designing to one.
 
 ## What agents need from any surface
 
@@ -30,7 +35,7 @@ There are two kinds of touchpoint here:
 - **Observable results**: every action returns what changed and the new state, so the agent can
   verify without a second lookup.
 
-## MCP servers and tools
+## MCP servers and tools (`mcp`)
 
 The tool list is the interface; its descriptions are the copy. Design it like a product surface:
 
@@ -53,7 +58,7 @@ States to mock for an MCP touchpoint (as example transcripts in `.design/mockups
 `empty` (no results, with a hint), `loading` (accepted, in progress), `error`, plus
 `validation-error`, `auth-error`, and `large-result` (paginated or truncated with a next step).
 
-## APIs and SDKs
+## APIs and SDKs (`api`)
 
 Developer experience is UX for people who build with agents and for the agents themselves:
 
@@ -66,9 +71,51 @@ Developer experience is UX for people who build with agents and for the agents t
 States to mock (as example requests and responses): `ideal`, `empty`, `loading` (202 accepted with a
 status URL), `error`, plus `validation-error`, `rate-limited`, and `auth-error`.
 
+## Agent-to-agent (`a2a`)
+
+When the product is itself an agent, or exposes one, other agents are its users:
+
+- **A discoverable card**: what the agent can do, its skills with examples, input and output
+  formats, authentication, and limits (for example an Agent2Agent agent card at a well-known URL).
+- **Task lifecycle as UX**: accepted, working, needs input, completed, failed, cancelled, each with
+  a clear message and the artifacts produced so far. Streaming or push updates for long tasks.
+- **Asking for input** is a designed state: the question, the allowed answers, and the default.
+- **Scope and trust**: what the agent will not do, who it acts for, and how a calling agent can
+  verify results.
+
+States to mock (as transcripts): `ideal`, `empty`, `loading`, `error`, plus `input-required`,
+`cancelled`, and `auth-error`.
+
+## Webhooks and events (`webhook`)
+
+Events are messages to software that will act on them unattended:
+
+- Clear event names (`invoice.paid`), versioned payloads with the full object or a stable link to
+  it, and an event ID for idempotent handling.
+- Signatures with a documented verification method, retries with backoff, ordering guarantees
+  stated honestly, and a replay tool.
+- A human surface for the same events: a delivery log with payloads, responses, and a resend button.
+
+States to mock: `ideal`, `retry` (failed delivery and its schedule), `signature-failure`, and
+`replay`.
+
+## Docs written for agents (`agent-docs`)
+
+Agents learn a product from text: `llms.txt`, `AGENTS.md`, skill files, OpenAPI descriptions, MCP
+tool descriptions, and README files. Design them like an onboarding flow:
+
+- Lead with what the product does and the three most common tasks, each with a working example.
+- One page or file per task, short, with exact names, valid values, and expected outputs.
+- State constraints and things not to do; agents follow explicit rules better than implied ones.
+- Keep human and agent docs in sync from one source; a Markdown version of every docs page.
+- Test them: give a fresh agent only these docs and a task, and record where it guessed.
+
+States to mock: `ideal` (the task succeeds from the docs alone), `ambiguity` (where the test agent
+guessed, and the fix), and `outdated` (how stale docs are detected).
+
 ## CLIs as agent surfaces
 
-See the CLI section of `surfaces.md`. The agent essentials: `--json` on every command that prints
+See `surfaces/terminal.md`. The agent essentials: `--json` on every command that prints
 data, stable exit codes, flags for every prompt, no color or spinners when not a TTY, and help text
 with examples first.
 
@@ -81,6 +128,9 @@ with examples first.
 - Every important state is addressable by URL or deep link.
 - Native: App Intents (Apple), app actions and deep links (Android), and UI Automation names
   (Windows) expose key actions to assistants and agents.
+- Computer-use and browser agents operate the visual UI directly: stable layouts, visible labels on
+  icons, no essential information only in tooltips or on hover, standard controls rather than custom
+  canvas widgets, and confirmation text after every action.
 
 ## Human and agent together
 
@@ -101,6 +151,12 @@ the agent's actual reliability:
 - **Handoffs**: when the agent stops (done, blocked, needs input), notify through the channel the
   person chose, with the result and the one action needed.
 - **Memory with consent**: show what the agent remembers and let people edit or delete it.
+- **Delegation and consent**: when a person grants an agent access (OAuth consent, connecting an
+  account, a spending limit), the screen names the agent, what it can do, for how long, with what
+  limits, and how to revoke it. Revocation is one step from the place people look for it.
+- **Agent-driven commerce**: when agents buy on someone's behalf, design the mandate (what may be
+  bought, the budget, the merchant), the confirmation the person sees, the receipt that names the
+  agent, and refunds. Check the current agentic payment protocols by research.
 
 States to mock for a chat or copilot touchpoint: `ideal`, `empty` (first message, with starters that
 teach capability), `loading` (thinking), `error`, plus `streaming`, `tool-call` (work in progress
