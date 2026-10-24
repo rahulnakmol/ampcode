@@ -64,6 +64,7 @@ dimension at 8 or above and no P0 or P1 findings.
 
 | Dimension | 10 looks like |
 | --- | --- |
+| **Need fit** | Serves the job, principles, and measures in the brief's Need section; the design-worthy bar is met |
 | **Hierarchy** | One clear focal point per view; the eye path matches the job's order |
 | **Clarity** | A first-time user knows what this is, what state it is in, and what to do next within five seconds |
 | **Craft** | Alignment, spacing rhythm, optical balance, consistent radii and strokes; nothing off by a pixel |
@@ -74,7 +75,7 @@ dimension at 8 or above and no P0 or P1 findings.
 | **Medium fidelity** | Indistinguishable from the best work in its medium: the platform's best apps in controls, navigation, gestures, and materials; the best CLIs, conversations, notifications, and APIs in theirs |
 | **Audience fit** | Matches the primary cohort's conventions, reading level, pace, and context, and meets its safety requirements (see `audiences.md`) |
 | **Journey coherence** | The touchpoint hands off cleanly to the steps before and after it, across surfaces, with the same names and no dead ends |
-| **Accessibility** | Labels, focus order, targets, contrast, text scaling, and screen-reader announcements are correct |
+| **Accessibility** | Meets the checklist in `accessibility.md` for this surface: names, focus, targets, contrast, scaling, captions, alt text |
 | **Agent legibility** | An agent can read every state and perform every key action without guessing (see below) |
 | **Distinctiveness** | Recognizably this product; would not be mistaken for a template |
 

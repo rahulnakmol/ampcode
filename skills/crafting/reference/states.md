@@ -68,25 +68,53 @@ every state you list, not only the required ones.
 
 ## Required states by surface
 
-`design_kit.py check` enforces these. They are the floor, not the ceiling.
+`design_kit.py check` enforces these. They are the floor, not the ceiling. Interactive surfaces
+share the core states `ideal`, `empty`, `loading`, and `error`. Static media (messages, print,
+social, video, documents) have no loading moment, so their required "states" are the variants that
+must be designed and checked. Each family's craft rules are in the file listed below the table.
 
-| Surface | Required states |
-| --- | --- |
-| All | `ideal`, `empty`, `loading`, `error` |
-| `web` | plus `keyboard-focus`, `narrow`, `dark` |
-| `ios`, `android` | plus `offline`, `large-text`, `dark` |
-| `macos`, `windows` | plus `keyboard-focus`, `narrow-window`, `dark` |
-| `cli` | plus `non-tty`, `no-color`, `json` |
-| `tui` | plus `narrow-terminal`, `no-color`, `keyboard-focus` |
-| `chat` | plus `streaming`, `tool-call`, `interrupted` |
-| `voice` | plus `no-match`, `no-input`, `barge-in` |
-| `notification` | plus `grouped`, `actioned`, `dark` |
-| `api` | plus `validation-error`, `rate-limited`, `auth-error` |
-| `mcp` | plus `validation-error`, `auth-error`, `large-result` |
+| Family | Surface | Required states |
+| --- | --- | --- |
+| Terminal | `cli` | `ideal`, `empty`, `loading`, `error`, `non-tty`, `no-color`, `json` |
+| Terminal | `tui` | `ideal`, `empty`, `loading`, `error`, `narrow-terminal`, `no-color`, `keyboard-focus` |
+| Screens | `web` | `ideal`, `empty`, `loading`, `error`, `keyboard-focus`, `narrow`, `dark` |
+| Screens | `ios` | `ideal`, `empty`, `loading`, `error`, `offline`, `large-text`, `dark` |
+| Screens | `android` | `ideal`, `empty`, `loading`, `error`, `offline`, `large-text`, `dark` |
+| Screens | `macos` | `ideal`, `empty`, `loading`, `error`, `keyboard-focus`, `narrow-window`, `dark` |
+| Screens | `windows` | `ideal`, `empty`, `loading`, `error`, `keyboard-focus`, `narrow-window`, `dark` |
+| Ambient | `watch` | `ideal`, `empty`, `loading`, `error`, `glance`, `always-on`, `large-text` |
+| Ambient | `tv` | `ideal`, `empty`, `loading`, `error`, `focus`, `safe-area`, `large-text` |
+| Ambient | `car` | `ideal`, `empty`, `loading`, `error`, `driving`, `night`, `voice-only` |
+| Ambient | `spatial` | `ideal`, `empty`, `loading`, `error`, `gaze-focus`, `immersive`, `large-text` |
+| Ambient | `kiosk` | `ideal`, `empty`, `loading`, `error`, `idle`, `timeout`, `reach-range` |
+| Ambient | `device` | `ideal`, `empty`, `loading`, `error`, `setup`, `offline`, `firmware-update` |
+| Conversation | `chat` | `ideal`, `empty`, `loading`, `error`, `streaming`, `tool-call`, `interrupted` |
+| Conversation | `voice` | `ideal`, `empty`, `loading`, `error`, `no-match`, `no-input`, `barge-in` |
+| Messaging | `notification` | `ideal`, `grouped`, `actioned`, `dark` |
+| Messaging | `email` | `ideal`, `dark`, `images-off`, `narrow`, `plain-text` |
+| Messaging | `sms` | `ideal`, `long-message`, `opt-out` |
+| Agents | `api` | `ideal`, `empty`, `loading`, `error`, `validation-error`, `rate-limited`, `auth-error` |
+| Agents | `mcp` | `ideal`, `empty`, `loading`, `error`, `validation-error`, `auth-error`, `large-result` |
+| Agents | `a2a` | `ideal`, `empty`, `loading`, `error`, `input-required`, `cancelled`, `auth-error` |
+| Agents | `webhook` | `ideal`, `retry`, `signature-failure`, `replay` |
+| Agents | `agent-docs` | `ideal`, `ambiguity`, `outdated` |
+| Social | `social` | `ideal`, `square`, `vertical`, `link-preview`, `sound-off`, `safe-zone` |
+| Physical | `print` | `ideal`, `bleed`, `grayscale`, `long-copy`, `preflight` |
+| Physical | `packaging` | `ideal`, `dieline`, `shelf-distance`, `regulatory-panel`, `preflight` |
+| Physical | `signage` | `ideal`, `viewing-distance`, `low-light`, `sequence`, `tactile` |
+| Media | `presentation` | `ideal`, `projector`, `handout`, `speaker-notes` |
+| Media | `video` | `ideal`, `sound-off`, `vertical`, `thumbnail` |
+| Media | `document` | `ideal`, `print`, `screen-reader`, `long-content` |
+| Media | `dataviz` | `ideal`, `empty`, `loading`, `error`, `color-blind`, `dense`, `table-alternative` |
+
+Families map to files: Terminal `surfaces/terminal.md`, Screens `surfaces/screens.md`, Ambient
+`surfaces/ambient.md`, Conversation `surfaces/conversation.md`, Messaging `surfaces/messaging.md`,
+Agents `agent-experience.md`, Social `surfaces/social.md`, Physical `surfaces/print.md`, and Media
+`surfaces/media.md`.
 
 For `cli`, `ideal` is the successful run, `empty` is "nothing to do or no results", and `loading`
-is progress output. For `api` and `mcp`, `loading` is the accepted-and-in-progress response. A state
-that cannot occur on a touchpoint (a notification has no `empty`) gets a `skip` reason.
+is progress output. For `api`, `mcp`, and `a2a`, `loading` is the accepted-and-in-progress response.
+A state that cannot occur on a touchpoint gets a `skip` reason.
 
 ## State catalog
 

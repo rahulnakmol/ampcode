@@ -138,9 +138,13 @@ class Docs(unittest.TestCase):
         text = (SKILL / "SKILL.md").read_text()
         self.assertLess(len(text.splitlines()), 500)
         self.assertRegex(text, r"\A---\nname: crafting\ndescription: \"[^\n]+\"\n---\n")
-        for target in re.findall(r"\]\((reference/[a-z-]+\.md)", text):
+        targets = re.findall(r"\]\((reference/[a-z/-]+\.md)", text)
+        self.assertGreater(len(targets), 10)
+        for target in targets:
             self.assertTrue((SKILL / target).is_file(), target)
-        for required in ("grilling", "Gen Alpha", "agent-experience.md", "audiences.md"):
+        on_disk = {str(path.relative_to(SKILL)) for path in (SKILL / "reference").rglob("*.md")}
+        self.assertEqual(on_disk - set(targets), set(), "reference files SKILL.md never routes to")
+        for required in ("grilling", "Gen Alpha", "discovery.md", "accessibility.md", "user-research.md"):
             self.assertIn(required, text)
 
     def test_documented_commands_and_flags_exist(self):
@@ -154,11 +158,20 @@ class Docs(unittest.TestCase):
     def test_required_states_table_matches_the_checker(self):
         table = (SKILL / "reference" / "states.md").read_text().split("## Required states by surface", 1)[1]
         documented = {}
-        for cells in re.findall(r"^\| (.+?) \| (.+?) \|$", table, re.M):
-            for surface in re.findall(r"`([a-z]+)`", cells[0]):
-                documented[surface] = set(re.findall(r"`([a-z-]+)`", cells[1]))
-        for surface, extra in design_kit.SURFACE_STATES.items():
-            self.assertEqual(documented.get(surface), set(extra), surface)
+        for surface, states in re.findall(r"^\| [A-Za-z]+ \| `([a-z0-9-]+)` \| (.+?) \|$", table, re.M):
+            documented[surface] = tuple(re.findall(r"`([a-z0-9-]+)`", states))
+        self.assertEqual(documented, {s: design_kit.required_states(s) for s in design_kit.SURFACES})
+
+    def test_every_surface_has_craft_guidance_routed_from_the_skill(self):
+        skill = (SKILL / "SKILL.md").read_text()
+        routed = {}
+        for surfaces, target in re.findall(r"^\| (`[^|]+`) \| \[(reference/[a-z/-]+\.md)\]", skill, re.M):
+            for surface in re.findall(r"`([a-z0-9-]+)`", surfaces):
+                routed[surface] = target
+        self.assertEqual(set(routed), set(design_kit.SURFACES))
+        for surface, target in routed.items():
+            headings = re.findall(r"^#{1,2} .*$", (SKILL / target).read_text(), re.M)
+            self.assertTrue(any(f"`{surface}`" in h for h in headings), f"{target} has no section for {surface}")
 
     def test_budget_table_matches_the_ledger_defaults(self):
         text = (SKILL / "SKILL.md").read_text()

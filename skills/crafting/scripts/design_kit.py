@@ -18,23 +18,49 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-SURFACES = ("cli", "tui", "web", "ios", "android", "macos", "windows",
-            "chat", "voice", "notification", "api", "mcp")
-COMMON_STATES = ("ideal", "empty", "loading", "error")
+# Interactive surfaces share the core states; static media (print, social, documents, and so on)
+# have no loading or error moment, so their "states" are the variants that must be designed.
+CORE_STATES = ("ideal", "empty", "loading", "error")
 SURFACE_STATES = {
-    "web": ("keyboard-focus", "narrow", "dark"),
-    "ios": ("offline", "large-text", "dark"),
-    "android": ("offline", "large-text", "dark"),
-    "macos": ("keyboard-focus", "narrow-window", "dark"),
-    "windows": ("keyboard-focus", "narrow-window", "dark"),
-    "cli": ("non-tty", "no-color", "json"),
-    "tui": ("narrow-terminal", "no-color", "keyboard-focus"),
-    "chat": ("streaming", "tool-call", "interrupted"),
-    "voice": ("no-match", "no-input", "barge-in"),
-    "notification": ("grouped", "actioned", "dark"),
-    "api": ("validation-error", "rate-limited", "auth-error"),
-    "mcp": ("validation-error", "auth-error", "large-result"),
+    # Terminal
+    "cli": CORE_STATES + ("non-tty", "no-color", "json"),
+    "tui": CORE_STATES + ("narrow-terminal", "no-color", "keyboard-focus"),
+    # Screens
+    "web": CORE_STATES + ("keyboard-focus", "narrow", "dark"),
+    "ios": CORE_STATES + ("offline", "large-text", "dark"),
+    "android": CORE_STATES + ("offline", "large-text", "dark"),
+    "macos": CORE_STATES + ("keyboard-focus", "narrow-window", "dark"),
+    "windows": CORE_STATES + ("keyboard-focus", "narrow-window", "dark"),
+    # Ambient
+    "watch": CORE_STATES + ("glance", "always-on", "large-text"),
+    "tv": CORE_STATES + ("focus", "safe-area", "large-text"),
+    "car": CORE_STATES + ("driving", "night", "voice-only"),
+    "spatial": CORE_STATES + ("gaze-focus", "immersive", "large-text"),
+    "kiosk": CORE_STATES + ("idle", "timeout", "reach-range"),
+    "device": CORE_STATES + ("setup", "offline", "firmware-update"),
+    # Conversation and messaging
+    "chat": CORE_STATES + ("streaming", "tool-call", "interrupted"),
+    "voice": CORE_STATES + ("no-match", "no-input", "barge-in"),
+    "notification": ("ideal", "grouped", "actioned", "dark"),
+    "email": ("ideal", "dark", "images-off", "narrow", "plain-text"),
+    "sms": ("ideal", "long-message", "opt-out"),
+    # Agents
+    "api": CORE_STATES + ("validation-error", "rate-limited", "auth-error"),
+    "mcp": CORE_STATES + ("validation-error", "auth-error", "large-result"),
+    "a2a": CORE_STATES + ("input-required", "cancelled", "auth-error"),
+    "webhook": ("ideal", "retry", "signature-failure", "replay"),
+    "agent-docs": ("ideal", "ambiguity", "outdated"),
+    # Social, physical, and media
+    "social": ("ideal", "square", "vertical", "link-preview", "sound-off", "safe-zone"),
+    "print": ("ideal", "bleed", "grayscale", "long-copy", "preflight"),
+    "packaging": ("ideal", "dieline", "shelf-distance", "regulatory-panel", "preflight"),
+    "signage": ("ideal", "viewing-distance", "low-light", "sequence", "tactile"),
+    "presentation": ("ideal", "projector", "handout", "speaker-notes"),
+    "video": ("ideal", "sound-off", "vertical", "thumbnail"),
+    "document": ("ideal", "print", "screen-reader", "long-content"),
+    "dataviz": CORE_STATES + ("color-blind", "dense", "table-alternative"),
 }
+SURFACES = tuple(SURFACE_STATES)
 INTERACTION_FIELDS = ("trigger", "feedback", "motion", "reduced_motion")
 
 # Parallel Task API, USD per run (docs.parallel.ai pricing, 2026-10-24). "-fast" variants cost the same.
@@ -66,7 +92,7 @@ def write_json(path, data):
 
 
 def required_states(surface):
-    return COMMON_STATES + SURFACE_STATES[surface]
+    return SURFACE_STATES[surface]
 
 
 def cmd_init(args):
@@ -227,7 +253,7 @@ def main(argv=None):
     commands = parser.add_subparsers(dest="command", required=True)
 
     init = commands.add_parser("init", help="create workspace files that do not exist yet")
-    init.add_argument("--surfaces", required=True, help=f"comma-separated: {','.join(SURFACES)}")
+    init.add_argument("--surfaces", required=True, help=f"comma-separated: {', '.join(SURFACES)}")
     init.set_defaults(func=cmd_init)
 
     log = commands.add_parser("log", help="price and record a research call before making it")
