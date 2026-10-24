@@ -44,18 +44,36 @@ Each direction is a hypothesis about what this product should feel like. Write i
 ```markdown
 ### Direction B: "Ledger"
 Idea: the app is a well-kept paper ledger; numbers are the hero and everything else steps back.
-Type: a serif with tabular figures for amounts (e.g. a modern text serif), the system sans for UI.
+Expected answer it beats: the dark fintech dashboard with a gradient card and a big balance.
+Type: Newsreader (text serif with tabular figures) for amounts at 34/28/17 pt; SF Pro for UI at the
+  Dynamic Type defaults; one scale, five steps.
+Grid: 4 pt base, 16 pt margins, amounts right-aligned on a shared column.
 Palette: warm off-white and ink; one green accent, only for money that has arrived.
-Density and grid: generous vertical rhythm on 8 pt; amounts right-aligned on a shared column.
 Motion: weighted and calm; critically damped springs; amounts roll with tabular digits.
 Signature detail: a hairline rule that draws across when a transfer settles.
-Anchors: <reference 1 with link>, <reference 2 with link>
+Refuses: gradients, cards inside cards, and celebrating spending.
+Look anchor: <a ledger, type specimen, or object outside the category, with link>
+Behaviour anchor: <a shipped product interaction, with link>
+Lo-fi frame: one sketch on the target platform's real chrome (status bar, sheets, controls).
 Risks: may feel old-fashioned to under-25s; mitigated by modern sans UI and fast motion.
 ```
 
-Rules: directions must differ in idea, not just color. At least one must be unexpected for the
-category. Every choice must be traceable to the brief or a reference. Choose fonts the project can
-license and ship; for native apps prefer the system fonts unless the brand demands otherwise.
+Rules:
+
+- Directions differ in idea, not just color. At least one is unexpected for the category, and
+  "unexpected" is earned: check it against the category's obvious ideas (a mine/yours/ours Venn for
+  couples' money is obvious) and replace it if it is one of them.
+- Name the typefaces, the scale, and the grid. "A grotesk" is not a decision. Choose fonts the
+  project can license and ship; for native apps prefer the system fonts unless the brand demands
+  otherwise.
+- Every direction has a look anchor (often outside the category: print, objects, places) and a
+  behaviour anchor (a shipped interaction).
+- For a place-specific audience, include real local texture beyond translating the place name:
+  language and wit, landmarks, materials, rituals, or the way people there actually communicate.
+- A borrowed metaphor keeps its meaning: if the direction borrows from software, sport, or
+  paperwork, check that its interactions mean the same thing (in GitHub, a ticked box means done,
+  not a vote).
+- Every choice traces to the brief or a reference.
 
 ## Critique rubric
 
@@ -64,6 +82,7 @@ dimension at 8 or above and no P0 or P1 findings.
 
 | Dimension | 10 looks like |
 | --- | --- |
+| **Typesetting** | No widows or orphans in display text, units on the numeral's baseline, no element touching a rule or edge, display lines fill their measure |
 | **Need fit** | Serves the job, principles, and measures in the brief's Need section; the design-worthy bar is met |
 | **Hierarchy** | One clear focal point per view; the eye path matches the job's order |
 | **Clarity** | A first-time user knows what this is, what state it is in, and what to do next within five seconds |

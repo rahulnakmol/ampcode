@@ -83,6 +83,10 @@ Design-worthy bar: <idea, signature interaction, delight, inclusive detail>
 Evidence: <what is known, from where; what is assumed and how it will be tested>
 ```
 
-Each claim is evidence, a labelled assumption, or a decision by the user. When the need rests on
+Each claim is evidence, a labelled assumption, or a decision by the user. This includes the
+reasons you give for rejecting a shape ("dashboards get checked once" is an assumption unless you
+have data). If a law's obligations start after launch, say so and explain why the design complies
+anyway. Before calling a scope feasible in a time frame, ask for or state team size and capacity, and
+include store review and holiday freezes in the plan. When the need rests on
 assumptions that would change the design, propose the cheapest test (see `user-research.md`) before
 committing to high-fidelity work.

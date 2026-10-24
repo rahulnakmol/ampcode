@@ -177,6 +177,10 @@ def cmd_spend(args):
     print(f"Logged calls: {len(ledger.get('entries', []))}")
 
 
+# Published image assets ship with alt text, so every non-skipped state records it.
+ALT_SURFACES = ("social",)
+
+
 def check_touchpoints(root):
     data = read_json(root / "touchpoints.json")
     gaps = []
@@ -217,6 +221,9 @@ def check_touchpoints(root):
                 gaps.append(f"{tid}.{state}: mockup {spec['mockup']} not found under {root}")
             else:
                 covered += 1
+            if surface in ALT_SURFACES and not str(spec.get("skip", "")).strip() \
+                    and not str(spec.get("alt", "")).strip():
+                gaps.append(f"{tid}.{state}: needs alt text (\"alt\") for this asset")
         for position, interaction in enumerate(touchpoint.get("interactions", [])):
             name = interaction.get("id", f"#{position}")
             for field in INTERACTION_FIELDS:

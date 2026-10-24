@@ -116,6 +116,10 @@ For `cli`, `ideal` is the successful run, `empty` is "nothing to do or no result
 is progress output. For `api`, `mcp`, and `a2a`, `loading` is the accepted-and-in-progress response.
 A state that cannot occur on a touchpoint gets a `skip` reason.
 
+Every non-skipped `social` state also needs a non-empty `"alt"`: the alt text that ships with that
+asset. `check` reports a gap when it is missing, so the square, story, and link preview get alt text
+too, not only the carousel.
+
 ## State catalog
 
 Walk this list for every touchpoint and add the states that apply.
@@ -128,6 +132,10 @@ Walk this list for every touchpoint and add the states that apply.
 - `overflow`: very long names, huge numbers, hundreds of items, many tags, long translations
   (German about 30% longer, Finnish compounds), right-to-left scripts, emoji.
 - `stale`: cached data shown while refreshing, with its age.
+- `cold-start`: a metric, chart, or recommendation before there is enough data to be honest. Say
+  what is missing and when it will be ready rather than showing a misleading number.
+- `mixed`: a group whose items disagree (a customer with one disputed and one overdue invoice, a
+  selection of files with different permissions). Say what happens to each item.
 
 **Time and progress**
 - `loading` (skeleton or nothing under 300 ms), `long-running` (real progress, cancel), `background`
@@ -137,6 +145,13 @@ Walk this list for every touchpoint and add the states that apply.
 - `error` with a recovery action; `offline`; `rate-limited`; `permission-denied`; `not-found`;
   `conflict` (someone else changed it); `validation` (inline, at the field, on blur or submit);
   `destructive-confirmation`; `undo` window after a destructive action.
+- One state per exit code or error code the touchpoint can return, including the generic internal
+  and network failures, each with its recovery.
+
+**Stress**
+- `long-copy`, `overflow`, and translation states are checked against the trim, live area, or
+  safe zone. Content that is clipped or pushed outside the live area blocks the state; it is not
+  "copy-fit".
 
 **People and context**
 - `first-run` and onboarding; `returning` (pick up where I left off); `signed-out`;

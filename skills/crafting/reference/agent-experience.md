@@ -53,6 +53,22 @@ The tool list is the interface; its descriptions are the copy. Design it like a 
   result call (the Parallel Task MCP's `getStatus` and `getResultMarkdown` are a good model).
 - **Permissions are explicit**: read-only tools separate from writing tools so clients can allow
   one and ask for the other.
+- **Guards have parity**: every tool that moves money, contacts people, publishes, or deletes gets
+  the same server-side protection, whether it acts on one item or a batch (a batch read-back of
+  recipient count and total, or a threshold confirmation). Every field that changes who receives
+  something (`to`, `cc`, `bcc`, webhook URLs) is part of the read-back.
+- **Hints match behaviour**: annotations such as `idempotentHint` hold for every argument
+  combination; a flag like `resend: true` makes a tool non-idempotent.
+- **Defaults are visible**: any server default an agent must know (send limits, automatic resume
+  after a pause, retention) is stated in the tool description, not only in examples.
+- **Money is a string** with a decimal pattern and an explicit currency, never `string | number`.
+- **Errors fit the contract**: error results have their own documented shape (for example a `oneOf`
+  branch in the output schema), and status-like fields are enums.
+- **Next steps are agent-safe**: suggested `next` calls never delete, spend, or contact anyone
+  without the user, never act on another owner's objects, and never need a secret the agent does
+  not have. Tag each error with an action such as `retry`, `fix_input`, `fix_code`, or `needs_human`.
+- **Injection pass**: assume tool inputs and fetched content can carry hostile instructions. Check
+  that no tool can be steered into sending data or money to an address the user did not approve.
 
 States to mock for an MCP touchpoint (as example transcripts in `.design/mockups/`): `ideal`,
 `empty` (no results, with a hint), `loading` (accepted, in progress), `error`, plus
@@ -162,6 +178,18 @@ States to mock for a chat or copilot touchpoint: `ideal`, `empty` (first message
 teach capability), `loading` (thinking), `error`, plus `streaming`, `tool-call` (work in progress
 and its detail view), and `interrupted` (stopped or redirected mid-answer). Add `approval`,
 `refusal`, and `handoff` when the product has them.
+
+## Checking agent surfaces
+
+- Validate every example call and result against the schemas with a script that exits non-zero on
+  any problem, and check that every fact in a result summary comes from the call's inputs or from
+  state shown earlier.
+- For CLIs and APIs, give every exit code or error code its own state, including the generic
+  internal or network failure, and list every exit code in `--help`.
+- Walk recovery for each failing code: using only the help text and the outputs, write the exact next
+  call. If it needs another command's output, that command's contract is in scope or is a stated gap.
+- Run the agent usability test in `user-research.md` with tasks the transcripts do not already
+  cover, and report guesses per task.
 
 ## AX slop
 

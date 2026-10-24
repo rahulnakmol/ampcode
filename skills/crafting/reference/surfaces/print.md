@@ -18,6 +18,11 @@ Craft:
   standard), or in spot colors when brand color must match. Coated and uncoated stock shift color;
   proof on the real stock. Small text in 100% black; large black areas in a rich black the printer
   recommends; stay under the total ink limit.
+- **Soft-proof the accent.** When a saturated color carries the design, render a soft proof on the
+  target profile (for example uncoated FOGRA52) next to the grayscale check and show the user the
+  shift. If the accent is out of gamut (most screen pinks, oranges, and greens are), recommend a
+  spot or fluorescent ink (for example a Pantone fluorescent or a riso fluoro) as the default
+  specification, not the nearest process mix.
 - **Bleed and safety.** Extend backgrounds about 3 mm (0.125 in) past the trim; keep text and key
   content at least 3 to 5 mm inside it. Account for folds, binding, and perforations.
 - **Images at 300 ppi at final size** for photos (line art higher), in the correct color space.
