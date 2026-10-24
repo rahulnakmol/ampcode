@@ -1,9 +1,9 @@
 ---
-name: designing-experiences
-description: "Designs award-grade user experiences for every surface where a person or an AI agent interacts with a product: CLI and TUI, web, iOS, Android, macOS, Windows/WinUI, chat and voice, notifications, APIs, and MCP tools. Maps journeys across touchpoints, tunes them for audiences from Gen Alpha to Millennials, and treats agents as first-class users. Runs budgeted inspiration research through Mobbin, Parallel Search, Parallel Task deep research, Firecrawl, and Figma; builds mood boards and named directions; renders a mockup or transcript for every interaction state; specifies micro-interactions, motion, and complex rendering; and critiques screenshots against an anti-slop rubric. Use when asked to design, redesign, mock up, prototype, polish, critique, or animate any experience, flow, screen, app, site, CLI, TUI, conversation, notification, API, or agent tool; to find UX inspiration or a mood board; or to spec states, micro-interactions, or motion. Pairs with the grilling skill when the brief is vague."
+name: crafting
+description: "Designs award-grade user experiences for every surface where a person or an AI agent interacts with a product: CLI and TUI, web, iOS, Android, macOS, Windows/WinUI, chat and voice, notifications, APIs, and MCP tools. Maps journeys across touchpoints, tunes them for audiences from Gen Alpha to Millennials, and treats agents as first-class users. Runs budgeted inspiration research through Mobbin, Parallel Search, Parallel Task deep research, Firecrawl, and Figma; builds mood boards and named directions; renders a mockup or transcript for every interaction state; specifies micro-interactions, motion, and complex rendering; and critiques screenshots against an anti-slop rubric. Use when asked to craft, design, redesign, mock up, prototype, polish, critique, or animate any experience, flow, screen, app, site, CLI, TUI, conversation, notification, API, or agent tool; to find UX inspiration or a mood board; or to spec states, micro-interactions, or motion. Pairs with the grilling skill when the brief is vague."
 ---
 
-# Designing experiences
+# Crafting
 
 Design the experience a jury of Apple Design Award winners would ship, wherever the interaction
 happens: a screen, a terminal, a conversation, a notification, an API response, or a tool call an

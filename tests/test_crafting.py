@@ -1,6 +1,6 @@
-"""Tests for the designing-experiences skill: its workspace CLI and the docs that describe it.
+"""Tests for the crafting skill: its workspace CLI and the docs that describe it.
 
-Run: python3 -m unittest discover -s tests -p 'test_designing_experiences.py' -v
+Run: python3 -m unittest discover -s tests -p 'test_crafting.py' -v
 No network or paid calls.
 """
 
@@ -13,7 +13,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL = ROOT / "skills" / "designing-experiences"
+SKILL = ROOT / "skills" / "crafting"
 KIT = SKILL / "scripts" / "design_kit.py"
 sys.path.insert(0, str(KIT.parent))
 
@@ -137,7 +137,7 @@ class Docs(unittest.TestCase):
     def test_skill_metadata_size_and_links(self):
         text = (SKILL / "SKILL.md").read_text()
         self.assertLess(len(text.splitlines()), 500)
-        self.assertRegex(text, r"\A---\nname: designing-experiences\ndescription: \"[^\n]+\"\n---\n")
+        self.assertRegex(text, r"\A---\nname: crafting\ndescription: \"[^\n]+\"\n---\n")
         for target in re.findall(r"\]\((reference/[a-z-]+\.md)", text):
             self.assertTrue((SKILL / target).is_file(), target)
         for required in ("grilling", "Gen Alpha", "agent-experience.md", "audiences.md"):
