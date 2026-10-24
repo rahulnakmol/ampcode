@@ -92,6 +92,8 @@ Research climbs a cost ladder: local `.design/` cache and Figma, then Mobbin and
 
 Requires the Mobbin, Parallel Search, Firecrawl, and Figma MCP servers, plus the Parallel Task MCP (`https://task-mcp.parallel.ai/mcp`, OAuth) for deep research; without it the skill falls back to Parallel Search. Trigger it with requests to craft, design, mock up, prototype, polish, critique, audit, research, or animate any experience, or to find UX inspiration.
 
+LLM-judged routing and behavior evaluations live in [`evals/crafting/`](./evals/crafting/README.md), with results and consolidated judge feedback in [`docs/crafting-evaluation.md`](./docs/crafting-evaluation.md).
+
 ## Using modes without changing the Dial
 
 The standard Low, Medium, High, and Ultra Dial can remain unchanged. Published plugin modes stay available in the complete mode picker and to Puck.

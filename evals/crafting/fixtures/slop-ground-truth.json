@@ -1,0 +1,21 @@
+{
+  "about": "Seeded slop and craft defects in slop-landing.html. Judges compute recall against these.",
+  "defects": [
+    {"id": "S01", "issue": "purple-to-blue gradient hero"},
+    {"id": "S02", "issue": "gradient text"},
+    {"id": "S03", "issue": "italic serif accent word in a sans headline"},
+    {"id": "S04", "issue": "sparkle '✦ AI-powered' label"},
+    {"id": "S05", "issue": "slop copy: elevate, seamlessly, unlock, effortless, supercharge, 'modern teams'"},
+    {"id": "S06", "issue": "three-card feature grid with emoji icons and one-line vague copy"},
+    {"id": "S07", "issue": "glassmorphism cards with side-tab left border"},
+    {"id": "S08", "issue": "cards inside cards with stacked shadows"},
+    {"id": "S09", "issue": "numbered 01/02/03 Discover/Design/Deliver steps"},
+    {"id": "S10", "issue": "invented metric '10x faster'"},
+    {"id": "S11", "issue": "pulsing live dot on static content"},
+    {"id": "S12", "issue": "placeholder content: John Doe and lorem ipsum"},
+    {"id": "S13", "issue": "fade-up animation on every section; bouncy overshoot scale-and-rotate hover"},
+    {"id": "S14", "issue": "low-contrast body text #8a8580 on cream (AI beige palette)"},
+    {"id": "S15", "issue": "everything centered; mixed radii (999, 24, 12); repeated generic 'Get started →' CTA"},
+    {"id": "S16", "issue": "no product specificity: nothing says what Ledgerly does or for whom; no prefers-reduced-motion"}
+  ]
+}
