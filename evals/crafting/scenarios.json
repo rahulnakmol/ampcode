@@ -153,6 +153,23 @@
         "makes the copy change (both occurrences) and keeps scope tight",
         "may mention, briefly, any closely related issue (such as the repeated CTA) without fixing it"
       ]
+    },
+    {
+      "id": "c10-obvious-answer-is-wrong",
+      "split": "test",
+      "entry": "Craft",
+      "turns": "single",
+      "parallel_task": false,
+      "opening": "Design a dashboard screen for our team-standup tool so engineering leads can see each person's yesterday, today, and blockers before the 9:30 standup. Web first. Use sensible assumptions.",
+      "persona": "",
+      "checks": [
+        "questions whether a new screen is the right touchpoint and compares at least one non-screen shape (a message, a digest, an agent, or removing the step)",
+        "the chosen shape is argued from the lead's moment before standup, not from what was requested",
+        "the chosen angle differs from the category default of a grid of status cards, or the reply argues convincingly why the default is right",
+        "the moment a lead would tell someone about exists in a rendered or transcribed state",
+        "designs the hard states: nothing submitted yet, a blocker that needs the lead, and someone away",
+        "a critic pass was run and its findings were acted on"
+      ]
     }
   ]
 }

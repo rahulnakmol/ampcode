@@ -11,7 +11,7 @@ are run on demand, not in CI.
 | File | What it is |
 | --- | --- |
 | `triggers.json` | 40 first messages (27 should load the skill, 13 should not) and the competing skills a router sees |
-| `scenarios.json` | 9 behavior scenarios, one per entry point or surface family, with checks and, for two, ground truth |
+| `scenarios.json` | 10 behavior scenarios, one per entry point or surface family plus one where the obvious answer is wrong, with checks and, for two, ground truth |
 | `rubric.md` | Judge rubric: hard checks, 1–5 scores, output JSON, and the scalar score |
 | `fixtures/` | Inputs for the audit, critique, refine, and study scenarios, with seeded-defect ground truth |
 

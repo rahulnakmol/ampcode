@@ -61,7 +61,19 @@ Write the use case in one sentence, then split what was said into:
   intuitive."
 - **Design-worthy bar**: what would make a jury notice this solution: the one idea, the signature
   interaction, the moment of delight, and the inclusive detail. Write it down now so the critique can
-  hold the design to it.
+  hold the design to it; `angle.md` turns it into the chosen angle.
+
+## What to ask when you cannot find it
+
+One to three questions per round, each with a recommended answer, and only what changes the
+result: the job and moment, the primary cohort and age range (minors bring hard requirements; see
+`audiences.md`), agents and their permissions, journeys and surfaces, register (persuade, operate,
+read, converse, experience), personality (three adjectives and one thing it must never feel like),
+constraints (brand, system, WCAG level, languages, regulation, performance), fidelity and
+destination, and the research budget. Ask for markets, with a recommended market, before naming
+any law or spending research on one, and check each channel against the market's habits (for
+example WhatsApp-first India). Never bundle several decisions into one "yes": each decision the
+user must own is its own question.
 
 ## 5. Write it into the brief
 

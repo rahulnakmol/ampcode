@@ -5,10 +5,12 @@ Commands (run from the project root; --dir defaults to .design):
   init  --surfaces web,ios     create the workspace files that do not exist yet
   log   --tool T --note N      price a research call and refuse it when over budget (exit 2)
   spend                        show research spend against the budget
-  check                        verify journeys and that every touchpoint has every required state
-                               (exit 1 on gaps)
+  check                        verify journeys, that every touchpoint has every required state, the
+                               Angle section of BRIEF.md, and a critic pass (exit 1 on gaps)
   tools PATH                   lint an MCP tool list: each tool has a description with a "Not for"
                                clause, an inputSchema, and all four annotation hints (exit 1 on gaps)
+  reply PATH                   lint a reply draft: at most three questions, one decision each, each
+                               with "I recommend" (exit 1 on gaps)
 
 Standard library only. Makes no network calls.
 """
@@ -179,6 +181,29 @@ def cmd_spend(args):
     print(f"Logged calls: {len(ledger.get('entries', []))}")
 
 
+ANGLE_FIELDS = ("Moment before:", "Moment after:", "Tell a friend:", "Category default:",
+                "Touchpoint question:", "Angles considered:", "Chosen angle:")
+MIN_ANGLES = 8
+VERDICT = re.compile(r"^\W*verdict\W*:", re.IGNORECASE | re.MULTILINE)
+
+
+def check_angle(brief):
+    if "## Angle" not in brief:
+        return ["BRIEF.md: missing the '## Angle' section (see reference/angle.md)"]
+    section = brief.split("## Angle", 1)[1].split("\n## ", 1)[0]
+    gaps = [f"BRIEF.md Angle: missing {field!r}" for field in ANGLE_FIELDS if field not in section]
+    if "Angles considered:" in section:
+        listed = section.split("Angles considered:", 1)[1].split("Chosen angle:", 1)[0]
+        count = len(re.findall(r"^\s*[-*] \S", listed, re.MULTILINE))
+        if count < MIN_ANGLES:
+            gaps.append(f"BRIEF.md Angle: {count} angles considered; write at least {MIN_ANGLES}")
+    return gaps
+
+
+def has_critic_pass(root):
+    return any(VERDICT.search(path.read_text()) for path in (root / "critique").glob("*.md"))
+
+
 # Published image assets ship with alt text, so every non-skipped state records it.
 ALT_SURFACES = ("social",)
 
@@ -245,6 +270,12 @@ def check_touchpoints(root):
         for step in steps:
             if step not in seen:
                 gaps.append(f"journey {jid}: step {step!r} is not a touchpoint id")
+    brief = root / "BRIEF.md"
+    if brief.is_file():
+        gaps.extend(check_angle(brief.read_text()))
+    if touchpoints and not has_critic_pass(root):
+        gaps.append("no critic pass: save .design/critique/<round>-critic.md with a 'Verdict:' line "
+                    "(see reference/critic.md)")
     return gaps, len(touchpoints), covered, skipped
 
 
@@ -275,6 +306,45 @@ def lint_tools(data):
             if not isinstance(annotations.get(hint), bool):
                 gaps.append(f"{name}: annotations.{hint} must be true or false")
     return gaps
+
+
+def reply_blocks(text):
+    """Split Markdown into list items (with their continuation lines) and other non-empty lines."""
+    blocks, current = [], None
+    for line in text.splitlines():
+        if re.match(r"^\s*(?:[-*]|\d+[.)])\s+\S", line):
+            current = [line.strip()]
+            blocks.append(current)
+        elif current is not None and line.startswith((" ", "\t")) and line.strip():
+            current.append(line.strip())
+        else:
+            current = None
+            if line.strip() and not line.lstrip().startswith(("#", "!", "|", "```")):
+                blocks.append([line.strip()])
+    return [" ".join(block) for block in blocks]
+
+
+def lint_reply(text):
+    prose = re.sub(r"```.*?```|`[^`]*`", "", text, flags=re.DOTALL)
+    questions = [block for block in reply_blocks(prose) if "?" in block]
+    gaps = []
+    if len(questions) > 3:
+        gaps.append(f"{len(questions)} questions; ask at most three and record the rest as defaults")
+    for block in questions:
+        excerpt = block[:70]
+        if block.count("?") > 1:
+            gaps.append(f"one question per decision: {excerpt!r}")
+        if not re.search(r"\brecommend", block, re.IGNORECASE):
+            gaps.append(f"question without 'I recommend ... because ...': {excerpt!r}")
+    return gaps
+
+
+def cmd_reply(args):
+    gaps = lint_reply(Path(args.path).read_text())
+    for gap in gaps:
+        print(f"gap: {gap}")
+    print(f"{len(gaps)} gaps")
+    sys.exit(1 if gaps else 0)
 
 
 def cmd_tools(args):
@@ -312,6 +382,10 @@ def main(argv=None):
     tools = commands.add_parser("tools", help="lint an MCP tool list; exit 1 on gaps")
     tools.add_argument("path", help="tools.json: a list of tools or an object with a tools list")
     tools.set_defaults(func=cmd_tools)
+
+    reply = commands.add_parser("reply", help="lint a reply draft; exit 1 on gaps")
+    reply.add_argument("path", help="the reply draft, e.g. .design/reply.md")
+    reply.set_defaults(func=cmd_reply)
 
     args = parser.parse_args(argv)
     args.func(args)

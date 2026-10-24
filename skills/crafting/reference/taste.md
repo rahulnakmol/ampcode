@@ -37,6 +37,21 @@ The user named [parallel.ai](https://parallel.ai/) as the quality bar. Measured 
 
 Take the discipline (constraint, consistency, dual audience), not the look.
 
+## Building the board
+
+`.design/board/index.html` is one self-contained page (inline CSS; images downloaded into
+`.design/research/img/` and credited), grouped by what to take from each reference. It is a point of
+view that serves the chosen angle, not a pattern library:
+
+- Lead with look and feel: about 40% of images come from outside the category (objects, print, type
+  specimens, architecture, film, motion), shown large, with color fields and type set at specimen
+  size beside them. UI and behaviour references go in a smaller strip after.
+- Name the one specific detail worth stealing from each reference, never "nice vibe", and describe
+  only what it actually shows.
+- Every image, including anti-references, links to its source.
+- Assumptions keep their label on the board.
+- Each section gets its own readable capture, which you inspect.
+
 ## Proposing directions
 
 Each direction is a hypothesis about what this product should feel like. Write it like this:
@@ -92,6 +107,8 @@ dimension at 8 or above and no P0 or P1 findings.
 | --- | --- |
 | **Typesetting** | No widows or orphans in display text, units on the numeral's baseline, no element touching a rule or edge, display lines fill their measure |
 | **Need fit** | Serves the job, principles, and measures in the brief's Need section; the design-worthy bar is met |
+| **Angle** | The chosen angle from the brief is visible in every state; a juror would call it a new take, not the category default done well |
+| **Joy** | The tell-a-friend moment exists in a rendered state and is earned by the need (relief, competence, being understood); for agent surfaces, zero guesses |
 | **Hierarchy** | One clear focal point per view; the eye path matches the job's order |
 | **Clarity** | A first-time user knows what this is, what state it is in, and what to do next within five seconds |
 | **Craft** | Alignment, spacing rhythm, optical balance, consistent radii and strokes; nothing off by a pixel |

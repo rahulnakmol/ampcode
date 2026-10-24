@@ -107,9 +107,10 @@ class Coverage(unittest.TestCase):
             for expected in ("missing required state 'narrow'", "pricing-page.empty: needs a mockup path",
                              "mockups/missing.png not found", "toggle is missing reduced_motion",
                              "surface cli has no touchpoints",
-                             "journey choose-plan: step 'checkout' is not a touchpoint id"):
+                             "journey choose-plan: step 'checkout' is not a touchpoint id",
+                             "no critic pass"):
                 self.assertTrue(any(expected in gap for gap in gaps), f"{expected!r} not in {gaps}")
-            self.assertEqual(len(gaps), 6, gaps)
+            self.assertEqual(len(gaps), 7, gaps)
 
             states["empty"] = {"skip": "Pricing always has plans"}
             states["dark"] = {"mockup": "mockups/dark.png"}
@@ -118,6 +119,10 @@ class Coverage(unittest.TestCase):
             data["surfaces"] = ["web"]
             data["journeys"][0]["steps"] = ["pricing-page"]
             path.write_text(json.dumps(data))
+            (design / "critique").mkdir()
+            (design / "critique" / "1-critic.md").write_text("# Round 1\n\nNo verdict yet.\n")
+            self.assertIn("no critic pass", run(work, "check").stdout)
+            (design / "critique" / "1-critic.md").write_text("# Round 1\n\n**Verdict:** revise\n")
             result = run(work, "check")
             self.assertEqual(result.returncode, 0, result.stdout)
             self.assertIn("1 touchpoints, 6 states mocked, 1 skipped", result.stdout)
@@ -133,6 +138,8 @@ class Coverage(unittest.TestCase):
                       for state in design_kit.required_states("social")}
             states["square"] = {"mockup": "mockups/a.png"}
             states["sound-off"] = {"skip": "No video in this campaign"}
+            (design / "critique").mkdir()
+            (design / "critique" / "1-critic.md").write_text("Verdict: ship\n")
             path = design / "touchpoints.json"
             data = json.loads(path.read_text())
             data["touchpoints"] = [{"id": "launch-post", "surface": "social", "job": "Get sign-ups",
@@ -145,6 +152,48 @@ class Coverage(unittest.TestCase):
             states["square"]["alt"] = "Square crop of the poster"
             path.write_text(json.dumps(data))
             self.assertEqual(run(work, "check").returncode, 0)
+
+    def test_check_requires_a_complete_angle_section_when_a_brief_exists(self):
+        angles = "\n".join(f"- angle {n} (truth 3, distance 3, feasibility 3)" for n in range(7))
+        brief = ("# Brief\n\n## Angle\nMoment before: checks the bank app nightly\n"
+                 "Moment after: never checks\nTell a friend: \"it just tells me\"\n"
+                 "Category default: a dashboard\nAngles considered:\n" + angles +
+                 "\nChosen angle: exception-only alerts\n\n## Journeys\n- not an angle\n- nor this\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            self.assertEqual(run(work, "init", "--surfaces", "web").returncode, 0)
+            (work / ".design" / "BRIEF.md").write_text(brief)
+            gaps = [line for line in run(work, "check").stdout.splitlines() if line.startswith("gap: BRIEF")]
+            self.assertEqual(gaps, ["gap: BRIEF.md Angle: missing 'Touchpoint question:'",
+                                    "gap: BRIEF.md Angle: 7 angles considered; write at least 8"])
+            fixed = brief.replace("Angles considered:", "Touchpoint question: a message beats a screen\n"
+                                  "Angles considered:\n- invert: tell, don't show")
+            (work / ".design" / "BRIEF.md").write_text(fixed)
+            self.assertNotIn("gap: BRIEF", run(work, "check").stdout)
+
+    def test_reply_lint_caps_questions_and_requires_a_recommendation_each(self):
+        reply = (
+            "Done. Is this the right angle? I think so.\n\n"
+            "## Questions\n"
+            "1. Markets: which countries first? I recommend the UK, because the samples use £.\n"
+            "2. Approval: may friendly reminders skip approval? And above what amount must\n"
+            "   approval move to the app? I recommend no.\n"
+            "3. Dates: are 14-15 March fixed?\n"
+            "4. Name: I recommend keeping the working title. Keep it?\n\n"
+            "Run `curl -s example.com?x=1` to check.\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "reply.md"
+            path.write_text(reply)
+            result = run(tmp, "reply", str(path))
+            self.assertEqual(result.returncode, 1)
+            gaps = [line for line in result.stdout.splitlines() if line.startswith("gap:")]
+            self.assertEqual(len(gaps), 4, gaps)
+            self.assertIn("5 questions", gaps[0])
+            self.assertTrue(any("one question per decision: '2. Approval" in gap for gap in gaps), gaps)
+            for start in ("Done. Is this", "3. Dates"):
+                self.assertTrue(any(f"recommend ... because ...': '{start}" in gap for gap in gaps), gaps)
+            path.write_text("Shipped.\n\n1. Markets: UK first? I recommend the UK, because of £.\n")
+            self.assertEqual(run(tmp, "reply", str(path)).returncode, 0)
 
     def test_tools_lint_requires_not_for_clause_schema_and_every_hint(self):
         hints = {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}
