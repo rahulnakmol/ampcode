@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Design workspace helper for the designing-experiences skill.
+"""Design workspace helper for the crafting skill.
 
 Commands (run from the project root; --dir defaults to .design):
   init  --surfaces web,ios     create the workspace files that do not exist yet
