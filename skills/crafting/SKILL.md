@@ -223,9 +223,10 @@ Produce each state in its surface file's medium. Save one file per touchpoint st
   focus order, announcements, alt text, captions, and contrast are part of each state's spec.
 
 Keep it proportional. For a request for one screen or one asset, render the required states, the
-hard states the job implies, the proof state of the angle, and two or three variants; list the
-rest in `touchpoints.json` as specified with a `skip` reason ("specified, not rendered: ..."). Make
-the mood board only when the direction is genuinely open.
+hard states the job implies, the proof and failure states of the angle, the main state of any
+companion touchpoint, and two or three variants; list the rest in `touchpoints.json` with a `skip`
+reason ("specified, not rendered: ..."). Make the mood board only when the direction is genuinely
+open, and keep it to one page. Spend saved effort on the hard states, not more artifacts.
 
 Parallelize only independent surface families, for example one subagent per family once
 `DESIGN.md` is fixed, each given the brief, `DESIGN.md`, its touchpoints, and its surface file.
@@ -277,7 +278,11 @@ replying, check:
   action (generate summaries from one function, re-render after changes), and every promise holds
   under simple arithmetic.
 - Each critic finding you report as fixed is fixed everywhere: search every file for the flagged
-  phrase or element before saying so.
+  phrase or element before saying so. Re-check every claim in your own critique ("widows fixed",
+  "no collisions") against the final renders.
+- No working note reaches an artifact: search rendered text for designer asides ("no source
+  needed", "TODO", "placeholder", debug strings), and compare the brief's assumptions with what the
+  artifacts actually show (a promised logo strip that is missing is a defect).
 - After any copy or content change, search all sources and derived assets (feeds, grids, context
   mockups, captions) for the old wording and re-render them.
 - Numbers repeated across files (scores, counts, sizes, dates) agree, and sample content agrees with

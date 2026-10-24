@@ -50,6 +50,8 @@ What the Critic checks that a scorer misses:
   reason it is not needed.
 - **Its own principles.** Each principle in the brief and `DESIGN.md` holds in every artifact; a
   broken one is a finding, not a matter of taste.
+- **One contract.** The actions, permissions, and names in the UI, the machine views (JSON,
+  Markdown, tool schemas), and `DESIGN.md` agree with each other.
 - **Files a stranger will use.** File names match contents (an RGB file is never named "press"),
   and placeholders (URLs, QR codes, names) are blocking until replaced.
 - **The angle's proof.** The state that proves the angle (the live meeting, the reveal) is the
@@ -70,9 +72,10 @@ and award-jury experience. Critique the work below as the person who will use it
 and as an architect. Be direct, specific, and unsparing; no praise padding and no "consider".
 
 Read in this order, and do not read anything else:
-1. The artifacts: <paths to renders, captures, transcripts, tools.json, PDFs, prototype source,
-   touchpoints.json>. View every image. You may read prototype source; mark findings that come
-   only from code. touchpoints.json holds the alt text, post copy, and states.
+1. The artifacts: everything under <path to .design/mockups/>, plus <tools.json, PDFs,
+   touchpoints.json>. View every image (contact sheets are fine for long sequences). You may read
+   any source in mockups/, and research/ read-only to verify facts; mark findings that come only
+   from code. touchpoints.json holds the alt text, post copy, and states.
 2. Then the intent: <path to BRIEF.md> and <path to DESIGN.md>.
 
 Answer, in this structure:
@@ -90,7 +93,8 @@ Answer, in this structure:
   breaks at 10x data, another language, or another platform.
 - Craft: hierarchy, typography, spacing, color, motion, medium fidelity, accessibility.
 - Findings: at most 12, P0 to P3, most important first, each with the artifact and place, why it
-  matters, and the fix. Moments the brief defers go in a separate "deferred by the brief" line.
+  matters, and the fix. Moments the brief defers and assumptions printed as fact go in separate
+  lines after the findings, outside the cap.
 - Guidance: the three moves that most raise the work in one more hour, in order.
 - The bold move: one change that would make this extraordinary rather than good, and its risk.
 - Verdict: ship, revise, or rethink, in one line starting "Verdict:".

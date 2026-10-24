@@ -89,6 +89,8 @@ Rules:
   behaviour anchor (a shipped interaction).
 - For a place-specific audience, include real local texture beyond translating the place name:
   language and wit, landmarks, materials, rituals, or the way people there actually communicate.
+  A local-language element carries information (track names, the call to action) and never sits
+  beside its own translation as decoration.
 - A borrowed metaphor keeps its meaning: if the direction borrows from software, sport, or
   paperwork, check that its interactions mean the same thing (in GitHub, a ticked box means done,
   not a vote).

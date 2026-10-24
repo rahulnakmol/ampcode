@@ -94,6 +94,17 @@ Then test it:
   the app, the person being assigned work). A contract can read as a prenup; a receipt as a bill.
 - **Proof state**: name the state that proves the angle (the reveal, the live meeting). It gets the
   most design, and the change it shows is legible at thumbnail size, not a hairline.
+- **Failure state**: name how the angle itself fails (a wrong match hides a blocker, a reveal
+  exposes an income, a torn tab leaves no link) and render that state with its recovery. It is
+  never "specified, not rendered".
+- **Consent**: an angle that infers a commitment from someone ("on Marcus's plan") treats it as a
+  suggestion until that person confirms it, and tells them.
+- **Every medium**: translate the signature gesture natively into each medium in the brief (a
+  slide that shows the tab being torn, not the poster's footer repeated), and check that the
+  artifact the person keeps after the key action (the torn tab, the screenshot) still carries the
+  angle and the facts.
+- **Whole shape**: when the chosen shape pairs a screen with a message, digest, or agent, render
+  the companion's main state too; otherwise say plainly that only half the shape exists.
 
 Write it into `.design/BRIEF.md`; `design_kit.py check` requires this section when `BRIEF.md`
 exists:

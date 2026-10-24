@@ -63,8 +63,11 @@ thumbnail size that a cold reader can name it.
 
 Run the typesetting check (widows, orphans, wraps, collisions, one date format) on every derived
 asset (square, story, link preview), not only the primary. Any image likely to be forwarded on its
-own (the square, the story, the cover) shows the action and the deadline in the artwork; before
-claiming an image "carries every fact", compare its visible text with the fact list. After any copy change, search every source and rendered mockup (feed, grid, in-context renders,
+own (every slide, the square, the story) shows what it is ("climate hackathon", not only a
+problem), when, where, the deadline, and the link in the artwork itself, never only in a sticker
+added later; before claiming an image "carries every fact", compare its visible text with the fact
+list. Check safe zones against the platform's own UI (slide counter, tag badges, reply bar), not
+only the crop bands. A profile-grid mock shows a carousel as one tile. After any copy change, search every source and rendered mockup (feed, grid, in-context renders,
 captions) for the old wording and re-render whatever still carries it.
 
 ## Social slop

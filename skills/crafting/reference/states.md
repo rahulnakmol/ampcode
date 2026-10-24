@@ -149,6 +149,9 @@ Walk this list for every touchpoint and add the states that apply.
   `destructive-confirmation`; `undo` window after a destructive action.
 - One state per exit code or error code the touchpoint can return, including the generic internal
   and network failures, each with its recovery.
+- In every degraded state (offline, sync down, partial), ask of each sentence "can the system still
+  know this?" and qualify it with "as of <time>" or remove it. Render the key action taken during
+  the outage, with what is queued and when people will be told.
 
 **Stress**
 - `long-copy`, `overflow`, and translation states are checked against the trim, live area, or
