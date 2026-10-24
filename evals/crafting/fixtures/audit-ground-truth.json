@@ -1,0 +1,22 @@
+{
+  "about": "Seeded accessibility defects in audit-page.html. Judges compute recall against these and note credible extra findings separately.",
+  "defects": [
+    {"id": "A01", "wcag": "1.4.4 Resize Text", "issue": "viewport disables zoom (maximum-scale=1, user-scalable=no)"},
+    {"id": "A02", "wcag": "3.1.1 Language of Page", "issue": "html element has no lang attribute"},
+    {"id": "A03", "wcag": "2.4.2 Page Titled", "issue": "title is the generic 'Page'"},
+    {"id": "A04", "wcag": "2.1.1 Keyboard / 4.1.2 Name, Role, Value", "issue": "nav items and Pay now are clickable divs, not links or buttons, so not focusable or announced"},
+    {"id": "A05", "wcag": "1.1.1 Non-text Content / 4.1.2", "issue": "cart icon image has no alt and no accessible name, click-only"},
+    {"id": "A06", "wcag": "1.1.1 Non-text Content", "issue": "promo images have no alt"},
+    {"id": "A07", "wcag": "1.3.1 Info and Relationships", "issue": "headings are styled divs, no h1 or h2"},
+    {"id": "A08", "wcag": "3.3.2 Labels or Instructions / 1.3.1", "issue": "inputs use placeholder only, no labels; hint not associated"},
+    {"id": "A09", "wcag": "1.4.3 Contrast (Minimum)", "issue": "hint text #aaa on white fails 4.5:1; white on #4f9cff button fails"},
+    {"id": "A10", "wcag": "1.4.1 Use of Color", "issue": "required fields indicated by red color only"},
+    {"id": "A11", "wcag": "3.3.1 Error Identification / 4.1.3 Status Messages", "issue": "generic 'Invalid' error not tied to a field and not announced"},
+    {"id": "A12", "wcag": "2.4.7 Focus Visible", "issue": ":focus { outline: none } removes focus indicator"},
+    {"id": "A13", "wcag": "2.2.2 Pause, Stop, Hide", "issue": "auto-moving carousel with no pause control"},
+    {"id": "A14", "wcag": "2.2.1 Timing Adjustable", "issue": "60-second session timeout reloads with no warning or way to extend"},
+    {"id": "A15", "wcag": "2.4.4 Link Purpose (In Context)", "issue": "ambiguous 'Click here' links"},
+    {"id": "A16", "wcag": "2.5.8 Target Size (Minimum)", "issue": "20 px cart icon and small 12 px button with 4 px padding"},
+    {"id": "A17", "wcag": "2.3.3 / reduced motion", "issue": "animation ignores prefers-reduced-motion"}
+  ]
+}

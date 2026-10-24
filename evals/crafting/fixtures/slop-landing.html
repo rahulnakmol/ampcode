@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ledgerly — Elevate your finances</title>
+<style>
+  body { margin: 0; font-family: Inter, sans-serif; background: #faf7f2; color: #8a8580; text-align: center; }
+  .hero { padding: 120px 24px; background: linear-gradient(135deg, #7b5cff, #3fa9ff); color: white; }
+  h1 { font-size: 56px; margin: 0; } h1 em { font-family: Georgia, serif; font-style: italic; }
+  .gradient-text { background: linear-gradient(90deg, #ff6ad5, #7b5cff); -webkit-background-clip: text; color: transparent; }
+  .btn { display: inline-block; margin-top: 24px; padding: 14px 28px; border-radius: 999px; background: white; color: #7b5cff; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; padding: 80px 10%; }
+  .card { background: rgba(255,255,255,.6); backdrop-filter: blur(12px); border-radius: 24px; padding: 32px; box-shadow: 0 8px 24px rgba(0,0,0,.08); border-left: 4px solid #7b5cff; }
+  .card .inner { border-radius: 12px; background: white; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,.06); }
+  .steps { display: flex; justify-content: center; gap: 48px; padding: 60px; } .steps b { font-size: 40px; color: #ddd; }
+  .stat { font-size: 48px; } .live { width: 8px; height: 8px; border-radius: 50%; background: #3f3; display: inline-block; animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .2; } }
+  section { animation: up .8s ease both; } @keyframes up { from { transform: translateY(40px); opacity: 0; } }
+  .card:hover { transform: scale(1.08) rotate(-1deg); transition: transform .6s cubic-bezier(.3,1.8,.5,1); }
+</style>
+</head>
+<body>
+<div class="hero">
+  <p>✦ AI-powered</p>
+  <h1>Finance, <em>reimagined</em> for <span class="gradient-text">modern teams</span></h1>
+  <p>Seamlessly unlock effortless money management. Supercharge your savings today.</p>
+  <a class="btn" href="#">Get started →</a>
+</div>
+<section class="features">
+  <div class="card"><div class="inner">🚀<h3>Automate</h3><p>Move faster.</p></div></div>
+  <div class="card"><div class="inner">✨<h3>Integrate</h3><p>Work smarter.</p></div></div>
+  <div class="card"><div class="inner">📈<h3>Scale</h3><p>Grow together.</p></div></div>
+</section>
+<section class="steps"><div><b>01</b><p>Discover</p></div><div><b>02</b><p>Design</p></div><div><b>03</b><p>Deliver</p></div></section>
+<section><p class="stat">10x faster</p><p><span class="live"></span> Live insights for John Doe</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p></section>
+<section><a href="#">Get started →</a></section>
+</body>
+</html>
