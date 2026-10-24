@@ -29,6 +29,8 @@ lead would sign off.
 | State completeness | Happy path only | Most states, thin content | Every required and implied state, with real content |
 | Rigor and verification | Claims without evidence | Some checks | Rendered, inspected, measured, and honest about limits |
 | Efficiency | Rambling, needless steps, overspend | Some waste | Proportional to the request; tight reply; cheap research first |
+| Angle | The category default, executed | A fresh element on a familiar shape | A new take that is obvious in hindsight: a juror would remember it, and it is true to the need |
+| Joy | Nothing anyone would mention; or delight bolted on (confetti, mascots) | One pleasant moment | A moment a person would tell a friend about, earned by the need (relief, competence, being understood) and present in a rendered state; for agent surfaces, a fresh agent makes zero guesses |
 
 ## Output format
 
@@ -39,7 +41,7 @@ lead would sign off.
   "hard_notes": {"<ID>": "<one line for every fail>"},
   "checks": {"<check text>": "pass|fail"},
   "ground_truth_recall": "<found>/<total> or n/a",
-  "scores": {"need_insight": 0, "craft_and_taste": 0, "medium_fidelity": 0, "state_completeness": 0, "rigor_and_verification": 0, "efficiency": 0},
+  "scores": {"need_insight": 0, "craft_and_taste": 0, "medium_fidelity": 0, "state_completeness": 0, "rigor_and_verification": 0, "efficiency": 0, "angle": 0, "joy": 0},
   "strengths": ["<what was genuinely good>"],
   "top_defects": ["<the most important problems, with quotes or file references>"],
   "suggested_skill_fixes": ["<concrete instruction changes that would fix the defects>"]
@@ -47,3 +49,6 @@ lead would sign off.
 ```
 
 Scalar per scenario: `hard_pass_rate × mean(scores) / 5`, where `hard_pass_rate` ignores `n/a`.
+Report the **ceiling** separately as `mean(angle, joy)`: the floor (hard checks, completeness) and
+the ceiling (whether the work matters) move independently, and the skill must raise both. Results
+recorded before these two dimensions existed use the first six only.

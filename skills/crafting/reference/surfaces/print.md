@@ -28,7 +28,17 @@ Craft:
   An invented event name never outranks what the event is. Put these in the legibility table and
   treat a miss as blocking.
 - **Bleed and safety.** Extend backgrounds about 3 mm (0.125 in) past the trim; keep text and key
-  content at least 3 to 5 mm inside it. Account for folds, binding, and perforations.
+  content at least 3 to 5 mm inside it, and at least 10 mm on A2 and larger. Account for folds,
+  binding, and perforations.
+- **Placeholders hold the press.** Any placeholder (URL, QR, name, promise) puts "HOLD: <what>"
+  in the slug and job line of every plate until it is replaced. Generate QR codes from the same
+  variable as the printed URL, decode them, and fail the build when the two differ. Set PDF
+  metadata (title, author) yourself.
+- **Physical interactions have production artwork.** A tear-off, fold, cut, or sticker gets its own
+  cut or perforation layer, a stock spec, and a test, plus a count based on expected footfall
+  (two tabs per option empty in an hour on a busy board).
+- **Spot and two-colour jobs.** State the overprint, knockout, and trap decision for black over the
+  spot ink (black text usually overprints), and use K-only greys on photocopy versions.
 - **Images at 300 ppi at final size** for photos (line art higher), in the correct color space.
 - **Files the printer can use.** PDF/X (for example PDF/X-4) with fonts embedded, crop marks and bleed,
   and no RGB or low-resolution surprises. Ask the printer for their specification. Try to produce

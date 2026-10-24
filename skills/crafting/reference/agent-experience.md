@@ -17,6 +17,10 @@ There are two kinds of touchpoint here:
 Protocols in this space change quickly (MCP, Agent2Agent, agentic commerce and payment protocols).
 Check the current specifications by research before designing to one.
 
+An agent's version of delight is **zero guesses**: it completes a task it has never seen from the
+descriptions and outputs alone, and every consequential call does exactly what the person
+expected. Treat each guess a fresh agent makes as a design defect, not a documentation gap.
+
 ## What agents need from any surface
 
 - **Discoverability**: the agent can find what is possible from the surface itself (tool lists,

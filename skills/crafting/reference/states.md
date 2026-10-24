@@ -116,9 +116,11 @@ For `cli`, `ideal` is the successful run, `empty` is "nothing to do or no result
 is progress output. For `api`, `mcp`, and `a2a`, `loading` is the accepted-and-in-progress response.
 A state that cannot occur on a touchpoint gets a `skip` reason.
 
-Every non-skipped `social` state also needs a non-empty `"alt"`: the alt text that ships with that
-asset. `check` reports a gap when it is missing, so the square, story, and link preview get alt text
-too, not only the carousel.
+Every non-skipped `social` state also needs a non-empty `"alt"` (the alt text that ships with that
+asset) and `"copy"` (the words that go out with it: the caption, the forward message for a square,
+the overlay or sticker text for a story, the title and description for a link preview). `check`
+reports a gap when either is missing, so every asset that can be posted or forwarded alone carries
+both, not only the carousel.
 
 ## State catalog
 
@@ -147,6 +149,9 @@ Walk this list for every touchpoint and add the states that apply.
   `destructive-confirmation`; `undo` window after a destructive action.
 - One state per exit code or error code the touchpoint can return, including the generic internal
   and network failures, each with its recovery.
+- In every degraded state (offline, sync down, partial), ask of each sentence "can the system still
+  know this?" and qualify it with "as of <time>" or remove it. Render the key action taken during
+  the outage, with what is queued and when people will be told.
 
 **Stress**
 - `long-copy`, `overflow`, and translation states are checked against the trim, live area, or

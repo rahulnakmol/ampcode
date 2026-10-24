@@ -37,6 +37,25 @@ The user named [parallel.ai](https://parallel.ai/) as the quality bar. Measured 
 
 Take the discipline (constraint, consistency, dual audience), not the look.
 
+## Building the board
+
+`.design/board/index.html` is one self-contained page (inline CSS; images downloaded into
+`.design/research/img/` and credited), grouped by what to take from each reference. It is a point of
+view that serves the chosen angle, not a pattern library:
+
+- Lead with look and feel: about 40% of images come from outside the category (objects, print, type
+  specimens, architecture, film, motion), shown large, with color fields and type set at specimen
+  size beside them. UI and behaviour references go in a smaller strip after.
+- Name the one specific detail worth stealing from each reference, never "nice vibe", and describe
+  only what it actually shows.
+- Every image, including anti-references, links to its source.
+- Assumptions keep their label on the board.
+- Labels in the frames do not use words the board refuses (an anti-reference's "Ours"), and counts
+  quoted in copy match what is drawn ("four of five" over four rows is a defect).
+- Each section gets its own readable capture, which you inspect. Check that the font that rendered
+  is the font the board names: headless Chromium lacks Apple's system serifs, so label stand-ins
+  ("Georgia standing in for New York") or capture in Safari.
+
 ## Proposing directions
 
 Each direction is a hypothesis about what this product should feel like. Write it like this:
@@ -70,11 +89,15 @@ Rules:
   behaviour anchor (a shipped interaction).
 - For a place-specific audience, include real local texture beyond translating the place name:
   language and wit, landmarks, materials, rituals, or the way people there actually communicate.
+  A local-language element carries information (track names, the call to action) and never sits
+  beside its own translation as decoration.
 - A borrowed metaphor keeps its meaning: if the direction borrows from software, sport, or
   paperwork, check that its interactions mean the same thing (in GitHub, a ticked box means done,
   not a vote).
 - Label each direction's position (expected, adjacent, or unexpected) and name the category
   baseline the unexpected one beats.
+- Directions differ in structure or interaction, not only in skin: if you swapped their colours
+  and type, you could still tell the frames apart.
 - Every direction's lo-fi frame shows the same moment (the brief's top moment of truth), so they
   compare like for like; show the recommended one before and after its key action.
 - An invite or consent frame always has a pressure-free exit ("Not now", "Decline"). A softer
@@ -92,6 +115,8 @@ dimension at 8 or above and no P0 or P1 findings.
 | --- | --- |
 | **Typesetting** | No widows or orphans in display text, units on the numeral's baseline, no element touching a rule or edge, display lines fill their measure |
 | **Need fit** | Serves the job, principles, and measures in the brief's Need section; the design-worthy bar is met |
+| **Angle** | The chosen angle from the brief is visible in every state; a juror would call it a new take, not the category default done well |
+| **Joy** | The tell-a-friend moment exists in a rendered state and is earned by the need (relief, competence, being understood); for agent surfaces, zero guesses |
 | **Hierarchy** | One clear focal point per view; the eye path matches the job's order |
 | **Clarity** | A first-time user knows what this is, what state it is in, and what to do next within five seconds |
 | **Craft** | Alignment, spacing rhythm, optical balance, consistent radii and strokes; nothing off by a pixel |

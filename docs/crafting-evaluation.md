@@ -162,3 +162,46 @@ distance, press files with available tools, PDF text extraction checks, and phot
 social requires the action on forwardable assets and typesetting checks on every derived asset.
 
 Not yet measured: c05 and c04 against the round-3 skill, and c03 with `design_kit.py tools` in place.
+
+## Angle, Critic, and ceiling (round 4 and 5)
+
+The skill gained a phase for finding the angle (`reference/angle.md`), a critic pass by a
+principal product designer and design architect persona on every UX or UI deliverable
+(`reference/critic.md`), gates in `design_kit.py` for the Angle section, the critic verdict, social
+post copy, and the reply's questions, and two rubric dimensions, Angle and Joy, reported together
+as the **ceiling**. A new scenario, c10, asks for a standup dashboard where the obvious screen is
+probably the wrong answer. Round 4 ran the new skill; round 5 reran after fixing the round-4
+findings. Scalars below include all eight dimensions; earlier rows use six.
+
+| Scenario | Baseline A / B | Round 4 A / B (ceiling) | Round 5 A / B (ceiling) | Hard fails in latest run |
+| --- | --- | --- | --- | --- |
+| c05 poster and carousel | 0.66 / 0.60 | 0.64 / 0.64 (3.5 / 3.5) | **0.83 / 0.88** (3.5 / 4.0) | — |
+| c07 couples-finance mood board | 0.73 / 0.67 | 0.80 / 0.80 (3.5 / 4.0) | not rerun | — |
+| c10 standup dashboard (new) | — | 0.85 / 0.78 (4.0 / 3.5) | 0.78 / 0.78 (4.0 / 4.0) | — |
+
+- The angle phase changed what the agents made: a chirograph agreement both partners sign (c07),
+  a tear-off sheet of real Bengaluru problems (c05), and in c10 a run sheet and then a board that
+  reads each blocker against teammates' plans instead of a grid of status cards. c05 passed every
+  hard check for the first time.
+- The ceiling moved less than the floor: judges gave Angle and Joy 3 or 4, never 5. Both judges
+  cited nearest analogues (tear-off flyers already exist) and signature moments too faint to land.
+- **The independent Critic was the most useful reviewer.** Run as a fresh subagent on the same
+  artifacts, it was stricter than the judges (Angle 2 to 4, Joy 2 to 3, verdict "revise" on every
+  run) and found the defects neither judge caught: an income-privacy promise that one division
+  disproves (c07), a page line that is false for its own data and an inferred match counted as
+  ownership nobody accepted (c10), and forwarded slides that never say "hackathon" plus QR codes
+  that do not follow the printed URL (c05). Its own feedback reshaped its prompt (findings cap,
+  state and system split, principles score, source and research access).
+- **Limit:** the agents under test ran as subagents and could not start a subagent themselves, so
+  every in-run critic pass was self-run and labelled as such. In normal use the main agent can start
+  the Critic as an independent subagent, which is how the independent passes above were run.
+
+Changes from rounds 4 and 5, in short: every sentence must be true for its data (with arithmetic),
+the hard moment must be the one the brief is about, the angle's proof and failure states are
+rendered, inferred commitments need the named person's consent, the companion touchpoint of a
+chosen shape is rendered, degraded states pass a "can the system still know this?" audit, assets
+that travel alone carry what, when, where, and how, placeholders hold the press, physical
+interactions get production artwork, directions differ in structure, and one-screen requests stay
+proportional.
+
+Not yet measured: c07 and c10 against the round-5 fixes.
