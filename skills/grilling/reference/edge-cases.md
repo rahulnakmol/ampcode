@@ -40,6 +40,9 @@ Silent, severe cases come first even when rare. Then recommend one handling:
   across a time zone or daylight-saving change, and after rollback.
 - **Success too well.** What breaks at ten or a hundred times the expected use?
 - **Second order.** Who or what else is affected that nobody mentioned?
+- **Absent people.** While this runs, who covers what the participants normally do (on-call,
+  support, approvals)? Can the recipient still use the output in the state the request implies
+  (offboarded, churned, locked out)?
 
 ## Lenses
 
