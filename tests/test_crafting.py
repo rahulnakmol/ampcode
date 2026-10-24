@@ -122,6 +122,47 @@ class Coverage(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout)
             self.assertIn("1 touchpoints, 6 states mocked, 1 skipped", result.stdout)
 
+    def test_check_requires_alt_text_on_every_social_asset(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            self.assertEqual(run(work, "init", "--surfaces", "social").returncode, 0)
+            design = work / ".design"
+            (design / "mockups").mkdir(exist_ok=True)
+            (design / "mockups" / "a.png").write_bytes(b"png")
+            states = {state: {"mockup": "mockups/a.png", "alt": "Poster: five open issues"}
+                      for state in design_kit.required_states("social")}
+            states["square"] = {"mockup": "mockups/a.png"}
+            states["sound-off"] = {"skip": "No video in this campaign"}
+            path = design / "touchpoints.json"
+            data = json.loads(path.read_text())
+            data["touchpoints"] = [{"id": "launch-post", "surface": "social", "job": "Get sign-ups",
+                                    "states": states}]
+            path.write_text(json.dumps(data))
+            result = run(work, "check")
+            gaps = [line for line in result.stdout.splitlines() if line.startswith("gap:")]
+            self.assertEqual(gaps, ["gap: launch-post.square: needs alt text (\"alt\") for this asset"])
+
+            states["square"]["alt"] = "Square crop of the poster"
+            path.write_text(json.dumps(data))
+            self.assertEqual(run(work, "check").returncode, 0)
+
+    def test_tools_lint_requires_not_for_clause_schema_and_every_hint(self):
+        hints = {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}
+        good = {"name": "find_invoices", "description": "Find invoices. Not for chasing; use chase_overdue.",
+                "inputSchema": {"type": "object"}, "annotations": hints}
+        bad = {"name": "send_invoice", "description": "Send an invoice. Note: format matters.",
+               "inputSchema": {"type": "object"}, "annotations": {**hints, "idempotentHint": "yes"}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "tools.json"
+            path.write_text(json.dumps({"tools": [good, bad]}))
+            result = run(tmp, "tools", str(path))
+            self.assertEqual(result.returncode, 1)
+            gaps = [line for line in result.stdout.splitlines() if line.startswith("gap:")]
+            self.assertEqual(gaps, ["gap: send_invoice: description needs a 'Not for X; use Y' clause",
+                                    "gap: send_invoice: annotations.idempotentHint must be true or false"])
+            path.write_text(json.dumps([good]))
+            self.assertEqual(run(tmp, "tools", str(path)).returncode, 0)
+
     def test_init_rejects_unknown_surfaces_and_keeps_existing_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(run(tmp, "init", "--surfaces", "web,watchos").returncode, 1)

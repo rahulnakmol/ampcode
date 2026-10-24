@@ -170,6 +170,19 @@ from memory, because platform styles change every year.
 Named apps are starting points to verify, not facts to cite. Confirm that a reference still looks the
 way you remember before it goes on the board.
 
+## Facts and figures
+
+Any number or claim that will appear on a design (a hero statistic, a legal date, a price) needs a
+primary source (the publisher of the index, the regulator, the official bulletin) or two
+independent reports that agree. When sources disagree, record both in the findings file, choose
+with a reason, and tell the user. Never set a disputed number large.
+
+Keep tool output small on the first call (for example Mobbin `limit` 8 or fewer and only the fields
+you need) so you never repeat a paid or metered search because the result was lost. Run one
+image-returning search per call and print text (titles, IDs, URLs), not inline images; download
+only the images you shortlist. A search whose output you lost to truncation is your own waste: note
+it in the ledger and change how you call, not just retry.
+
 ## Writing findings
 
 One file per question in `.design/research/`, short and reusable:

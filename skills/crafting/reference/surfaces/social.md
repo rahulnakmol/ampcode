@@ -52,7 +52,14 @@ Typical formats to plan for (verify current values):
 Render every asset at its real pixel size, then inspect: each format the brief needs, the image
 inside a feed mockup next to typical neighbors, with the platform's safe-zone overlay, at thumbnail
 size, and the link preview through a preview debugger or a local render of the metadata. Record alt
-text and captions next to each asset in `touchpoints.json`.
+text (`"alt"` on each state, which `check` requires) and post copy for every asset you produce,
+including the square, the story, and the link preview, in `touchpoints.json`.
+
+Run the typesetting check (widows, orphans, wraps, collisions, one date format) on every derived
+asset (square, story, link preview), not only the primary. Any image likely to be forwarded on its
+own (the square, the story, the cover) shows the action and the deadline in the artwork; before
+claiming an image "carries every fact", compare its visible text with the fact list. After any copy change, search every source and rendered mockup (feed, grid, in-context renders,
+captions) for the old wording and re-render whatever still carries it.
 
 ## Social slop
 

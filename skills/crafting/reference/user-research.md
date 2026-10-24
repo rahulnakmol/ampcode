@@ -64,21 +64,35 @@ list and descriptions, the API docs, the CLI help, `llms.txt`, or the rendered p
 complete each main task, and record calls made, wrong turns, guesses, errors, and tokens used.
 Repeat after fixes; the goal is success without guessing in the fewest calls.
 
+Write tasks that can fail. They must differ from the scenarios in your own transcripts: new
+customers or objects, an item in a mixed state, an object named by description rather than by ID, a
+"stop" or "undo" request, and a request that should be refused. Count guesses per task; any guess in
+a consequential action is a finding. If you cannot start a subagent, do not run the test yourself:
+hand the user the prompt and the tasks.
+
 ## Synthesize
 
 1. Capture observations as atomic notes: one observation, the participant (anonymized), the
-   evidence (quote or behavior), and the source session.
+   evidence (quote or behavior), and the source session. Mark every statement **Observed** (in the
+   notes) or **Inferred**. Never describe the product, the UI, or the session method (moderated,
+   remote) beyond what the notes say: write "P1 could not tell which option arrives Friday", not
+   "shipping options do not show dates".
 2. Cluster into themes (affinity mapping); count how many participants each theme came from.
-3. Write insights as "<who> <does or needs what> because <why>, which means <implication for
-   design>", each linked to its evidence.
-4. Update the artifacts: the Need section of the brief, journey maps (with emotions per step),
-   personas built from the data (behaviors and goals, not demographics alone), and the
-   touchpoint matrix.
+3. Write insight headlines in observed form ("A VoiceOver participant could not reach Place
+   order"), then the implication on its own line. Link each to its evidence. Rate confidence
+   separately for severity and for how widespread the issue is.
+4. Update the artifacts that the evidence supports: journey maps only when the notes record what
+   people did and felt at each step (skip them when most cells would be empty), and personas only
+   with enough sessions to show patterns. Write or change a brief only when asked.
 5. Rate confidence (strong, moderate, weak) by the number and quality of sources, and list what is
    still unknown.
 
-Write the result to `.design/research/studies/<name>/findings.md`, and summarize the decisions it
-changed in the brief.
+Write the result to `.design/research/studies/<name>/findings.md`. In the reply, repeat the
+severity and confidence of the top findings; do not leave them only in the file.
+
+Before finishing a study plan, check that participant slots, the tasks each slot gets, and the
+thresholds in the decision table agree, and that no task wording reuses a participant's words or
+prompts the behaviour being measured.
 
 ## Research slop
 

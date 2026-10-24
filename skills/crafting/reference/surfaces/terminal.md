@@ -12,10 +12,13 @@ Craft:
 - Output hierarchy with weight and dim, not a rainbow: one accent color, red only for errors,
   yellow only for warnings. Symbols (`✓`, `✗`, `!`, `→`) always paired with words.
 - Respect `NO_COLOR`, `TERM=dumb`, and non-TTY output: no color, spinners, or cursor movement when
-  piped; plain lines that `grep` can use. Stable exit codes, documented.
+  piped; plain lines that `grep` can use. Stable exit codes, each listed in `--help` and each with
+  its own designed state, including the generic internal and network failures.
 - Progress: nothing under 100 ms; a spinner with a verb under about 2 s; a progress bar with counts
   and an estimate beyond that; for parallel work, one line per task that settles in place.
 - Errors say what happened, why, and the exact command to fix it. Never a stack trace by default.
+  A suggested `next` command is safe for an agent to run as written: it never deletes, spends, or
+  touches another owner's resources without the user, and it never needs a secret the caller lacks.
 - Prompts only on a TTY, each with a flag equivalent (`--yes`, `--name`), so agents never block.
 - Destructive commands show the impact and require confirmation or `--force`.
 

@@ -80,10 +80,26 @@ handoff:
    high contrast; color-blindness simulation; read the copy for plain language.
 4. **Assistive-technology scripts**: for each journey, write the expected announcements and focus
    moves, then compare with what actually happened.
-5. **Record findings** in `.design/research/accessibility-audit.md`: WCAG criterion (number and name),
-   touchpoint and state, what happens, who is affected, severity (P0 blocks a task for some users, P1
-   major barrier, P2 friction, P3 best practice), fix, and evidence (screenshot or transcript).
-6. **Fix and retest** P0 and P1 findings, and list the rest in `HANDOFF.md`.
+5. **Record findings** in `.design/research/accessibility-audit.md`. Every finding, P0 to P3, has all
+   of these fields: WCAG criterion (number and name), touchpoint and state, what happens, **who is
+   affected** (for example keyboard users, screen-reader users, low-vision users, people with
+   tremor, color-blind users), severity (P0 blocks a task for some users, P1 major barrier, P2
+   friction, P3 best practice), fix, and evidence.
+6. **Reconcile**: every failure the automated tools reported becomes a finding with a fix, or is
+   dismissed with a reason. A fix that needs content you cannot see (for example an image's alt
+   text) still gets a finding with the rule to follow.
+7. **Save raw evidence** for every manual test a finding relies on (the input value before and after
+   a reload, the focus order, the computed contrast), in `.design/research/`, and note the browser.
+8. **Count** severities from the final list, including items marked "to verify", so the totals in
+   the reply match the report.
+9. **Fixes**: for an Audit, give code-level fix snippets for P0 and P1 findings and offer a fixed
+   copy; build and retest one only when the user asks. For your own Craft deliverable, fix and
+   retest P0 and P1 findings, and list the rest in `HANDOFF.md`. Keep audit tooling (package files,
+   scripts) under `.design/tools/` or a temporary directory, never in the project root.
+10. **Reply**: each "fix first" item carries its severity, criterion, and who is affected, and is
+   grouped only by a cause that is true of every item in the group. Add one line for commonly
+   flagged issues you judged conformant and why (for example link purpose in context, or the 2.5.8
+   spacing exception), so they do not read as misses.
 
 ## Accessibility slop
 

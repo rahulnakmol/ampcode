@@ -58,10 +58,10 @@ State which one applies in one line so the user can override it.
 | --- | --- | --- |
 | **Craft** | A use case, product, journey, or touchpoint to design | All, 1 to 8 |
 | **Discover** | "What do users need", "help me understand this use case" | 1 in full; user-research plan if evidence is thin |
-| **Refine** | Existing experience to polish, redesign, or make consistent | 1 (light), 2, 6, 7, 8 |
-| **Critique** | "Review", "what feels off" | 2 (inventory what exists), 7. Report; edit only if asked |
+| **Refine** | Existing experience to polish, redesign, or make consistent | 1 (light), 2, 6, 7, 8. For a small, clear change (copy, one color): make it, verify it, and add at most one sentence on a risk it creates, such as a promise the page does not back up. No `.design/` |
+| **Critique** | "Review", "what feels off" | Inventory what exists, then 7. Report in a file; edit only if asked. No matrix or ledger unless they add a finding |
 | **Audit** | "Accessibility audit", "is this WCAG compliant" | The audit method in `accessibility.md`; report |
-| **Study** | "Usability test", "interview guide", "synthesize these notes" | `user-research.md`; update the brief with findings |
+| **Study** | "Usability test", "interview guide", "synthesize these notes" | `user-research.md`: notes, findings, and plan only. No brief unless asked |
 | **Motion** | Micro-interactions, transitions, animation | 1 (light), 2 for the touched states, motion in 5 and 6, then 7 |
 | **Inspire** | "Find inspiration", "mood board", "references" | 1 (light), 3, 4. Stop after the board |
 
@@ -91,6 +91,7 @@ $K init --surfaces web,ios,mcp,email      # creates .design/ files that do not e
 $K log --tool parallel-task.createDeepResearch --processor pro --note "..."   # before a paid call
 $K spend                                  # spend so far against the budget
 $K check                                  # gate: journeys valid; every touchpoint has every required state
+$K tools .design/mcp/tools.json           # gate for MCP: "Not for" clauses, inputSchema, all four hints
 ```
 
 If `.design/` exists, read `BRIEF.md`, `DESIGN.md`, and `research/` first and build on them.
@@ -117,6 +118,10 @@ Follow [reference/discovery.md](reference/discovery.md):
    journeys and surfaces, register (persuade, operate, read, converse, experience), personality
    (three adjectives and one thing it must never feel like), constraints (brand, system, WCAG level,
    languages, regulation, performance), fidelity and destination, and the research budget.
+   Ask for markets (with a recommended market) before naming any law or spending research on one,
+   and check each channel
+   against the market's habits (for example WhatsApp-first India). Never bundle several decisions
+   into one "yes": each decision the user must own is its own question.
 6. **Validate risky assumptions.** If the need rests on an assumption that would change the design,
    propose the cheapest test from `user-research.md` before high-fidelity work.
 7. Write `.design/BRIEF.md` with the Need section, answers, labelled assumptions, and non-goals. In
@@ -127,8 +132,11 @@ Follow [reference/discovery.md](reference/discovery.md):
 Run `$K init` with the brief's surfaces, then fill `touchpoints.json` using
 [reference/states.md](reference/states.md): journeys first (actor, goal, ordered touchpoints across
 surfaces, moments of truth), then every touchpoint with its job, then every required state plus the
-states the job implies. A state left out needs `"skip": "<reason>"`. Name each touchpoint's
-micro-interactions; specify them in phase 5. Include touchpoints outside the main product: store
+states the job implies. A state left out needs `"skip": "<reason>"`. Build edge states by
+construction, using the catalog in `states.md`: one state per error code or exit code in the
+contract, a cold start for anything that reports on data over time, mixed membership for lists and
+groups, and stress states (longest copy, largest numbers) checked against the real bounds. Name each
+touchpoint's micro-interactions; specify them in phase 5. Include touchpoints outside the main product: store
 listings, emails, packaging inserts, signs, docs, support replies, and agent tool calls.
 
 ## 3. Research, on a budget
@@ -153,14 +161,25 @@ replaces evidence about this product's users.
 
 Build `.design/board/index.html`: one self-contained page (inline CSS; images downloaded into
 `.design/research/img/` and credited), grouped by what to take from each reference. Name the one
-specific detail worth stealing from each, never "nice vibe". Include non-visual references as quoted
-copy, transcripts, schemas, or photographs of physical pieces.
+specific detail worth stealing from each, never "nice vibe", and describe only what the reference
+actually shows. A board is a point of view, not a pattern library. Lead with look and feel: about
+40% of images come from outside the category (objects, print, type specimens, architecture, film,
+motion), shown large, with color fields and type set at specimen size beside them; UI and behaviour
+references go in a smaller strip after. Every image, including anti-references, links to its
+source. Every direction has a type and material strip, and every direction's lo-fi frame shows the
+brief's top moment of truth (for an invite-led product, the invitee's first screen), not the easiest
+screen. Assumptions keep their label on the board, and each board section gets its own readable
+capture that you inspect. For non-visual surfaces (`api`, `mcp`, `a2a`, `webhook`,
+`agent-docs`), collect reference schemas, transcripts, and docs instead, and skip the visual board
+unless asked.
 
-Propose two or three **named directions** with [reference/taste.md](reference/taste.md): the idea
-tied to the need and the product's own material, type, palette with one accent and its job,
-density, voice and tone, motion personality, signature detail, and two anchoring references. At
-least one must be unexpected for the category. Render the board, inspect it, and let the user choose
-or mix; in autonomous runs pick one and justify it against the need and audience.
+Propose two or three **named directions** following the direction rules in
+[reference/taste.md](reference/taste.md): named typefaces, type scale, grid, palette with one accent
+and its job, voice, motion personality, signature detail, one thing the direction refuses, a look
+anchor and a behaviour anchor, and one lo-fi frame on the target platform's real chrome. Name the
+category's expected answer and beat it. Check that the board's signature matches the brief's
+design-worthy bar, or update the brief. Render the board, inspect it, and let the user choose or
+mix; in autonomous runs pick one and justify it against the need and audience.
 
 ## 5. System
 
@@ -214,8 +233,10 @@ For each touchpoint, at most three rounds:
 
 Self-critique is biased toward approval. For a Craft deliverable, have one fresh subagent score the
 final captures without seeing your reasoning, and resolve its P0 and P1 findings. For agent-facing
-surfaces, also run the agent usability test in `user-research.md`. Recommend a human usability test
-for the moments of truth before launch.
+surfaces, also run the agent usability test in `user-research.md`, with tasks that differ from your
+transcripts. If you cannot start a subagent, do not substitute your own scores or an image model:
+say so in the reply and give the user a ready-to-paste prompt for each test. Recommend a human
+usability test for the moments of truth before launch.
 
 ## 8. Handoff
 
@@ -225,6 +246,30 @@ notes, the agent contract (accessible names, URLs and deep links, CLI `--json` s
 tool schemas and errors), production specs for physical and media pieces (sizes, bleed, color, file
 formats, captions), complex-rendering guidance, the measures from the brief, and open questions. In
 the final reply, embed the key mockups as an image gallery, default state first.
+
+## Before every reply: claim audit
+
+Judges of this skill found that its biggest weakness is claims that outrun the artifacts. Before
+replying, check:
+
+- Every "verified", "tested", "every", "all", or "none" claim points to a saved artifact (capture,
+  transcript, measurement key, script output) that shows it. Re-open that artifact now. If it does
+  not show the claim, fix the work or soften the claim.
+- Every principle in `DESIGN.md` (for example "every failure names what still works") holds in
+  every state: search the mockups and transcripts for it.
+- After any copy or content change, search all sources and derived assets (feeds, grids, context
+  mockups, captions) for the old wording and re-render them.
+- Numbers repeated across files (scores, counts, sizes, dates) agree, and sample content agrees with
+  the brief's assumptions (limits, expiry, prices).
+- Every statement about users, behaviour, or the product is either observed (with its source or
+  note ID) or marked as an assumption. Cite a study only for what your research note says it found.
+- Every number set large on an asset comes from a primary source or two independent reports.
+
+Then keep the reply short and plain: the outcome, the key visuals, at most three blind spots or
+risks, and at most three questions. Each question is one decision with your recommended answer and
+the reason ("Markets: I recommend UK first, because the samples use £ and open banking makes linking
+cheap. Confirm?"). Every other open decision becomes a labelled default you already took, listed in
+`HANDOFF.md`. Keep internal codes (D1, R4, V2) in the files, not the reply.
 
 ## Humans and agents are both users
 

@@ -116,4 +116,49 @@ in c05.
 - One run per scenario and two judges each; judge B was consistently stricter (0.69 vs 0.78).
 - c01 used a simulated user; c03's usability test was run by a judge, not by the agent under test.
 - Two agents were interrupted once and resumed; their judged output is the resumed result.
-- No skill changes were made from this run. Rerun the affected scenarios after applying fixes.
+- The fixes below were applied after this run; see "Reruns after fixes".
+
+## Reruns after fixes
+
+The 11 suggested changes above were applied (round 2), and the weaker scenarios were rerun with
+the same opening messages, fresh agents, and two fresh judges each. Round 2 introduced a regression
+of its own: the new reply rule said "one question per decision" and dropped "at most three, each
+with a recommendation", so c03, c05, and c07 all failed H2. Round 3 restored that rule and added
+the judges' round-2 findings; c03 and c07 were rerun again.
+
+| Scenario | Baseline A / B | Round 2 A / B | Round 3 A / B | Hard fails in latest run |
+| --- | --- | --- | --- | --- |
+| c03 invoicing MCP server | 0.87 / 0.70 | 0.57 / 0.52 | 0.83 / 0.63 | B: 5 of 11 tools lack a "when not to use" clause |
+| c04 WCAG 2.2 audit | 0.69 / 0.69 | 0.83 / 0.83 | not rerun | — |
+| c05 A2 poster and carousel | 0.66 / 0.60 | 0.59 / 0.60 | not rerun | Both: H2 (fixed in round 3, untested here) |
+| c07 couples-finance mood board | 0.73 / 0.67 | 0.71 / 0.66 | 0.87 / 0.80 | — |
+
+Mean of the latest run per scenario: 0.75, against 0.70 for the same four at baseline.
+
+- **c04**: recall rose from 16/17 to 17/17; every finding names who is affected and every axe
+  failure is reconciled. New defect: scope creep (a full fixed copy and test tooling in the project
+  root), addressed in round 3.
+- **c05**: the alt-text check (H7) now passes; the remaining hard fail is the question rule. Craft
+  defects remain: the event type does not read at 3 m, forwarded assets omit the action, the PDF
+  text layer duplicates halo strings and drops Kannada conjuncts, and a feed mockup kept stale copy.
+- **c07**: the first run where every hard check passes. 44% of images come from outside the
+  category, every direction is sketched on the invitee's first screen, and only one Mobbin search
+  was repeated (three at baseline).
+- **c03 fresh-agent test**: 11 guesses in all three versions (round 3: 4, 2, 3, 2). Safety improved
+  (approval binds every recipient and free-text field, sends re-check at send time, non-goals are
+  stated), but rules still leak into transcripts and `HANDOFF.md`, and annotations disagree with
+  descriptions. The agent under test had no subagent, so it never ran the fresh-agent test itself.
+  Round 3 therefore adds a mechanical gate, `design_kit.py tools`, which flags 7 tools in the
+  round-3 output (the 5 the judge found plus 2 that phrase the clause another way).
+
+Changes in rounds 2 and 3: closing questions capped at three with a recommendation each; mood boards
+lead with look and feel, link every image, keep assumption labels, and sketch every direction on the
+same moment of truth with a pressure-free exit; one image search per call; audit replies carry
+severity, criterion, and who is affected, with fixed copies only on request and tooling out of the
+project root; MCP guidance adds "Not for" clauses, stated non-goals, approval binding for every
+outward field, send-time eligibility re-checks, annotation audits, lookup or no-match results for
+every reference parameter, and a per-tool defaults sweep; print adds what/when/where at viewing
+distance, press files with available tools, PDF text extraction checks, and photocopy variants;
+social requires the action on forwardable assets and typesetting checks on every derived asset.
+
+Not yet measured: c05 and c04 against the round-3 skill, and c03 with `design_kit.py tools` in place.
