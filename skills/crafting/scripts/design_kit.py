@@ -7,6 +7,8 @@ Commands (run from the project root; --dir defaults to .design):
   spend                        show research spend against the budget
   check                        verify journeys and that every touchpoint has every required state
                                (exit 1 on gaps)
+  tools PATH                   lint an MCP tool list: each tool has a description with a "Not for"
+                               clause, an inputSchema, and all four annotation hints (exit 1 on gaps)
 
 Standard library only. Makes no network calls.
 """
@@ -254,6 +256,35 @@ def cmd_check(args):
     sys.exit(1 if gaps else 0)
 
 
+TOOL_HINTS = ("readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint")
+
+
+def lint_tools(data):
+    tools = data.get("tools", data) if isinstance(data, dict) else data
+    if not isinstance(tools, list) or not tools:
+        return ["no tools found (expected a list or an object with a \"tools\" list)"]
+    gaps = []
+    for index, tool in enumerate(tools):
+        name = tool.get("name", f"#{index}")
+        if not re.search(r"\bnot for\b", str(tool.get("description", "")), re.IGNORECASE):
+            gaps.append(f"{name}: description needs a 'Not for X; use Y' clause")
+        if not isinstance(tool.get("inputSchema"), dict):
+            gaps.append(f"{name}: missing inputSchema")
+        annotations = tool.get("annotations") or {}
+        for hint in TOOL_HINTS:
+            if not isinstance(annotations.get(hint), bool):
+                gaps.append(f"{name}: annotations.{hint} must be true or false")
+    return gaps
+
+
+def cmd_tools(args):
+    gaps = lint_tools(read_json(Path(args.path)))
+    for gap in gaps:
+        print(f"gap: {gap}")
+    print(f"{len(gaps)} gaps")
+    sys.exit(1 if gaps else 0)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dir", default=".design", help="design workspace directory (default .design)")
@@ -277,6 +308,10 @@ def main(argv=None):
 
     check = commands.add_parser("check", help="verify state coverage; exit 1 on gaps")
     check.set_defaults(func=cmd_check)
+
+    tools = commands.add_parser("tools", help="lint an MCP tool list; exit 1 on gaps")
+    tools.add_argument("path", help="tools.json: a list of tools or an object with a tools list")
+    tools.set_defaults(func=cmd_tools)
 
     args = parser.parse_args(argv)
     args.func(args)

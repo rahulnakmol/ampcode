@@ -42,9 +42,13 @@ The tool list is the interface; its descriptions are the copy. Design it like a 
 - **Few, task-shaped tools** over many thin CRUD endpoints: `schedule_meeting` instead of
   `create_event` plus `add_attendee` plus `set_reminder`. Each tool maps to a job a person would
   ask for.
-- **Descriptions that route**: first sentence says what it does; then when to use it and when to use
-  another tool instead; then side effects and cost. Name the inputs the way the user's request
-  would.
+- **Descriptions that route**: first sentence says what it does; then when to use it; then a "Not
+  for X; use Y" clause; then side effects and cost. Name the inputs the way the user's request
+  would. When an optional parameter's omission triggers a long default (a 90-day hold), recommend a
+  value for each common case.
+- **Non-goals are stated**: list the plausible requests agents cannot do (void, refund, record a
+  payment, edit contacts) in the server instructions or the nearest tool's description, with the
+  handoff (an app link), and add one refusal or handoff transcript for each.
 - **Schemas that prevent errors**: enums over free text, formats and examples on fields, sensible
   defaults, and required fields only when truly required.
 - **Outputs designed for reading**: structured content with an `outputSchema` when consumers parse
@@ -55,8 +59,14 @@ The tool list is the interface; its descriptions are the copy. Design it like a 
   one and ask for the other.
 - **Guards have parity**: every tool that moves money, contacts people, publishes, or deletes gets
   the same server-side protection, whether it acts on one item or a batch (a batch read-back of
-  recipient count and total, or a threshold confirmation). Every field that changes who receives
-  something (`to`, `cc`, `bcc`, webhook URLs) is part of the read-back.
+  recipient count and total, or a threshold confirmation). Write a parity table: approval, what it
+  binds, caps, stale re-check, retry reuse; single-item and batch tools match row for row.
+- **Approval binds everything outward**: every field that changes who receives something (`to`,
+  `cc`, `bcc`, `cc_me`, webhook URLs) and every customer-visible free-text value (message, note) is
+  shown in the read-back and bound to the approval, together with the caller and an expiry.
+- **Approved, then the world changed**: a scheduled or delayed send re-checks full eligibility at
+  send time (hold, dispute, contact change, payment), and every tool that changes eligibility says
+  what happens to sends already scheduled.
 - **Hints match behaviour**: annotations such as `idempotentHint` hold for every argument
   combination; a flag like `resend: true` makes a tool non-idempotent.
 - **Defaults are visible**: any server default an agent must know (send limits, automatic resume
@@ -182,14 +192,31 @@ and its detail view), and `interrupted` (stopped or redirected mid-answer). Add 
 ## Checking agent surfaces
 
 - Validate every example call and result against the schemas with a script that exits non-zero on
-  any problem, and check that every fact in a result summary comes from the call's inputs or from
-  state shown earlier.
+  any problem, and check that every fact in a result summary (amounts, dates, names) comes from the
+  call's inputs or from state shown earlier, and that timelines agree across transcripts.
+- Run `design_kit.py tools <tools.json>` and fix every gap. Then audit each annotation against
+  the tool's own text for every argument combination: anything that cancels or replaces without
+  restore is `destructiveHint: true`; any path that "sends again" is not idempotent unless keyed.
+- Every reference parameter (customer, invoice) has a lookup tool or a documented no-match result
+  with a transcript, and constraints a person states about an owner ("anyone who disputed") can be
+  expressed without the agent filtering items by hand.
+- Send-time re-checks listed in descriptions match the server's full eligibility list (holds,
+  disputes, void, cooldown from any sender, contact changes, payment, caps, revoked scope).
+- Form-mode elicitation trusts the client to show a person; say so, prefer URL mode for outward
+  actions when client trust is not established, put no clickable links in form messages, and make
+  approval state single-use with a fresh ID when content changes.
+- **Transcript-to-contract sweep**: for every rule a transcript, approval prompt, or "what the agent
+  does next" relies on, find it in a tool description or schema. Check each number in the defaults table (limits, rate limits, windows, durations) appears in the
+  description of every tool it applies to, once, not only in server instructions. A rule found only in
+  transcripts, `DESIGN.md`, or `HANDOFF.md` is a defect: agents never see those files.
 - For CLIs and APIs, give every exit code or error code its own state, including the generic
   internal or network failure, and list every exit code in `--help`.
 - Walk recovery for each failing code: using only the help text and the outputs, write the exact next
   call. If it needs another command's output, that command's contract is in scope or is a stated gap.
 - Run the agent usability test in `user-research.md` with tasks the transcripts do not already
-  cover, and report guesses per task.
+  cover, and report guesses per task. Include a customer- or owner-level request (not one item), an
+  ambiguous verb ("cancel"), and a request for a non-goal. If you have no subagent, do the sweep
+  above instead of scoring yourself, and give the user the test prompt.
 
 ## AX slop
 

@@ -91,6 +91,7 @@ $K init --surfaces web,ios,mcp,email      # creates .design/ files that do not e
 $K log --tool parallel-task.createDeepResearch --processor pro --note "..."   # before a paid call
 $K spend                                  # spend so far against the budget
 $K check                                  # gate: journeys valid; every touchpoint has every required state
+$K tools .design/mcp/tools.json           # gate for MCP: "Not for" clauses, inputSchema, all four hints
 ```
 
 If `.design/` exists, read `BRIEF.md`, `DESIGN.md`, and `research/` first and build on them.
@@ -117,7 +118,8 @@ Follow [reference/discovery.md](reference/discovery.md):
    journeys and surfaces, register (persuade, operate, read, converse, experience), personality
    (three adjectives and one thing it must never feel like), constraints (brand, system, WCAG level,
    languages, regulation, performance), fidelity and destination, and the research budget.
-   Ask for markets before naming any law or spending research on one, and check each channel
+   Ask for markets (with a recommended market) before naming any law or spending research on one,
+   and check each channel
    against the market's habits (for example WhatsApp-first India). Never bundle several decisions
    into one "yes": each decision the user must own is its own question.
 6. **Validate risky assumptions.** If the need rests on an assumption that would change the design,
@@ -160,9 +162,14 @@ replaces evidence about this product's users.
 Build `.design/board/index.html`: one self-contained page (inline CSS; images downloaded into
 `.design/research/img/` and credited), grouped by what to take from each reference. Name the one
 specific detail worth stealing from each, never "nice vibe", and describe only what the reference
-actually shows. A board is a point of view, not a pattern library: about a third of references come
-from outside the category (objects, print, type specimens, architecture, film, motion), and every
-direction has a type and material strip. For non-visual surfaces (`api`, `mcp`, `a2a`, `webhook`,
+actually shows. A board is a point of view, not a pattern library. Lead with look and feel: about
+40% of images come from outside the category (objects, print, type specimens, architecture, film,
+motion), shown large, with color fields and type set at specimen size beside them; UI and behaviour
+references go in a smaller strip after. Every image, including anti-references, links to its
+source. Every direction has a type and material strip, and every direction's lo-fi frame shows the
+brief's top moment of truth (for an invite-led product, the invitee's first screen), not the easiest
+screen. Assumptions keep their label on the board, and each board section gets its own readable
+capture that you inspect. For non-visual surfaces (`api`, `mcp`, `a2a`, `webhook`,
 `agent-docs`), collect reference schemas, transcripts, and docs instead, and skip the visual board
 unless asked.
 
@@ -259,7 +266,10 @@ replying, check:
 - Every number set large on an asset comes from a primary source or two independent reports.
 
 Then keep the reply short and plain: the outcome, the key visuals, at most three blind spots or
-risks, and one question per decision. Keep internal codes (D1, R4, V2) in the files, not the reply.
+risks, and at most three questions. Each question is one decision with your recommended answer and
+the reason ("Markets: I recommend UK first, because the samples use £ and open banking makes linking
+cheap. Confirm?"). Every other open decision becomes a labelled default you already took, listed in
+`HANDOFF.md`. Keep internal codes (D1, R4, V2) in the files, not the reply.
 
 ## Humans and agents are both users
 

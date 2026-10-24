@@ -73,6 +73,14 @@ Rules:
 - A borrowed metaphor keeps its meaning: if the direction borrows from software, sport, or
   paperwork, check that its interactions mean the same thing (in GitHub, a ticked box means done,
   not a vote).
+- Label each direction's position (expected, adjacent, or unexpected) and name the category
+  baseline the unexpected one beats.
+- Every direction's lo-fi frame shows the same moment (the brief's top moment of truth), so they
+  compare like for like; show the recommended one before and after its key action.
+- An invite or consent frame always has a pressure-free exit ("Not now", "Decline"). A softer
+  action in its place is not an exit.
+- For an Inspire board, keep each direction card to the idea, type, palette and material, the
+  signature detail, and the anchors; motion timings, grid, and risk tables wait for the system.
 - Every choice traces to the brief or a reference.
 
 ## Critique rubric

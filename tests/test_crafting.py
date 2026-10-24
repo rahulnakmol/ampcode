@@ -146,6 +146,23 @@ class Coverage(unittest.TestCase):
             path.write_text(json.dumps(data))
             self.assertEqual(run(work, "check").returncode, 0)
 
+    def test_tools_lint_requires_not_for_clause_schema_and_every_hint(self):
+        hints = {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}
+        good = {"name": "find_invoices", "description": "Find invoices. Not for chasing; use chase_overdue.",
+                "inputSchema": {"type": "object"}, "annotations": hints}
+        bad = {"name": "send_invoice", "description": "Send an invoice. Note: format matters.",
+               "inputSchema": {"type": "object"}, "annotations": {**hints, "idempotentHint": "yes"}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "tools.json"
+            path.write_text(json.dumps({"tools": [good, bad]}))
+            result = run(tmp, "tools", str(path))
+            self.assertEqual(result.returncode, 1)
+            gaps = [line for line in result.stdout.splitlines() if line.startswith("gap:")]
+            self.assertEqual(gaps, ["gap: send_invoice: description needs a 'Not for X; use Y' clause",
+                                    "gap: send_invoice: annotations.idempotentHint must be true or false"])
+            path.write_text(json.dumps([good]))
+            self.assertEqual(run(tmp, "tools", str(path)).returncode, 0)
+
     def test_init_rejects_unknown_surfaces_and_keeps_existing_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(run(tmp, "init", "--surfaces", "web,watchos").returncode, 1)

@@ -178,7 +178,10 @@ independent reports that agree. When sources disagree, record both in the findin
 with a reason, and tell the user. Never set a disputed number large.
 
 Keep tool output small on the first call (for example Mobbin `limit` 8 or fewer and only the fields
-you need) so you never repeat a paid or metered search because the result was lost.
+you need) so you never repeat a paid or metered search because the result was lost. Run one
+image-returning search per call and print text (titles, IDs, URLs), not inline images; download
+only the images you shortlist. A search whose output you lost to truncation is your own waste: note
+it in the ledger and change how you call, not just retry.
 
 ## Writing findings
 

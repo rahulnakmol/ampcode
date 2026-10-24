@@ -55,7 +55,10 @@ size, and the link preview through a preview debugger or a local render of the m
 text (`"alt"` on each state, which `check` requires) and post copy for every asset you produce,
 including the square, the story, and the link preview, in `touchpoints.json`.
 
-After any copy change, search every source and rendered mockup (feed, grid, in-context renders,
+Run the typesetting check (widows, orphans, wraps, collisions, one date format) on every derived
+asset (square, story, link preview), not only the primary. Any image likely to be forwarded on its
+own (the square, the story, the cover) shows the action and the deadline in the artwork; before
+claiming an image "carries every fact", compare its visible text with the fact list. After any copy change, search every source and rendered mockup (feed, grid, in-context renders,
 captions) for the old wording and re-render whatever still carries it.
 
 ## Social slop

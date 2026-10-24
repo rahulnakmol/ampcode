@@ -23,11 +23,21 @@ Craft:
   shift. If the accent is out of gamut (most screen pinks, oranges, and greens are), recommend a
   spot or fluorescent ink (for example a Pantone fluorescent or a riso fluoro) as the default
   specification, not the nearest process mix.
+- **What, when, where at distance.** On posters and signs, the kind of thing (hackathon, sale,
+  talk), the date, and the place each read at the declared viewing distance (for A2, about 3 m).
+  An invented event name never outranks what the event is. Put these in the legibility table and
+  treat a miss as blocking.
 - **Bleed and safety.** Extend backgrounds about 3 mm (0.125 in) past the trim; keep text and key
   content at least 3 to 5 mm inside it. Account for folds, binding, and perforations.
 - **Images at 300 ppi at final size** for photos (line art higher), in the correct color space.
 - **Files the printer can use.** PDF/X (for example PDF/X-4) with fonts embedded, crop marks and bleed,
-  and no RGB or low-resolution surprises. Ask the printer for their specification.
+  and no RGB or low-resolution surprises. Ask the printer for their specification. Try to produce
+  the press file with the tools you have (an output intent, strokes outlined, no Type 3 fonts)
+  before falling back to rebuild instructions. Offer an A3 or A4 photocopy-safe variant when the
+  piece goes on noticeboards. Extract the PDF's text and fail on duplicated strings (halo copies
+  drawn as text) or unmapped glyphs (complex scripts such as Kannada or Devanagari need correct
+  ToUnicode mapping), and check the trim box equals the nominal size. Keep build environments (`.venv`, `node_modules`) out of deliverable
+  folders.
 - **Readable by everyone.** Contrast that survives cheap printing and photocopies, no meaning in
   color alone, plain language, and a digital accessible version (tagged PDF) for screen readers.
 - **Bridge to digital.** QR codes with a short human-readable URL beside them, a quiet zone, and a
