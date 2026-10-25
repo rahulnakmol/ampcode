@@ -53,7 +53,7 @@ Files: skills/delivering/SKILL.md and references; docs/mission-control.md; READM
 - [x] Update instructions to use the coordinator when installed, preserve requirements, require owner acknowledgment of both design disciplines, and implement the agreed default merge mode.
 - [x] Document the accepted local workflow boundary, existing credentials, CI/protection prerequisites and availability limits without hostile-shell enforcement claims.
 - [x] Before the latest steering, run make check, real local restart/journey probes and two independent review gates with repairs and revalidation. Both reviews found defects; regression repairs and a second-gate follow-up closed those findings. Native owner dialogs and live protected merges remain unverified.
-- [ ] Independently review the revised local-only source; prior reviews do not cover this change.
+- [x] Independently review the revised local-only source in two gates. The first found deferred GitHub auto-merge could authorize a later head; red/green regression repair removed `--auto`. The second gate passed with no new blockers. Native dialogs and a complete live mission remain unverified.
 - [ ] Deliver source and evidence. This permission/merge-control feature is high-risk: do not merge this PR without the user's explicit final-candidate acknowledgment. Do not publish to Personal repositories or install shared protections without approval.
 
 ## Activation remains separate

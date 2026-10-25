@@ -133,8 +133,9 @@ Owner-restricted dialogs take non-sensitive typed acknowledgments, **never secre
 enforces the workflow, not security against an unrestricted executor. The coordinator uses existing
 GitHub credentials through `gh` in the Amp environment; no custom controller, App, or approval
 service is required. Protected `dev` must enforce strict required CI checks pinned to their source
-Apps and include administrators. CI/protection setup is **not provisioned here**; missing or failing
-requirements block merge. Neither plugin loading nor local records imply hostile-shell isolation.
+Apps and include administrators. The plugin does not provision CI/protection; this repository's
+configured gate is described under Validate below. Missing or failing requirements block merge.
+Neither plugin loading nor local records imply hostile-shell isolation.
 
 Its [mission record](./skills/delivering/reference/mission-record.md) lists coordinator tools and
 manual fallback; [review/recovery guidance](./skills/delivering/reference/review-and-recovery.md)
@@ -164,6 +165,21 @@ make check
 ```
 
 The check loads every plugin through the installed Amp CLI, runs advisory-team wiring and tool-allowlist tests with Bun, runs the Python skill-script tests (including executing every documented `distill` JSON example through the CLI), syntax-checks skill shell scripts, verifies formatting errors detectable by Git, and validates the required metadata and 500-line limit of every skill package. It needs `amp`, `bun`, and `python3`; the tests make no network, paid, or cloud calls.
+
+Pull requests targeting `dev` and pushes to `dev` run the same command in
+[`Validate extensions`](./.github/workflows/check.yml). Its stable required check
+is **Extension checks**, emitted by GitHub Actions. The workflow uses pinned
+actions/tool versions, verifies the Amp binary checksum, grants read-only repository
+access, and supplies no Amp or cloud credentials. PR code runs on disposable
+GitHub-hosted Ubuntu runners; no Depot runner is configured for this repository.
+
+`dev` requires a pull request, an up-to-date successful **Extension checks** result
+from GitHub Actions, and resolved review conversations. Protection applies to
+administrators and disallows force pushes and deletion. No mandatory human review
+count is imposed: mission-owner acknowledgment for high-risk/ask-mode work belongs
+to the delivery workflow, while low/medium work may merge automatically. These
+controls do not make an agent with repository-administration credentials unable
+to change policy. Rolling/stable promotion and extension publication remain separate.
 
 ## Publish
 
