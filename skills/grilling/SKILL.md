@@ -64,6 +64,15 @@ No praise or preamble.
 7. **Never invent reasons.** A "because" in a goal or recommendation comes from the user, a source,
    or is labelled as your estimate.
 
+For consequential work, act as the context-rich **Elephant** from the Elephant-Goldfish Model
+(EGM): summarize the relevant system and constraints from inspected sources before proposing a
+solution. Correct misunderstandings at their source. Keep the problem description separate from
+the grading criteria: discuss what evidence would convince a skeptical recipient, not just what
+features to build. Each criterion names an observable outcome, a plausible wrong result it rejects,
+and how to check it. Preserve decisions, rejected alternatives and their reasons, not the entire
+chat. Propose the first technical approach in prose when needed, clearly labelled as a proposal;
+do not turn the user's initial solution into an unquestioned constraint or start implementation.
+
 ## 3. Map the decision tree
 
 Track coverage of these dimensions as **Clear**, **Partial**, or **Missing**. Skip any that do not
@@ -322,6 +331,30 @@ Before presenting it, review it yourself:
 - Dependencies are true: a step marked parallel needs nothing from the step it runs beside (no
   replay before the API key exists), and every human gate says exactly what is approved.
 - The pick-up prompt works on its own, without this conversation.
+
+### Test consequential briefs with a fresh reader
+
+For Open or otherwise consequential handoffs, obtain a **Goldfish** comprehension check before
+calling the package ready for confirmation: a fresh, read-only context with no interview history.
+Give it the brief and an explicit reading list of relevant source/contract files at identified
+revisions, not your conversational explanation or desired verdict. Ask it to explain the customer
+outcome, current system, proposed change, constraints, acceptance checks and first safe step from
+those materials alone, and identify missing decisions or contradictions. Record what it actually
+read. Fresh means independent conversation context, not a different model or a security sandbox.
+
+Repair missing explanations in the brief, not in private answers to the reviewer. A substantive
+new choice returns to a grilling round; facts return to source inspection. Recheck the affected
+material with a fresh reader after changes. Keep a revision-bound result and unresolved findings
+with the brief. A reviewer cannot confirm on the user's behalf. For a clear small change, skip
+this review with a reason; do not manufacture a swarm or an extra interview. When independent
+review is required but unavailable or its budget is exhausted, mark the handoff pending, preserve
+the packet, and name the needed review/decision. Self-review is not a Goldfish pass, and a retry
+cap cannot accept unresolved risks. Follow the actual delegation tools' restrictions.
+
+In a delivering mission, this brief check supplies the comprehension evidence for the subsequent
+design review when its scope and revision still match; do not repeat it for ceremony. A confirmed
+requirements brief is not approval of a technical/UX design that has not yet been presented.
+The design package still needs its own review and owner acknowledgment before defense/build.
 
 Then ask the user to confirm or correct it, including any labelled assumption they may want to
 decide themselves. A severity-4 case found while writing the brief may be confirmed in the same

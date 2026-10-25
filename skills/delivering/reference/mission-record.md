@@ -45,6 +45,8 @@ claim tool enforcement or substitute local files for successful CI and branch pr
 - Requirements: <original request and purpose; clarification/change provenance>
 - Brief: <path/URL and revision; self-contained or transferred with this record>
 - Design package: <concrete spec, plan, technical design, relevant crafting UX or inapplicability>
+- Fresh-context design review: <packet revision, reviewer/lens, reading list and actual reads,
+  findings/dispositions, reused grilling evidence and its scope, pending checks or skip rationale>
 - Design acknowledgment: <initiator/thread owner or explicit owner adoption; package revision;
   owner interaction reference; permitted assumptions; material changes reopen this gate>
 - In / out: <scope and non-goals>
@@ -85,6 +87,8 @@ For each evidence record:
 | --- | --- | --- | --- | --- | --- |
 - Gate one: <scope, independence, candidate, result, limitations>
 - Gate two: <final candidate, finding closure, new-risk check, result, limitations>
+- Spec/code drift: <checked acceptance IDs and revisions; missing/unauthorized/approved/stale-doc
+  differences, source evidence, decisions and revalidation; also refresh after resume>
 - Accepted risks: <authorized owner, rationale, boundaries; never a fabricated pass>
 
 ## Value and delivery

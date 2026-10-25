@@ -82,6 +82,12 @@ Recommended invocation: Medium mode with Fast where supported (a user preference
 
 [`skills/grilling/`](./skills/grilling/SKILL.md) interviews you at the start of a task to turn a vague or partly detailed requirement, plan, or question into a confirmed, agent-ready brief. It sizes the request first (clear requests proceed without questions), looks up facts instead of asking, asks one to three high-impact questions per round with a recommended answer for each, runs an edge-case and pre-mortem pass using [`reference/edge-cases.md`](./skills/grilling/reference/edge-cases.md), and keeps grilling until a concreteness checklist passes. It ends with a confirmed brief covering the final shape, scope, requirements, edge cases, and verification, plus a step-by-step work plan and a ready-to-paste prompt for the agent that picks it up. It is model-invoked: it triggers at the start of most planning, design, build, or decision tasks and on phrases such as "grill me", "red-team this", "pre-mortem", "what could go wrong", "spec this out", or "write a PRD", and skips clear, small requests. Sources and design choices are in [`docs/grilling-research.md`](./docs/grilling-research.md). LLM-judged trigger and behavior evaluations live in [`evals/grilling/`](./evals/grilling/README.md), with results in [`docs/grilling-evaluation.md`](./docs/grilling-evaluation.md).
 
+For consequential handoffs, the Elephant-Goldfish adaptation separates the problem from the
+grading criteria and tests the brief with a fresh, read-only reader. Missing context is repaired
+in the brief, not explained privately to the reviewer. Clear small edits skip this overhead.
+See the [paired scenario evaluation](./evals/egm/README.md) and
+[source rationale](./docs/delivering-research.md#elephant-goldfish-adaptation).
+
 ## Crafting
 
 [`skills/crafting/`](./skills/crafting/SKILL.md) (formerly `designing-experiences`) takes a use case, finds the real need behind it, and crafts a design-worthy experience at every touchpoint where a person or an AI agent interacts. It covers 31 surfaces in nine families: terminal (CLI, TUI), screens (web, iOS, Android, macOS, Windows), ambient (watch, TV, car, spatial, kiosk, device screens), conversation (chat, voice), messaging (notifications, email, SMS), agents (APIs, MCP tools, agent-to-agent, webhooks, agent docs), social, physical (print, packaging, signage), and media (presentations, video, documents, data visualization).
@@ -111,6 +117,12 @@ implementation and working commits, real user journeys, correctness/security rev
 repair and revalidation, a distinct second review, customer-value assessment, and authorized dev
 integration. Consequential changes require independent reviews. Compact mission records support
 safe resumption; missing evidence, stale approvals, and ambiguous side effects do not become passes.
+
+Before owner design acknowledgment, fresh-context reviewers check comprehension, design risks
+against source, and implementation readiness. Gate two and resume also check spec/code drift,
+distinguishing defects from approved changes. These checks retain both build-review gates and
+never turn an exhausted review budget into risk acceptance. The mission plugin's runtime schema
+is unchanged; these are skill instructions, not a new automatically enforced plugin gate.
 
 Communication supports standard/formal records and editorial explanations with descriptive
 headers, both guided by ASD-STE100 principles without an unvalidated compliance claim. ELI5 short

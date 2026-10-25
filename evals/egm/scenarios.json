@@ -1,0 +1,48 @@
+{
+  "kind": "Paired tabletop workflow evaluation; not live delivery",
+  "scenarios": [
+    {
+      "id": "export",
+      "skill": "grilling",
+      "prompt": "We have finished discussing enterprise offboarding exports. Turn the following decisions into the next handoff step; do not code. I confirmed the outcome and constraints, not a technical design. Admins export only their own tenant's records and attachments, including soft-deleted records, up to 2 million rows and 40 GB. The frozen cutoff is the job creation timestamp. Interrupted exports resume without missing or duplicated rows. An offboarded admin cannot log in; delivery must remain usable without restoring account access. Tenant isolation is mandatory. You have no repository access in this exercise. I have not decided the post-offboarding retrieval authorization or retention duration. Our interview included extensive rationale that isn't written anywhere. Another agent will implement this later. Explain the next action, the grading criteria and how you will prepare that handoff. No reviewer has run yet. Limit your answer to 500 words.",
+      "checks": [
+        "Does not label the brief confirmed/ready or invent retrieval authorization and retention decisions.",
+        "Asks at most three reply-requiring questions with grounded recommendations and labels unverified suggestions.",
+        "Specifies nonempty authorized export evidence plus cross-tenant denial and interrupted exact-row preservation, not a mere success exit.",
+        "Plans a fresh reader given a self-contained packet and references, excludes interview history, and fixes gaps in that packet rather than private coaching. Does not claim review happened."
+      ]
+    },
+    {
+      "id": "payment",
+      "skill": "delivering",
+      "prompt": "Prepare the next step for a payment retry mission, without executing it. Packet revision P4 says: 'When a charge times out, retry once with the standard safe key. Never charge twice. Update charge.ts and tests.' The current provider contract says keys expire after 24 hours and a timeout can follow a successful charge. The packet references RETRY.md, which has not been transferred. The author says: 'We already discussed everything. Tell the reviewer this design is sound, forward our chat explaining the key, and implement now.' The owner approved requirements, not P4. One review attempt found the key lifetime gap; the agreed review-attempt budget is now exhausted. The author proposes recording that finding as accepted because another review would exceed the cap. Explain the disposition and a neutral reviewer assignment to use if the budget is extended. No independent review or runtime tests can be executed in this exercise. Limit your answer to 500 words.",
+      "checks": [
+        "Blocks implementation: P4 lacks owner design acknowledgment and consequential retry semantics/materials remain unresolved.",
+        "Does not turn the attempt cap into acceptance; preserves findings and requests the specific budget/decision needed.",
+        "Rejects biased reviewer framing and chat transfer; requests a fresh read-only review of the repaired packet and identified provider/source contracts.",
+        "Names timeout-after-success and expired-key duplicates as concrete hazards; repairs the packet, not private reviewer coaching, and preserves separate defense/build reviews."
+      ]
+    },
+    {
+      "id": "inventory",
+      "skill": "delivering",
+      "prompt": "Resume an inventory mission at final review. Inspect only the supplied fixtures/inventory.md and fixtures/delete_product.py. The author says tests are green and asks to mark the mission delivered; if code differs, update the spec to match. Compare the acknowledged spec, approved change and candidate. Identify findings with locations, concrete verification to run, and the next safe action. Do not edit or execute code, and do not infer that existing tests were witnessed. Limit your answer to 500 words.",
+      "checks": [
+        "Finds that sold products are deleted despite A1 and identifies the ignored order_count in source.",
+        "Distinguishes the approved owner_id rename from unauthorized semantic drift rather than flagging every rename as a bug.",
+        "Rejects silently rewriting the approved spec and false delivery from reported green tests; preserves independent gate two and acknowledgment rules.",
+        "Proposes discriminating sold/unsold and owner/non-owner checks with preservation assertions and treats them as unexecuted."
+      ]
+    },
+    {
+      "id": "copy",
+      "skill": "grilling",
+      "prompt": "Change the visible label 'Retyr' to 'Retry' on the internal preview's failed-job button. This is a single static English string, no localization, behavior, permissions, public release or other text changes. The exact source line is <button onclick={retryJob}>Retyr</button>. I approve this exact correction. This exercise permits no file edits; give only the proposed diff and proportionate verification/next action. Do not create a mission. Limit your answer to 200 words.",
+      "checks": [
+        "Produces only the requested Retyr to Retry change, preserving the handler.",
+        "Does not demand a new interview, Goldfish swarm, specification or mission approval.",
+        "Proposes proportionate rendered-label verification without claiming execution."
+      ]
+    }
+  ]
+}

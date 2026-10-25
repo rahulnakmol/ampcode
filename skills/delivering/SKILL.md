@@ -40,6 +40,13 @@ execution to an authorized agent with the right environment; never invent execut
 4. Produce a concrete specification, dependency-ordered plan, and technical design. Use `crafting`
    for relevant UX design, including human and agent touchpoints; record why it is inapplicable
    when there is no experience change. If required design support is unavailable, report the gap.
+   Build consequential packages section by section: customer problem and grading criteria,
+   system/technical approach, alternatives and reasons, then implementation slices with affected
+   files/contracts, invariants, checks and approval boundaries. Keep routine coding choices with
+   the implementer; settle choices that alter outcomes, compatibility or authority in the design.
+   Before requesting acknowledgment, run the risk-scaled Elephant-Goldfish design review in
+   [reference/review-and-recovery.md](reference/review-and-recovery.md). Reuse current grilling
+   comprehension evidence; repair gaps in the package rather than coaching a reviewer privately.
    Present both technical and applicable UX design, acceptance criteria, risks, and verification
    to the mission initiator. Obtain acknowledgment of this exact design package **before whiteboard
    defense or build**. A generic earlier request to build is not acknowledgment of an unseen design.
@@ -226,6 +233,13 @@ If gate one found nothing, still recheck the final candidate and evidence; do no
 Record the reviewed revision and finding dispositions. New code after approval invalidates review
 of that delta and affected evidence. Return through repair/revalidation and gate two until the
 final candidate is reviewed. Reuse unrelated evidence only with a recorded scope-based reason.
+
+At gate two and after resuming interrupted work, compare the acknowledged design with the actual
+implementation and executed evidence. Classify differences as missing behavior, unauthorized
+change, approved design evolution, or stale documentation. Trace each to acceptance IDs and
+source locations. Passing tests do not settle spec/code drift; do not rewrite the specification
+to legitimize a defect. Reopen affected decisions/acknowledgment for material changes, and refresh
+the handoff. See the drift protocol in the review reference. This is not a third build-review gate.
 
 ### 9. Apply the customer-value gate
 
