@@ -1,0 +1,56 @@
+{
+  "a": {
+    "final": {
+      "passed": 53,
+      "total": 54,
+      "hard_failures": 0,
+      "cases": 9
+    },
+    "baseline_selected": {
+      "passed": 8,
+      "total": 11,
+      "hard_failures": 0,
+      "cases": 2
+    }
+  },
+  "b": {
+    "final": {
+      "passed": 54,
+      "total": 54,
+      "hard_failures": 0,
+      "cases": 9
+    },
+    "baseline_selected": {
+      "passed": 8,
+      "total": 11,
+      "hard_failures": 0,
+      "cases": 2
+    }
+  },
+  "sha256": {
+    "original_skill": "ac3656c3637313856cafe6facda4327c822c453535efecd4a0d2829439f2299d",
+    "candidate_v1_skill": "173a2345eaa4039160a7db8260bd789c4db81ecc48ed499068def8407237e262",
+    "final_skill": "7604e7f0f1d878019010bdef6ad87491c8414c013c9a69ad0e80ffe467afce80",
+    "defense_reference": "0385aff4e1a16354ae9ee246f5194bfd5564b0aa595c6ccdbe2fac423c7ba7e2",
+    "rubric": "1a7ae9047c271cf76df4076122f088667c34f92c86689b08c5392420315133c5"
+  },
+  "word_counts": {
+    "new-D4.md": 214,
+    "new-D5.md": 321,
+    "new-D1.md": 349,
+    "final-R3.md": 268,
+    "new-R1.md": 347,
+    "new-D6.md": 327,
+    "old-D6.md": 330,
+    "new-D2.md": 330,
+    "new-R2.md": 333,
+    "new-D3.md": 329,
+    "old-D3.md": 345,
+    "new-R3.md": 308,
+    "final-D5.md": 316
+  },
+  "rerun_mapping": {
+    "T01": "final-R3.md",
+    "T02": "final-D5.md"
+  }
+}

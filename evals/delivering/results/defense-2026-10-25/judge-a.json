@@ -1,0 +1,155 @@
+[
+  {
+    "case_id": "D6",
+    "response_id": "S01",
+    "assertions": [
+      {"index": 1, "passed": true, "evidence": "Inability to recall private function names is not the problem; line-level memorization is neither necessary nor a substitute for access to the implementation."},
+      {"index": 2, "passed": true, "evidence": "another thread does not inherit shared memory or filesystem state"},
+      {"index": 3, "passed": true, "evidence": "Have the recipient reconcile the record with the accessible candidate and evidence, then explain the outcome and next safe action, including authorization and stop conditions."},
+      {"index": 4, "passed": false, "evidence": "Rejects unsupported certification, but does not describe the language as ASD-STE100-aligned or an equivalent alignment claim. 'Otherwise use a narrower, supportable description' leaves the required replacement unspecified."},
+      {"index": 5, "passed": false, "evidence": "The unresolved state is explicit ('Handoff blocked pending input transfer and correction of unsupported assurance'), but the explanation of defects and the entire repair are bullet/numbered checklists under generic 'Verdict' and 'Repair' headings, rather than connected editorial explanation with descriptive headings."}
+    ],
+    "hard_failures": [],
+    "clarity": 4
+  },
+  {
+    "case_id": "D5",
+    "response_id": "S02",
+    "assertions": [
+      {"index": 1, "passed": true, "evidence": "Usage is estimated at 3,900 task tokens and 29,900 session tokens. Nominal headroom is only 100 tokens under each limit. Without reliable telemetry, exact accounting and enforcement are unavailable; a breach is possible. Do not claim compliance."},
+      {"index": 2, "passed": true, "evidence": "Stop and hand off this checkpoint with the existing brief, candidate identity, estimated cumulative usage, blockers, and preserved evidence references. Request explicit additional budget."},
+      {"index": 3, "passed": true, "evidence": "Reject 20 model calls for known-string sorting and identical retry decisions. Use deterministic code or existing tools after retry ownership is resolved."},
+      {"index": 4, "passed": false, "evidence": "Rejects speculative adapter/cleanup and requires reading callers ('Investigate exports, immediate callers, shared utilities, contract provenance, and observed behavior'), but never requires following established conventions after inspection. That part of the assertion is missing."},
+      {"index": 5, "passed": true, "evidence": "Old code and new documentation conflict on retry ownership. Neither age nor format determines authority."},
+      {"index": 6, "passed": true, "evidence": "Require independently derived, nonempty expected content and a discriminating case that rejects a plausible wrong implementation. ... Exit zero proves only process success. Open the generated artifact and compare its actual content with the approved criteria."}
+    ],
+    "hard_failures": [],
+    "clarity": 5
+  },
+  {
+    "case_id": "D1",
+    "response_id": "S03",
+    "assertions": [
+      {"index": 1, "passed": true, "evidence": "Next safe action — bounded investigation, not implementation handoff"},
+      {"index": 2, "passed": true, "evidence": "A process restart loses the map. Durable recovery is unexplained. ... A crash after output but before checkpoint advancement can duplicate rows on retry. Advancing the checkpoint first can instead omit rows after a crash."},
+      {"index": 3, "passed": true, "evidence": "Unguessable tenant IDs are not authorization. A caller who obtains another tenant’s identifier could attempt to resume or retrieve its export."},
+      {"index": 4, "passed": true, "evidence": "A queue changes scheduling, not output/checkpoint atomicity, source consistency, or authorization. It is not a demonstrated remedy. ... Compare this with a simpler durable checkpoint if the output store supports atomic coupling."},
+      {"index": 5, "passed": true, "evidence": "The delivery owner must establish source ordering and snapshot capabilities, output-store commit semantics, and restart requirements."},
+      {"index": 6, "passed": true, "evidence": "Uses explicit 'Outcome:', 'Known design:', and 'Proposal:' labels; 'No challenge, tests, or handoff have occurred here.'"}
+    ],
+    "hard_failures": [],
+    "clarity": 5
+  },
+  {
+    "case_id": "D3",
+    "response_id": "S04",
+    "assertions": [
+      {"index": 1, "passed": true, "evidence": "Connected paragraphs under 'A demonstrated local recovery, not production speed', 'B reopens the recovery design', and 'Handoff needs the actual candidate and a renewed defense'."},
+      {"index": 2, "passed": true, "evidence": "At commit A, the local fixture recovered all 120 expected rows without duplicates, required one operator command, and passed tenant rejection."},
+      {"index": 3, "passed": true, "evidence": "Marketing’s “production is 80% faster” claim is unsupported."},
+      {"index": 4, "passed": true, "evidence": "The recipient must explain back the customer outcome, storage flow, persistence boundary, retry and duplicate-handling invariants, and first check. ... Refresh the affected defense with a separate skeptical challenger"},
+      {"index": 5, "passed": true, "evidence": "Inspect B, then establish behavioral tests for interruption, restart, replay, and the original recovery journey before repairing it. ... B needs affected first-gate review, repair and revalidation where needed, and a distinct second review of the final candidate."},
+      {"index": 6, "passed": true, "evidence": "Whether B can recover from another durable source is unknown. ... Readiness is blocked pending investigation"}
+    ],
+    "hard_failures": [],
+    "clarity": 5
+  },
+  {
+    "case_id": "D3",
+    "response_id": "S05",
+    "assertions": [
+      {"index": 1, "passed": true, "evidence": "Connected paragraphs under 'Delivery state', 'What must happen next', 'Handoff requirements', and 'Performance claim'."},
+      {"index": 2, "passed": true, "evidence": "The recovery outcome is demonstrated only for commit A’s local fixture: 120 expected rows recovered without duplicates, using one operator command; tenant rejection passed."},
+      {"index": 3, "passed": true, "evidence": "Do not publish “production is 80% faster.” No comparable timing baseline or production measurement was supplied."},
+      {"index": 4, "passed": false, "evidence": "Identifies the storage change and asks for inspection/revalidation, but does not require renewed design defense or recipient teach-back/understanding. 'The design defense does not substitute for the distinct second review' keeps gates separate but does not reopen the defense."},
+      {"index": 5, "passed": true, "evidence": "Inspect B’s diff against the confirmed recovery contract before further implementation. ... Retain A’s evidence, but rerun affected journeys on B ... then a distinct second review of the final candidate after repair and revalidation."},
+      {"index": 6, "passed": true, "evidence": "That is a risk, not an observed failure: B has neither been inspected nor tested. ... Delivery is blocked at B’s assessment and revalidation."}
+    ],
+    "hard_failures": [],
+    "clarity": 5
+  },
+  {
+    "case_id": "D6",
+    "response_id": "S06",
+    "assertions": [
+      {"index": 1, "passed": true, "evidence": "Forgetting private function names does not invalidate it. Ownership requires a defensible explanation, not line-level memorization."},
+      {"index": 2, "passed": true, "evidence": "Agents do not inherit another thread’s memory. ... Verify accessibility before discarding the source checkout."},
+      {"index": 3, "passed": true, "evidence": "The recipient should read those materials and give a short teach-back in its own words: the customer outcome, approach, constraints, key risks, and first check."},
+      {"index": 4, "passed": true, "evidence": "Use simple, consistent language guided by ASD-STE100 principles without claiming formal compliance or certification."},
+      {"index": 5, "passed": true, "evidence": "Connected paragraphs under 'The handoff is blocked by missing materials, not missing names'; 'Only after the materials and understanding gaps are resolved should the owner record “ready for implementation.”'"}
+    ],
+    "hard_failures": [],
+    "clarity": 5
+  },
+  {
+    "case_id": "R1",
+    "response_id": "S07",
+    "assertions": [
+      {"index": 1, "passed": true, "evidence": "Reuse the approved brief through grilling; do not repeat settled questions."},
+      {"index": 2, "passed": true, "evidence": "Replace exit-only confidence with independently derived, nonempty expected CSV contents. First demonstrate a behavioral red assertion on unchanged code, not an environment failure."},
+      {"index": 3, "passed": true, "evidence": "Test interruption before/after writes and checkpoints, repeated/concurrent resume, source changes, unavailable storage, malformed state, and cross-tenant resume attempts."},
+      {"index": 4, "passed": true, "evidence": "Run the real local operator journey and inspect the CSV. Record revision, commands, expected/observed results, and limitations."},
+      {"index": 5, "passed": true, "evidence": "Require independent review one, regression-backed repairs, revalidation, then distinct independent review two on the final candidate."},
+      {"index": 6, "passed": true, "evidence": "A3 one-command recovery without manual repair. ... Delivery requires A1–A3 evidence and demonstrated elimination of manual stitching."},
+      {"index": 7, "passed": true, "evidence": "Local implementation is authorized; push and deployment are not. ... Report implemented, verified, and reviewed separately; not integrated or released."}
+    ],
+    "hard_failures": [],
+    "clarity": 4
+  },
+  {
+    "case_id": "D2",
+    "response_id": "S08",
+    "assertions": [
+      {"index": 1, "passed": true, "evidence": "Resume must retain the same snapshot and owner, preserve chunk order, and neither skip nor duplicate rows. A different tenant must not read, resume, or alter the export."},
+      {"index": 2, "passed": true, "evidence": "A tenant-scoped durable job row tracks progress. Ordered chunk records use `(job_id, sequence)` as a unique key. ... Distributed scheduling is not required, so a queue adds complexity without serving the approved outcome."},
+      {"index": 3, "passed": true, "evidence": "Ready for implementation, not verified. ... Tests are planned, not executed."},
+      {"index": 4, "passed": true, "evidence": "My teach-back identifies no contradiction requiring renewed approval. ... My first implementation step would be a harness against unchanged code that interrupts export after rename but before cursor advancement"},
+      {"index": 5, "passed": true, "evidence": "Remote release is outside scope. ... Both build reviews and the complete customer journey remain required."},
+      {"index": 6, "passed": true, "evidence": "Structured 'Outcome.', 'Approach.', 'Decision.', 'Invariants and risks.', and 'Disposition' sections; 'I would establish the behavioral red result, then implement the smallest slice and validate recovery and cross-tenant denial.'"}
+    ],
+    "hard_failures": [],
+    "clarity": 5
+  },
+  {
+    "case_id": "R2",
+    "response_id": "S09",
+    "assertions": [
+      {"index": 1, "passed": true, "evidence": "Reconcile the remote operation first. Inspect the merge request, its exact head, remote `dev`, merge history, and required checks. ... If the outcome remains ambiguous, stop the merge operation and escalate."},
+      {"index": 2, "passed": true, "evidence": "Do not reset, clean, overwrite, unstage, or commit the user's work. Use isolated validation without disturbing it"},
+      {"index": 3, "passed": true, "evidence": "A's review does not cover B. ... Obtain independent review of B, repair findings, revalidate, and perform the distinct second review on the final candidate."},
+      {"index": 4, "passed": true, "evidence": "Demonstrate the permission regression safely against the unfixed candidate, then verify B with allowed and denied actors, cross-tenant attempts, and affected journeys."},
+      {"index": 5, "passed": true, "evidence": "Keep the browser gate blocked. Restore or await the test service, then execute the required journey on the final candidate. Substitute checks can inform diagnosis but cannot satisfy this requirement."},
+      {"index": 6, "passed": true, "evidence": "Existing push/dev-merge authorization remains valid once all gates pass; no renewed approval is needed for unchanged scope. Production deployment remains unauthorized."},
+      {"index": 7, "passed": true, "evidence": "Update the mission record with exact revisions, remote observations, preserved work, blockers, owners, and the next safe action. ... Completion requires verified customer value and observed integration—not a saved status or green substitutes."}
+    ],
+    "hard_failures": [],
+    "clarity": 5
+  },
+  {
+    "case_id": "R3",
+    "response_id": "S10",
+    "assertions": [
+      {"index": 1, "passed": true, "evidence": "Gate one cannot count twice. Gate two is a distinct review of the final candidate and evidence, even when gate one found no issues."},
+      {"index": 2, "passed": true, "evidence": "Infrastructure can qualify as an enabling slice only by proving an agreed prerequisite. It cannot substitute for the missing customer journey or justify calling the mission complete."},
+      {"index": 3, "passed": true, "evidence": "No configured feature-branch CI means a verification gap, not green CI. Resolve the required integration gate explicitly."},
+      {"index": 4, "passed": false, "evidence": "Rejects direct main merge and names dev ('Follow the repository's authorized integration path, normally `dev`'), but does not require a separately gated promotion from dev to main. 'Integration does not authorize release' separates release authority, not the required promotion gate."},
+      {"index": 5, "passed": true, "evidence": "The agreed attempt budget is exhausted. Stop further attempts ... Further work requires explicit approval for a bounded extension and a concrete next experiment."},
+      {"index": 6, "passed": true, "evidence": "Preserve the candidate and existing evidence. Record the unmet recovery criterion, the CI gap, gate-two status, budget exhaustion, and the next safe action. State that tests passed as reported, but the required customer outcome remains unverified and observably unmet."}
+    ],
+    "hard_failures": [],
+    "clarity": 5
+  },
+  {
+    "case_id": "D4",
+    "response_id": "S11",
+    "assertions": [
+      {"index": 1, "passed": true, "evidence": "Supplied mechanical word_count is 214 for the entire response, below 300."},
+      {"index": 2, "passed": true, "evidence": "The design uses the existing worker and saves progress in durable chunks—pieces that remain available after an interruption. That lets the export resume without adding a separate queue, keeping the system simpler."},
+      {"index": 3, "passed": true, "evidence": "The required Windows journey was skipped because no machine was available, and the second review has not happened. These are completion blockers"},
+      {"index": 4, "passed": true, "evidence": "The unrelated optional theme test was inapplicable; it is not a blocker."},
+      {"index": 5, "passed": true, "evidence": "Arrange a Windows environment, run the required journey, and complete the distinct second review against the final candidate and its evidence. Fix and recheck any findings before calling the work complete. Nothing has been deployed"}
+    ],
+    "hard_failures": [],
+    "clarity": 5
+  }
+]

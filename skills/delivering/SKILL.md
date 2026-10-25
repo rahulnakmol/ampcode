@@ -1,13 +1,15 @@
 ---
 name: delivering
-description: "Delivers major features, use cases, and concrete requirements through small outcome-driven TDD slices, real user journeys, two review gates, and a customer-value gate. Uses grilling to confirm expectations, then tracks evidence, safe recovery, and authorized integration. Use when asked to build or deliver a substantial feature, execute an approved brief, carry a requirement through implementation and verification, or resume a multi-step delivery mission. Not for a standalone review, release-only request, trivial edit, or design-only exploration."
+description: "Delivers major features, use cases, and concrete requirements through outcome-driven TDD, real journeys, two review gates, and customer value. Uses grilling to confirm expectations, requires a whiteboard defense before implementation handoff, and tracks evidence and safe recovery. Communicates in standard/formal or editorial mode, with ELI5 summaries under 300 words. Use to deliver a substantial feature, execute an approved brief, or resume a multi-step mission. Not for standalone review, release-only work, trivial edits, or design-only exploration."
 ---
 
 # Delivering
 
 Deliver the agreed customer outcome, not merely green tests. Use two cycles: **frame expectations
-with grilling**, then **build and deliver against those expectations**. Precision means traceable
-requirements and evidence, not a promise of perfection. Keep ceremony proportional to risk.
+with grilling**, then **build and deliver against those expectations**. Between them, own the
+definition of done through a whiteboard defense. Precision means traceable requirements and
+evidence, not a promise of perfection. Keep ceremony proportional to risk; prefer caution over
+speed for non-trivial work.
 
 This is an instruction workflow, not a daemon, permission grant, scheduler, or executable gate.
 Use the tools actually available. A coordinator without filesystem or execution access must hand
@@ -34,6 +36,27 @@ execution to an authorized agent with the right environment; never invent execut
    a mission. Use `crafting`, when available and relevant, for experience design—not as a replacement
    for implementation, runtime validation, or either review.
 
+## Own the definition of done before handoff
+
+Read [reference/whiteboard-defense.md](reference/whiteboard-defense.md) before the first
+implementation handoff, including when the same agent moves from design to building. The owner
+must explain the customer outcome, system and data flow, decisions and alternatives, data
+structures and invariants, malicious actors, and failure/recovery boundaries. Function-name recall
+is not required. Ground each answer in the brief, inspected contracts, evidence, or an explicitly
+labelled proposal. Confidence and polished prose are not proof of understanding.
+
+Record a concise defense and resolve blocking gaps before handing off implementation. A coherent
+proposal can pass before runtime tests exist: those tests remain build obligations, not invented
+results. A separate skeptical reviewer challenges consequential designs. The recipient must read
+the actual brief and transferred materials and give a short teach-back; another thread does not
+inherit shared memory. No second user approval is needed for already-approved, unchanged scope.
+
+Use facts to resolve factual gaps, bounded experiments for uncertain mechanisms, and grilling for
+changed expectations. Stop when confused and name the gap. Reopen only affected decisions when
+design, ownership, threat boundaries, or data semantics change. Refresh the defense against the
+implemented system before delivery, so the owner can still answer “why?” and “where does it fail?”
+This entry gate never replaces the two build reviews, executed tests, or customer-value gate.
+
 ## Prepare a recoverable mission
 
 - Keep one integration owner accountable for the outcome, even when others contribute.
@@ -46,10 +69,15 @@ execution to an authorized agent with the right environment; never invent execut
 - Record scope, current state, owners, acceptance-to-evidence links, and the next safe action.
   Update on meaningful transitions and before handoff, not on every tool call. Exclude credentials,
   private payloads, and unnecessary raw logs. Record exact revisions and environments.
-- Establish authorized actions and existing time, spend, and attempt limits. Do not invent a
-  monetary allowance or buy tools. If limits are absent, use the smallest useful slice and stop
-  for a decision before materially expanding scope or cost. Repeated failure without a new
-  hypothesis is a reason to diagnose or replan, not an unlimited retry loop.
+- Establish authorized actions and time, spend, and attempt limits. Unless explicitly overridden,
+  token limits are **4,000 per task and 30,000 per session**. Treat a task as a bounded work unit;
+  record delegated work and carry usage forward in the session total. Use available usage telemetry;
+  if unavailable, disclose that exact accounting and enforcement are unavailable. Label estimates
+  as estimates and checkpoint conservatively near a limit. Surface a known or suspected breach.
+  Do not claim compliance from a word count or create threads to erase usage. A fresh context can
+  resume from a summary within the remaining budget; further work beyond it needs explicit approval.
+  Never invent a monetary allowance or buy tools. Repeated failure without a new hypothesis calls
+  for diagnosis or replanning, not an unlimited retry loop.
 - Follow repository isolation policy. Default to a dedicated branch/worktree from current
   `origin/dev`; fetch before creating it. Preserve existing staged and unstaged work. If `dev`
   does not exist, resolve the repository's integration branch—do not silently create it or use
@@ -64,7 +92,11 @@ execution to an authorized agent with the right environment; never invent execut
 ### 1. Assess the current state
 
 Read implementation, callers, contracts, failures, and existing evidence before editing. Separate
-observations from assumptions. Run the relevant baseline and inspect the real test environment.
+observations from assumptions. Read exports, immediate callers, and shared utilities before adding
+code. If their purpose is unclear, investigate and ask only when a consequential decision remains.
+Surface conflicting patterns rather than blend them. Check authority, provenance, recency, and
+tested behavior; state which applies and why. Flag the other without expanding scope to clean it up.
+Run the relevant baseline and inspect the real test environment.
 Record what already works and what must be preserved. A failing baseline is not automatically
 pre-existing: reproduce on the untouched base in isolation before attributing it. Keep failures
 visible; neither baseline attribution nor flaky retries waive a required check.
@@ -89,7 +121,9 @@ Choose relevant realistic failure, recovery, security, and boundary cases. Name 
 implementation and choose inputs where it disagrees with the correct result: asymmetric data,
 both sides of a limit, unauthorized actors, interruption after a partial write. Derive expected
 results independently. A test that passes on empty output or checks only that nothing crashed
-does not demonstrate the outcome. Exercise a named technique such as fuzzing on the actual risk.
+does not demonstrate the outcome. Tie tests to why behavior matters for the customer, not only
+its mechanics; show which plausible business-rule violation they catch. Exercise a named technique
+such as fuzzing on the actual risk when requested or useful, not as mandatory extra ceremony.
 
 For a pure refactor, use unchanged behavioral checks rather than fabricating a missing behavior.
 For instruction or document deliverables, use task scenarios and observable outputs; keyword
@@ -100,7 +134,16 @@ regressions, extending existing suites before adding files.
 ### 4. Implement the smallest useful layer
 
 Reuse local patterns and APIs. Keep responsibilities clear, and avoid speculative abstractions
-or unrelated cleanup. Keep behavior-preserving refactors separate from behavior changes.
+or unrelated cleanup. Prefer the minimum code that solves the agreed problem; do not add a
+single-use abstraction without a concrete need. Match repository style even when you prefer
+another approach. Surface harmful conventions instead of silently forking them. Clean up only
+your own task-related changes; do not reformat adjacent code or refactor sound code for taste.
+Keep behavior-preserving refactors separate from behavior changes.
+Use the model for judgment: interpretation, classification, drafting, extraction, summarization,
+design tradeoffs, and ambiguous evidence. Use code or existing tools for deterministic routing,
+fixed retry policies, transforms, counting, and checks. Do not spend model calls where code can
+answer reliably. Pursue verified outcomes rather than mechanically completing a list; required
+gates and permissions still apply.
 Commit coherent working increments frequently at green boundaries. Preserve the earlier red-run
 evidence; TDD does not require publishing broken commits. Stage only owned, relevant changes.
 
@@ -116,6 +159,12 @@ without inspection verify nothing. For interaction-only changes, exercise behavi
 DOM/accessibility state. For APIs, CLI tools, migrations, and background jobs, inspect responses,
 exit codes, data invariants, and recovery as relevant. Unavailable required environments remain
 blocked or partially verified; substitute checks are useful but must not be called equivalent.
+
+Open the actual produced artifact and compare it with the original request, including scope,
+content, tone, and specification where relevant. A successful process exit is not enough. If the
+artifact cannot be inspected, report that part as unfinished. Name skipped checks and reasons;
+a skipped required check blocks completion, while a genuinely inapplicable optional check needs
+an explicit reason. Report what was present, missing, wrong, or different—not what was intended.
 
 ### 6. Review correctness, security, and vulnerabilities — gate one
 
@@ -196,9 +245,31 @@ Revalidate stale evidence. Keep implementation and fixes with their checkout; an
 not inherit uncommitted files. Delegate only bounded independent work with explicit ownership and
 handoffs. Worktrees do not isolate ports, databases, credentials, or external effects.
 
+Checkpoint after each significant step: what changed, what is verified, what remains, and the next
+safe action. If you cannot describe the current state, stop and reconstruct it before continuing.
+Carry relevant repository conventions and approval gates into that next action explicitly; do not
+make the recipient infer them. Keep integration and later promotion gates distinct in the handoff.
 Report at meaningful milestones: outcome reached, decision changed, blocker found, verification
 result, or integration completed. Keep routine tool narration out. Finish with the customer outcome,
 evidence and limitations, unresolved risks, actual delivery state, and any exact approval needed.
 Distinguish **implemented**, **verified**, **reviewed**, **integrated into dev**, and **released**.
 Do not call a whole mission complete when only a slice or local checks are complete. When blocked,
 preserve completed work and a self-contained next action so another session can resume safely.
+
+## Choose the communication form
+
+Use **ASD-STE100-aligned principles** in both full-length modes: short sentences, active voice,
+consistent terms, concrete verbs, and simple grounded language. Separate facts, assumptions,
+decisions, proposals, and unknowns. State measurements with conditions and sources. Do not claim
+formal compliance or certification without vocabulary and rule validation.
+
+| Form | Default use | How to write |
+| --- | --- | --- |
+| Standard / formal | Requirements, defense records, handoffs, verification | Structured sections; explicit criteria, rationale, evidence, limitations, and next action. Tables or lists when they clarify. |
+| Editorial | Design explanations, research findings, delivery narratives | Connected paragraphs, one idea each, descriptive section headers that state the point. Explain decisions and tradeoffs; do not turn the whole answer into a checklist. |
+| ELI5 short form | Requested quick explanation or summary of either mode | Fewer than 300 words including headers. Plain, adult-respectful language; explain purpose, mechanism, choice, main risk, and next action. |
+
+An explicit mode request overrides the default. Mode changes presentation, not evidence or gates.
+For ELI5, count words with a deterministic tool when available; aim comfortably below the limit.
+Never omit a required blocker, uncertainty, or authorization boundary to fit the word limit or
+sound reassuring. Link the full record when useful, but keep the short explanation self-contained.
