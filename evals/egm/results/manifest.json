@@ -1,0 +1,85 @@
+{
+  "baseline_commit": "fab9547c44db1135747aad06e89527822a7c936f",
+  "candidate_sha256": {
+    "skills/grilling/SKILL.md": "7ac7e032815a6d9882161b48b55f6a106e791023c181d6b20a9c60d8a5063904",
+    "skills/delivering/SKILL.md": "ef720e9acc9bf4db71cf0de983f0f0ecb3be9a88b6edc9c7664fb211edd751fc",
+    "skills/delivering/reference/mission-record.md": "095d2dc426122712b449bc8d7761bfe9e43fed91799b4f63031f7846e36dcd30",
+    "skills/delivering/reference/review-and-recovery.md": "c65eab84c9b6ed011aa681b7236cf8c438904e3a01f8fbe946c89d3cafcbb934"
+  },
+  "method": "Eight separate Amp Task contexts, same inherited runtime; one anonymized Task judge; one run per case/version",
+  "timing_and_tokens": "Not returned by Task; unavailable, not zero",
+  "runs": [
+    {
+      "label": "export-A",
+      "variant": "old_skill",
+      "response": "export-old_skill.md",
+      "words": 460,
+      "sha256": "e034cf769a3a11768b2c6a6a7eeff3d79009042bda0b1bcb43a50ebe1b1ae6e5",
+      "passed": 3,
+      "total": 4
+    },
+    {
+      "label": "export-B",
+      "variant": "with_skill",
+      "response": "export-with_skill.md",
+      "words": 496,
+      "sha256": "6158186f251009900a7190c8143b9bddd02c9b78caa17d11d17d2b6f79b9c966",
+      "passed": 4,
+      "total": 4
+    },
+    {
+      "label": "payment-A",
+      "variant": "with_skill",
+      "response": "payment-with_skill.md",
+      "words": 479,
+      "sha256": "a313b926a7338430dfa8f9fa872c0d82bba1c2556c8241a136fb75cd51baae92",
+      "passed": 4,
+      "total": 4
+    },
+    {
+      "label": "payment-B",
+      "variant": "old_skill",
+      "response": "payment-old_skill.md",
+      "words": 461,
+      "sha256": "7228c00d901962204b7d8f015a6a10e853b32c75b0ef2064d67a5e719c9d3919",
+      "passed": 4,
+      "total": 4
+    },
+    {
+      "label": "inventory-A",
+      "variant": "old_skill",
+      "response": "inventory-old_skill.md",
+      "words": 441,
+      "sha256": "7a46a2579c63626f4db5b25889cc9706ba30a5b0da7658d167d6dc5a92269ec9",
+      "passed": 4,
+      "total": 4
+    },
+    {
+      "label": "inventory-B",
+      "variant": "with_skill",
+      "response": "inventory-with_skill.md",
+      "words": 442,
+      "sha256": "6895cde9faf2d7f987206734ddc6ee5870483461c45e3bde6c20cc1db17878d9",
+      "passed": 4,
+      "total": 4
+    },
+    {
+      "label": "copy-A",
+      "variant": "with_skill",
+      "response": "copy-with_skill.md",
+      "words": 88,
+      "sha256": "a7eb8c67deee998cb6b15858faff3eade4abded04d809422e9eda2f990360fe5",
+      "passed": 3,
+      "total": 3
+    },
+    {
+      "label": "copy-B",
+      "variant": "old_skill",
+      "response": "copy-old_skill.md",
+      "words": 82,
+      "sha256": "efa3c42796546f22ddae71a04b725e6fec583af86fbd3180dd6a330eca46c765",
+      "passed": 3,
+      "total": 3
+    }
+  ]
+}

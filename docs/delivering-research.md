@@ -93,3 +93,42 @@ ASD guidance here is stylistic alignment, not formal vocabulary/rule validation.
 instructions, not a metering implementation. This work does not claim exact token compliance or
 production reliability. The follow-up evaluation uses frozen assertions, fresh test-agent contexts,
 two blinded judge contexts, paired original-skill cases, and targeted reruns after feedback.
+
+## Elephant-Goldfish adaptation
+
+On 2026-10-25 the user approved adapting EGM into `delivering` and `grilling`, evaluating
+three to five realistic scenarios, then integrating into dev. This changes skill guidance only;
+it does not import the upstream plugin, change mission-control schemas or publish Personal copies.
+
+Sources inspected:
+- [Google Research publication entry](https://research.google/pubs/elephants-goldfish-and-the-new-golden-age-of-software-engineering/)
+  and the full linked [Dave Rensin article](https://drensin.medium.com/elephants-goldfish-and-the-new-golden-age-of-software-engineering-c33641a48874),
+  dated April 27, 2026, with its October plugin update. It is practitioner experience and argument,
+  not a controlled productivity or reliability study.
+- [Upstream EGM](https://github.com/google/elephant-goldfish-model/tree/3d0b34821ce88ad328b0c9bf0e06d7eb5f1cd669),
+  specifically the review/drift skills and comprehension/readiness personas. Apache-2.0 project;
+  this package uses original, attributed guidance rather than copying or bundling upstream files.
+- [AI LABS video](https://www.youtube.com/watch?v=xxf6D9jynFw): retrieved its publisher description
+  and chapter outline, not the full transcript or audiovisual demonstration. The description's
+  sold-product deletion example informed a synthetic evaluation fixture, not a claim to reproduce
+  the demo application. The article and source files ground the actual workflow decisions.
+
+Adopt: distinct problem and grading criteria; a context-rich integration owner; compact decisions
+and alternatives rather than chat dumps; fresh read-only comprehension, critique and readiness
+contexts; repairs written into the packet; source-grounded drift checks on resume and final review.
+Keep consequential choices explicit while leaving routine implementation choices with the builder.
+
+Adapt rather than copy: reuse grilling comprehension evidence only for matching revision/scope;
+place design review before owner acknowledgment, then retain whiteboard defense and both build
+reviews. Scale review count to risk. Do not demand exhaustive docs for unrelated code, a comment
+every ten lines, new providers, nested delegation, mandatory report files for every conversation,
+or a fixed swarm. Do not bias reviewers with either praise or a demand to invent faults.
+
+Reject the upstream review skill's automatic advancement/accepted-tradeoff behavior after its
+one-re-audit cap. Here an exhausted attempt budget preserves blockers and requires an authorized
+next decision, never fabricated acceptance. Missing reviewers are also a blocker when required.
+
+Qualification: four frozen paired tabletop scenarios with eight fresh contexts, old-package
+snapshots, prompt-only subject inputs, source fixtures where applicable and an anonymized judge.
+See [the evaluation record](../evals/egm/README.md). These assess decisions and handoff proposals,
+not automatic reviewer dispatch, real payment/storage safety, production delivery or trigger rates.
