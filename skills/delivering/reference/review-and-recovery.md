@@ -27,6 +27,15 @@ fix, and verification. Gate two checks finding closure and repair interactions o
 candidate, not just whether a reviewer message exists. Independent means another context/person
 able to challenge the implementation; different model branding is not required or sufficient.
 
+Bind both reviews and execution evidence to the candidate, base, and acknowledged design they
+actually assessed. Changed code invalidates affected evidence; never copy a pass onto a new SHA
+without revalidation. Material design changes reopen initiator acknowledgment before defense
+and build. A mode change invalidates final merge acknowledgment. High risk always needs current
+exact-candidate owner acknowledgment, ask mode needs it at any known risk, and unknown risk blocks
+merge. Low/medium auto needs no extra response once all gates pass. No local record overrides the
+required CI, mandatory failures, or branch protection. Local gates are workflow enforcement, not
+security against an unrestricted executor; no custom controller/App is required.
+
 ## Delegate only when it helps
 
 Prefer direct execution for coherent implementation. Use bounded independent investigation,
@@ -59,6 +68,10 @@ On resume:
    Git rollback is not database rollback. Do not replay migrations or payments to obtain logs.
 4. Recheck evidence that depends on changed code, configuration, environment, or base revision.
    Report stale approvals and unavailable verification; do not reuse them silently.
+5. With `mission-control`, use `mission_status()` and `mission_reconcile()` to reconcile an
+   interrupted or pending merge. A queued auto-merge request is not an observed dev integration.
+   Present fresh artifacts/evidence and the try-it procedure before requesting another merge;
+   renew exact-candidate acknowledgment where required. Never bypass local approval, CI or protection.
 
 Diagnose repeated failures with new evidence. A reproduced baseline failure remains a failure;
 a flaky green retry does not erase it. Continue unrelated safe work while blocked when useful,
