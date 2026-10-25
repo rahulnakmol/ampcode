@@ -93,12 +93,22 @@ Then test it:
 - **Connotation**: read the metaphor as the most reluctant actor would (a partner who did not choose
   the app, the person being assigned work). A contract can read as a prenup; a receipt as a bill.
 - **Proof state**: name the state that proves the angle (the reveal, the live meeting). It gets the
-  most design, and the change it shows is legible at thumbnail size, not a hairline.
+  most design, the change it shows is legible at thumbnail size, not a hairline, and the mechanic
+  is visibly true there (an agenda that "shrinks" collapses resolved items and its count drops).
+  It shows the outcome the tell-a-friend line promises, not a proxy for it: "unblocked", not
+  "has an owner"; "even" with the source that makes it true, not a notification that says so.
+- **Compound angles**: when the angle has two halves (shrink the agenda, then make the meeting
+  async), give each half its own trigger, success state, and failure state.
 - **Failure state**: name how the angle itself fails (a wrong match hides a blocker, a reveal
   exposes an income, a torn tab leaves no link) and render that state with its recovery. It is
   never "specified, not rendered".
 - **Consent**: an angle that infers a commitment from someone ("on Marcus's plan") treats it as a
-  suggestion until that person confirms it, and tells them.
+  suggestion until that person confirms it, and tells them. Design for the power gap too: who sees
+  a "no", and whether the boss's name on the ask makes declining costly. A system flag about a
+  person ("possible blocker") is visible only to the viewer and that person until they confirm it.
+- **Waiting and second actors**: render the waiting states (asked, "talk about it later") with
+  how they end, and the second actor's way in (the invitee's link, App Clip, or web fallback).
+  Keep conditions people attach to their answers ("65 / 35 until March") as part of the agreement.
 - **Every medium**: translate the signature gesture natively into each medium in the brief (a
   slide that shows the tab being torn, not the poster's footer repeated), and check that the
   artifact the person keeps after the key action (the torn tab, the screenshot) still carries the
