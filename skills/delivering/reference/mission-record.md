@@ -14,10 +14,15 @@ template, not an executable validator or proof of persistent background operatio
 - Target: <actual recipient/environment; integration and rollout are separate>
 - Permissions: <authorized local, remote, deployment actions and their source>
 - Limits: <agreed time/spend/attempt limits, or absent; next cost decision>
+- Tokens: <4,000/task and 30,000/session unless explicitly overridden; measured/estimated/unknown
+  usage including delegated work, remaining allowance, and accounting limitations>
 - Owner: <integration owner; independent reviewer when required>
+- Communication: <standard/formal | editorial; ELI5 when requested>
+- Ownership defense: <record from whiteboard-defense.md; brief/candidate, challenge, teach-back,
+  gaps and disposition; design readiness is not runtime verification>
 
 ## Current checkpoint
-- State: <framing | assess | define | harness-red | implement | journey | review-1 |
+- State: <framing | defense | assess | define | harness-red | implement | journey | review-1 |
   repair | review-2 | value | ready-for-dev | integrated-dev | blocked | replan | stopped>
 - Repository / base / branch / worktree / candidate: <exact identities>
 - Preserved existing work: <owner, paths, verified safe location; never secrets>
@@ -58,8 +63,9 @@ For each evidence record:
 - Pick-up prompt: <goal, this record and brief, actual revision, first safe action, stop gates>
 ```
 
-`ready-for-dev` requires current evidence for every in-scope criterion, both review gates, value,
-and no unresolved mandatory failures. It does not authorize a push, merge, or release by itself.
+`ready-for-dev` requires a current ownership defense, evidence for every in-scope criterion, both
+review gates, value, and no unresolved mandatory failures. It does not authorize a push, merge,
+or release by itself. A defense marked ready permits implementation, not dev integration.
 `integrated-dev` requires the actual remote merge result. `blocked`, `replan`, and `stopped` retain
 the last completed checkpoint and reason; none means success. Release status is recorded separately.
 

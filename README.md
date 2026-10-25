@@ -98,7 +98,10 @@ LLM-judged routing and behavior evaluations live in [`evals/crafting/`](./evals/
 
 [`skills/delivering/`](./skills/delivering/SKILL.md) carries a major feature, use case, or concrete
 requirement through outcome-driven delivery. `grilling` confirms expectations; `crafting` can
-shape the experience; `delivering` executes the approved brief without repeating the interview.
+shape the experience; `delivering` requires a whiteboard defense before implementation handoff,
+then executes the approved brief without repeating the interview. The owner explains the outcome,
+data flow, choices, invariants, threats, and failure limits. The receiving agent explains the plan
+back from the transferred materials; function-name recall is not required.
 Invoke it with “use delivering for this feature” or “deliver this approved brief.”
 
 Each small slice follows assessment, measurable outcome, meaningful failing harness, minimal
@@ -106,6 +109,14 @@ implementation and working commits, real user journeys, correctness/security rev
 repair and revalidation, a distinct second review, customer-value assessment, and authorized dev
 integration. Consequential changes require independent reviews. Compact mission records support
 safe resumption; missing evidence, stale approvals, and ambiguous side effects do not become passes.
+
+Communication supports standard/formal records and editorial explanations with descriptive
+headers, both guided by ASD-STE100 principles without an unvalidated compliance claim. ELI5 short
+forms contain fewer than 300 words and keep essential risks and blockers. Default budgets are
+4,000 tokens per task and 30,000 per session unless explicitly overridden; exact accounting and
+enforcement require runtime telemetry and are disclosed as unavailable when absent. The workflow
+uses deterministic tools for mechanical work, preserves repository conventions, and requires
+direct inspection of the produced artifact before completion.
 
 This is an instruction-only skill, not programmatic enforcement or a background coordinator.
 Its [mission record](./skills/delivering/reference/mission-record.md) and
