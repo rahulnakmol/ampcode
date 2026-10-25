@@ -17,7 +17,7 @@ Discover the installed tools and their schemas; do not invent action payloads. K
 | `mission_approve(stage: design\|merge)` | Request owner acknowledgment of the current design package or exact final candidate. |
 | `mission_merge_mode(mode: auto\|ask)` | Offer an owner-restricted merge-mode change; auto is the default, not a timer awaiting consent. |
 | `mission_present()` | Present evidence, artifacts, limitations, and the try-it procedure before requesting merge. |
-| `mission_merge()` | Request dev integration only after all current local and trusted external gates pass. |
+| `mission_merge()` | Request dev integration only after current local gates, required CI and branch protection pass. |
 | `mission_reconcile()` | Inspect external merge state after interruption or a pending merge; never equate a request with integration. |
 | `mission_recover()` | After owner investigation of a settled, unqueued attempt, invalidate candidate evidence and return to review; never blindly retry. |
 
@@ -28,13 +28,13 @@ dialogs use a non-sensitive typed acknowledgment in a secret-style field to rest
 transcript claim as a completed owner interaction. These local interactions are not trusted merge
 authorization against an unrestricted executor.
 
-An external trusted gate must hold policy, mission registration, approver mapping, and credentials
-outside agent control and obtain authoritative revision/check/approval evidence. Protected `dev`
-must enforce required checks, including a pinned trusted App check and administrator enforcement.
-The source implementation does not host that controller, install its App, or configure protection.
-Absent these prerequisites, automatic merge remains blocked; provision them only with separate
-approval. If the plugin is unavailable, maintain this manual record and report the capability gap;
-do not claim enforced gates or substitute local files for trusted authorization.
+Use existing GitHub credentials through `gh` in Amp; no custom controller/App or approval service
+is needed. Protected `dev` must enforce PRs, strict required CI pinned to source Apps, and
+administrator enforcement. The source implementation does not configure CI/protection. Missing
+requirements block automatic merge; provision them only with separate approval. Owner approvals,
+review/evidence records, risk and merge mode remain local workflow gates, not hostile-shell security.
+If the plugin is unavailable, maintain this manual record and report the capability gap; do not
+claim tool enforcement or substitute local files for successful CI and branch protection.
 
 ## Record template
 
@@ -51,7 +51,7 @@ do not claim enforced gates or substitute local files for trusted authorization.
 - Target: <actual recipient/environment; integration and rollout are separate>
 - Permissions: <authorized local, remote, deployment actions and their source>
 - Risk / merge mode: <low | medium | high | unknown and rationale; auto default | owner-selected ask>
-- External gate readiness: <trusted controller and branch protection evidence or blocker>
+- GitHub readiness: <existing access, required CI and branch protection evidence or blocker>
 - Limits: <agreed time/spend/attempt limits, or absent; next cost decision>
 - Tokens: <4,000/task and 30,000/session unless explicitly overridden; measured/estimated/unknown
   usage including delegated work, remaining allowance, and accounting limitations>
@@ -109,7 +109,7 @@ For each evidence record:
 review gates, value, and no unresolved mandatory failures. It does not authorize a push, merge,
 or release by itself. A defense marked ready permits implementation only after design acknowledgment,
 not dev integration. Low/medium auto needs no additional response once all gates pass; ask/high needs
-current exact-candidate acknowledgment. Unknown risk, stale evidence, or missing trusted gates blocks merge.
+current exact-candidate acknowledgment. Unknown risk, stale evidence, or missing CI/protection blocks merge.
 `integrated-dev` requires the actual remote merge result. `blocked`, `replan`, and `stopped` retain
 the last completed checkpoint and reason; none means success. Release status is recorded separately.
 

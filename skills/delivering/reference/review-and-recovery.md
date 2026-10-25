@@ -33,7 +33,8 @@ without revalidation. Material design changes reopen initiator acknowledgment be
 and build. A mode change invalidates final merge acknowledgment. High risk always needs current
 exact-candidate owner acknowledgment, ask mode needs it at any known risk, and unknown risk blocks
 merge. Low/medium auto needs no extra response once all gates pass. No local record overrides the
-trusted external gate, mandatory failures, or branch protection.
+required CI, mandatory failures, or branch protection. Local gates are workflow enforcement, not
+security against an unrestricted executor; no custom controller/App is required.
 
 ## Delegate only when it helps
 
@@ -70,7 +71,7 @@ On resume:
 5. With `mission-control`, use `mission_status()` and `mission_reconcile()` to reconcile an
    interrupted or pending merge. A queued auto-merge request is not an observed dev integration.
    Present fresh artifacts/evidence and the try-it procedure before requesting another merge;
-   renew exact-candidate acknowledgment where required. Never bypass missing trusted authorization.
+   renew exact-candidate acknowledgment where required. Never bypass local approval, CI or protection.
 
 Diagnose repeated failures with new evidence. A reproduced baseline failure remains a failure;
 a flaky green retry does not erase it. Continue unrelated safe work while blocked when useful,

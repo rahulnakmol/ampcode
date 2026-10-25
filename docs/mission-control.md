@@ -1,10 +1,10 @@
-# Mission control: workflow now, protected integration after setup
+# Mission control: local workflow and protected dev integration
 
 `plugins/mission-control/index.ts` coordinates the delivering skill. It is a local
-workflow coordinator, **not a hosted controller, scheduler, or security sandbox**.
-The repository also supplies a pure decision function for a trusted controller;
-it does not supply that controller's authentication service or deployment.
-Automatic merging remains blocked until those external prerequisites exist.
+workflow coordinator, **not a scheduler or security sandbox**. It uses existing
+GitHub credentials available to `gh` in the Amp execution environment. No custom
+controller, GitHub App, approval service, or plugin policy configuration is needed.
+Local approval/evidence gates and GitHub's required CI/protection both must pass.
 
 ## The agreement
 
@@ -18,7 +18,7 @@ Automatic merging remains blocked until those external prerequisites exist.
 5. Build small outcome-driven TDD slices. Run real journeys, inspect artifacts,
    conduct two distinct review gates, repair/revalidate, and assess customer value.
 6. Show what changed, where, the evidence and limitations, and how to try it.
-7. Integrate into `dev` only after exact-candidate CI and policy approval.
+7. Integrate into `dev` only after local gates, exact-candidate CI and branch protection pass.
 
 Low/medium risk defaults to automatic merge without a response or waiting timer.
 At build entry the owner can choose ask-before-merge. High risk always requires
@@ -47,7 +47,7 @@ repository-local exclude file, preserving existing rules, and stores records at
 | `mission_approve` | Owner-restricted design or final-candidate acknowledgment |
 | `mission_merge_mode` | Owner-restricted auto/ask preference override |
 | `mission_present` | Show the evidence packet in Amp before integration |
-| `mission_merge` | Validate remote policy/CI, persist pending state, request squash auto-merge |
+| `mission_merge` | Validate required CI/protection, persist pending state, request immediate exact-head squash merge |
 | `mission_reconcile` | Read remote integration state without repeating the mutation |
 | `mission_recover` | Owner-acknowledged recovery of a settled, unqueued attempt; revalidate before retry |
 
@@ -66,43 +66,45 @@ password, key, or other secret. An ordinary `requireHuman` dialog is not owner-o
 No responder ID is returned or invented. These local acknowledgments are useful
 workflow records, not externally verifiable authentication receipts.
 
-## External merge enforcement prerequisites
+## GitHub prerequisites and the workflow boundary
 
-Provisioning these components or changing repository access requires separate
-authorization. Do not enable auto-merge by merely writing configuration locally.
+Use the existing Amp environment's GitHub authentication through `gh`; do not
+create or copy credentials into mission records or introduce an App credential.
+The account needs to read PRs, branch protection and check runs, and request the
+authorized merge. If that access is unavailable, report the capability gap.
 
-- A trusted controller/GitHub App outside the executor owns the mission registry,
-  authenticated initiator mapping, risk decisions, approval ledger and signing/App
-  credentials. The agent must not modify its code or state, possess its credential,
-  or access equivalent privileged MCP operations.
-- Protect `dev`, require PRs, disallow agent bypass, and require the controller's
-  `mission-policy` check pinned to its App. Include all relevant CI checks, pinned
-  to their source Apps, with strict up-to-date requirements and admin enforcement.
-- The controller authenticates owner acknowledgment of the exact design bundle
-  before defense/build, and final-candidate acknowledgment for high risk or ask
-  mode. Local JSON, labels, comments asserting approval, and self-declared risk
-  are not authorization. An authenticated approval service is still needed;
-  the Amp dialog result alone cannot establish that external trust.
-- The controller independently validates evidence, risk, two reviews and customer
-  value. Use `lib/gate.ts`'s `evaluateGate` only on controller-assembled trusted
-  data. It is a policy decision library, **not an HTTP endpoint accepting agent
-  JSON**. Its path classifier supplies a conservative floor, not a full semantic
-  security assessment.
-- Authorize the exact repository, PR, design, head, base, risk, mode and recovery generation. Publish
-  the successful check for that head with `external_id = binding(mission)` from
-  `lib/github.ts`, computed from the controller's canonical approved record.
-  The controller must revoke/recompute approvals when those identities change.
-- Configure the coordinator with `mission-control.policy` containing
-  `{ "appId": <trusted App's numeric ID>, "check": "mission-policy" }`.
-  This config is a routing hint, not a trust root: branch protection pins the App.
+- Protect `dev`, require PRs, enable strict up-to-date required checks and
+  administrator enforcement, and leave PR review bypass allowances empty.
+- Pin every required CI check to its actual source App in **branch protection**
+  (GitHub Actions uses App ID `15368`). The adapter reads those requirements from
+  GitHub, not a local policy setting or a hard-coded check name/App allowlist.
+- Each required check must be completed successfully on the recorded head. The
+  PR must still target the recorded `dev` base/head; preflight reads it twice.
+- Keep design acknowledgment, two revision-bound reviews, acceptance evidence,
+  presentation and high-risk/ask acknowledgment in the local mission workflow.
+  Risk classification and evidence truth remain the implementer/reviewers'
+  responsibility; the plugin validates records, not arbitrary prose or code semantics.
+
+The user accepts local workflow enforcement, not protection from a hostile shell.
+An unrestricted executor can edit local records or invoke GitHub outside these
+tools; GitHub does not authenticate the local mission approvals or reviews.
+Do not bypass the workflow, weaken protection, or use administrator overrides.
+Configuring CI/protection or changing repository access requires separate approval
+and is not performed by loading this plugin. Missing protection or failing CI
+still blocks integration; no custom external service is required.
 
 The current GitHub adapter supports REST branch protection, not rulesets-only
 repositories, merge queues, legacy commit-status contexts, or more than 100
 check runs. It blocks unsupported/incomplete responses rather than guessing.
 It refuses unpinned checks, skipped/neutral checks, review bypass allowances,
-stale bindings, missing admin enforcement, and head/base motion during preflight.
-GitHub must enforce the remaining race after the final read. The agent must not
-have credentials able to weaken protections or force a privileged merge.
+missing admin enforcement, and head/base motion during preflight. GitHub's strict
+checks and exact-head merge precondition govern the race after the final read;
+local approval is not an atomic remote approval of a base that moves afterward.
+
+Automatic mission integration does **not** enable GitHub's persistent auto-merge.
+The adapter requests an immediate merge with `--match-head-commit`; if remote gates
+are no longer satisfied, it fails rather than authorizing a later head. Reconcile
+the result and revalidate before recovery/retry. Never add `--auto` as a shortcut.
 
 ## Recovery and limits
 
@@ -120,8 +122,8 @@ keeps that pending state for operator investigation rather than automatic retry.
 After the owner confirms all prior senders have settled, `mission_recover` checks
 an open, unmerged, unqueued PR before and after owner acknowledgment. It starts a
 new recovery generation and clears reviews, evidence and merge approval without
-sending another merge. Register any changed head/base and revalidate; the trusted
-controller must authorize the new generation. A live queue, absent remote fields,
+sending another merge. Register any changed head/base and revalidate; renew
+local acknowledgment where required for the new generation. A live queue, absent remote fields,
 moving candidate or active local request blocks recovery. This does not prove
 that another executor has stopped; that remains part of the owner's investigation.
 A queued request is not delivery. A closed-unmerged or changed PR is not success.
@@ -135,7 +137,8 @@ plugin does not provision an external daemon or subscriptions itself.
 
 The local tools reject out-of-order transitions. They cannot prevent an agent
 with unrestricted shell from editing code before approval or bypassing local
-files. True isolation requires host permissions and the external merge gate.
+files. True isolation would require a separate security design and host permissions;
+it is not the boundary promised by this coordinator.
 No production-scale reliability, native cross-platform approval-dialog behavior,
 or live protected-merge proof follows merely from the local test suite.
 
@@ -143,11 +146,11 @@ or live protected-merge proof follows merely from the local test suite.
 
 Run `make check`. Mission tests exercise persisted lifecycle and corruption,
 owner-dialog contracts with cancellation/stale updates, revision invalidation,
-trusted-policy decisions, and GitHub preflight/merge behavior through controlled
+local risk/approval decisions, and GitHub preflight/merge behavior through controlled
 transport. Amp CLI plugin loading is also part of the repository check.
 Local Git/filesystem journeys are real; controlled GitHub/UI adapters are not a
 live GitHub integration or a multiplayer identity test. Before activation, run
-an authorized disposable protected-repository trial with the real controller,
+an authorized disposable protected-repository trial with existing GitHub access,
 including spoofed checks, stale approvals, changed bases, failures and recovery.
 
 Rolling promotion, stable release, deployment, access changes and Personal

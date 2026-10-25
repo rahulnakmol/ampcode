@@ -3,9 +3,9 @@ import { execFileSync } from 'node:child_process'
 import { appendFileSync, existsSync, readFileSync, realpathSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { advance, blockers, createMission, digest, fingerprint, loadMission, saveMission, type Action, type Mission } from './lib/mission'
-import { binding, GitHub, type Policy } from './lib/github'
+import { GitHub } from './lib/github'
 
-export const description = 'Coordinates owner-approved software missions and revision-bound evidence; trusted external policy is required for auto-merge.'
+export const description = 'Coordinates owner-approved software missions, revision-bound evidence and protected dev integration using existing GitHub credentials.'
 
 function packet(s: Mission) {
 	const c = s.candidate
@@ -15,7 +15,7 @@ function packet(s: Mission) {
 		...(s.design?.criteria ?? []).map((criterion, i) => `${i + 1}. ${criterion}\n${s.evidence?.results[i] ?? 'Not yet verified'}`),
 		`Try it: ${s.evidence?.tryIt ?? 'Not yet supplied'}`, `Customer value: ${s.evidence?.value ?? 'Not yet established'}`,
 		`Merge preference: ${s.mode}; high risk always requires owner acknowledgment.`,
-		'Local workflow evidence is not trusted merge authorization. CI, protected dev and the external policy App must also permit integration.',
+		'Approvals and evidence are local workflow gates, not a hostile-shell security boundary. Required CI and protected dev must also permit integration.',
 	].filter(Boolean).join('\n\n')
 }
 
@@ -39,7 +39,7 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		saveMission(pathFor(s.thread), next)
 		return next
 	}
-	const status = (s: Mission) => JSON.stringify({ ...s, fingerprint: fingerprint(s), policyBinding: binding(s), blockers: blockers(s) }, null, 2)
+	const status = (s: Mission) => JSON.stringify({ ...s, fingerprint: fingerprint(s), blockers: blockers(s) }, null, 2)
 	const acknowledge = async (ctx: PluginToolContext, message: string) => {
 		const result = await ctx.ui.confirm({
 			title: 'Mission owner acknowledgment', message: message + '\n\nOnly the thread owner may approve/adopt this mission. Type ACKNOWLEDGE. This is not a password or credential; the masked field restricts the dialog to the owner.',
@@ -90,20 +90,19 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		await acknowledge(ctx, `Set this mission's merge preference to ${input.mode}. High-risk acknowledgment remains mandatory.`)
 		return status(write(s, { type: 'mode', mode: input.mode }))
 	})
-	tool('mission_present', 'Show the owner implementation locations, criterion evidence, design, candidate and try-it instructions before any merge request. Also publish the packet on the PR for the trusted controller; this tool shows it in Amp only.', {}, async (_input, ctx) => {
+	tool('mission_present', 'Show the owner implementation locations, criterion evidence, design, candidate and try-it instructions before any merge request. Also publish the packet on the PR for reviewers; this tool shows it in Amp only.', {}, async (_input, ctx) => {
 		const s = required(ctx.thread.id)
 		if (!s.evidence) throw new Error('Acceptance evidence required')
 		await ctx.ui.notify(packet(s))
 		ctx.signal.throwIfAborted()
 		return status(write(s, { type: 'presented', fingerprint: fingerprint(s) }))
 	})
-	tool('mission_merge', 'Request exact-head squash auto-merge into dev only after local gates and the external pinned policy App succeed. Missing infrastructure fails closed. Never directly authorizes release or deployment.', {}, async (_input, ctx) => {
+	tool('mission_merge', 'Request an immediate exact-head squash merge into dev with existing GitHub credentials only after local gates, required pinned CI and branch protection pass. Never queues authorization for a future head or authorizes release/deployment.', {}, async (_input, ctx) => {
 		const s = required(ctx.thread.id)
 		const missing = blockers(s)
 		if (missing.length) throw new Error(missing.join('; '))
 		if (s.phase === 'merge-pending' || s.phase === 'merged') throw new Error('Reconcile existing request; do not repeat merge effects')
-		const config = await amp.configuration.get()
-		await github.preflight(s, config['mission-control.policy'] as Policy | undefined)
+		await github.preflight(s)
 		ctx.signal.throwIfAborted()
 		// Persist BEFORE effects. A crash or unknown network outcome must never
 		// turn into an automatically repeated merge command.
@@ -122,13 +121,13 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		}
 		return status(s) + '\nNot confirmed integrated. Inspect current PR/CI and any uncertain request; do not repeat blindly.'
 	})
-	tool('mission_recover', 'Owner-only recovery after investigating a settled, unqueued merge attempt. Reads GitHub twice, invalidates all candidate evidence and the external policy binding, and returns to review without issuing another merge. Never use while a request may still be in flight.', {}, async (_input, ctx) => {
+	tool('mission_recover', 'Owner-only recovery after investigating a settled, unqueued merge attempt. Reads GitHub twice, advances the recovery generation, invalidates all candidate evidence and approval, and returns to review without issuing another merge. Never use while a request may still be in flight.', {}, async (_input, ctx) => {
 		const s = required(ctx.thread.id)
 		if (s.phase !== 'merge-pending' || inFlight.has(s.thread)) throw new Error('Recovery requires a settled pending request')
 		const pr = await github.pull(s)
 		const unqueued = (p: any) => p.state === 'open' && p.merged === false && p.auto_merge === null && p.isMergeQueueEnabled === false && p.isInMergeQueue === false && p.mergeQueueEntry === null && p.base?.ref === 'dev' && p.base?.repo?.full_name === s.candidate!.repo && /^[a-f0-9]{40}$/.test(p.head?.sha) && /^[a-f0-9]{40}$/.test(p.base?.sha)
 		if (!unqueued(pr)) throw new Error('Recovery requires an open, unmerged, unqueued dev PR; investigate remote state first')
-		await acknowledge(ctx, `Recover https://github.com/${s.candidate!.repo}/pull/${s.candidate!.pr} at remote head ${pr.head.sha}, base ${pr.base.sha}. Confirm the previous request has settled and no executor is still sending it. This invalidates reviews/evidence and external authorization; it does NOT retry the merge.`)
+		await acknowledge(ctx, `Recover https://github.com/${s.candidate!.repo}/pull/${s.candidate!.pr} at remote head ${pr.head.sha}, base ${pr.base.sha}. Confirm the previous request has settled and no executor is still sending it. This invalidates reviews/evidence and merge acknowledgment; it does NOT retry the merge.`)
 		const live = await github.pull(s)
 		ctx.signal.throwIfAborted()
 		if (!unqueued(live) || live.head.sha !== pr.head.sha || live.base.sha !== pr.base.sha || inFlight.has(s.thread)) throw new Error('Remote changed during recovery; reconcile again')
@@ -140,12 +139,12 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 	})
 	amp.on('agent.start', async event => {
 		const s = read(event.thread.id)
-		if (s) return { message: { content: `Active software mission: ${status(s)}\nFollow delivering. Preserve owner-approved requirements, plan, technical/UX design; whiteboard before build. Do not equate local records with external merge authorization.` } }
+		if (s) return { message: { content: `Active software mission: ${status(s)}\nFollow delivering. Preserve owner-approved requirements, plan, technical/UX design; whiteboard before build. Local workflow records do not override required CI or branch protection.` } }
 	})
 	amp.on('agent.end', async event => {
 		if (event.status !== 'done') return
 		const s = read(event.thread.id)
 		if (!s || s.paused || !['building', 'reviewing', 'evidence'].includes(s.phase) || (s.presented && blockers(s).includes('Owner merge acknowledgment required'))) return
-		return { action: 'continue', maxContinuations: 3, userMessage: 'The active mission is not integrated. Continue its approved build/review/evidence loop, or record a concrete blocker with mission_update pause. Do not bypass approval, external policy or unavailable-platform gates. Never claim a requested merge is completion.' }
+		return { action: 'continue', maxContinuations: 3, userMessage: 'The active mission is not integrated. Continue its approved build/review/evidence loop, or record a concrete blocker with mission_update pause. Do not bypass approval, required CI, branch protection or unavailable-platform gates. Never claim a requested merge is completion.' }
 	})
 }

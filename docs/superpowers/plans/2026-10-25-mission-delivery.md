@@ -4,7 +4,7 @@
 
 **Goal:** Carry software requirements through owner-approved design, whiteboard defense, verified code and risk-based integration into dev.
 
-**Architecture:** Keep reasoning in delivering, grilling and crafting. Add an Amp mission coordinator with revision-bound persisted checkpoints, owner-restricted dialogs and observable evidence. A separately trusted controller must authorize merge; local state and hooks are not a security boundary against an unrestricted executor.
+**Architecture:** Keep reasoning in delivering, grilling and crafting. Add an Amp mission coordinator with revision-bound persisted checkpoints, owner-restricted dialogs and observable evidence. Use existing GitHub credentials through `gh` and actual protected-dev CI requirements. The user explicitly accepts local workflow enforcement, not a security boundary against an unrestricted executor; no custom controller/App is required.
 
 **Tech stack:** TypeScript, Node standard library, Bun tests, Amp Plugin API, Git and GitHub CLI.
 
@@ -24,8 +24,8 @@
 ## Explicit implementation constraints
 
 - First version supports a mission initiated/adopted by its Amp thread owner. The installed API cannot authenticate arbitrary multiplayer initiators. Owner-only secret confirmation fields carry a non-sensitive typed acknowledgment, never a credential. Do not invent a responder ID.
-- Local persisted state is operational evidence, not trusted authorization. The external controller must keep policy, mission registration, approver mapping and credentials outside agent control.
-- Implement and test the controller's deterministic decision contract here. Hosting an authenticated controller, installing its GitHub App and changing branch protection require separate setup approval; until then auto-merge fails closed.
+- Local persisted state gates owner design and high-risk/ask approval, two reviews and evidence. It is operational evidence, not tamper-resistant authorization against shell access.
+- Read actual branch protection: require PRs, strict successful CI pinned to source Apps, administrator enforcement and no review bypass allowances. No custom service, policy configuration or alternate bypass mode. CI/protection changes require separate approval and remain outside this worktree's task.
 - Prefer existing Amp dialogs and transcript output over a new dashboard. No UI framework or external dependency is needed.
 
 ## Task 1: revision-bound mission lifecycle
@@ -37,13 +37,13 @@ Files: plugins/mission-control/lib/mission.ts; tests/mission-control.test.ts.
 - [x] Implement atomic persisted state and chronological events, validated revision identities and explicit blockers. Public `advance` operations reject build before approval/defense.
 - [x] Test reload on real temporary Git directories and separate Bun processes, including corrupt-state rejection. Commit a coherent green increment.
 
-## Task 2: trusted merge decision and Amp integration
+## Task 2: local workflow gates and GitHub integration
 
-Files: plugins/mission-control/lib/gate.ts, lib/github.ts, index.ts; tests/mission-gate.test.ts, tests/mission-plugin.test.ts.
+Files: plugins/mission-control/lib/github.ts, index.ts; tests/mission-github.test.ts, tests/mission-plugin.test.ts.
 
-- [x] Test decision inputs from a trusted controller: missing/failed mandatory checks, wrong owner, stale head/base/design, stale review, high-risk acknowledgment and default low/medium path. `evaluateGate(snapshot)` reports blockers rather than accepting self-declared success.
+- [x] Remove the unused external-controller decision contract and its tests after user steering. Test default low/medium integration without custom configuration through the real local coordinator/GitHub adapter with controlled transport; retain high/ask approval and unknown-risk blockers.
 - [x] Add the coordinator's lifecycle tools. Approval fields are not agent-callable receipts; only owner-restricted UI completion produces them.
-- [x] Query GitHub again before requesting exact-head squash auto-merge; require protected dev, administrator enforcement and pinned successful checks. Verify merge separately. Reject unsupported merge queues through authoritative GraphQL reads. Owner-acknowledged recovery advances a generation and invalidates authorization without resending effects.
+- [x] Query GitHub again before requesting immediate exact-head squash merge; require protected dev, administrator enforcement and pinned successful checks. Do not enable persistent GitHub auto-merge for future heads. Verify merge separately. Reject unsupported merge queues through authoritative GraphQL reads. Owner-acknowledged recovery advances a generation and invalidates authorization without resending effects.
 - [x] Exercise registered tools with temporary Git repositories and SDK-shaped UI/transport adapters. Load through `amp plugins exec`; perform only a live read of existing PR16, not a live merge or protection change.
 
 ## Task 3: workflow, documentation and independent review
@@ -51,15 +51,16 @@ Files: plugins/mission-control/lib/gate.ts, lib/github.ts, index.ts; tests/missi
 Files: skills/delivering/SKILL.md and references; docs/mission-control.md; README.md; plugins/README.md.
 
 - [x] Update instructions to use the coordinator when installed, preserve requirements, require owner acknowledgment of both design disciplines, and implement the agreed default merge mode.
-- [x] Document trusted-controller input provenance, deployment prerequisites, credential separation, availability limits and no false enforcement claims.
-- [x] Run make check, real local restart/journey probes and two independent review gates with repairs and revalidation. Both reviews found defects; regression repairs and a second-gate follow-up closed the findings. Native owner dialogs and live protected merges remain unverified.
+- [x] Document the accepted local workflow boundary, existing credentials, CI/protection prerequisites and availability limits without hostile-shell enforcement claims.
+- [x] Before the latest steering, run make check, real local restart/journey probes and two independent review gates with repairs and revalidation. Both reviews found defects; regression repairs and a second-gate follow-up closed those findings. Native owner dialogs and live protected merges remain unverified.
+- [ ] Independently review the revised local-only source; prior reviews do not cover this change.
 - [ ] Deliver source and evidence. This permission/merge-control feature is high-risk: do not merge this PR without the user's explicit final-candidate acknowledgment. Do not publish to Personal repositories or install shared protections without approval.
 
-## Activation remains a separate, blocked stage
+## Activation remains separate
 
-Read-only GitHub inspection found no protection or active rules on `dev`, and no
-PR test workflow. This source includes a coordinator and a pure policy contract,
-not the authenticated hosted controller. Its installation, owner authentication,
-App credential separation, PR CI, protected-branch configuration and live
-acceptance trials still require setup and applicable approval. No production
-reliability or autonomous integration claim follows from local checks.
+After explicit user authorization, separate PR #19 added PR/push CI and was
+merged into `dev`; strict required Extension checks from GitHub Actions, admin
+enforcement, resolved conversations and no force-push/deletion are configured.
+No custom hosted service is needed. Installation, native owner-dialog verification
+and live protected-merge trials still require applicable approval. No production
+reliability or live integration claim follows from local checks.

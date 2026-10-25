@@ -130,10 +130,11 @@ integration, not merely requesting auto-merge.
 
 Version one supports a thread-owner initiator or a mission explicitly adopted by the thread owner.
 Owner-restricted dialogs take non-sensitive typed acknowledgments, **never secrets**. Local state
-is operational evidence, not trusted authorization against an unrestricted executor. A separately
-trusted controller, pinned App check, and enforced branch protection are required outside agent
-control. They are **not provisioned here**; automatic merge fails closed without them. Neither
-source documentation nor plugin loading means deployed enforcement.
+enforces the workflow, not security against an unrestricted executor. The coordinator uses existing
+GitHub credentials through `gh` in the Amp environment; no custom controller, App, or approval
+service is required. Protected `dev` must enforce strict required CI checks pinned to their source
+Apps and include administrators. CI/protection setup is **not provisioned here**; missing or failing
+requirements block merge. Neither plugin loading nor local records imply hostile-shell isolation.
 
 Its [mission record](./skills/delivering/reference/mission-record.md) lists coordinator tools and
 manual fallback; [review/recovery guidance](./skills/delivering/reference/review-and-recovery.md)

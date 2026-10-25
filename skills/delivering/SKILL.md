@@ -14,9 +14,10 @@ speed for non-trivial work.
 
 This skill is instruction guidance, not a daemon, permission grant, scheduler, or security boundary.
 Use `mission-control` when installed, following [reference/mission-record.md](reference/mission-record.md).
-Its local state is operational only; trusted merge authorization needs an external controller and
-repository protections outside executor control. Those are not provisioned by loading this skill
-or plugin. Without them, automatic merge fails closed; do not bypass the gate with a shell command.
+Its local approval/evidence gates enforce the workflow, not security against an unrestricted shell.
+It uses existing GitHub credentials through `gh` in Amp, with no custom controller/App or approval
+service. Required source-App-pinned CI and strict, administrator-enforced dev protection must pass;
+loading this skill/plugin does not configure them. Do not bypass gates with a shell command.
 Use the tools actually available. A coordinator without filesystem or execution access must hand
 execution to an authorized agent with the right environment; never invent execution evidence.
 
@@ -243,15 +244,15 @@ the full journey passes. Do not lower the goal to “we wrote code.”
 Present the inspected artifacts, acceptance evidence, both reviews, customer value, limitations,
 and a reproducible **try-it procedure** before requesting merge (`mission_present()` when available).
 For low/medium automatic mode, proceed without another human response only when all mandatory
-gates and external authorization pass. Ask mode and every high-risk candidate require owner
+local gates, required CI and branch protection pass. Ask mode and every high-risk candidate require owner
 acknowledgment bound to the exact candidate and current design/base/mode. Unknown risk blocks merge.
 Changed code or base needs affected revalidation and renewed exact-candidate acknowledgment where
 required; material design changes also reopen the design gate. A local approval record cannot
-authorize a trusted check. Use `mission_approve(stage: merge)` and `mission_merge()` when available.
+override required CI or protection. Use `mission_approve(stage: merge)` and `mission_merge()` when available.
 
 Commit the reviewed candidate, run configured CI, and integrate authorized green slices into `dev`
 under repository policy. Carry valid existing authorization forward without treating stale receipts
-as current. If external authority or protected-branch prerequisites are absent, finish local work
+as current. If GitHub access or protected-branch prerequisites are absent, finish local work
 and report the specific blocker; do not provision shared protections without separate approval.
 Use PRs to `dev`, squash-merge when required checks are green and policy permits, then clean up
 only this mission's branch/worktree after preserving its evidence. Use configured Depot runners;

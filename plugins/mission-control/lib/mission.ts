@@ -67,7 +67,7 @@ export function blockers(s: Mission): string[] {
 }
 
 // Approval events are INTERNAL: the plugin produces them only after owner-restricted UI.
-// These records are not a substitute for a trusted external merge-policy check.
+// These are local workflow gates, not tamper-resistant authorization against shell access.
 export function advance(previous: Mission, action: Action): Mission {
 	const s = structuredClone(previous)
 	if (s.phase === 'merged') throw new Error('Mission is already merged')

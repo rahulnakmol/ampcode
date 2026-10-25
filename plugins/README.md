@@ -23,10 +23,11 @@ always needs exact-candidate acknowledgment; unknown risk blocks merge. Version 
 initiator to be the thread owner or the owner to adopt the mission. Owner-restricted fields take
 non-sensitive typed acknowledgment, never secrets.
 
-Local state is operational only, not trusted authorization. The external trusted controller,
-pinned App check, and enforced dev branch protection are not provisioned by this source plugin.
-Automatic merge fails closed without those prerequisites; loading the plugin does not establish
-deployed enforcement. A queued auto-merge request is not a verified merge. Copy the entire plugin
+Local state enforces the workflow, not security against unrestricted shell access. Existing GitHub
+credentials available to `gh` in Amp are used; no custom controller/App or approval service is needed.
+Required CI checks must be pinned to source Apps by strict, administrator-enforced dev protection.
+The plugin does not configure CI/protection; absent or failing requirements block integration.
+A queued auto-merge request is not a verified merge. Copy the entire plugin
 directory if separately authorized to install/publish; skills belong in Personal Skills, not in
 the Personal Plugins destination. Source integration grants no Personal publication authority.
 
