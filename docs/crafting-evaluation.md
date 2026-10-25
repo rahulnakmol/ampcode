@@ -204,4 +204,29 @@ that travel alone carry what, when, where, and how, placeholders hold the press,
 interactions get production artwork, directions differ in structure, and one-screen requests stay
 proportional.
 
-Not yet measured: c07 and c10 against the round-5 fixes.
+### Round 6: c07 and c10 against the merged round-5 skill
+
+| Scenario | Round 4 A / B (ceiling) | Round 6 A / B (ceiling) | Hard fails |
+| --- | --- | --- | --- |
+| c07 couples-finance mood board | 0.80 / 0.80 (3.5 / 4.0) | **0.83 / 0.85** (4.0 / 4.5) | — |
+| c10 standup dashboard | 0.85 / 0.78 (4.0 / 3.5) | **0.78 / 0.83** (4.0 / 4.0) | — |
+
+- c07 reached the highest ceiling so far: Judge B scored Angle 5 for "onboarding as a proposal",
+  where one partner writes a note and the other agrees, changes a line, or talks about it later.
+  The board drew the real disagreement (65 / 35 with a reason) and kept amounts off lock screens.
+- c10 applied the round-5 fixes visibly: a private ask with "Not today" as a real answer, a
+  rendered decline, an outage state that says what it still knows, and a quiet-day async offer.
+- The independent Critic, now run straight from `critic.md`, again said "revise" on both and found
+  what the judges did not: "even" with no source of truth and no join path for the invited partner
+  (c07), and in c10 a proof state that shows ownership rather than unblocking, an agenda that does
+  not visibly shrink, and privacy copy that the access model contradicts.
+
+Fixes after round 6: the proof state shows the promised outcome rather than a proxy and its
+mechanic is visibly true; compound angles get a trigger, success, and failure per half; consent
+covers the power gap and person-level flags stay private until confirmed; waiting states and the
+second actor's way in are rendered; the Critic checks sources of truth, headline-action agreement,
+and privacy copy against access, returns text for the main agent to save, reads `HANDOFF.md`,
+and applies agent checks only to agent surfaces; boards name their nearest analogue; one-screen
+replies stay under about 350 words.
+
+Not yet measured: c07 and c10 against the round-6 fixes.

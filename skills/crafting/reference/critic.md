@@ -42,12 +42,19 @@ What the Critic checks that a scorer misses:
 
 - **Every sentence is true.** For each state, compare what the copy claims ("everyone else is
   moving", "your salary is never shown") with the data shown and with simple arithmetic. A promise
-  the data or one division disproves is a P0 or P1.
+  the data or one division disproves is a P0 or P1. Every headline agrees with the action the same
+  state asks for, and the same thing has the same word everywhere ("shown" is not "posted").
+- **Source of truth.** For every number or status a later state claims ("even for November",
+  "sorted"), name where it comes from. A claim with no source is a finding, even when the
+  arithmetic adds up.
+- **Outcome, not proxy.** The proof state shows what the tell-a-friend line promises, not a
+  stand-in for it ("has an owner" is not "unblocked").
 - **The hard moment is the real one.** The disagreement, failure, or loss drawn must be the one the
   brief's own story is about, not the easiest case.
 - **Social cost.** Where the design names people on a shared surface (assigning, missing, late,
   owing), argue from the named person's side and require consent (ask, accept, decline) or a
-  reason it is not needed.
+  reason it is not needed. Privacy copy ("only you can see this") must match the access model;
+  check what every other viewer of a shared surface sees.
 - **Its own principles.** Each principle in the brief and `DESIGN.md` holds in every artifact; a
   broken one is a finding, not a matter of taste.
 - **One contract.** The actions, permissions, and names in the UI, the machine views (JSON,
@@ -59,7 +66,8 @@ What the Critic checks that a scorer misses:
 - **Deferred screens.** A moment of truth the brief defers is still judged as a gap, and listed
   separately as "deferred by the brief".
 
-Save the result as `.design/critique/<round>-critic.md`. `design_kit.py check` requires at least
+The Critic edits nothing and returns its critique as text; you save it as
+`.design/critique/<round>-critic.md`. `design_kit.py check` requires at least
 one critique file with a `Verdict:` line once any touchpoint exists. Resolve every P0 and P1, and
 take the bold move seriously: if it is right, it beats another polish round.
 
@@ -73,16 +81,19 @@ and as an architect. Be direct, specific, and unsparing; no praise padding and n
 
 Read in this order, and do not read anything else:
 1. The artifacts: everything under <path to .design/mockups/>, plus <tools.json, PDFs,
-   touchpoints.json>. View every image (contact sheets are fine for long sequences). You may read
-   any source in mockups/, and research/ read-only to verify facts; mark findings that come only
-   from code. touchpoints.json holds the alt text, post copy, and states.
-2. Then the intent: <path to BRIEF.md> and <path to DESIGN.md>.
+   touchpoints.json>. View every image (use contact sheets beyond ten). You may read any source in
+   mockups/, and research/ read-only to verify facts; mark findings that come only from code, and
+   weigh them like rendered ones when the code generates a shipped view. touchpoints.json holds
+   the alt text, post copy, and states.
+2. Then the intent: <path to BRIEF.md>, <path to DESIGN.md>, and <path to HANDOFF.md> if present.
+Do not read earlier critiques. Edit nothing; return the critique as text.
 
 Answer, in this structure:
 - First read: what idea do you see in five seconds, before reading the brief? Is it the category
   default? Quote the tell-a-friend line from the brief and say whether the work delivers it.
-- Angle (1-5), Joy (1-5), and Principles (1-5), each with one sentence of evidence. For agent
-  surfaces, joy is zero guesses: name every guess an agent would have to make. For Principles,
+- Angle (1-5), Joy (1-5), and Principles (1-5), each with one sentence of evidence. If the work
+  has agent surfaces (tools, APIs, machine views), joy there is zero guesses: name every guess an
+  agent would have to make. For Principles,
   check every principle in the brief and DESIGN.md against the artifacts and name each one broken.
 - Need: does the hard moment get as much care as the happy path? Is the hard moment drawn the
   one the brief's own story is about? Is every sentence in every state true for its data (check
@@ -92,7 +103,7 @@ Answer, in this structure:
 - System: information architecture, names across surfaces, tokens, the agent contract, and what
   breaks at 10x data, another language, or another platform.
 - Craft: hierarchy, typography, spacing, color, motion, medium fidelity, accessibility.
-- Findings: at most 12, P0 to P3, most important first, each with the artifact and place, why it
+- Findings: at most 12 (group related sub-items under one), P0 to P3, most important first, each with the artifact and place, why it
   matters, and the fix. Moments the brief defers and assumptions printed as fact go in separate
   lines after the findings, outside the cap.
 - Guidance: the three moves that most raise the work in one more hour, in order.

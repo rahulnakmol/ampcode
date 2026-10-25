@@ -226,7 +226,9 @@ Keep it proportional. For a request for one screen or one asset, render the requ
 hard states the job implies, the proof and failure states of the angle, the main state of any
 companion touchpoint, and two or three variants; list the rest in `touchpoints.json` with a `skip`
 reason ("specified, not rendered: ..."). Make the mood board only when the direction is genuinely
-open, and keep it to one page. Spend saved effort on the hard states, not more artifacts.
+open, and keep it to one page. Reuse standard checks (axe, the kit) before writing bespoke
+tooling. Spend saved effort on the hard states, not more artifacts. Keep the reply for such a
+request under about 350 words, with no tool names.
 
 Parallelize only independent surface families, for example one subagent per family once
 `DESIGN.md` is fixed, each given the brief, `DESIGN.md`, its touchpoints, and its surface file.

@@ -49,7 +49,8 @@ view that serves the chosen angle, not a pattern library:
 - Name the one specific detail worth stealing from each reference, never "nice vibe", and describe
   only what it actually shows.
 - Every image, including anti-references, links to its source.
-- Assumptions keep their label on the board.
+- Assumptions keep their label on the board, and the nearest analogue from `angle.md` is named
+  on the board with the distance from it, not only in the brief.
 - Labels in the frames do not use words the board refuses (an anti-reference's "Ours"), and counts
   quoted in copy match what is drawn ("four of five" over four rows is a defect).
 - Each section gets its own readable capture, which you inspect. Check that the font that rendered
