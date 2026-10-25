@@ -97,9 +97,11 @@ LLM-judged routing and behavior evaluations live in [`evals/crafting/`](./evals/
 ## Delivering
 
 [`skills/delivering/`](./skills/delivering/SKILL.md) carries a major feature, use case, or concrete
-requirement through outcome-driven delivery. `grilling` confirms expectations; `crafting` can
-shape the experience; `delivering` requires a whiteboard defense before implementation handoff,
-then executes the approved brief without repeating the interview. The owner explains the outcome,
+requirement through outcome-driven delivery. Requirements retain their original purpose;
+`grilling` makes them concrete. A spec, plan, technical design, and relevant `crafting` UX design
+need the initiator's acknowledgment **before whiteboard defense or build**. Material changes reopen
+acknowledgment and defense. The unchanged approved brief does not need another interview.
+The integration owner explains the outcome,
 data flow, choices, invariants, threats, and failure limits. The receiving agent explains the plan
 back from the transferred materials; function-name recall is not required.
 Invoke it with “use delivering for this feature” or “deliver this approved brief.”
@@ -118,14 +120,28 @@ enforcement require runtime telemetry and are disclosed as unavailable when abse
 uses deterministic tools for mechanical work, preserves repository conventions, and requires
 direct inspection of the produced artifact before completion.
 
-This is an instruction-only skill, not programmatic enforcement or a background coordinator.
-Its [mission record](./skills/delivering/reference/mission-record.md) and
-[review/recovery guidance](./skills/delivering/reference/review-and-recovery.md) use existing Amp
-tools. [Research](./docs/delivering-research.md) records the design rationale;
+The skill supplies guidance; [`mission-control`](./plugins/mission-control/) supplies operational
+coordination when installed. Its [guide](./docs/mission-control.md) covers the trust boundary and
+setup prerequisites. At build entry, low/medium risk defaults to automatic merge into **dev**, with
+optional owner-selected ask-before-merge. Automatic mode needs no response or timer. High risk
+always needs acknowledgment of the exact candidate; unknown risk blocks merge. Evidence, inspected
+artifacts, and a try-it procedure precede a merge request. Completion means verified remote
+integration, not merely requesting auto-merge.
+
+Version one supports a thread-owner initiator or a mission explicitly adopted by the thread owner.
+Owner-restricted dialogs take non-sensitive typed acknowledgments, **never secrets**. Local state
+is operational evidence, not trusted authorization against an unrestricted executor. A separately
+trusted controller, pinned App check, and enforced branch protection are required outside agent
+control. They are **not provisioned here**; automatic merge fails closed without them. Neither
+source documentation nor plugin loading means deployed enforcement.
+
+Its [mission record](./skills/delivering/reference/mission-record.md) lists coordinator tools and
+manual fallback; [review/recovery guidance](./skills/delivering/reference/review-and-recovery.md)
+preserves revision-bound reviews and safe resumption. [Research](./docs/delivering-research.md) records the design rationale;
 [evaluations](./evals/delivering/README.md) distinguish simulated decisions from live execution.
 Install/publish `grilling` alongside it for the expectation loop; if unavailable, the agent reports
-the dependency rather than silently installing it. Source integration does not publish either
-skill to Amp Personal Skills. Rolling, stable release, deployment, and Personal publication retain
+the dependency rather than silently installing it. Source integration does not publish skills to
+Amp Personal Skills or the coordinator to Amp Personal Plugins. Rolling, stable release, deployment, and Personal publication retain
 their separate gates.
 
 ## Using modes without changing the Dial

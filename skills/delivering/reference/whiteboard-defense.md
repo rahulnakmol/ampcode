@@ -1,7 +1,10 @@
 # Own the outcome, not every line
 
-Use the whiteboard defense after grilling and before implementation handoff. It tests whether the
-owner can explain and justify the proposed system. Before final delivery, refresh it against the
+Use the whiteboard defense after grilling, a concrete spec/plan/technical design plus relevant
+crafting UX design, and initiator acknowledgment of that package. It precedes implementation
+handoff; defense is not a substitute for acknowledgment. The initiator must be the thread owner
+or the owner must adopt the mission in version one. It tests whether the integration owner can
+explain and justify the proposed system. Before final delivery, refresh it against the
 actual system and evidence. No memorization of function names, code trivia, or exhaustive design
 document is required. A small, low-risk slice can use a short explanation; consequential designs
 need challenge from a separate reviewer context or person.
@@ -30,6 +33,7 @@ use an independent context or person. The owner retains responsibility for resol
 The challenger reports gaps, not a preferred implementation to copy without thought.
 
 Record **ready for implementation** only when:
+- The current design package has initiator acknowledgment, recorded before this defense.
 - Each applicable challenge has a grounded answer and the acceptance criteria are falsifiable.
 - No unresolved contradiction or unknown mechanism blocks the first useful slice.
 - Remaining assumptions have handling and revisit triggers; required experiments/tests have owners.
@@ -47,7 +51,9 @@ work while resolving the gap. Do not demand another user approval for unchanged 
 ## Keep the explanation true as the system changes
 
 Reopen the affected defense when a change alters a decision, ownership, data semantics, trust
-boundary, or failure behavior. Transfer the revised record and obtain an updated recipient
+boundary, or failure behavior. Material changes to requirements, scope, technical design, UX, or
+acceptance criteria first reopen initiator acknowledgment; do not defend or build the changed
+package before that acknowledgment. Invalidate affected reviews/evidence. Transfer the revised record and obtain an updated recipient
 teach-back when handing off. Do not reuse an old explanation merely because the tests passed.
 At delivery, explain the implemented system from its inspected artifacts and current evidence.
 Keep the original two build-review gates; this defense is neither of them.
@@ -59,6 +65,7 @@ Add this block to the mission record; link existing evidence rather than copy it
 ```markdown
 ## Ownership defense
 - Brief/candidate revision and owner:
+- Design package revision and preceding initiator acknowledgment:
 - State: ready for implementation | blocked | investigate | reframe
 - Customer outcome and acceptance IDs:
 - System/data flow and trust boundaries:

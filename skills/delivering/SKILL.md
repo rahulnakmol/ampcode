@@ -1,25 +1,31 @@
 ---
 name: delivering
-description: "Delivers major features, use cases, and concrete requirements through outcome-driven TDD, real journeys, two review gates, and customer value. Uses grilling to confirm expectations, requires a whiteboard defense before implementation handoff, and tracks evidence and safe recovery. Communicates in standard/formal or editorial mode, with ELI5 summaries under 300 words. Use to deliver a substantial feature, execute an approved brief, or resume a multi-step mission. Not for standalone review, release-only work, trivial edits, or design-only exploration."
+description: "Delivers major features, use cases, and concrete requirements through initiator-acknowledged design, whiteboard defense, outcome-driven TDD, real journeys, two review gates, and customer value. Uses grilling and relevant crafting UX design, coordinates with mission-control when installed, and integrates into dev under risk-based gates. Communicates in standard/formal or editorial mode, with ELI5 summaries under 300 words. Use to deliver a substantial feature, execute an approved brief, or resume a multi-step mission. Not for standalone review, release-only work, trivial edits, or design-only exploration."
 ---
 
 # Delivering
 
 Deliver the agreed customer outcome, not merely green tests. Use two cycles: **frame expectations
-with grilling**, then **build and deliver against those expectations**. Between them, own the
-definition of done through a whiteboard defense. Precision means traceable requirements and
+with grilling**, then **build and deliver against those expectations**. Between them, obtain
+initiator acknowledgment of the concrete design package, then defend the definition of done at
+the whiteboard. Precision means traceable requirements and
 evidence, not a promise of perfection. Keep ceremony proportional to risk; prefer caution over
 speed for non-trivial work.
 
-This is an instruction workflow, not a daemon, permission grant, scheduler, or executable gate.
+This skill is instruction guidance, not a daemon, permission grant, scheduler, or security boundary.
+Use `mission-control` when installed, following [reference/mission-record.md](reference/mission-record.md).
+Its local state is operational only; trusted merge authorization needs an external controller and
+repository protections outside executor control. Those are not provisioned by loading this skill
+or plugin. Without them, automatic merge fails closed; do not bypass the gate with a shell command.
 Use the tools actually available. A coordinator without filesystem or execution access must hand
 execution to an authorized agent with the right environment; never invent execution evidence.
 
 ## Enter with a concrete agreement
 
 1. Read the request, repository guidance, existing brief, and current delivery state. State the
-   customer outcome and delivery target in a sentence. A task already approved in this conversation
-   does not need another approval merely because this skill loaded.
+   customer outcome and delivery target in a sentence. Preserve the original requirements and
+   purpose; distinguish clarification from a proposed change. Carry forward a valid acknowledgment
+   of the same design revision rather than asking again merely because this skill loaded.
 2. Load `grilling` for the expectation loop. Reuse its existing confirmed brief without repeating
    the interview. For an incomplete brief, use its concreteness gate to resolve only missing or
    contradictory decisions. If the skill is unavailable, read its source if accessible; otherwise
@@ -30,16 +36,22 @@ execution to an authorized agent with the right environment; never invent execut
    Identify the real delivery target, including any separate rollout approval and check. A brief
    marked pending or not concrete is not an approved mission. An explicit instruction to proceed
    with assumptions authorizes only those stated assumptions within the user's existing authority.
-4. Confirm only consequential unresolved choices. Do not make the user repeat settled decisions.
-   For an explicit mission that is already fully specified, the user's instruction to build it
-   can be the confirmation. For ordinary tiny edits, use the normal workflow instead of creating
-   a mission. Use `crafting`, when available and relevant, for experience design—not as a replacement
-   for implementation, runtime validation, or either review.
+4. Produce a concrete specification, dependency-ordered plan, and technical design. Use `crafting`
+   for relevant UX design, including human and agent touchpoints; record why it is inapplicable
+   when there is no experience change. If required design support is unavailable, report the gap.
+   Present both technical and applicable UX design, acceptance criteria, risks, and verification
+   to the mission initiator. Obtain acknowledgment of this exact design package **before whiteboard
+   defense or build**. A generic earlier request to build is not acknowledgment of an unseen design.
+   In version one the initiator must be the Amp thread owner, or the owner must explicitly adopt
+   the mission. Do not pretend to authenticate another multiplayer participant. With the plugin,
+   use its owner-restricted design dialog; transcript text is not an agent-callable approval receipt.
+   For ordinary tiny edits, use the normal workflow instead of creating a mission.
 
 ## Own the definition of done before handoff
 
 Read [reference/whiteboard-defense.md](reference/whiteboard-defense.md) before the first
-implementation handoff, including when the same agent moves from design to building. The owner
+implementation handoff, including when the same agent moves from design to building, and only
+after initiator acknowledgment. The integration owner
 must explain the customer outcome, system and data flow, decisions and alternatives, data
 structures and invariants, malicious actors, and failure/recovery boundaries. Function-name recall
 is not required. Ground each answer in the brief, inspected contracts, evidence, or an explicitly
@@ -53,7 +65,10 @@ inherit shared memory. No second user approval is needed for already-approved, u
 
 Use facts to resolve factual gaps, bounded experiments for uncertain mechanisms, and grilling for
 changed expectations. Stop when confused and name the gap. Reopen only affected decisions when
-design, ownership, threat boundaries, or data semantics change. Refresh the defense against the
+design, ownership, threat boundaries, or data semantics change. Material changes to requirements,
+scope, technical design, UX, or acceptance criteria reopen initiator acknowledgment **before**
+renewed defense and build. Invalidate affected reviews and evidence; unchanged scope does not
+need ceremonial reapproval. Refresh the defense against the
 implemented system before delivery, so the owner can still answer “why?” and “where does it fail?”
 This entry gate never replaces the two build reviews, executed tests, or customer-value gate.
 
@@ -80,12 +95,19 @@ This entry gate never replaces the two build reviews, executed tests, or custome
   for diagnosis or replanning, not an unlimited retry loop.
 - Follow repository isolation policy. Default to a dedicated branch/worktree from current
   `origin/dev`; fetch before creating it. Preserve existing staged and unstaged work. If `dev`
-  does not exist, resolve the repository's integration branch—do not silently create it or use
-  `main`. Inventory and safely transfer any task-related pre-existing work, preserving its source
+  does not exist, report the integration prerequisite as blocked—do not silently create it or
+  substitute `main` or another target. Inventory and safely transfer task-related pre-existing work, preserving its source
   until verified. Never reset, clean, or overwrite unrelated work.
 - Order slices by dependency and risk. Each should yield a useful outcome or a necessary enabling
   layer tied to an outcome. Validate accumulated slices at milestone boundaries, including their
   interactions. The final mission needs an end-to-end check of the complete customer journey.
+- At build entry, explain the merge policy: **low/medium risk defaults to automatic dev merge**
+  after all gates, with an optional owner-selected **ask-before-merge** mode. Automatic mode
+  needs no response or timer. High risk always requires acknowledgment of the exact final
+  candidate, even in automatic mode; unknown risk is blocked until classified. Never silently
+  downgrade risk. An owner mode change invalidates a prior final-candidate acknowledgment.
+  Record the choice with `mission_merge_mode(mode: auto|ask)` when available; this offers an
+  owner-restricted interaction, not authority for the agent to choose on the owner's behalf.
 
 ## Build loop: repeat for each small, composable slice
 
@@ -218,9 +240,19 @@ the full journey passes. Do not lower the goal to “we wrote code.”
 
 ### 10. Integrate and learn
 
+Present the inspected artifacts, acceptance evidence, both reviews, customer value, limitations,
+and a reproducible **try-it procedure** before requesting merge (`mission_present()` when available).
+For low/medium automatic mode, proceed without another human response only when all mandatory
+gates and external authorization pass. Ask mode and every high-risk candidate require owner
+acknowledgment bound to the exact candidate and current design/base/mode. Unknown risk blocks merge.
+Changed code or base needs affected revalidation and renewed exact-candidate acknowledgment where
+required; material design changes also reopen the design gate. A local approval record cannot
+authorize a trusted check. Use `mission_approve(stage: merge)` and `mission_merge()` when available.
+
 Commit the reviewed candidate, run configured CI, and integrate authorized green slices into `dev`
-under repository policy. Carry existing authorization forward; do not ask again for actions it
-already covers. If authority is absent, finish local work and ask for the specific external action.
+under repository policy. Carry valid existing authorization forward without treating stale receipts
+as current. If external authority or protected-branch prerequisites are absent, finish local work
+and report the specific blocker; do not provision shared protections without separate approval.
 Use PRs to `dev`, squash-merge when required checks are green and policy permits, then clean up
 only this mission's branch/worktree after preserving its evidence. Use configured Depot runners;
 do not invent runner labels or CI. No CI configured is not a green CI run: report the gap and
@@ -229,13 +261,15 @@ resolve the integration gate explicitly instead of merging on that assumption.
 Check the exact candidate's required checks, review status, and mergeability. If the base or code
 changes, revalidate affected integration behavior before merging. Follow Amp's PR comment/review
 and exact-head CI subscription guidance when available; feedback is not new authority to push.
-Record the merge outcome and relevant integration verification. Inspect remote state before
+Record the merge outcome and relevant integration verification. An accepted auto-merge request
+is pending, not completion; verify the actual remote merge into dev. Inspect remote state before
 retrying an ambiguous push or merge. Capture lessons that change the next slice, not generic prose.
 
 Keep `dev` integration, rolling promotion, deployment, and stable release distinct. Promote only
 under the repository's schedule or explicit release authorization and applicable release gates.
 Never infer stable-release or deployment approval from green CI. Publishing source extensions
-does not install them into Amp Personal Skills; that publication requires separate approval.
+does not install them into Amp Personal Skills or Personal Plugins; each publication destination
+requires separate explicit approval. Source delivery is not Personal publication authorization.
 
 ## Resume, communicate, and finish honestly
 
