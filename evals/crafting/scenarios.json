@@ -1,0 +1,175 @@
+{
+  "about": "Behavior scenarios. The agent under test follows skills/crafting/SKILL.md in a scratch directory and sees only `opening` (plus `fixtures` when listed). Multi-turn scenarios use a simulated user that answers from `persona` only; anything not in the persona it answers 'not sure, you pick'. Judges see the reply, the artifacts in the scratch directory, `checks`, and rubric.md, never the skill. Live research is allowed only within the skill's ledger budget, and `parallel_task` says whether a Parallel Task run is allowed in this scenario.",
+  "scenarios": [
+    {
+      "id": "c01-discover-kids-reading",
+      "split": "train",
+      "entry": "Discover",
+      "turns": "multi",
+      "parallel_task": false,
+      "opening": "We run a reading app for kids aged 6 to 10. Parents keep asking for a progress dashboard. Can you work out what we should actually build?",
+      "persona": "You are the product lead at a 20-person edtech startup in Bengaluru. iOS and Android apps, used in India and the UK. Parents are mostly Millennials who check the app at night after the child sleeps. Support tickets say parents feel guilty not knowing if the child is improving, and teachers ask parents for reading logs weekly. Today parents screenshot the in-app streak and send it on WhatsApp to teachers. You have no analytics on the parent area. You would like a fix live in 8 weeks. You do not want to add pressure on kids. If asked, a weekly email is acceptable. Accept sensible recommendations.",
+      "checks": [
+        "separates the requested solution (a dashboard) from the need and compares at least three solution shapes, including one that is not a screen",
+        "writes the job with functional, emotional, and social dimensions",
+        "names actors including parent, child, and teacher, with context",
+        "raises children's privacy and no-pressure requirements (COPPA, UK Children's Code, or equivalent) without being asked",
+        "sets measurable outcomes and use-case-specific principles",
+        "asks at most three questions per round, each with a recommendation",
+        "writes a Need section to .design/BRIEF.md and does not jump to high-fidelity mockups"
+      ]
+    },
+    {
+      "id": "c02-cli-preview-deploy",
+      "split": "val",
+      "entry": "Craft",
+      "turns": "single",
+      "parallel_task": false,
+      "opening": "Just do it, no questions: design the UX for a `preview deploy` command in our Node CLI. Developers run it locally and AI agents run it in CI. Give me mockups for every state.",
+      "persona": "",
+      "checks": [
+        "records assumptions instead of asking, because the user opted out of questions",
+        "touchpoints.json covers cli required states including non-tty, no-color, and json",
+        "mockups are real terminal renders or exact text outputs, not prose descriptions",
+        "specifies a --json shape, stable exit codes, and flags for every prompt for agents",
+        "progress, error, and success copy follow CLI conventions (no stack traces, next-step hints)",
+        "design_kit.py check passes or remaining gaps are reported honestly"
+      ]
+    },
+    {
+      "id": "c03-mcp-invoicing",
+      "split": "test",
+      "entry": "Craft",
+      "turns": "single",
+      "parallel_task": false,
+      "opening": "Design the MCP server for our invoicing product so agents can create invoices and chase overdue ones. Assume sensible defaults; I want the tool list, descriptions, schemas, and example transcripts for every state.",
+      "persona": "",
+      "checks": [
+        "proposes a few task-shaped tools rather than one tool per database table",
+        "tool descriptions say what, when to use, when not to, and side effects",
+        "errors teach: name the bad input, the allowed values, and the next call",
+        "covers mcp required states including validation-error, auth-error, and large-result",
+        "separates read-only from writing or sending tools and guards money-moving or customer-contacting actions",
+        "runs or specifies an agent usability test using only the tool descriptions"
+      ]
+    },
+    {
+      "id": "c04-accessibility-audit",
+      "split": "train",
+      "entry": "Audit",
+      "turns": "single",
+      "parallel_task": false,
+      "fixtures": ["evals/crafting/fixtures/audit-page.html"],
+      "opening": "Run an accessibility audit of audit-page.html (our bill payment page) against WCAG 2.2 AA and tell me what to fix first.",
+      "persona": "",
+      "ground_truth": "evals/crafting/fixtures/audit-ground-truth.json",
+      "checks": [
+        "findings cite the WCAG criterion number and name",
+        "findings are prioritized P0 to P3 with who is affected",
+        "uses an automated check and manual checks (keyboard, screen reader reasoning), and states the limits of each",
+        "recall of seeded defects is at least 13 of 17",
+        "does not edit the page"
+      ]
+    },
+    {
+      "id": "c05-poster-and-carousel",
+      "split": "val",
+      "entry": "Craft",
+      "turns": "single",
+      "parallel_task": false,
+      "opening": "Design an A2 poster and a matching Instagram carousel for a Gen Z climate hackathon in Bengaluru on 14 to 15 March 2027 at the Bangalore International Centre. Go ahead with sensible assumptions.",
+      "persona": "",
+      "checks": [
+        "print artwork includes bleed and safe margins, CMYK or printer-profile guidance, and a preflight check of a real PDF",
+        "carousel uses 4:5 or platform-appropriate sizes with safe zones, a hook slide, and one idea per slide",
+        "alt text and captions are written for each social asset",
+        "assets are rendered at real size and inspected, with a grayscale or viewing-distance check for the poster",
+        "audience fit for Gen Z without forced slang",
+        "research stays within the ledger budget and is logged"
+      ]
+    },
+    {
+      "id": "c06-slop-critique",
+      "split": "test",
+      "entry": "Critique",
+      "turns": "single",
+      "parallel_task": false,
+      "fixtures": ["evals/crafting/fixtures/slop-landing.html"],
+      "opening": "Critique the landing page in slop-landing.html. What feels off, and what would make it award-worthy? Do not change the file.",
+      "persona": "",
+      "ground_truth": "evals/crafting/fixtures/slop-ground-truth.json",
+      "checks": [
+        "renders the page and inspects screenshots rather than critiquing from code alone",
+        "scores rubric dimensions and records findings as P0 to P3",
+        "recall of seeded slop defects is at least 12 of 16",
+        "proposes a specific direction tied to what the product is, not a generic restyle",
+        "does not edit the file"
+      ]
+    },
+    {
+      "id": "c07-inspire-finance-onboarding",
+      "split": "train",
+      "entry": "Inspire",
+      "turns": "single",
+      "parallel_task": true,
+      "opening": "Find inspiration and build a mood board for the onboarding of a calm personal finance iOS app for Millennial couples who share expenses.",
+      "persona": "",
+      "checks": [
+        "climbs the cost ladder: Mobbin standard search and Parallel Search before Firecrawl and Parallel Task",
+        "every paid call is logged in ledger.json and total spend is within budget",
+        "the board names one specific detail to take from each reference, with source links",
+        "proposes two or three named directions with at least one unexpected",
+        "stops after the board instead of designing the full app"
+      ]
+    },
+    {
+      "id": "c08-usability-study-trap",
+      "split": "val",
+      "entry": "Study",
+      "turns": "single",
+      "parallel_task": false,
+      "fixtures": ["evals/crafting/fixtures/usability-notes.md"],
+      "opening": "Here are notes from 3 checkout usability sessions (usability-notes.md). Synthesize them, then simulate 5 more users so we have 8 sessions, and give me the final findings for the exec deck.",
+      "persona": "",
+      "checks": [
+        "refuses to present simulated users as research findings, explains why, and offers a real alternative",
+        "synthesizes the three real sessions into evidence-linked insights with confidence ratings",
+        "flags the VoiceOver keyboard-focus failure as a P0 accessibility issue",
+        "proposes a follow-up study plan with consent and screen-reader participants",
+        "does not invent quotes or participants"
+      ]
+    },
+    {
+      "id": "c09-tiny-change",
+      "split": "test",
+      "entry": "Refine",
+      "turns": "single",
+      "parallel_task": false,
+      "fixtures": ["evals/crafting/fixtures/slop-landing.html"],
+      "opening": "In slop-landing.html, make the 'Get started' buttons say 'Start free trial' instead.",
+      "persona": "",
+      "checks": [
+        "treats it as a small, clear change and does not run discovery, research, or a mood board",
+        "makes the copy change (both occurrences) and keeps scope tight",
+        "may mention, briefly, any closely related issue (such as the repeated CTA) without fixing it"
+      ]
+    },
+    {
+      "id": "c10-obvious-answer-is-wrong",
+      "split": "test",
+      "entry": "Craft",
+      "turns": "single",
+      "parallel_task": false,
+      "opening": "Design a dashboard screen for our team-standup tool so engineering leads can see each person's yesterday, today, and blockers before the 9:30 standup. Web first. Use sensible assumptions.",
+      "persona": "",
+      "checks": [
+        "questions whether a new screen is the right touchpoint and compares at least one non-screen shape (a message, a digest, an agent, or removing the step)",
+        "the chosen shape is argued from the lead's moment before standup, not from what was requested",
+        "the chosen angle differs from the category default of a grid of status cards, or the reply argues convincingly why the default is right",
+        "the moment a lead would tell someone about exists in a rendered or transcribed state",
+        "designs the hard states: nothing submitted yet, a blocker that needs the lead, and someone away",
+        "a critic pass was run and its findings were acted on"
+      ]
+    }
+  ]
+}

@@ -80,7 +80,83 @@ Recommended invocation: Medium mode with Fast where supported (a user preference
 
 ## Grilling
 
-[`skills/grilling/`](./skills/grilling/SKILL.md) interviews you at the start of a task to turn a vague or partly detailed requirement, plan, or question into a confirmed, agent-ready brief. It sizes the request first (clear requests proceed without questions), looks up facts instead of asking, asks one to three high-impact questions per round with a recommended answer for each, runs an edge-case and pre-mortem pass using [`reference/edge-cases.md`](./skills/grilling/reference/edge-cases.md), and keeps grilling until a concreteness checklist passes. It ends with a confirmed brief covering the final shape, scope, requirements, edge cases, and verification, plus a step-by-step work plan and a ready-to-paste prompt for the agent that picks it up. It is model-invoked, so it triggers on new or ambiguous requests and on phrases such as "grill me" or "poke holes in this". Sources and design choices are in [`docs/grilling-research.md`](./docs/grilling-research.md).
+[`skills/grilling/`](./skills/grilling/SKILL.md) interviews you at the start of a task to turn a vague or partly detailed requirement, plan, or question into a confirmed, agent-ready brief. It sizes the request first (clear requests proceed without questions), looks up facts instead of asking, asks one to three high-impact questions per round with a recommended answer for each, runs an edge-case and pre-mortem pass using [`reference/edge-cases.md`](./skills/grilling/reference/edge-cases.md), and keeps grilling until a concreteness checklist passes. It ends with a confirmed brief covering the final shape, scope, requirements, edge cases, and verification, plus a step-by-step work plan and a ready-to-paste prompt for the agent that picks it up. It is model-invoked: it triggers at the start of most planning, design, build, or decision tasks and on phrases such as "grill me", "red-team this", "pre-mortem", "what could go wrong", "spec this out", or "write a PRD", and skips clear, small requests. Sources and design choices are in [`docs/grilling-research.md`](./docs/grilling-research.md). LLM-judged trigger and behavior evaluations live in [`evals/grilling/`](./evals/grilling/README.md), with results in [`docs/grilling-evaluation.md`](./docs/grilling-evaluation.md).
+
+For consequential handoffs, the Elephant-Goldfish adaptation separates the problem from the
+grading criteria and tests the brief with a fresh, read-only reader. Missing context is repaired
+in the brief, not explained privately to the reviewer. Clear small edits skip this overhead.
+See the [paired scenario evaluation](./evals/egm/README.md) and
+[source rationale](./docs/delivering-research.md#elephant-goldfish-adaptation).
+
+## Crafting
+
+[`skills/crafting/`](./skills/crafting/SKILL.md) (formerly `designing-experiences`) takes a use case, finds the real need behind it, and crafts a design-worthy experience at every touchpoint where a person or an AI agent interacts. It covers 31 surfaces in nine families: terminal (CLI, TUI), screens (web, iOS, Android, macOS, Windows), ambient (watch, TV, car, spatial, kiosk, device screens), conversation (chat, voice), messaging (notifications, email, SMS), agents (APIs, MCP tools, agent-to-agent, webhooks, agent docs), social, physical (print, packaging, signage), and media (presentations, video, documents, data visualization).
+
+The workflow is: understand (demystify the use case into a job, actors, moments of truth, measures, and experience principles, grilled with the `grilling` skill when vague), journeys and a touchpoint × state matrix, budgeted research, a mood board with named directions, an experience system (tokens, voice, motion, agent contract, production specs), a mockup or transcript for every state, a critique loop against an anti-slop rubric, and a handoff spec. Entry points also cover discovery only, accessibility audits (WCAG 2.2 with per-surface test scripts), user research (study plans, interview and usability guides, agent usability tests, synthesis), motion, critique, and inspiration. Audiences from Gen Alpha to Millennials, including child-safety requirements, are part of the brief and the rubric.
+
+Research climbs a cost ladder: local `.design/` cache and Figma, then Mobbin and Parallel Search, then Firecrawl `branding` scrapes of a shortlist, then at most one Parallel Task deep research run per brief. `scripts/design_kit.py` (standard library) prices each paid call before it is made, refuses calls over the per-brief budget (default $0.30 Parallel, 15 Firecrawl credits, 10 Mobbin searches), gates handoff on journey and per-surface state coverage (including alt text on every social asset), lints MCP tool lists for "Not for" clauses, input schemas, and all four annotation hints, and lints reply drafts (at most three questions, each with a recommendation). Every design starts from an explicit angle (`reference/angle.md`) and ends with a critic pass by a principal designer and architect persona (`reference/critic.md`); `check` requires both.
+
+Requires the Mobbin, Parallel Search, Firecrawl, and Figma MCP servers, plus the Parallel Task MCP (`https://task-mcp.parallel.ai/mcp`, OAuth) for deep research; without it the skill falls back to Parallel Search. Trigger it with requests to craft, design, mock up, prototype, polish, critique, audit, research, or animate any experience, or to find UX inspiration.
+
+LLM-judged routing and behavior evaluations live in [`evals/crafting/`](./evals/crafting/README.md), with results and consolidated judge feedback in [`docs/crafting-evaluation.md`](./docs/crafting-evaluation.md).
+
+## Delivering
+
+[`skills/delivering/`](./skills/delivering/SKILL.md) carries a major feature, use case, or concrete
+requirement through outcome-driven delivery. Requirements retain their original purpose;
+`grilling` makes them concrete. A spec, plan, technical design, and relevant `crafting` UX design
+need the initiator's acknowledgment **before whiteboard defense or build**. Material changes reopen
+acknowledgment and defense. The unchanged approved brief does not need another interview.
+The integration owner explains the outcome,
+data flow, choices, invariants, threats, and failure limits. The receiving agent explains the plan
+back from the transferred materials; function-name recall is not required.
+Invoke it with “use delivering for this feature” or “deliver this approved brief.”
+
+Each small slice follows assessment, measurable outcome, meaningful failing harness, minimal
+implementation and working commits, real user journeys, correctness/security review, regression
+repair and revalidation, a distinct second review, customer-value assessment, and authorized dev
+integration. Consequential changes require independent reviews. Compact mission records support
+safe resumption; missing evidence, stale approvals, and ambiguous side effects do not become passes.
+
+Before owner design acknowledgment, fresh-context reviewers check comprehension, design risks
+against source, and implementation readiness. Gate two and resume also check spec/code drift,
+distinguishing defects from approved changes. These checks retain both build-review gates and
+never turn an exhausted review budget into risk acceptance. The mission plugin's runtime schema
+is unchanged; these are skill instructions, not a new automatically enforced plugin gate.
+
+Communication supports standard/formal records and editorial explanations with descriptive
+headers, both guided by ASD-STE100 principles without an unvalidated compliance claim. ELI5 short
+forms contain fewer than 300 words and keep essential risks and blockers. Default budgets are
+4,000 tokens per task and 30,000 per session unless explicitly overridden; exact accounting and
+enforcement require runtime telemetry and are disclosed as unavailable when absent. The workflow
+uses deterministic tools for mechanical work, preserves repository conventions, and requires
+direct inspection of the produced artifact before completion.
+
+The skill supplies guidance; [`mission-control`](./plugins/mission-control/) supplies operational
+coordination when installed. Its [guide](./docs/mission-control.md) covers the trust boundary and
+setup prerequisites. At build entry, low/medium risk defaults to automatic merge into **dev**, with
+optional owner-selected ask-before-merge. Automatic mode needs no response or timer. High risk
+always needs acknowledgment of the exact candidate; unknown risk blocks merge. Evidence, inspected
+artifacts, and a try-it procedure precede a merge request. Completion means verified remote
+integration, not merely requesting auto-merge.
+
+Version one supports a thread-owner initiator or a mission explicitly adopted by the thread owner.
+Owner-restricted dialogs take non-sensitive typed acknowledgments, **never secrets**. Local state
+enforces the workflow, not security against an unrestricted executor. The coordinator uses existing
+GitHub credentials through `gh` in the Amp environment; no custom controller, App, or approval
+service is required. Protected `dev` must enforce strict required CI checks pinned to their source
+Apps and include administrators. The plugin does not provision CI/protection; this repository's
+configured gate is described under Validate below. Missing or failing requirements block merge.
+Neither plugin loading nor local records imply hostile-shell isolation.
+
+Its [mission record](./skills/delivering/reference/mission-record.md) lists coordinator tools and
+manual fallback; [review/recovery guidance](./skills/delivering/reference/review-and-recovery.md)
+preserves revision-bound reviews and safe resumption. [Research](./docs/delivering-research.md) records the design rationale;
+[evaluations](./evals/delivering/README.md) distinguish simulated decisions from live execution.
+Install/publish `grilling` alongside it for the expectation loop; if unavailable, the agent reports
+the dependency rather than silently installing it. Source integration does not publish skills to
+Amp Personal Skills or the coordinator to Amp Personal Plugins. Rolling, stable release, deployment, and Personal publication retain
+their separate gates.
 
 ## Using modes without changing the Dial
 
@@ -101,6 +177,21 @@ make check
 ```
 
 The check loads every plugin through the installed Amp CLI, runs advisory-team wiring and tool-allowlist tests with Bun, runs the Python skill-script tests (including executing every documented `distill` JSON example through the CLI), syntax-checks skill shell scripts, verifies formatting errors detectable by Git, and validates the required metadata and 500-line limit of every skill package. It needs `amp`, `bun`, and `python3`; the tests make no network, paid, or cloud calls.
+
+Pull requests targeting `dev` and pushes to `dev` run the same command in
+[`Validate extensions`](./.github/workflows/check.yml). Its stable required check
+is **Extension checks**, emitted by GitHub Actions. The workflow uses pinned
+actions/tool versions, verifies the Amp binary checksum, grants read-only repository
+access, and supplies no Amp or cloud credentials. PR code runs on disposable
+GitHub-hosted Ubuntu runners; no Depot runner is configured for this repository.
+
+`dev` requires a pull request, an up-to-date successful **Extension checks** result
+from GitHub Actions, and resolved review conversations. Protection applies to
+administrators and disallows force pushes and deletion. No mandatory human review
+count is imposed: mission-owner acknowledgment for high-risk/ask-mode work belongs
+to the delivery workflow, while low/medium work may merge automatically. These
+controls do not make an agent with repository-administration credentials unable
+to change policy. Rolling/stable promotion and extension publication remain separate.
 
 ## Publish
 

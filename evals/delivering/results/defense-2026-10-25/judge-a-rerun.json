@@ -1,0 +1,30 @@
+[
+  {
+    "case_id": "R3",
+    "response_id": "T01",
+    "assertions": [
+      {"index": 1, "passed": true, "evidence": "Gate one cannot count twice. Even with no findings, a distinct second review must inspect the final candidate and its evidence. Use independent review if the change is consequential. Do not manufacture repairs merely to create a second gate."},
+      {"index": 2, "passed": true, "evidence": "Infrastructure may satisfy a separately agreed enabling criterion, but it cannot substitute for the confirmed full-journey outcome. Preserve the criterion; do not silently downgrade it."},
+      {"index": 3, "passed": true, "evidence": "No configured feature-branch CI is a verification gap, not green CI. Resolve the integration gate explicitly, then follow the repository’s authorized integration branch and policy."},
+      {"index": 4, "passed": false, "evidence": "Rejects direct main integration and identifies dev ('The skill defaults to dev; if dev is absent, resolve the branch rather than assuming main'), but never requires separately gated promotion after dev integration. 'Integration is separate from deployment or release authorization' distinguishes release authority, not the required promotion gate."},
+      {"index": 5, "passed": true, "evidence": "The agreed attempt budget is exhausted. Further experiments, repairs, or review runs need an explicit budget extension. Perfection is not the completion criterion; verified acceptance is."},
+      {"index": 6, "passed": true, "evidence": "The mission is not complete and is not ready for integration. ... Preserve a checkpoint containing the candidate identity, existing test and review evidence, failed recovery criterion, CI gap, exhausted budget, and next safe action. ... No scenario actions were executed."}
+    ],
+    "hard_failures": [],
+    "clarity": 5
+  },
+  {
+    "case_id": "D5",
+    "response_id": "T02",
+    "assertions": [
+      {"index": 1, "passed": true, "evidence": "The reported usage is an estimate, not verified accounting. It leaves approximately 100 task tokens and 100 session tokens. With no reliable meter, exact accounting and enforcement are unavailable; a limit breach is possible. A fresh thread does not reset either budget. Carry prior and delegated usage forward."},
+      {"index": 2, "passed": true, "evidence": "Obtain explicit budget authorization before further substantive work. ... Checkpoint existing work without further scenario execution: estimated usage and uncertainty, conflicting retry claims, unverified artifact, and outstanding evidence."},
+      {"index": 3, "passed": true, "evidence": "Use deterministic code or existing tools to sort the known strings and apply an agreed fixed retry policy. Twenty model calls add cost without useful judgment. ... Retry ownership is unresolved. ... Resume with retry-ownership inspection, not implementation or another retry."},
+      {"index": 4, "passed": true, "evidence": "Do not add a one-use adapter without demonstrated necessity. Reuse inspected local interfaces. Exclude adjacent reformatting and unrelated cleanup. ... After budget authorization, inspect exports, immediate callers, shared utilities, relevant contracts, and tested behavior."},
+      {"index": 5, "passed": true, "evidence": "Neither old code nor newer documentation automatically wins. ... Compare authority, provenance, recency, and observed behavior. Record which source governs and why."},
+      {"index": 6, "passed": true, "evidence": "A count-only test that accepts empty output does not prove customer intent. Require independently derived, nonempty expected results and boundary cases that reject a plausible wrong implementation. ... Open the generated artifact and compare its actual content with the request. Until then, artifact verification is unfinished"}
+    ],
+    "hard_failures": [],
+    "clarity": 5
+  }
+]
