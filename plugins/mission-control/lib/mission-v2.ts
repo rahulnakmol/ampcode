@@ -201,7 +201,11 @@ export function blockersV2(s: MissionV2, unitId?: string): string[] {
 // Public tool dispatch excludes internal approval and observation actions. This
 // reducer validates local consistency, not authenticity against a hostile shell.
 export function advanceV2(previous: MissionV2, action: ActionV2): MissionV2 {
-	const s = structuredClone(previous)
+	return applyV2(structuredClone(previous), action)
+}
+// Replay owns an isolated accumulator; cloning its entire history on every
+// event is unnecessary. Public transitions still preserve their input state.
+function applyV2(s: MissionV2, action: ActionV2): MissionV2 {
 	const fields: Record<string, string[]> = {
 		design: ['manifest'], 'approve-design': ['digest'], defense: ['digest', 'record'], build: ['unitId'],
 		candidate: ['unitId', 'attemptId', 'candidate', 'manifest'], report: ['unitId', 'attemptId', 'fingerprint', 'evidence'],
@@ -286,7 +290,7 @@ export function advanceV2(previous: MissionV2, action: ActionV2): MissionV2 {
 			if (a.reviews.some(r => !r.passed)) throw new Error('Repair requires a new attempt')
 			if (a.reviews.some(r => r.gate === action.gate && r.evidenceDigest === action.evidenceDigest)) throw new Error('Review already recorded')
 			const { gate, fingerprint, evidenceDigest, reviewer, passed, record, findingIds } = action
-			a.reviews.push({ gate, fingerprint, evidenceDigest, reviewer, passed, record, findingIds }); break
+			a.reviews.push({ gate, fingerprint, evidenceDigest, reviewer, passed, record, findingIds: [...findingIds] }); break
 		}
 		case 'finding': {
 			const a = attemptFor(s, action.unitId, action.attemptId)
@@ -371,7 +375,7 @@ export function parseMissionV2(value: unknown): MissionV2 {
 	for (const [i, event] of value.events.entries()) {
 		object(event, ['sequence', 'action'])
 		if (event.sequence !== i + 1 || (i === 0 && event.action?.type !== 'design')) throw new Error('Invalid event sequence')
-		s = advanceV2(s, event.action)
+		s = applyV2(s, event.action)
 	}
 	if (canonical(s) !== canonical(value)) throw new Error('Mission projection differs from recorded transitions')
 	return s

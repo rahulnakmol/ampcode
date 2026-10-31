@@ -183,6 +183,21 @@ describe('v2 local mission workflow', () => {
 		expect(s.closureReports[0].results[0].outcome).toBe('passed')
 		expect(parseMissionV2(JSON.parse(JSON.stringify(s)))).toEqual(s)
 	})
+	test('replay and public transitions retain independent review arrays', () => {
+		const before = v2Built()
+		let s = advanceV2(before, { type: 'review', unitId: 'U-1', attemptId: 'A-1', gate: 1, fingerprint: fingerprintV2(before, 'U-1', 'A-1'), evidenceDigest: intentDigest([]), reviewer: 'T-independent', passed: true, record: 'Reviewed reported scope.', findingIds: [] })
+		s = advanceV2(s, { type: 'pause', reason: 'Later event must not expose input aliases.' })
+		const raw = JSON.parse(JSON.stringify(s))
+		const parsed = parseMissionV2(raw)
+		expect(parsed).toEqual(s)
+		expect(before.units[0].attempts[0].reviews).toEqual([])
+		const rawReview = raw.events.find((e: any) => e.action.type === 'review').action
+		rawReview.findingIds.push('F-caller')
+		expect(parsed.units[0].attempts[0].reviews[0].findingIds).toEqual([])
+		parsed.units[0].attempts[0].reviews[0].findingIds.push('F-result')
+		expect(rawReview.findingIds).toEqual(['F-caller'])
+		expect((parsed.events.find(e => e.action.type === 'review')!.action as any).findingIds).toEqual([])
+	})
 	test('retains acknowledged intent and rejects candidate-selected weakening', () => {
 		const start = createMissionV2('T-test', parseManifest(manifest))
 		expect(() => advanceV2(start, { type: 'build', unitId: 'U-1' })).toThrow()

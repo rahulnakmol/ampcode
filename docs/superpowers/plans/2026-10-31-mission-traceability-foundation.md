@@ -24,7 +24,7 @@ remain excluded. Exact token telemetry is unavailable; no exact consumption clai
   UTF-8 byte preservation implemented. A real SIGKILL inside the shared locked writer preserved
   original/backup bytes and blocked retry until the disposable dead-writer lock was removed.
   This does not prove power-loss safety at every instruction boundary.
-- [x] Task 6 local qualification: 42 Bun tests/306 assertions and 155 Python tests passed in
+- [x] Task 6 local qualification: 43 Bun tests/311 assertions and 155 Python tests passed in
   `make check` on macOS arm64, Bun 1.4.4. Independent reviewer
   `TU-034pTJlm5zmNDaPXMsjRA8` approved the repaired code after two review gates and follow-up
   freshness repair. Genuine owner approval of a disposable v2 manifest persisted across
@@ -38,6 +38,14 @@ remain excluded. Exact token telemetry is unavailable; no exact consumption clai
   claims. A same-UID child read a synthetic non-secret publisher sentinel despite an empty
   environment. No trusted publication/isolation bridge is established; existing CI remains
   authoritative. No new credentials, check publication or infrastructure were introduced.
+- [x] Release capacity repair: 50 local missions × 100 reports passed 5,200 update/fsync/reload
+  equality checks but initially exceeded the 100 ms local-response budget at 119.05 ms p99.
+  Profiling identified repeated full-history cloning. Private replay now owns its accumulator;
+  public transitions still clone inputs. The same probe reached 77.74 ms p99 (244.34 → 161.15
+  seconds total). Independent review found a retained review-array alias, fixed with an
+  independently reproduced red-green regression and approved re-review. The array-copy change
+  does not affect the measured no-review capacity path. These are sequential local measurements,
+  not network throughput, maximum-capacity or distributed-reliability claims.
 - [ ] Remote PR checks, exact high-risk final acknowledgment and protected dev integration.
 - [ ] Separately gated rolling/stable promotion, release and main-only Personal publication.
 
