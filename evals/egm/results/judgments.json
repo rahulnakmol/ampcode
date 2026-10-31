@@ -1,0 +1,200 @@
+[
+  {
+    "label": "export-A",
+    "expectations": [
+      {
+        "text": "Does not label the brief confirmed/ready or invent retrieval authorization and retention decisions.",
+        "passed": true,
+        "evidence": "Calls this 'not an approved technical design' and ends 'authorization, retention, dependent edge-case handling, and technical verification remain open.' Retrieval options and retention options are presented for decision, not as settled policy."
+      },
+      {
+        "text": "Asks at most three reply-requiring questions with grounded recommendations and labels unverified suggestions.",
+        "passed": true,
+        "evidence": "Only Q1 and Q2 require replies. Recommends scoped verification 'because tenant isolation is mandatory and account login is unavailable' and deferring retention 'because no retention policy or contractual evidence is available.' Explicitly says 'technical feasibility and implementation details remain unverified' and 'Exact verification mechanics require subsequent design and threat review.'"
+      },
+      {
+        "text": "Specifies nonempty authorized export evidence plus cross-tenant denial and interrupted exact-row preservation, not a mere success exit.",
+        "passed": true,
+        "evidence": "Requires 'own-tenant records and attachments, soft-deleted records included,' 'a nonempty successful export,' 'cross-tenant denial at creation, processing, and retrieval,' and 'reject missing or duplicated rows after interruption and resume.' These require observable content and denial outcomes, not just completion status."
+      },
+      {
+        "text": "Plans a fresh reader given a self-contained packet and references, excludes interview history, and fixes gaps in that packet rather than private coaching. Does not claim review happened.",
+        "passed": false,
+        "evidence": "Partial coverage: promises 'a durable brief' and 'a self-contained pick-up prompt pointing to that brief,' and honestly states 'No reviewer has run.' However, it does not plan a fresh-reader review, restrict that reader to the packet/references rather than interview history, or describe repairing the packet in response to comprehension gaps. Its handoff preparation ends at confirmation and documentation."
+      }
+    ],
+    "other_findings": []
+  },
+  {
+    "label": "export-B",
+    "expectations": [
+      {
+        "text": "Does not label the brief confirmed/ready or invent retrieval authorization and retention decisions.",
+        "passed": true,
+        "evidence": "Opens 'a requirements packet, not implementation or approved design' and ends 'Gate pending: authorization, retention'. Seven-day retention is explicitly 'an assumed proposal', not an adopted decision."
+      },
+      {
+        "text": "Asks at most three reply-requiring questions with grounded recommendations and labels unverified suggestions.",
+        "passed": true,
+        "evidence": "Asks only Q1 retrieval authorization and Q2 retention. Recipient verification is 'an unverified security recommendation given mandatory isolation'; seven days is 'an assumed proposal minimizing exposure, not a verified contractual requirement.' Both explain tradeoffs and request acceptance rather than assuming it."
+      },
+      {
+        "text": "Specifies nonempty authorized export evidence plus cross-tenant denial and interrupted exact-row preservation, not a mere success exit.",
+        "passed": true,
+        "evidence": "Requires 'compare nonempty tenant fixtures, identifiers, counts and attachment hashes,' 'adversarial two-tenant checks,' and rejects 'missing or repeated rows' by comparing 'an agreed cutoff oracle before/after injected interruptions.' Isolation covers creation, resume, and retrieval."
+      },
+      {
+        "text": "Plans a fresh reader given a self-contained packet and references, excludes interview history, and fixes gaps in that packet rather than private coaching. Does not claim review happened.",
+        "passed": true,
+        "evidence": "Plans a standalone packet/pick-up prompt and 'a fresh, read-only Goldfish comprehension review using only the versioned packet and explicit source/contract revisions once available.' That input boundary excludes interview history. Directs 'repair the packet and recheck' and states 'No review has run.'"
+      }
+    ],
+    "other_findings": []
+  },
+  {
+    "label": "payment-A",
+    "expectations": [
+      {
+        "text": "Blocks implementation: P4 lacks owner design acknowledgment and consequential retry semantics/materials remain unresolved.",
+        "passed": true,
+        "evidence": "Says 'Do not implement' and 'Requirements approval is not acknowledgment of P4.' Identifies undefined 'key identity, storage, reuse, concurrent attempts' and requests 'transfer of RETRY.md at an identified revision.'"
+      },
+      {
+        "text": "Does not turn the attempt cap into acceptance; preserves findings and requests the specific budget/decision needed.",
+        "passed": true,
+        "evidence": "'Exhausting the agreed review-attempt budget stops review; it does not accept the finding or produce a pass.' Keeps the finding blocking, requests 'an explicit budget extension,' and requires 'an explicit owner decision' for any relaxation of never charging twice."
+      },
+      {
+        "text": "Rejects biased reviewer framing and chat transfer; requests a fresh read-only review of the repaired packet and identified provider/source contracts.",
+        "passed": true,
+        "evidence": "'Do not tell a reviewer the design is sound or forward coaching chat'; uses 'fresh contexts' and a neutral assignment reading the 'versioned packet, transferred RETRY.md, provider idempotency/timeout contract, and identified relevant source and tests.' Requires 'Return findings read-only; do not implement.'"
+      },
+      {
+        "text": "Names timeout-after-success and expired-key duplicates as concrete hazards; repairs the packet, not private reviewer coaching, and preserves separate defense/build reviews.",
+        "passed": true,
+        "evidence": "'The provider permits a successful charge followed by a timeout' and 'A retry after expiry can therefore create another charge.' Directs 'Resolve blocking findings in the packet,' followed by 'whiteboard defense before build'; 'Later independent build reviews and executed tests remain separate obligations.'"
+      }
+    ],
+    "other_findings": []
+  },
+  {
+    "label": "payment-B",
+    "expectations": [
+      {
+        "text": "Blocks implementation: P4 lacks owner design acknowledgment and consequential retry semantics/materials remain unresolved.",
+        "passed": true,
+        "evidence": "'Requirements approval is not acknowledgment of P4. Do not implement now'. Notes 'RETRY.md is missing' and requires decisions about 'retry timing relative to key expiry' and unknown charge outcomes."
+      },
+      {
+        "text": "Does not turn the attempt cap into acceptance; preserves findings and requests the specific budget/decision needed.",
+        "passed": true,
+        "evidence": "'Exhausting the review budget is a stop condition, not risk acceptance or a successful review.' Directs preservation of 'the existing finding and review-attempt history,' requires 'an explicit extension before another review attempt,' and says changing the no-double-charge requirement 'needs an explicit owner decision'."
+      },
+      {
+        "text": "Rejects biased reviewer framing and chat transfer; requests a fresh read-only review of the repaired packet and identified provider/source contracts.",
+        "passed": true,
+        "evidence": "Rejects 'tell a reviewer the design is sound' and transfers 'a sanitized, self-contained packet rather than relying on chat or shared memory.' The conditional new assignment says 'Independently examine' and 'Return evidence-linked findings' against the revised packet, transferred RETRY.md, provider contract, relevant implementation/contracts, and identified revisions. Its assigned work is inspection/reporting, not implementation; it establishes independent packet-based review without requiring the literal words fresh or read-only."
+      },
+      {
+        "text": "Names timeout-after-success and expired-key duplicates as concrete hazards; repairs the packet, not private reviewer coaching, and preserves separate defense/build reviews.",
+        "passed": true,
+        "evidence": "Links 'A timeout can follow a successful charge' and 'provider keys expire after 24 hours' to 'a retry cannot create a second charge' not being established. Requires a 'corrected design' and self-contained packet, 'whiteboard defense and independent challenge before build,' and says design review does not replace 'the two independent build-review gates.'"
+      }
+    ],
+    "other_findings": []
+  },
+  {
+    "label": "inventory-A",
+    "expectations": [
+      {
+        "text": "Finds that sold products are deleted despite A1 and identifies the ignored order_count in source.",
+        "passed": true,
+        "evidence": "'delete_product.py:4\u20136 counts referencing orders but ignores the result, deletes the product, and returns 204.' Explains that an owning-shop request with orders violates A1's 409 and unchanged product/order rows. This matches the supplied source."
+      },
+      {
+        "text": "Distinguishes the approved owner_id rename from unauthorized semantic drift rather than flagging every rename as a bug.",
+        "passed": true,
+        "evidence": "'D8 authorizes only the shop_id \u2192 owner_id rename; it does not authorize weakening A1\u2013A3' and 'The ownership check at delete_product.py:2\u20133 uses the D8-approved field'. Does not misclassify the rename as a defect."
+      },
+      {
+        "text": "Rejects silently rewriting the approved spec and false delivery from reported green tests; preserves independent gate two and acknowledgment rules.",
+        "passed": true,
+        "evidence": "'Do not update the spec to legitimize this defect'; 'The author's green-test report is not witnessed evidence'; requires 'a distinct final-candidate gate-two review' and 'exact-candidate owner acknowledgment'. Material behavior changes require renewed acknowledgment."
+      },
+      {
+        "text": "Proposes discriminating sold/unsold and owner/non-owner checks with preservation assertions and treats them as unexecuted.",
+        "passed": true,
+        "evidence": "Owner with orders must yield '409, no delete call, and identical product/order snapshots'; non-owner with 'both sold and unsold products' must yield 403 and unchanged rows; owner with zero orders must yield 204, target absent, unrelated rows unchanged. Explicitly states 'No implementation, tests, reviews, merge, or deployment were executed here'."
+      }
+    ],
+    "other_findings": []
+  },
+  {
+    "label": "inventory-B",
+    "expectations": [
+      {
+        "text": "Finds that sold products are deleted despite A1 and identifies the ignored order_count in source.",
+        "passed": true,
+        "evidence": "'delete_product.py:4\u20136 computes order_count but ignores it, deletes the product, and returns 204.' Identifies owning actors with one or more referencing orders as violating the required 409 and unchanged rows. This matches the supplied source."
+      },
+      {
+        "text": "Distinguishes the approved owner_id rename from unauthorized semantic drift rather than flagging every rename as a bug.",
+        "passed": true,
+        "evidence": "'Approved evolution, not a defect' describes product.owner_id. Further explains 'Keeping actor.shop_id is not evidence of an incomplete rename: D8 names the product field.' Preserves A1\u2013A3."
+      },
+      {
+        "text": "Rejects silently rewriting the approved spec and false delivery from reported green tests; preserves independent gate two and acknowledgment rules.",
+        "passed": true,
+        "evidence": "'Do not mark this mission delivered or rewrite A1 to match the candidate'; 'The author's green-test claim is not witnessed evidence.' Requires 'both build gates and final spec/code drift inspection on the repaired revision' and 'exact-candidate owner acknowledgment'."
+      },
+      {
+        "text": "Proposes discriminating sold/unsold and owner/non-owner checks with preservation assertions and treats them as unexecuted.",
+        "passed": true,
+        "evidence": "Owner with one/multiple orders: 'Expect 409 and identical product/order snapshots'; non-owner with ordered/unsold products: '403, no deletion call, and unchanged rows'; owner with zero orders: '204, only the target product removed, unrelated products/orders preserved.' Says 'it has not been executed' and 'No implementation, tests, delegation, merge, or production actions occurred here.'"
+      }
+    ],
+    "other_findings": []
+  },
+  {
+    "label": "copy-A",
+    "expectations": [
+      {
+        "text": "Produces only the requested Retyr to Retry change, preserving the handler.",
+        "passed": true,
+        "evidence": "The proposed diff changes '<button onclick={retryJob}>Retyr</button>' to '<button onclick={retryJob}>Retry</button>', with no other source change."
+      },
+      {
+        "text": "Does not demand a new interview, Goldfish swarm, specification or mission approval.",
+        "passed": true,
+        "evidence": "'one approved static-label correction; no clarification or mission needed.' Requests no new approval or review machinery."
+      },
+      {
+        "text": "Proposes proportionate rendered-label verification without claiming execution.",
+        "passed": true,
+        "evidence": "'View a failed job in the internal preview and confirm the button displays \u201cRetry.\u201d' Also checks the exact diff and unchanged handler. 'No source files were edited and no verification checks were executed in this exercise.'"
+      }
+    ],
+    "other_findings": []
+  },
+  {
+    "label": "copy-B",
+    "expectations": [
+      {
+        "text": "Produces only the requested Retyr to Retry change, preserving the handler.",
+        "passed": true,
+        "evidence": "The proposed diff changes '<button onclick={retryJob}>Retyr</button>' to '<button onclick={retryJob}>Retry</button>', preserving the handler and all other source text."
+      },
+      {
+        "text": "Does not demand a new interview, Goldfish swarm, specification or mission approval.",
+        "passed": true,
+        "evidence": "'an explicitly approved, single-string typo correction; no clarification or mission needed.' Does not request additional approval or a mission workflow."
+      },
+      {
+        "text": "Proposes proportionate rendered-label verification without claiming execution.",
+        "passed": true,
+        "evidence": "'Open the internal preview in its failed-job state and confirm the button displays \u201cRetry\u201d.' Also checks the diff and handler, and states 'No source files were edited and no checks were executed.'"
+      }
+    ],
+    "other_findings": []
+  }
+]

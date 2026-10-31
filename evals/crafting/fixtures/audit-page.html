@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Page</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; color: #222; }
+  header { display: flex; gap: 16px; padding: 12px 24px; background: #f4f4f4; }
+  .nav-item { cursor: pointer; }
+  .hint { color: #aaa; font-size: 12px; }
+  .cta { background: #4f9cff; color: #fff; border: 0; padding: 4px 8px; font-size: 12px; }
+  .error { color: red; }
+  :focus { outline: none; }
+  .carousel { height: 180px; overflow: hidden; }
+  .slide { animation: slide 3s infinite; }
+  @keyframes slide { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+</style>
+</head>
+<body>
+<header>
+  <div class="nav-item" onclick="location.href='/plans'">Plans</div>
+  <div class="nav-item" onclick="location.href='/help'">Help</div>
+  <img src="cart.svg" width="20" height="20" onclick="openCart()">
+</header>
+<main>
+  <div style="font-size:32px;font-weight:700">Pay your electricity bill</div>
+  <div style="font-size:20px;font-weight:700">Account details</div>
+  <div class="carousel"><div class="slide"><img src="promo1.jpg"><img src="promo2.jpg"></div></div>
+  <form onsubmit="return pay()">
+    <input type="text" placeholder="Account number" id="acct">
+    <input type="text" placeholder="Amount">
+    <span class="hint">Amount in INR, no decimals</span>
+    <div class="error" id="err" style="display:none">Invalid</div>
+    <p>Fields marked in <span style="color:red">red</span> are required.</p>
+    <div class="cta" onclick="pay()">Pay now</div>
+  </form>
+  <p>Session expires in <span id="t">60</span> seconds.</p>
+  <a href="/terms">Click here</a> for terms. <a href="/privacy">Click here</a> for privacy.
+</main>
+<script>
+  let t = 60; setInterval(() => { t--; document.getElementById('t').textContent = t; if (t === 0) location.reload(); }, 1000);
+  function pay() { document.getElementById('err').style.display = 'block'; return false; }
+  function openCart() {}
+</script>
+</body>
+</html>

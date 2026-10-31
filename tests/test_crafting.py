@@ -1,0 +1,279 @@
+"""Tests for the crafting skill: its workspace CLI and the docs that describe it.
+
+Run: python3 -m unittest discover -s tests -p 'test_crafting.py' -v
+No network or paid calls.
+"""
+
+import json
+import re
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SKILL = ROOT / "skills" / "crafting"
+KIT = SKILL / "scripts" / "design_kit.py"
+sys.path.insert(0, str(KIT.parent))
+
+import design_kit  # noqa: E402
+
+
+def run(workdir, *args):
+    return subprocess.run([sys.executable, str(KIT), *args], cwd=workdir, capture_output=True, text=True)
+
+
+class Ledger(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+        self.assertEqual(run(self.dir, "init", "--surfaces", "web").returncode, 0)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def ledger(self):
+        return json.loads((self.dir / ".design" / "ledger.json").read_text())
+
+    def test_prices_task_runs_per_row_and_refuses_over_budget(self):
+        group = run(self.dir, "log", "--tool", "parallel-task.createTaskGroup", "--processor", "base-fast",
+                    "--count", "8", "--note", "enrich shortlist")
+        self.assertEqual(group.returncode, 0, group.stderr)
+        deep = run(self.dir, "log", "--tool", "parallel-task.createDeepResearch", "--processor", "pro",
+                   "--note", "state of the art")
+        self.assertEqual(deep.returncode, 0, deep.stderr)
+        self.assertEqual([e["usd"] for e in self.ledger()["entries"]], [0.08, 0.10])
+
+        ultra = run(self.dir, "log", "--tool", "parallel-task.createDeepResearch", "--processor", "ultra",
+                    "--note", "too deep")
+        self.assertEqual(ultra.returncode, 2)
+        self.assertIn("over budget", ultra.stderr)
+        self.assertEqual(len(self.ledger()["entries"]), 2, "a refused call must not be recorded")
+
+        approved = run(self.dir, "log", "--tool", "parallel-task.createDeepResearch", "--processor", "ultra",
+                       "--note", "user approved", "--approved")
+        self.assertEqual(approved.returncode, 0, approved.stderr)
+        self.assertTrue(self.ledger()["entries"][-1]["approved_over_budget"])
+        self.assertIn("$0.480 of $0.30", run(self.dir, "spend").stdout)
+
+    def test_paid_task_needs_a_known_processor(self):
+        for extra in ([], ["--processor", "turbo"]):
+            result = run(self.dir, "log", "--tool", "parallel-task.createDeepResearch", "--note", "x", *extra)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("--processor", result.stderr)
+        self.assertEqual(self.ledger()["entries"], [])
+
+    def test_firecrawl_credits_and_mobbin_searches_have_their_own_caps(self):
+        self.assertEqual(run(self.dir, "log", "--tool", "firecrawl.firecrawl_scrape", "--credits", "10",
+                             "--note", "five refs").returncode, 0)
+        self.assertEqual(run(self.dir, "log", "--tool", "firecrawl.firecrawl_scrape", "--credits", "6",
+                             "--note", "one more").returncode, 2)
+        self.assertEqual(run(self.dir, "log", "--tool", "mobbin.search_screens", "--count", "10",
+                             "--note", "screens").returncode, 0)
+        self.assertEqual(run(self.dir, "log", "--tool", "mobbin.search_flows", "--note", "flows").returncode, 2)
+        spend = run(self.dir, "spend").stdout
+        self.assertIn("Firecrawl credits: 10 of 15", spend)
+        self.assertIn("Parallel (USD): $0.000", spend)
+
+
+class Coverage(unittest.TestCase):
+    def test_check_reports_each_gap_and_passes_once_states_are_covered(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            self.assertEqual(run(work, "init", "--surfaces", "web,cli").returncode, 0)
+            design = work / ".design"
+            (design / "mockups").mkdir(exist_ok=True)
+            states = {}
+            for state in design_kit.required_states("web"):
+                (design / "mockups" / f"{state}.png").write_bytes(b"png")
+                states[state] = {"mockup": f"mockups/{state}.png"}
+            states["empty"] = {"skip": ""}
+            states["dark"] = {"mockup": "mockups/missing.png"}
+            del states["narrow"]
+            touchpoint = {"id": "pricing-page", "surface": "web", "job": "Choose a plan", "states": states,
+                          "interactions": [{"id": "toggle", "trigger": "click", "feedback": "slides",
+                                            "motion": "quick"}]}
+            path = design / "touchpoints.json"
+            data = json.loads(path.read_text())
+            data["touchpoints"] = [touchpoint]
+            data["journeys"] = [{"id": "choose-plan", "actor": "Millennial founder at a desk",
+                                 "goal": "Pick a plan in one sitting", "steps": ["pricing-page", "checkout"]}]
+            path.write_text(json.dumps(data))
+
+            result = run(work, "check")
+            self.assertEqual(result.returncode, 1)
+            gaps = [line for line in result.stdout.splitlines() if line.startswith("gap:")]
+            for expected in ("missing required state 'narrow'", "pricing-page.empty: needs a mockup path",
+                             "mockups/missing.png not found", "toggle is missing reduced_motion",
+                             "surface cli has no touchpoints",
+                             "journey choose-plan: step 'checkout' is not a touchpoint id",
+                             "no critic pass"):
+                self.assertTrue(any(expected in gap for gap in gaps), f"{expected!r} not in {gaps}")
+            self.assertEqual(len(gaps), 7, gaps)
+
+            states["empty"] = {"skip": "Pricing always has plans"}
+            states["dark"] = {"mockup": "mockups/dark.png"}
+            states["narrow"] = {"mockup": "mockups/ideal.png"}
+            touchpoint["interactions"][0]["reduced_motion"] = "instant swap"
+            data["surfaces"] = ["web"]
+            data["journeys"][0]["steps"] = ["pricing-page"]
+            path.write_text(json.dumps(data))
+            (design / "critique").mkdir()
+            (design / "critique" / "1-critic.md").write_text("# Round 1\n\nNo verdict yet.\n")
+            self.assertIn("no critic pass", run(work, "check").stdout)
+            (design / "critique" / "1-critic.md").write_text("# Round 1\n\n**Verdict:** revise\n")
+            result = run(work, "check")
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertIn("1 touchpoints, 6 states mocked, 1 skipped", result.stdout)
+
+    def test_check_requires_alt_text_and_post_copy_on_every_social_asset(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            self.assertEqual(run(work, "init", "--surfaces", "social").returncode, 0)
+            design = work / ".design"
+            (design / "mockups").mkdir(exist_ok=True)
+            (design / "mockups" / "a.png").write_bytes(b"png")
+            states = {state: {"mockup": "mockups/a.png", "alt": "Poster: five open issues",
+                              "copy": "Five open issues. Pick one."}
+                      for state in design_kit.required_states("social")}
+            states["square"] = {"mockup": "mockups/a.png", "copy": "Forward to your team"}
+            states["vertical"] = {"mockup": "mockups/a.png", "alt": "Story: five open issues"}
+            states["sound-off"] = {"skip": "No video in this campaign"}
+            (design / "critique").mkdir()
+            (design / "critique" / "1-critic.md").write_text("Verdict: ship\n")
+            path = design / "touchpoints.json"
+            data = json.loads(path.read_text())
+            data["touchpoints"] = [{"id": "launch-post", "surface": "social", "job": "Get sign-ups",
+                                    "states": states}]
+            path.write_text(json.dumps(data))
+            result = run(work, "check")
+            gaps = [line for line in result.stdout.splitlines() if line.startswith("gap:")]
+            self.assertEqual(gaps, ["gap: launch-post.square: needs alt text (\"alt\") for this asset",
+                                    "gap: launch-post.vertical: needs post copy (\"copy\") for this asset"])
+
+            states["square"]["alt"] = "Square crop of the poster"
+            states["vertical"]["copy"] = "Swipe up to register"
+            path.write_text(json.dumps(data))
+            self.assertEqual(run(work, "check").returncode, 0)
+
+    def test_check_requires_a_complete_angle_section_when_a_brief_exists(self):
+        angles = "\n".join(f"- angle {n} (truth 3, distance 3, feasibility 3)" for n in range(7))
+        brief = ("# Brief\n\n## Angle\nMoment before: checks the bank app nightly\n"
+                 "Moment after: never checks\nTell a friend: \"it just tells me\"\n"
+                 "Category default: a dashboard\nAngles considered:\n" + angles +
+                 "\nChosen angle: exception-only alerts\n\n## Journeys\n- not an angle\n- nor this\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            self.assertEqual(run(work, "init", "--surfaces", "web").returncode, 0)
+            (work / ".design" / "BRIEF.md").write_text(brief)
+            gaps = [line for line in run(work, "check").stdout.splitlines() if line.startswith("gap: BRIEF")]
+            self.assertEqual(gaps, ["gap: BRIEF.md Angle: missing 'Touchpoint question:'",
+                                    "gap: BRIEF.md Angle: 7 angles considered; write at least 8"])
+            fixed = brief.replace("Angles considered:", "Touchpoint question: a message beats a screen\n"
+                                  "Angles considered:\n- invert: tell, don't show")
+            (work / ".design" / "BRIEF.md").write_text(fixed)
+            self.assertNotIn("gap: BRIEF", run(work, "check").stdout)
+
+    def test_reply_lint_caps_questions_and_requires_a_recommendation_each(self):
+        reply = (
+            "Done. Is this the right angle? I think so.\n\n"
+            "## Questions\n"
+            "1. Markets: which countries first? I recommend the UK, because the samples use £.\n"
+            "2. Approval: may friendly reminders skip approval? And above what amount must\n"
+            "   approval move to the app? I recommend no.\n"
+            "3. Dates: are 14-15 March fixed?\n"
+            "4. Name: I recommend keeping the working title. Keep it?\n\n"
+            "Run `curl -s example.com?x=1` to check.\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "reply.md"
+            path.write_text(reply)
+            result = run(tmp, "reply", str(path))
+            self.assertEqual(result.returncode, 1)
+            gaps = [line for line in result.stdout.splitlines() if line.startswith("gap:")]
+            self.assertEqual(len(gaps), 4, gaps)
+            self.assertIn("5 questions", gaps[0])
+            self.assertTrue(any("one question per decision: '2. Approval" in gap for gap in gaps), gaps)
+            for start in ("Done. Is this", "3. Dates"):
+                self.assertTrue(any(f"recommend ... because ...': '{start}" in gap for gap in gaps), gaps)
+            path.write_text("Shipped.\n\n1. Markets: UK first? I recommend the UK, because of £.\n")
+            self.assertEqual(run(tmp, "reply", str(path)).returncode, 0)
+
+    def test_tools_lint_requires_not_for_clause_schema_and_every_hint(self):
+        hints = {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}
+        good = {"name": "find_invoices", "description": "Find invoices. Not for chasing; use chase_overdue.",
+                "inputSchema": {"type": "object"}, "annotations": hints}
+        bad = {"name": "send_invoice", "description": "Send an invoice. Note: format matters.",
+               "inputSchema": {"type": "object"}, "annotations": {**hints, "idempotentHint": "yes"}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "tools.json"
+            path.write_text(json.dumps({"tools": [good, bad]}))
+            result = run(tmp, "tools", str(path))
+            self.assertEqual(result.returncode, 1)
+            gaps = [line for line in result.stdout.splitlines() if line.startswith("gap:")]
+            self.assertEqual(gaps, ["gap: send_invoice: description needs a 'Not for X; use Y' clause",
+                                    "gap: send_invoice: annotations.idempotentHint must be true or false"])
+            path.write_text(json.dumps([good]))
+            self.assertEqual(run(tmp, "tools", str(path)).returncode, 0)
+
+    def test_init_rejects_unknown_surfaces_and_keeps_existing_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(run(tmp, "init", "--surfaces", "web,watchos").returncode, 1)
+            self.assertFalse((Path(tmp) / ".design").exists(), "a rejected init must not create files")
+            self.assertEqual(run(tmp, "init", "--surfaces", "ios").returncode, 0)
+            ledger = Path(tmp) / ".design" / "ledger.json"
+            ledger.write_text('{"budget": {"usd": 1}, "entries": []}')
+            self.assertEqual(run(tmp, "init", "--surfaces", "ios").returncode, 0)
+            self.assertEqual(json.loads(ledger.read_text())["budget"], {"usd": 1})
+
+
+class Docs(unittest.TestCase):
+    def test_skill_metadata_size_and_links(self):
+        text = (SKILL / "SKILL.md").read_text()
+        self.assertLess(len(text.splitlines()), 500)
+        self.assertRegex(text, r"\A---\nname: crafting\ndescription: \"[^\n]+\"\n---\n")
+        targets = re.findall(r"\]\((reference/[a-z/-]+\.md)", text)
+        self.assertGreater(len(targets), 10)
+        for target in targets:
+            self.assertTrue((SKILL / target).is_file(), target)
+        on_disk = {str(path.relative_to(SKILL)) for path in (SKILL / "reference").rglob("*.md")}
+        self.assertEqual(on_disk - set(targets), set(), "reference files SKILL.md never routes to")
+        for required in ("grilling", "Gen Alpha", "discovery.md", "accessibility.md", "user-research.md"):
+            self.assertIn(required, text)
+
+    def test_documented_commands_and_flags_exist(self):
+        docs = (SKILL / "SKILL.md").read_text() + (SKILL / "reference" / "research.md").read_text()
+        for command, flags in re.findall(r"\$K ([a-z]+)([^\n#]*)", docs):
+            help_text = run(ROOT, command, "--help")
+            self.assertEqual(help_text.returncode, 0, f"{command}: {help_text.stderr}")
+            for flag in re.findall(r"(--[a-z][a-z-]*)", flags):
+                self.assertIn(flag, help_text.stdout, f"{command} has no {flag}")
+
+    def test_required_states_table_matches_the_checker(self):
+        table = (SKILL / "reference" / "states.md").read_text().split("## Required states by surface", 1)[1]
+        documented = {}
+        for surface, states in re.findall(r"^\| [A-Za-z]+ \| `([a-z0-9-]+)` \| (.+?) \|$", table, re.M):
+            documented[surface] = tuple(re.findall(r"`([a-z0-9-]+)`", states))
+        self.assertEqual(documented, {s: design_kit.required_states(s) for s in design_kit.SURFACES})
+
+    def test_every_surface_has_craft_guidance_routed_from_the_skill(self):
+        skill = (SKILL / "SKILL.md").read_text()
+        routed = {}
+        for surfaces, target in re.findall(r"^\| (`[^|]+`) \| \[(reference/[a-z/-]+\.md)\]", skill, re.M):
+            for surface in re.findall(r"`([a-z0-9-]+)`", surfaces):
+                routed[surface] = target
+        self.assertEqual(set(routed), set(design_kit.SURFACES))
+        for surface, target in routed.items():
+            headings = re.findall(r"^#{1,2} .*$", (SKILL / target).read_text(), re.M)
+            self.assertTrue(any(f"`{surface}`" in h for h in headings), f"{target} has no section for {surface}")
+
+    def test_budget_table_matches_the_ledger_defaults(self):
+        text = (SKILL / "SKILL.md").read_text()
+        budget = design_kit.DEFAULT_BUDGET
+        self.assertIn(f"| Parallel Task | ${budget['usd']:.2f} |", text)
+        self.assertIn(f"| Firecrawl | {budget['firecrawl_credits']} credits |", text)
+        self.assertIn(f"| Mobbin | {budget['mobbin_searches']} searches", text)
+
+
+if __name__ == "__main__":
+    unittest.main()
