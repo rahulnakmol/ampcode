@@ -10,6 +10,43 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-31-mission-enforcement-design.md`, including acceptance authority, delivery-unit lifecycle and native-first additions. Read both documents before executing.
 
+## Execution checkpoint — 2026-10-31
+
+The planning-time authorization statements below are historical. The owner subsequently
+approved implementation, gated dev/rolling/stable delivery, main-only Personal installation,
+disposable trials and a 120,000 additional-token budget. Shared infrastructure/access changes
+remain excluded. Exact token telemetry is unavailable; no exact consumption claim is made.
+
+- [x] Tasks 1–4: contracts, acknowledged snapshots, per-unit attempts, reported evidence and
+  post-delivery accounting implemented. Independent review found and reproduced lineage,
+  disposition and freshness gaps; regression repairs passed subsequent independent review.
+- [x] Task 5: explicit migration, pending-effect rejection, risk-floor preservation and strict
+  UTF-8 byte preservation implemented. A real SIGKILL inside the shared locked writer preserved
+  original/backup bytes and blocked retry until the disposable dead-writer lock was removed.
+  This does not prove power-loss safety at every instruction boundary.
+- [x] Task 6 local qualification: 42 Bun tests/306 assertions and 155 Python tests passed in
+  `make check` on macOS arm64, Bun 1.4.4. Independent reviewer
+  `TU-034pTJlm5zmNDaPXMsjRA8` approved the repaired code after two review gates and follow-up
+  freshness repair. Genuine owner approval of a disposable v2 manifest persisted across
+  scoped plugin reload. Live read-only reconciliation observed the existing synthetic PR1
+  merge; v2 merge calls rejected before and after reload, retaining qualification blockers.
+  The temporary loader redirects root/URI and prefixes tool names; it preserves native UI
+  and actual thread identity but omits trial lifecycle hooks to isolate the delivery mission.
+  Hook behavior and migration dialogs remain adapter-tested, not native-qualified here.
+- [x] Task 7 bounded feasibility: installed Amp API inspection and synthetic subprocess probes
+  retained real exit 17 despite forged success text and rejected missing-step/wrong-revision
+  claims. A same-UID child read a synthetic non-secret publisher sentinel despite an empty
+  environment. No trusted publication/isolation bridge is established; existing CI remains
+  authoritative. No new credentials, check publication or infrastructure were introduced.
+- [ ] Remote PR checks, exact high-risk final acknowledgment and protected dev integration.
+- [ ] Separately gated rolling/stable promotion, release and main-only Personal publication.
+
+Detailed task checkboxes below retain the original procedure rather than retroactively claiming
+each proposed experiment ran. The checkpoint above is the executed scope. Implemented API
+shapes are documented in `docs/mission-control.md`; unit creation is manifest-driven, and
+`MissionV2` belongs to the reducer module. V2 has no pending-effect or qualified-closure
+transition to test or activate. Source delivery and runtime qualification remain distinct.
+
 ## Global constraints and authorization
 
 - “Traceability on every PR to `dev`, with compact records for eligible small changes. Roll out in shadow mode before making the check required.” This plan implements opt-in shadow records, not required-check activation.

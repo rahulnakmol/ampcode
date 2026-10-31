@@ -2,7 +2,10 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createHash } from 'node:crypto'
 import { createMission, advance, blockers, fingerprint, saveMission, loadMission } from '../plugins/mission-control/lib/mission'
+import { loadRecord, saveRecord } from '../plugins/mission-control/lib/mission'
+import { previewMigration, migrateMission } from '../plugins/mission-control/lib/migration'
 import { parseManifest, intentDigest } from '../plugins/mission-control/lib/contracts'
 import { createMissionV2, advanceV2, blockersV2, fingerprintV2, parseMissionV2 } from '../plugins/mission-control/lib/mission-v2'
 
@@ -75,6 +78,10 @@ describe('v2 local mission workflow', () => {
 		s = advanceV2(s, { type: 'design', manifest: withDisposition })
 		expect(blockersV2(s)).toContain('Owner design approval required')
 		expect(s.snapshots[0].manifest.criteria[0].id).toBe('C-1')
+		const fp = fingerprintV2(s, 'U-1', 'A-1')
+		expect(() => advanceV2(s, { type: 'report', unitId: 'U-1', attemptId: 'A-1', fingerprint: fp, evidence: { id: 'E-new', criterionIds: ['C-2'], outcome: 'passed', record: 'Cannot attach amended intent to historical integration.' } })).toThrow('criterion')
+		s = advanceV2(s, { type: 'report', unitId: 'U-1', attemptId: 'A-1', fingerprint: fp, evidence: { id: 'E-old', criterionIds: ['C-1'], outcome: 'failed', record: 'Historical C-1 failure remains reportable.' } })
+		expect(blockersV2(s)).toContain('U-1: historical design; current acceptance requires corrective units')
 		expect(parseMissionV2(JSON.parse(JSON.stringify(s)))).toEqual(s)
 	})
 	test('reviews bind to current evidence and failed first review cannot advance', () => {
@@ -110,18 +117,70 @@ describe('v2 local mission workflow', () => {
 		const post = { type: 'post-delivery', unitId: 'U-1', package: { baseline: 'c'.repeat(40), designDigest: intentDigest(s.manifest), policyDigest: 'unqualified', unitIds: ['U-1'], evidenceIds: ['E-post'], results: [{ criterionId: 'C-1', outcome: 'passed', record: 'Recovered edit in synthetic journey.' }], findings: [], record: 'Fresh-context reported review, not authenticated execution.' } }
 		expect(() => advanceV2(s, post as any)).toThrow('integration')
 		s = advanceV2(s, { type: 'observe-integration', unitId: 'U-1', attemptId: 'A-1', commit: 'c'.repeat(40), remoteHead: candidate.head, targetRef: 'dev', repository: candidate.repo })
+		expect(() => advanceV2(s, post as any)).toThrow('evidence')
+		s = advanceV2(s, { type: 'post-report', evidence: { id: 'E-post', baseline: post.package.baseline, designDigest: post.package.designDigest, policyDigest: 'unqualified', unitIds: ['U-1'], results: post.package.results, record: 'Executed after integration; reported only.' } } as any)
 		s = advanceV2(s, post as any)
 		expect(s.units[0].status).toBe('adversarial-review')
 		expect(() => advanceV2(s, { type: 'closure-report', package: post.package } as any)).toThrow('whole mission')
 		s = advanceV2(s, { type: 'build', unitId: 'U-2' })
 		s = advanceV2(s, { type: 'candidate', unitId: 'U-2', attemptId: 'A-2', candidate: { ...candidate, pr: 8 }, manifest: s.manifest })
 		s = advanceV2(s, { type: 'observe-integration', unitId: 'U-2', attemptId: 'A-2', commit: 'd'.repeat(40), remoteHead: candidate.head, targetRef: 'dev', repository: candidate.repo })
-		const combined = { ...post.package, baseline: 'd'.repeat(40), unitIds: ['U-1', 'U-2'], results: [{ criterionId: 'C-1', outcome: 'failed', record: 'Unit B regressed interrupted recovery from A.' }] }
+		const combined = { ...post.package, baseline: 'd'.repeat(40), unitIds: ['U-1', 'U-2'], evidenceIds: ['E-combined'], results: [{ criterionId: 'C-1', outcome: 'failed', record: 'Unit B regressed interrupted recovery from A.' }] }
+		expect(() => advanceV2(s, { type: 'closure-report', package: { ...combined, evidenceIds: ['E-post'] } } as any)).toThrow('evidence')
+		s = advanceV2(s, { type: 'post-report', evidence: { id: 'E-combined', baseline: combined.baseline, designDigest: combined.designDigest, policyDigest: combined.policyDigest, unitIds: combined.unitIds, results: combined.results, record: 'Whole assembled result observed after B integrated.' } } as any)
 		s = advanceV2(s, { type: 'closure-report', package: combined } as any)
 		expect(s.status).toBe('active')
 		expect(blockersV2(s)).toContain('C-1: assembled-baseline report failed')
 		expect(s.units[0].attempts[0].integration!.commit).toBe('c'.repeat(40))
 		expect(blockersV2(s)).toContain('remote-verification-unqualified')
+		expect(parseMissionV2(JSON.parse(JSON.stringify(s)))).toEqual(s)
+	})
+	test('post-delivery findings require explicit scoped repair dispositions and cannot vanish behind later reports', () => {
+		let s = v2Built()
+		s = advanceV2(s, { type: 'report', unitId: 'U-1', attemptId: 'A-1', fingerprint: fingerprintV2(s, 'U-1', 'A-1'), evidence: { id: 'E-pre', criterionIds: ['C-1'], outcome: 'passed', record: 'Before integration.' } })
+		s = advanceV2(s, { type: 'observe-integration', unitId: 'U-1', attemptId: 'A-1', commit: 'c'.repeat(40), remoteHead: candidate.head, targetRef: 'dev', repository: candidate.repo })
+		const finding = { id: 'F-post', criterionIds: ['C-1'], severity: 'critical', confidence: 'runtime-reproduced', location: 'src/recovery.ts:12', record: 'Data loss after restart', owner: 'T-repair' }
+		const evidence = { id: 'E-post', baseline: 'c'.repeat(40), designDigest: intentDigest(s.manifest), policyDigest: 'unqualified', unitIds: ['U-1'], results: [{ criterionId: 'C-1', outcome: 'failed', record: 'Lost latest durable edit.' }], record: 'Post-integration synthetic recovery run.' }
+		const pack = { baseline: evidence.baseline, designDigest: evidence.designDigest, policyDigest: evidence.policyDigest, unitIds: evidence.unitIds, evidenceIds: ['E-pre'], results: evidence.results, findings: [finding], record: 'Independent source/recovery review report.' }
+		expect(() => advanceV2(s, { type: 'closure-report', package: pack } as any)).toThrow('evidence')
+		s = advanceV2(s, { type: 'post-report', evidence } as any)
+		s = advanceV2(s, { type: 'post-delivery', unitId: 'U-1', package: { ...pack, evidenceIds: ['E-post'] } } as any)
+		expect(blockersV2(s)).toContain('U-1/F-post: unresolved finding')
+		expect(blockersV2(s)).toContain('U-1/C-1: post-delivery report failed')
+		const fixed = { ...evidence, id: 'E-fixed', results: [{ criterionId: 'C-1', outcome: 'passed', record: 'Fresh run on repaired integrated baseline.' }] }
+		s = advanceV2(s, { type: 'post-report', evidence: fixed } as any)
+		s = advanceV2(s, { type: 'closure-report', package: { ...pack, evidenceIds: ['E-fixed'], results: fixed.results, findings: [] } } as any)
+		expect(blockersV2(s)).toContain('U-1/F-post: unresolved finding')
+		const disposition = { findingId: 'F-post', outcome: 'fixed', evidenceIds: ['E-fixed'], owner: 'T-repair', reviewer: 'T-independent', record: 'Reproduced and independently reviewed repair evidence.' }
+		expect(() => advanceV2(s, { type: 'disposition', disposition: { ...disposition, evidenceIds: ['E-pre'] } } as any)).toThrow('evidence')
+		s = advanceV2(s, { type: 'disposition', disposition } as any)
+		expect(blockersV2(s)).not.toContain('U-1/F-post: unresolved finding')
+		expect(blockersV2(s)).toContain('U-1/F-post: fixed reported; qualified resolution required')
+		expect(parseMissionV2(JSON.parse(JSON.stringify(s)))).toEqual(s)
+	})
+	test('new post-evidence invalidates relevant packages and surfaces failures before repackaging', () => {
+		let s = v2Built(true)
+		s = advanceV2(s, { type: 'observe-integration', unitId: 'U-1', attemptId: 'A-1', commit: 'c'.repeat(40), remoteHead: candidate.head, targetRef: 'dev', repository: candidate.repo })
+		s = advanceV2(s, { type: 'build', unitId: 'U-2' })
+		s = advanceV2(s, { type: 'candidate', unitId: 'U-2', attemptId: 'A-2', candidate: { ...candidate, pr: 8 }, manifest: s.manifest })
+		s = advanceV2(s, { type: 'observe-integration', unitId: 'U-2', attemptId: 'A-2', commit: 'd'.repeat(40), remoteHead: candidate.head, targetRef: 'dev', repository: candidate.repo })
+		const good = { id: 'E-good', baseline: 'd'.repeat(40), designDigest: intentDigest(s.manifest), policyDigest: 'unqualified', unitIds: ['U-1'], results: [{ criterionId: 'C-1', outcome: 'passed', record: 'Recovery works.' }], record: 'Post-integration run.' }
+		s = advanceV2(s, { type: 'post-report', evidence: good } as any)
+		const pack = { baseline: good.baseline, designDigest: good.designDigest, policyDigest: good.policyDigest, unitIds: good.unitIds, evidenceIds: [good.id], results: good.results, findings: [], record: 'Review current run.' }
+		s = advanceV2(s, { type: 'post-delivery', unitId: 'U-1', package: pack } as any)
+		const failed = { ...good, id: 'E-other', unitIds: ['U-2'], results: [{ criterionId: 'C-1', outcome: 'failed', record: 'Recovery loses edit.' }] }
+		s = advanceV2(s, { type: 'post-report', evidence: failed } as any)
+		expect(blockersV2(s, 'U-1')).not.toContain('U-1: post-delivery package stale')
+		expect(() => advanceV2(s, { type: 'post-delivery', unitId: 'U-1', package: pack } as any)).not.toThrow()
+		const combined = { ...good, id: 'E-combined', unitIds: ['U-1', 'U-2'] }
+		s = advanceV2(s, { type: 'post-report', evidence: combined } as any)
+		const closure = { ...pack, unitIds: combined.unitIds, evidenceIds: [combined.id] }
+		s = advanceV2(s, { type: 'closure-report', package: closure } as any)
+		s = advanceV2(s, { type: 'post-report', evidence: { ...failed, id: 'E-failed', unitIds: ['U-1'] } } as any)
+		expect(blockersV2(s)).toContain('U-1/C-1: current post-evidence failed')
+		expect(blockersV2(s)).toContain('Assembled-baseline package stale')
+		expect(() => advanceV2(s, { type: 'closure-report', package: closure } as any)).toThrow('newer')
+		expect(s.closureReports[0].results[0].outcome).toBe('passed')
 		expect(parseMissionV2(JSON.parse(JSON.stringify(s)))).toEqual(s)
 	})
 	test('retains acknowledged intent and rejects candidate-selected weakening', () => {
@@ -180,6 +239,69 @@ function verified(risk = 'low') {
 	for (const gate of [1, 2]) state = advance(state, { type: 'review', gate, fingerprint: fingerprint(state), passed: true, reviewer: 'T-reviewer', record: 'Read the diff and recovery tests; no findings.' })
 	return advance(state, { type: 'evidence', fingerprint: fingerprint(state), results: ['Exact rows: subprocess assertions passed', 'Preservation: before/after bytes equal'], tryIt: 'Run the interruption CLI journey.', value: 'No duplicate-row repair needed.' })
 }
+
+describe('mission migration preservation', () => {
+	test('invalid UTF-8 cannot be normalized into a lossy migration backup', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'mission-encoding-'))
+		try {
+			const path = join(dir, 'state.json')
+			const raw = Buffer.from(JSON.stringify(createMission('T-test', 'Recover edits')))
+			raw[raw.indexOf('Recover')] = 0xff
+			writeFileSync(path, raw)
+			// Reproduce the old preview's lossy digest, not a safe caller's byte hash.
+			expect(() => migrateMission(path, 'T-test', createHash('sha256').update(raw.toString('utf8')).digest('hex'), 'acme/app')).toThrow('UTF-8')
+			expect(readFileSync(path)).toEqual(raw)
+		} finally { rmSync(dir, { recursive: true }) }
+	})
+	test('high-risk floors survive unknown classification and migration', () => {
+		const previous = advance(built('high'), { type: 'candidate', candidate: { ...candidate, risk: 'unknown' } })
+		expect(previous.riskFloor).toBe('high')
+		let s = previewMigration(previous)
+		s = advanceV2(s, { type: 'approve-design', digest: intentDigest(s.manifest) })
+		s = advanceV2(s, { type: 'defense', digest: intentDigest(s.manifest), record: 'Imported risk floor retained.' })
+		s = advanceV2(s, { type: 'build', unitId: 'U-1' })
+		s = advanceV2(s, { type: 'candidate', unitId: 'U-1', attemptId: 'A-new', candidate, manifest: s.manifest })
+		expect(s.units[0].attempts.at(-1)!.candidate.risk).toBe('high')
+		expect(() => advanceV2(s, { type: 'review', unitId: 'U-1', attemptId: 'A-new', gate: 1, fingerprint: fingerprintV2(s, 'U-1', 'A-new'), evidenceDigest: intentDigest([]), reviewer: 'T-test', passed: true, record: 'Self-review', findingIds: [] })).toThrow('independent')
+	})
+	test('preview and adoption preserve bytes, retain historical integration and reject stale adoption', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'mission-migrate-'))
+		try {
+			const path = join(dir, 'state.json')
+			let old = advance(verified(), { type: 'presented', fingerprint: fingerprint(verified()) })
+			old = advance(old, { type: 'merge-requested', fingerprint: fingerprint(old) })
+			expect(() => previewMigration(old)).toThrow('pending')
+			old = advance(old, { type: 'merged', fingerprint: fingerprint(old), commit: 'c'.repeat(40) })
+			const bytes = JSON.stringify(old, null, '\t') + '\n\n'
+			const expected = createHash('sha256').update(bytes).digest('hex')
+			writeFileSync(path, bytes)
+			const preview = previewMigration(old)
+			expect(readFileSync(path, 'utf8')).toBe(bytes)
+			expect(preview.units[0].status).toBe('integrated')
+			expect(preview.approvedDesign).toBeUndefined()
+			expect(preview.units[0].postDelivery).toEqual([])
+			writeFileSync(path, bytes + '\n')
+			expect(() => migrateMission(path, 'T-test', expected)).toThrow('changed')
+			expect(readFileSync(path, 'utf8')).toBe(bytes + '\n')
+			writeFileSync(path, bytes)
+			const migrated = migrateMission(path, 'T-test', expected)
+			expect(migrated).toEqual(preview)
+			expect(readFileSync(path + '.v1-' + expected + '.json', 'utf8')).toBe(bytes)
+			expect(loadRecord(path, 'T-test')).toEqual(migrated)
+			expect(() => loadMission(path, 'T-test')).toThrow()
+			expect(blockersV2(migrated)).toContain('remote-verification-unqualified')
+			const paused = advanceV2(migrated, { type: 'pause', reason: 'Keep original v1 history read-only' })
+			saveRecord(path, paused)
+			expect(() => saveRecord(path, advanceV2(migrated, { type: 'pause', reason: 'Stale writer' }))).toThrow('stale')
+			expect(loadRecord(path, 'T-test')).toEqual(paused)
+			for (const bad of ['{broken', '{"schemaVersion":99}']) {
+				writeFileSync(path, bad)
+				expect(() => loadRecord(path, 'T-test')).toThrow()
+				expect(readFileSync(path, 'utf8')).toBe(bad)
+			}
+		} finally { rmSync(dir, { recursive: true }) }
+	})
+})
 
 describe('mission public lifecycle', () => {
 	test('owner approval precedes defense and build; concrete criteria are mandatory', () => {
