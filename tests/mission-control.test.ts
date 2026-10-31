@@ -6,7 +6,7 @@ import { createMission, advance, blockers, fingerprint, saveMission, loadMission
 import { parseManifest, intentDigest } from '../plugins/mission-control/lib/contracts'
 import { createMissionV2, advanceV2, blockersV2, fingerprintV2, parseMissionV2 } from '../plugins/mission-control/lib/mission-v2'
 
-export const manifest = {
+const manifest = {
 	schemaVersion: 2, missionId: 'M-1', repository: 'acme/app',
 	requirements: [{ id: 'R-1', need: 'Recover edits', scope: 'Local documents', nonGoals: 'Cloud sync' }],
 	criteria: [{ id: 'C-1', requirementIds: ['R-1'], outcome: 'Recover after interruption', authority: 'mission', method: 'journey', checks: ['recovery'], threshold: 'Latest durable edit survives' }],
@@ -54,6 +54,76 @@ function v2Built(two = false) {
 }
 
 describe('v2 local mission workflow', () => {
+	test('removing criteria requires acknowledged dispositions and integrated changes need corrective allocation', () => {
+		let s = v2Built()
+		s = advanceV2(s, { type: 'observe-integration', unitId: 'U-1', attemptId: 'A-1', commit: 'c'.repeat(40), remoteHead: candidate.head, targetRef: 'dev', repository: candidate.repo })
+		const m = structuredClone(s.manifest)
+		m.criteria[0].outcome = 'Recover latest acknowledged edit'
+		expect(() => advanceV2(s, { type: 'design', manifest: m })).toThrow('corrective')
+		m.deliveries.push({ id: 'U-fix', sliceIds: ['S-1'], criterionIds: ['C-1'] })
+		m.allocations[0] = { criterionId: 'C-1', contributors: ['U-1', 'U-fix'], finalUnitId: 'U-fix' }
+		s = advanceV2(s, { type: 'design', manifest: m })
+		expect(s.units[0].attempts[0].integration!.commit).toBe('c'.repeat(40))
+		expect(s.approvedDesign).toBeUndefined()
+		const replaced = structuredClone(m)
+		replaced.criteria[0].id = 'C-2'
+		replaced.slices[0].criterionIds = ['C-2']
+		replaced.deliveries.forEach(d => { d.criterionIds = ['C-2'] })
+		replaced.allocations[0].criterionId = 'C-2'
+		expect(() => advanceV2(s, { type: 'design', manifest: replaced })).toThrow('disposition')
+		const withDisposition = { ...replaced, dispositions: [{ criterionId: 'C-1', reason: 'Replaced by explicitly stronger C-2', owner: 'mission owner', replacementIds: ['C-2'] }] }
+		s = advanceV2(s, { type: 'design', manifest: withDisposition })
+		expect(blockersV2(s)).toContain('Owner design approval required')
+		expect(s.snapshots[0].manifest.criteria[0].id).toBe('C-1')
+		expect(parseMissionV2(JSON.parse(JSON.stringify(s)))).toEqual(s)
+	})
+	test('reviews bind to current evidence and failed first review cannot advance', () => {
+		let s = v2Built()
+		const fp = fingerprintV2(s, 'U-1', 'A-1')
+		const review = { type: 'review', unitId: 'U-1', attemptId: 'A-1', gate: 1, fingerprint: fp, evidenceDigest: intentDigest([]), reviewer: 'T-reviewer', passed: false, record: 'Missing restart evidence.', findingIds: [] }
+		s = advanceV2(s, review as any)
+		expect(s.units[0].attempts[0].reviews[0].passed).toBe(false)
+		expect(() => advanceV2(s, { ...review, gate: 2, passed: true } as any)).toThrow('first review')
+		expect(() => advanceV2(s, { ...review, passed: true } as any)).toThrow('new attempt')
+		s = advanceV2(s, { type: 'candidate', unitId: 'U-1', attemptId: 'A-2', candidate: { ...candidate, head: 'e'.repeat(40), risk: 'high' }, manifest: s.manifest })
+		const renewed = { ...review, attemptId: 'A-2', fingerprint: fingerprintV2(s, 'U-1', 'A-2'), passed: true }
+		expect(() => advanceV2(s, { ...renewed, reviewer: 'T-test' } as any)).toThrow('independent')
+		s = advanceV2(s, renewed as any)
+		s = advanceV2(s, { type: 'report', unitId: 'U-1', attemptId: 'A-2', fingerprint: renewed.fingerprint, evidence: { id: 'E-failed', criterionIds: ['C-1'], outcome: 'failed', record: 'Interrupted journal loses newest durable edit.' } })
+		expect(() => advanceV2(s, { ...renewed, gate: 2 } as any)).toThrow('evidence')
+		expect(blockersV2(s)).toContain('U-1: Review 1 required for current evidence')
+		expect(s.units[0].attempts[0].reviews[0].passed).toBe(false)
+	})
+	test('findings survive attempts and pause blocks mutation without erasing history', () => {
+		let s = v2Built()
+		const finding = { id: 'F-1', criterionIds: ['C-1'], severity: 'high', confidence: 'source-supported', location: 'src/recovery.ts:12', record: 'Journal truncate precedes durable snapshot.', owner: 'T-repair' }
+		s = advanceV2(s, { type: 'finding', unitId: 'U-1', attemptId: 'A-1', fingerprint: fingerprintV2(s, 'U-1', 'A-1'), finding } as any)
+		s = advanceV2(s, { type: 'pause', reason: 'Need reproduction on Mac' } as any)
+		expect(() => advanceV2(s, { type: 'candidate', unitId: 'U-1', attemptId: 'A-2', candidate, manifest: s.manifest })).toThrow('paused')
+		s = advanceV2(s, { type: 'resume' } as any)
+		s = advanceV2(s, { type: 'candidate', unitId: 'U-1', attemptId: 'A-2', candidate, manifest: s.manifest })
+		expect(blockersV2(s)).toContain('U-1/F-1: unresolved finding')
+		expect(parseMissionV2(JSON.parse(JSON.stringify(s)))).toEqual(s)
+	})
+	test('whole-mission reports cannot reuse partial or pre-integration evidence as closure', () => {
+		let s = v2Built(true)
+		const post = { type: 'post-delivery', unitId: 'U-1', package: { baseline: 'c'.repeat(40), designDigest: intentDigest(s.manifest), policyDigest: 'unqualified', unitIds: ['U-1'], evidenceIds: ['E-post'], results: [{ criterionId: 'C-1', outcome: 'passed', record: 'Recovered edit in synthetic journey.' }], findings: [], record: 'Fresh-context reported review, not authenticated execution.' } }
+		expect(() => advanceV2(s, post as any)).toThrow('integration')
+		s = advanceV2(s, { type: 'observe-integration', unitId: 'U-1', attemptId: 'A-1', commit: 'c'.repeat(40), remoteHead: candidate.head, targetRef: 'dev', repository: candidate.repo })
+		s = advanceV2(s, post as any)
+		expect(s.units[0].status).toBe('adversarial-review')
+		expect(() => advanceV2(s, { type: 'closure-report', package: post.package } as any)).toThrow('whole mission')
+		s = advanceV2(s, { type: 'build', unitId: 'U-2' })
+		s = advanceV2(s, { type: 'candidate', unitId: 'U-2', attemptId: 'A-2', candidate: { ...candidate, pr: 8 }, manifest: s.manifest })
+		s = advanceV2(s, { type: 'observe-integration', unitId: 'U-2', attemptId: 'A-2', commit: 'd'.repeat(40), remoteHead: candidate.head, targetRef: 'dev', repository: candidate.repo })
+		const combined = { ...post.package, baseline: 'd'.repeat(40), unitIds: ['U-1', 'U-2'], results: [{ criterionId: 'C-1', outcome: 'failed', record: 'Unit B regressed interrupted recovery from A.' }] }
+		s = advanceV2(s, { type: 'closure-report', package: combined } as any)
+		expect(s.status).toBe('active')
+		expect(blockersV2(s)).toContain('C-1: assembled-baseline report failed')
+		expect(s.units[0].attempts[0].integration!.commit).toBe('c'.repeat(40))
+		expect(blockersV2(s)).toContain('remote-verification-unqualified')
+		expect(parseMissionV2(JSON.parse(JSON.stringify(s)))).toEqual(s)
+	})
 	test('retains acknowledged intent and rejects candidate-selected weakening', () => {
 		const start = createMissionV2('T-test', parseManifest(manifest))
 		expect(() => advanceV2(start, { type: 'build', unitId: 'U-1' })).toThrow()

@@ -8,6 +8,7 @@ export type ManifestV2 = {
 	slices: { id: string; criterionIds: string[]; paths: string[] }[]
 	deliveries: { id: string; sliceIds: string[]; criterionIds: string[] }[]
 	allocations: { criterionId: string; contributors: string[]; finalUnitId: string }[]
+	dispositions?: { criterionId: string; reason: string; owner: string; replacementIds: string[] }[]
 }
 
 export function object(value: unknown, required: string[], optional: string[] = []): asserts value is Record<string, any> {
@@ -45,7 +46,7 @@ export function intentDigest(value: unknown) { return createHash('sha256').updat
 
 export function parseManifest(value: unknown): ManifestV2 {
 	if (Buffer.byteLength(canonical(value)) > 1024 * 1024) throw new Error('Manifest exceeds 1 MiB')
-	object(value, ['schemaVersion', 'missionId', 'repository', 'requirements', 'criteria', 'decisions', 'slices', 'deliveries', 'allocations'])
+	object(value, ['schemaVersion', 'missionId', 'repository', 'requirements', 'criteria', 'decisions', 'slices', 'deliveries', 'allocations'], ['dispositions'])
 	if (value.schemaVersion !== 2) throw new Error('Unsupported manifest version')
 	identity(value.missionId)
 	if (typeof value.repository !== 'string' || !/^[\w.-]+\/[\w.-]+$/.test(value.repository)) throw new Error('Invalid repository')
@@ -95,5 +96,14 @@ export function parseManifest(value: unknown): ManifestV2 {
 		for (const id of a.contributors) if (!value.deliveries.find((u: any) => u.id === id).criterionIds.includes(a.criterionId)) throw new Error('Unit does not cover criterion')
 	}
 	if (allocated.size !== criteria.size) throw new Error('Every criterion requires an allocation')
+	if (value.dispositions !== undefined) {
+		list(value.dispositions, true)
+		const disposed = new Set<string>()
+		for (const d of value.dispositions) {
+			object(d, ['criterionId', 'reason', 'owner', 'replacementIds']); identity(d.criterionId); prose(d.reason); prose(d.owner); strings(d.replacementIds, true)
+			if (disposed.has(d.criterionId) || criteria.has(d.criterionId) || d.replacementIds.some((id: string) => !criteria.has(id))) throw new Error('Invalid criterion disposition')
+			disposed.add(d.criterionId)
+		}
+	}
 	return structuredClone(value) as ManifestV2
 }
