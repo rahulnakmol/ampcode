@@ -5,6 +5,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import register from '../plugins/mission-control'
 import { GitHub } from '../plugins/mission-control/lib/github'
+import { createMission } from '../plugins/mission-control/lib/mission'
+import { previewMigration } from '../plugins/mission-control/lib/migration'
+import { intentDigest } from '../plugins/mission-control/lib/contracts'
 
 function harness(root = mkdtempSync(join(tmpdir(), 'mission-plugin-')), github?: any) {
 	execFileSync('git', ['init', '-q', root])
@@ -21,6 +24,80 @@ function harness(root = mkdtempSync(join(tmpdir(), 'mission-plugin-')), github?:
 	return { root, tools, hooks, dialogs, notifications, ctx, answer: (value: any) => { answer = value }, call: (name: string, input = {}) => tools[name](input, ctx) }
 }
 const bundle = { spec: 'Export rows exactly', plan: 'Test, fix, review', technical: 'Offsets', ux: 'Actionable CLI errors' }
+const shadowManifest = previewMigration(createMission('T-fixture', 'Resume exports'), 'acme/app').manifest
+test('v2 opt-in uses native approvals but never invokes remote writes or continuation loops', async () => {
+	const h = harness(undefined, { preflight: async () => { throw new Error('unexpected remote mutation') }, request: async () => { throw new Error('unexpected remote mutation') } })
+	try {
+		const start = JSON.parse(await h.call('mission_start', { schemaVersion: 2, manifest: shadowManifest }))
+		expect(start.schemaVersion).toBe(2)
+		expect(start.blockers).toContain('remote-verification-unqualified')
+		h.answer(undefined)
+		await expect(h.call('mission_approve', { stage: 'design' })).rejects.toThrow('acknowledgment')
+		for (const type of ['approve-design', 'import-v1', 'observe-integration', 'merge-requested']) await expect(h.call('mission_update', { action: { type } })).rejects.toThrow('Internal')
+		h.answer({ acknowledgment: 'ACKNOWLEDGE' })
+		await h.call('mission_approve', { stage: 'design' })
+		await h.call('mission_update', { action: { type: 'defense', digest: intentDigest(shadowManifest), record: 'Recovery inputs and failure boundaries explained.' } })
+		await h.call('mission_update', { action: { type: 'build', unitId: 'U-1' } })
+		const again = harness(h.root)
+		expect(JSON.parse(await again.call('mission_status')).units[0].status).toBe('building')
+		for (const name of ['mission_merge', 'mission_recover']) await expect(h.call(name)).rejects.toThrow('remote-verification-unqualified')
+		await expect(h.call('mission_approve', { stage: 'merge' })).rejects.toThrow('remote-verification-unqualified')
+		expect(await h.hooks['agent.end']({ thread: { id: 'T-test' }, status: 'done' })).toBeUndefined()
+		expect(h.dialogs[0].message).toContain('local-reported')
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+test('v2 stale native responses do not approve an amended manifest', async () => {
+	const h = harness()
+	try {
+		await h.call('mission_start', { schemaVersion: 2, manifest: shadowManifest })
+		h.ctx.ui.confirm = async () => {
+			const changed = structuredClone(shadowManifest)
+			changed.criteria[0].outcome = 'Resume after clean shutdown only'
+			await h.call('mission_update', { action: { type: 'design', manifest: changed } })
+			return { acknowledgment: 'ACKNOWLEDGE' }
+		}
+		await expect(h.call('mission_approve', { stage: 'design' })).rejects.toThrow('stale')
+		expect(JSON.parse(await h.call('mission_status')).approvedDesign).toBeUndefined()
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+test('v2 reconciliation observes only exact integration and leaves missing local gates visible', async () => {
+	let remoteHead = 'e'.repeat(40)
+	const h = harness(undefined, { pull: async () => ({ merged: true, head: { sha: remoteHead }, base: { ref: 'dev', repo: { full_name: 'acme/app' } }, merge_commit_sha: 'c'.repeat(40) }) })
+	try {
+		await h.call('mission_start', { schemaVersion: 2, manifest: shadowManifest })
+		await h.call('mission_approve', { stage: 'design' })
+		await h.call('mission_update', { action: { type: 'defense', digest: intentDigest(shadowManifest), record: 'Observe only, never send remote effects.' } })
+		await h.call('mission_update', { action: { type: 'build', unitId: 'U-1' } })
+		await h.call('mission_update', { action: { type: 'candidate', unitId: 'U-1', attemptId: 'A-1', manifest: shadowManifest, candidate: { repo: 'acme/app', pr: 7, head: 'a'.repeat(40), base: 'b'.repeat(40), risk: 'low' } } })
+		await expect(h.call('mission_reconcile')).rejects.toThrow('Explicit')
+		await h.call('mission_reconcile', { unitId: 'U-1', attemptId: 'A-1' })
+		expect(JSON.parse(await h.call('mission_status')).units[0].status).toBe('reviewing')
+		remoteHead = 'a'.repeat(40)
+		const observed = JSON.parse(await h.call('mission_reconcile', { unitId: 'U-1', attemptId: 'A-1' }))
+		expect(observed.units[0].status).toBe('integrated')
+		expect(observed.blockers).toContain('U-1: Review 1 required for current evidence')
+		await h.call('mission_update', { action: { type: 'post-report', evidence: { id: 'E-post', baseline: 'c'.repeat(40), designDigest: observed.designDigest, policyDigest: 'unqualified', unitIds: ['U-1'], results: [{ criterionId: 'C-1', outcome: 'passed', record: 'Synthetic journey report only.' }], record: 'Fresh post-integration report.' } } })
+		expect(JSON.parse(await h.call('mission_status')).postReports[0].producer).toBe('reported')
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+test('native migration previews without writing, requires acknowledgment and preserves v1 on decline', async () => {
+	const h = harness()
+	try {
+		await h.call('mission_start', { requirements: 'Resume exports' })
+		const before = await h.call('mission_status')
+		const preview = JSON.parse(await h.call('mission_migrate', { adopt: false, repository: 'acme/app' }))
+		expect(preview.schemaVersion).toBe(2)
+		expect(await h.call('mission_status')).toBe(before)
+		h.answer(undefined)
+		await expect(h.call('mission_migrate', { adopt: true, repository: 'acme/app', expectedDigest: preview.sourceDigest })).rejects.toThrow('acknowledgment')
+		expect(await h.call('mission_status')).toBe(before)
+		h.answer({ acknowledgment: 'ACKNOWLEDGE' })
+		const adopted = JSON.parse(await h.call('mission_migrate', { adopt: true, repository: 'acme/app', expectedDigest: preview.sourceDigest }))
+		expect(adopted.schemaVersion).toBe(2)
+		expect(adopted.approvedDesign).toBeUndefined()
+		expect(adopted.blockers).toContain('remote-verification-unqualified')
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
 async function build(h: ReturnType<typeof harness>) {
 	await h.call('mission_start', { requirements: 'Resume exports' })
 	await h.call('mission_update', { action: { type: 'design', bundle, criteria: ['Exact rows'] } })

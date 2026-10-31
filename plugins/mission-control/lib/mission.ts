@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
+import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
+import { canonical } from './contracts'
+import { parseMissionV2, type MissionV2 } from './mission-v2'
 
 export type Risk = 'low' | 'medium' | 'high' | 'unknown'
 export type Bundle = { spec: string; plan: string; technical: string; ux: string }
@@ -156,8 +158,12 @@ export function advance(previous: Mission, action: Action): Mission {
 }
 
 export function loadMission(path: string, thread: string): Mission | undefined {
-	if (!existsSync(path)) return undefined
-	const s = JSON.parse(readFileSync(path, 'utf8')) as Mission
+	const raw = readRecordBytes(path)
+	return raw === undefined ? undefined : parseMission(JSON.parse(raw), thread)
+}
+export function parseMission(value: unknown, thread: string): Mission {
+	const s = value as Mission
+	if (!s || typeof s !== 'object') throw new Error('Invalid mission state')
 	if (s.version !== 1 || s.thread !== thread || !Array.isArray(s.events) || !Array.isArray(s.reviews) || !['auto', 'ask'].includes(s.mode)) throw new Error('Invalid mission state; preserve and investigate')
 	text(s.requirements)
 	if (!Number.isSafeInteger(s.generation) || s.generation < 0 || !['requirements', 'awaiting-design-approval', 'defense', 'ready-to-build', 'building', 'reviewing', 'evidence', 'merge-pending', 'merged'].includes(s.phase) || !['low', 'medium', 'high', 'unknown'].includes(s.riskFloor)) throw new Error('Invalid mission phase, generation or risk floor')
@@ -170,17 +176,59 @@ export function loadMission(path: string, thread: string): Mission | undefined {
 	return s
 }
 export function saveMission(path: string, state: Mission) {
+	parseMission(state, state.thread)
+	updateRecord(path, raw => {
+		const old = raw === undefined ? undefined : parseMission(JSON.parse(raw), state.thread)
+		if (old && (old.events.length !== state.events.length - 1 || canonical(old.events) !== canonical(state.events.slice(0, -1)))) throw new Error('Concurrent or stale mission update; reload')
+		return JSON.stringify(state, null, 2) + '\n'
+	})
+}
+
+export function readRecordBytes(path: string): string | undefined {
+	if (!existsSync(path)) return undefined
+	if (statSync(path).size > 16 * 1024 * 1024) throw new Error('Mission record exceeds 16 MiB; preserve and investigate')
+	const bytes = readFileSync(path)
+	if (bytes.length > 16 * 1024 * 1024) throw new Error('Mission record exceeds 16 MiB')
+	const raw = bytes.toString('utf8')
+	if (!Buffer.from(raw, 'utf8').equals(bytes)) throw new Error('Invalid UTF-8 mission bytes; preserve and investigate')
+	return raw
+}
+// One lock/atomic-replacement owner for v1, v2, and explicit migration.
+// An interrupted lock is never silently stolen. Inspect the writer first.
+export function updateRecord(path: string, transform: (raw: string | undefined) => string) {
 	mkdirSync(dirname(path), { recursive: true, mode: 0o700 })
 	const lock = openSync(path + '.lock', 'wx', 0o600)
 	const temporary = path + '.' + randomUUID()
 	try {
-		const old = loadMission(path, state.thread)
-		if (old && old.events.length !== state.events.length - 1) throw new Error('Concurrent or stale mission update; reload')
+		const next = transform(readRecordBytes(path))
+		if (Buffer.byteLength(next) > 16 * 1024 * 1024) throw new Error('Mission record exceeds 16 MiB')
 		const fd = openSync(temporary, 'wx', 0o600)
-		try { writeFileSync(fd, JSON.stringify(state, null, 2) + '\n'); fsyncSync(fd) } finally { closeSync(fd) }
+		try { writeFileSync(fd, next); fsyncSync(fd) } finally { closeSync(fd) }
 		renameSync(temporary, path)
+		const directory = openSync(dirname(path), 'r')
+		try { fsyncSync(directory) } finally { closeSync(directory) }
 	} finally {
 		if (existsSync(temporary)) unlinkSync(temporary)
 		closeSync(lock); unlinkSync(path + '.lock')
 	}
+}
+
+export function loadRecord(path: string, thread: string): Mission | MissionV2 | undefined {
+	const raw = readRecordBytes(path)
+	if (raw === undefined) return undefined
+	const value = JSON.parse(raw)
+	if (value?.version === 1 && value.schemaVersion === undefined) return parseMission(value, thread)
+	if (value?.schemaVersion !== 2 || value.thread !== thread) throw new Error('Invalid or unsupported mission schema/thread')
+	return parseMissionV2(value)
+}
+export function saveRecord(path: string, state: Mission | MissionV2) {
+	if ('version' in state) return saveMission(path, state)
+	parseMissionV2(state)
+	updateRecord(path, raw => {
+		if (raw !== undefined) {
+			const old = parseMissionV2(JSON.parse(raw))
+			if (old.thread !== state.thread || old.events.length !== state.events.length - 1 || canonical(old.events) !== canonical(state.events.slice(0, -1))) throw new Error('Concurrent or stale mission update; reload')
+		}
+		return JSON.stringify(state, null, 2) + '\n'
+	})
 }

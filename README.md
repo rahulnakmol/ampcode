@@ -140,6 +140,15 @@ always needs acknowledgment of the exact candidate; unknown risk blocks merge. E
 artifacts, and a try-it procedure precede a merge request. Completion means verified remote
 integration, not merely requesting auto-merge.
 
+The opt-in **v2 traceability foundation** retains acknowledged intent snapshots,
+stable criterion IDs, per-PR candidate histories, evidence-bound reviews, and
+post-delivery/whole-mission reports. It preserves v1 bytes during explicit migration.
+V2 is **shadow-only**: submitted evidence remains reported, remote merges are disabled,
+and qualified closure stays blocked. V1 remains the default integration workflow.
+See the [v2 contract and migration guide](./docs/mission-control.md#opt-in-v2-traceability).
+This foundation complements native Amp specialists and execution; it does not add
+a scheduler, activate a trusted CI replacement, or change the default build system.
+
 Version one supports a thread-owner initiator or a mission explicitly adopted by the thread owner.
 Owner-restricted dialogs take non-sensitive typed acknowledgments, **never secrets**. Local state
 enforces the workflow, not security against an unrestricted executor. The coordinator uses existing
