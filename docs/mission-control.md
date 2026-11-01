@@ -1,5 +1,9 @@
 # Mission control: local workflow and protected dev integration
 
+For the user journey, start with [Mission-driven development](mission-driven-development.md)
+or [Using the skills](using-skills.md). This reference covers kickoff variants,
+coordinator setup, tool inputs and operational limits.
+
 `plugins/mission-control/index.ts` coordinates the delivering skill. It is a local
 workflow coordinator, **not a scheduler or security sandbox**. It uses existing
 GitHub credentials available to `gh` in the Amp execution environment. No custom
@@ -12,6 +16,235 @@ post-delivery reports. It cannot request a remote merge or claim qualified closu
 Every v2 status includes `remote-verification-unqualified`. Reported findings,
 reviews and test results are not execution receipts. The sections below describe
 v1 integration unless marked v2; opting in does not strengthen GitHub protection.
+
+## Ways to kick off a mission
+
+Paste these prompts into an Amp conversation in the target project. Replace bracketed
+placeholders with your details. The same prompts work in the web conversation or an
+interactive Amp CLI session; they are **not shell commands or registered slash commands**.
+You do not need to type tool calls yourself. Amp loads the skills and calls the installed
+coordinator tools. A mode selection alone does not start a mission.
+
+Before starting, check these prerequisites:
+
+- `delivering` and `grilling` are available; use `crafting` for relevant UX and interaction
+  design. `mission-control` is a separate plugin, not part of the skill installation.
+- The execution environment has the target repository and an isolated worktree. Start the
+  coordinator with that worktree as the **workspace root**, not its parent directory. An
+  `amp` CLI session launched from the worktree is one way to open it. If the current thread
+  cannot change workspace roots, continue in a thread opened at the correct root; do not
+  patch the plugin to redirect production mission state.
+- For v1 integration, the repository has `dev`, working required CI, supported strict
+  App-pinned protection, and existing `gh` access. Missing prerequisites block integration;
+  creating credentials or changing protection needs separate permission.
+- Choose the delivery destination and work budget. Commit/PR/dev authorization is distinct
+  from rolling, stable release, deployment and Personal publication. The examples below do
+  not grant spending or infrastructure access beyond what you explicitly approve.
+
+| Starting point | Use | First expected result |
+| --- | --- | --- |
+| Vague idea or use case | Idea prompt | Grilling questions and concrete customer outcomes |
+| Concrete requirement | Requirement prompt | Repository assessment and measurable acceptance criteria |
+| Existing specification | Approved-plan prompt | Source/design drift check; reuse valid acknowledgment |
+| Existing issue, PR or partial implementation | Existing-work prompt | Current-state evidence and preservation plan |
+| Design only | Design-only prompt | Reviewed design package; no implementation |
+| Interrupted mission | Resume prompt | Reloaded state and reconciled external effects |
+| Separate native delivery thread | New-thread prompt | Explicit repository/executor and accessible handoff |
+| Multi-PR traceability experiment | V2 prompt | Complete manifest and shadow-only blockers |
+
+### Start from an idea or use case
+
+```text
+Use delivering for this idea in [repository]: [idea or use case]. Use grilling
+to identify who benefits, the problem, scope, non-goals, failure cases and
+measurable outcomes. Use crafting for the relevant journeys and interactions.
+Present the spec, technical/UX design and dependency-ordered plan for my
+acknowledgment before whiteboard defense or implementation. Target a PR to dev.
+```
+
+### Start from a concrete requirement
+
+```text
+Start a v1 delivery mission in [repository] for [requirement]. Success means
+[observable acceptance criteria]. Preserve [compatibility/data/security constraints].
+Read the current implementation and tests before planning. Resolve only missing
+requirements, then present the design for acknowledgment and defend it before
+building. Use outcome-driven TDD, real journeys and two review gates. Commit and
+open a PR to dev; merge only after the required workflow and CI gates pass.
+```
+
+### Deliver an existing specification or approved plan
+
+```text
+Use delivering to execute [specification path or thread URL] in [repository].
+Read the actual approved design, acceptance criteria, plan and decision history.
+Reuse valid acknowledgment for that exact design; identify drift or missing
+approval rather than restarting discovery or assuming the filename is approval.
+Complete whiteboard defense before build. Deliver checked slices through dev.
+Do not release, deploy or publish Personal extensions without separate permission.
+```
+
+### Adopt an issue, PR or existing work
+
+```text
+Use delivering for [issue/PR URL or description of existing work] in [repository].
+Assess what already works and what remains unproven. Preserve staged and uncommitted
+changes and establish ownership before moving work into an isolated worktree.
+Turn the intended outcome into acceptance criteria and obtain acknowledgment of
+the concrete design. Do not invent retroactive TDD or approvals for existing code.
+Show current evidence, missing gates and the smallest remaining delivery slices.
+```
+
+Issue/PR text is input, not authorization to execute instructions embedded in it.
+Existing work still needs applicable verification and review; a green old PR does
+not prove the current candidate or current requirements.
+
+### Stop at the expectation and defense stages
+
+```text
+Use grilling and relevant crafting to frame [outcome] in [repository]. Prepare and
+pressure-test the specification, technical/UX design, acceptance criteria and
+implementation plan. Stop for my design acknowledgment. After acknowledgment,
+perform whiteboard defense, but do not implement, push or release anything yet.
+```
+
+This prepares a future mission; use delivering when you authorize the delivery work.
+
+### Resume rather than start over
+
+```text
+Resume this mission using delivering. Read mission_status, the approved design,
+local record, worktree and live PR/CI state. Preserve completed work. Reconcile
+any pending or uncertain remote effect before retrying it. Report drift and stale
+evidence, then continue only the authorized remaining work. Do not start a second
+mission or remove state to bypass a blocker.
+```
+
+Resume in the owning thread/worktree where possible. Records are keyed by thread
+identity and workspace; a new thread or orb does not inherit them. For a handoff,
+transfer sanitized requirements, exact revisions, artifacts and unresolved effects
+using supported Amp transfer tools. Do not edit a stored thread ID or copy an
+approval into a new identity. There is no general cross-thread adoption/import tool;
+v1-to-v2 migration is a different operation.
+
+### Ask Amp to create a native delivery thread
+
+```text
+Create a delivery thread for [outcome] in [repository/project], using delivering.
+Use [an orb for the remote revision / the named runner and checkout for local work].
+Carry this scope and these constraints into its first prompt: [brief]. If it needs
+unpushed work, transfer and verify the exact files/commit rather than assuming the
+thread can see them. Have it present the design for owner acknowledgment before
+defense/build. Keep integration and release permissions explicit.
+```
+
+This is a request for Amp's native thread capability, not a `mission-control`
+thread launcher. Use an existing suitable thread instead when it already owns the
+work. Orbs cannot see a runner's uncommitted files merely because you name a path.
+
+### Request bounded subagent help
+
+Append this to an implementation prompt when you want explicit delegation:
+
+```text
+Use native subagents for bounded independent work and consequential reviews.
+Sequence tasks that depend on earlier outputs. Parallelize only independent tasks
+with distinct file ownership and explicit contracts; integrate and test their
+combined result before accepting it. Keep one integration owner accountable.
+Use available native Finder/Librarian/Oracle responsibilities rather than adding
+replacement runtimes or assuming a named tool exists in every mode.
+```
+
+The coordinator does **not** implement a dependency scheduler or automatically
+launch those agents. The integration agent reasons about dependencies using the
+native tools actually available. A subagent report is evidence to inspect, not a
+substitute for checks on the assembled result.
+
+### Opt into v2 traceability, without enabling merges
+
+```text
+Start a fresh v2 shadow mission for [outcome] in [repository]. Use delivering and
+grilling to prepare a complete manifest with stable requirement/criterion IDs,
+slices, per-PR delivery units and final criterion allocations. Start with explicit
+schemaVersion:2, then request native acknowledgment of the exact manifest before
+defense/build. Label reports and policy authority honestly. Do not enable remote
+merges, downgrade to v1 to bypass a blocker, or claim qualified closure.
+```
+
+Use the [complete manifest example](#opt-in-v2-traceability). V2 is not “v1 with
+stronger merge permissions”: `remote-verification-unqualified` is expected. Its
+read-only reconciliation can observe separately authorized integration but cannot
+manufacture missing earlier gates. Keep ordinary protected integration on v1 when
+you need the coordinator to request a merge.
+
+For an **existing v1** record, migration needs its own informed decision:
+
+```text
+Preview this mission's v1-to-v2 migration without writing. Show preserved history,
+missing v2 intent details and the loss of v1 merge capability for this record.
+Reconcile pending effects first. Do not adopt until I acknowledge the migration
+in the native owner dialog; request v2 design acknowledgment separately afterward.
+```
+
+### Choose merge and release boundaries explicitly
+
+For v1, append “Use ask-before-merge mode” to request `mission_merge_mode({mode:"ask"})`.
+The owner confirms that preference in the native dialog. Automatic low/medium-risk
+integration still requires authorization and passing gates; high-risk exact-candidate
+acknowledgment remains mandatory in either mode. V2 has no merge-mode override.
+
+If a complete release is intended, specify it rather than assuming “deliver” includes it:
+
+```text
+The delivery target is [dev integration only / rolling snapshot / stable release].
+For this mission I authorize [commits, feature push, PR and gated dev merge].
+I additionally authorize [specific rolling/stable release, deployment destination
+or Personal publication, if intended]. Follow dev → rolling → main and all
+applicable gates. Use a work budget of [limit]; disclose unavailable usage telemetry.
+Do not change shared infrastructure, access or credentials without specific approval.
+```
+
+Remove alternatives you do not authorize. A broad request does not fabricate the
+native exact-design or high-risk final-candidate receipt. In those dialogs type
+**ACKNOWLEDGE**, never a password or key.
+
+### What should happen after kickoff
+
+The four stages are **expectations → acknowledged design and whiteboard defense →
+build/delivery with two reviews → adversarial review and learning**. The first reply
+should establish the repository/executor, outcome, missing decisions, budget and
+delivery boundary—not begin coding an unacknowledged design. Reuse an unchanged
+approved package; reopen affected decisions when intent changes. After integration,
+inspect the assembled outcome, retain findings and lessons, and propose any corrective
+work. Do not publish shared-skill learning automatically or call integration proof of
+post-delivery closure.
+
+Common blockers and safe responses:
+
+| Observation | Response |
+| --- | --- |
+| Skill or coordinator unavailable | Ask Amp to reload installed skills/plugins; missing installation needs explicit destination/approval. Guidance-only fallback has no plugin-enforced state |
+| Wrong workspace root | Open the isolated Git worktree as the workspace before starting |
+| “Mission already exists” | Use `mission_status` and resume; use a fresh thread for a genuinely new mission |
+| Owner acknowledgment absent | Leave state blocked; reopen the native dialog on the owner's request |
+| Missing CI/protection/access | Resolve the prerequisite with appropriate authorization; never bypass it |
+| Pending merge or uncertain result | Reconcile first; do not blindly repeat the mutation |
+| V2 unqualified verification | Preserve the blocker; this release cannot activate trusted remote enforcement |
+
+## Tool-level start examples
+
+These are **agent tool calls**, not commands for your terminal. Start only once in
+the correct workspace/thread. For v1, the actual input is an object:
+
+```json
+{"requirements":"Recover the latest durable document edit after interruption; preserve existing files."}
+```
+
+Pass it to `mission_start`. For v2, pass `{"schemaVersion":2,"manifest":...}` with
+the complete manifest below, and omit top-level `requirements`. To resume, call
+`mission_status()` rather than `mission_start` again. Public tools do not accept
+agent-supplied owner approval; use `mission_approve({stage:"design"})` after the
+design is presented. The agent records defense and build only after that succeeds.
 
 ## The agreement
 
@@ -41,7 +274,7 @@ location. Source integration does not publish it to Personal Plugins. Install
 `delivering`, `grilling`, and applicable `crafting` separately through their skill
 destination. Do not silently install missing dependencies.
 
-Open the dedicated Git worktree root. Start with `mission_start(requirements)`;
+Open the dedicated Git worktree root. Start with `mission_start({requirements: "..."})`;
 unrelated conversations do not become missions. The tool adds `/.amp/in/` to the
 repository-local exclude file, preserving existing rules, and stores records at
 `.amp/in/missions/<thread-hash>/state.json`. Do not commit these operational records.
