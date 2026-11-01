@@ -4,6 +4,12 @@ Personal extensions for getting more leverage from [Amp](https://ampcode.com): r
 
 This GitHub repository is the readable source of truth. Amp loads published copies from its separate Personal Plugins and Personal Skills repositories.
 
+## User guides
+
+- **[Using the skills](./docs/using-skills.md):** choose a skill, learn when to use it, copy a prompt, and understand what a good result looks like.
+- **[Mission-driven development](./docs/mission-driven-development.md):** take an idea or requirement through design, implementation, review and delivery; start or resume a mission.
+- **[Advisory team](./docs/advisory-team.md):** use Archi, Darci and Opsci for architecture and operational advice.
+
 ## Layout
 
 ```text
@@ -117,6 +123,21 @@ The integration owner explains the outcome,
 data flow, choices, invariants, threats, and failure limits. The receiving agent explains the plan
 back from the transferred materials; function-name recall is not required.
 Invoke it with “use delivering for this feature” or “deliver this approved brief.”
+
+**Start a mission:** open the target project in Amp and paste:
+
+```text
+Use delivering to start a mission for [outcome] in [repository]. Use grilling
+to make the expectations concrete, then present the specification, technical
+and relevant UX design for my acknowledgment before whiteboard defense or build.
+Use the default v1 integration workflow. Deliver through a checked PR to dev;
+ask separately before release, deployment or Personal publication.
+```
+
+See [Ways to kick off a mission](./docs/mission-control.md#ways-to-kick-off-a-mission)
+for copyable prompts for an idea, concrete requirement, approved plan, issue/PR,
+design-only exploration, interrupted work, native subagent coordination, and v2
+shadow traceability. These are prompts to Amp, not custom slash commands.
 
 Each small slice follows assessment, measurable outcome, meaningful failing harness, minimal
 implementation and working commits, real user journeys, correctness/security review, regression
