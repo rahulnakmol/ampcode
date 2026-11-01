@@ -31,19 +31,25 @@ Select a mode for an ongoing conversation, or ask an implementation agent to use
 
 ## Amp Custom Mode Dials
 
-[`plugins/amp-custom-mode-dials.ts`](./plugins/amp-custom-mode-dials.ts) fills the useful gaps between Amp's built-in modes:
+[`plugins/amp-custom-mode-dials.ts`](./plugins/amp-custom-mode-dials.ts) targets the gaps in Low → Swift → Medium → Weave → High → Prime → Ultra. These are intended workflow positions, not a benchmark-proven capability ranking:
 
-| Mode | Position | Main agent | Oracle | Subagents |
-| --- | --- | --- | --- | --- |
-| **Swift** | Low → Medium | Sonnet 5, medium | Fable 5.1, medium | Sonnet 5, medium |
-| **Weave** | Medium → High | Opus 5.5, medium | Fable 5.1, medium | Sonnet 5, medium |
-| **Prime** | High → Ultra | Fable 5.1, high | Fable 5.1, high | Opus 5.5, medium |
+| Mode | Position | Main agent | Serving |
+| --- | --- | --- | --- |
+| **Swift** | Low → Medium | Sonnet 5.5, medium | Normal by default |
+| **Weave** | Medium → High | GPT-6.1 Sol, high | Normal by default |
+| **Weave Fast** | Same Weave rung | GPT-6.1 Sol, high | Fast requested |
+| **Prime** | High → Ultra | Fable 5.1, medium | Normal by default |
+| **Prime Fast** | Same Prime rung | Fable 5.1, medium | Fast requested |
 
 ### Why this routing
 
-- **Swift** keeps a Medium-style workflow but prioritizes direct execution. Sonnet 5 runs both the main loop and delegated work at medium effort. It does not require Fast: Anthropic's Fast API supports Opus models, not Sonnet 5.
-- **Weave** is the focused all-Anthropic mode. Opus 5.5 leads implementation at its recommended starting effort of medium, Sonnet handles delegated work at medium effort, and Fable is reserved for difficult judgments.
-- **Prime** extends High rather than Ultra. Fable 5.1 leads at high effort, Opus 5.5 handles bounded delegated work at medium effort, and high-effort Fable is reserved for unresolved high-impact decisions.
+- **Swift** keeps a Medium-style workflow but prioritizes direct execution on Sonnet 5.5 at medium effort.
+- **Weave** uses GPT-6.1 Sol at high effort for focused implementation and artifact verification.
+- **Prime** extends High rather than Ultra, using Fable 5.1 at medium effort and risk-scaled verification.
+
+Select `weave-fast` or `prime-fast` to request Fast without changing the model, effort or workflow. Base modes declare `features: []` to avoid inheriting Fast from a creating thread; callers can still explicitly add it. Fast variants require `features: ['fast']`. Actual acceleration, availability and premium billing depend on the provider route; registration alone does not verify them. No accelerated-serving guarantee is made for either route.
+
+The current Amp plugin API does not expose separate `oracle` or `subagents` model overrides. The obsolete fields have been removed; specialist routing stays with Amp. Opus 5.5 workers are a requested preference, not an enforced configuration. Explicit Opus child agents would require a separate supported delegation mechanism; these modes do not silently substitute child threads for `Task`.
 
 Plugin agent modes cannot enforce a fixed token ceiling, so Prime cannot guarantee a precise percentage below Ultra. Its prompt, effort, delegation, and Oracle policy are deliberately configured to avoid Ultra-style exhaustive exploration.
 
