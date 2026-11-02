@@ -237,6 +237,65 @@ class EngagementRecordsTest(unittest.TestCase):
         self.save(self.typed("transformation", "mission", root_data, parent_edges, previous=parent))
         self.assertFalse(self.call("coverage", "transformation")["ready"])
 
+    def test_publication_binds_recipient_content_and_inherited_permissions(self):
+        import hashlib
+        def hashed(value):
+            return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False,
+                                            separators=(",", ":")).encode()).hexdigest()
+        permission = {"grants": [{"audience": "steering-group", "destination": "private-review",
+                                   "treatments": ["citation", "excerpt", "notes"]}],
+                      "required_caveats": ["Synthetic example; not a measured result."]}
+        source, _ = self.save(self.typed("evidence", "source", {"publication": permission}))
+        claim, snap = self.save(self.typed("finding", "claim", {"publication": permission},
+                                          [self.edge("evidence", source)]))
+        packet = {"schema": 1, "title": "Planning decision", "snapshot": snap,
+                  "audience": "steering-group", "destination": "private-review",
+                  "blocks": [{"id": "opening", "kind": "text", "title": "Resolve stock ownership first",
+                              "text": "Agree who can release held stock.", "notes": "Ask the quality lead.",
+                              "caveats": permission["required_caveats"],
+                              "citations": [{"record": self.ref("finding", claim), "label": "Workshop 1",
+                                             "treatment": "excerpt"}]}]}
+        def retained_packet(content, key, policy=None, extra_edges=()):
+            data = {"packet": content}
+            if policy is not None:
+                data["publication"] = policy
+            rev, _ = self.save(self.typed(key, "artifact", data, [self.edge("finding", claim), *extra_edges]))
+            approval, _ = self.save(self.typed(key + "-review", "review", {
+                "purpose": "publication", "packet": self.ref(key, rev), "packet_hash": hashed(content),
+                "audience": content["audience"], "destination": content["destination"],
+                "reviewer": "Consultant", "at": "2026-11-02T12:00:00+00:00", "status": "approved",
+                "assessments": {"meaning": "passed", "language": "passed", "confidentiality": "passed",
+                                "citations": "passed"}}, [self.edge(key, rev)]))
+            return approval
+        retained_packet(packet, "deck")
+        result = self.call("publication", "deck", "deck-review")
+        self.assertTrue(result["ready"], result)
+        self.assertEqual(result["packet"], packet)
+        denied = {"grants": [], "required_caveats": ["Internal only"]}
+        retained_packet(packet, "internal-deck", denied)
+        self.assertFalse(self.call("publication", "internal-deck", "internal-deck-review")["ready"])
+        policy, policy_snapshot = self.save(self.typed("policy", "source", {"publication": denied}))
+        governed = dict(packet, snapshot=policy_snapshot)
+        retained_packet(governed, "governed-deck", extra_edges=[dict(self.edge("policy", policy), relation="governed-by")])
+        self.assertFalse(self.call("publication", "governed-deck", "governed-deck-review")["ready"])
+        changed = json.loads(json.dumps(packet))
+        changed["destination"] = "client-public-folder"
+        retained_packet(changed, "other-deck")
+        self.assertFalse(self.call("publication", "other-deck", "other-deck-review")["ready"])
+        self.assertFalse(self.call("publication", "deck", "other-deck-review")["ready"])
+        changed = json.loads(json.dumps(packet))
+        changed["blocks"][0]["caveats"] = []
+        retained_packet(changed, "no-caveat")
+        self.assertFalse(self.call("publication", "no-caveat", "no-caveat-review")["ready"])
+        changed = json.loads(json.dumps(packet))
+        changed["blocks"][0]["notes"] = "Private source: obsidian://open?vault=client"
+        retained_packet(changed, "private-notes")
+        self.assertFalse(self.call("publication", "private-notes", "private-notes-review")["ready"])
+        self.prepare(self.typed("evidence", "source", {"publication": {"grants": [], "required_caveats": []}}, previous=source))
+        result = self.call("publication", "deck", "deck-review")
+        self.assertFalse(result["ready"])
+        self.assertNotIn("packet", result, "Blocked content must not be handed to an exporter")
+
     def test_invalid_references_ids_and_wrong_engagement_have_no_committed_effect(self):
         bad = [self.record("../escape", "bad"), self.record("claim", "bad", inputs=[self.edge("missing", "a" * 64)])]
         foreign = self.record("source", "private")

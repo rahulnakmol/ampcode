@@ -23,6 +23,7 @@ consulting system. Do not install or activate it implicitly.
 | Fit-gap, pre-sales, RFP response, estimate or roadmap | [proposals.md](reference/proposals.md) |
 | Save, correct, reconcile or resume records | [records.md](reference/records.md) |
 | Client business agreement | [decisions.md](reference/decisions.md) |
+| Client-safe content or Notion handoff | [publication.md](reference/publication.md) |
 
 Treat helpers as small composable tools: records retain evidence, qualification checks declared
 contracts, and estimate arithmetic consumes supplied inputs. None runs another agent or daemon.

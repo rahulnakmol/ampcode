@@ -372,6 +372,9 @@ def main():
     commands.add_parser("baseline").add_argument("decision")
     commands.add_parser("reconcile").add_argument("review", help="JSON reconciliation review")
     commands.add_parser("coverage").add_argument("mission")
+    publication_parser = commands.add_parser("publication")
+    publication_parser.add_argument("packet")
+    publication_parser.add_argument("review")
     args = parser.parse_args()
     try:
         if args.command == "init":
@@ -390,6 +393,9 @@ def main():
             elif args.command == "coverage":
                 from qualification import coverage
                 result = coverage(store, args.mission)
+            elif args.command == "publication":
+                from publication import publication
+                result = publication(store, args.packet, args.review)
             else:
                 result = store.status(args.snapshot)
         print(json.dumps(result, indent=2))
