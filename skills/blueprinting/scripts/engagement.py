@@ -381,6 +381,12 @@ def main():
     export_parser.add_argument("review")
     export_parser.add_argument("--format", required=True, choices=("md", "docx", "pptx", "pdf-document", "pdf-deck"))
     export_parser.add_argument("--output", required=True)
+    commands.add_parser("external-prepare").add_argument("intent")
+    commands.add_parser("external-attempt").add_argument("effect")
+    commands.add_parser("external-status").add_argument("effect")
+    external_reconcile = commands.add_parser("external-reconcile")
+    external_reconcile.add_argument("effect")
+    external_reconcile.add_argument("evidence")
     args = parser.parse_args()
     try:
         if args.command == "init":
@@ -409,6 +415,16 @@ def main():
                 if not result["ready"]:
                     raise Invalid("Publication review blocked: " + "; ".join(result["gaps"]))
                 result = render(result["packet"], args.format, args.output)
+            elif args.command.startswith("external-"):
+                import external
+                if args.command == "external-prepare":
+                    result = external.prepare(store, read_json(Path(args.intent)))
+                elif args.command == "external-attempt":
+                    result = external.attempt(store, args.effect)
+                elif args.command == "external-reconcile":
+                    result = external.reconcile(store, args.effect, read_json(Path(args.evidence)))
+                else:
+                    result = external.status(store, args.effect)
             else:
                 result = store.status(args.snapshot)
         print(json.dumps(result, indent=2))

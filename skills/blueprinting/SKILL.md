@@ -26,6 +26,7 @@ consulting system. Do not install or activate it implicitly.
 | Client business agreement | [decisions.md](reference/decisions.md) |
 | Client-safe content or Notion handoff | [publication.md](reference/publication.md) |
 | Editable document, deck or PDF | [exports.md](reference/exports.md) |
+| Response deadline or uncertain external handoff | [upkeep.md](reference/upkeep.md) |
 
 Treat helpers as small composable tools: records retain evidence, qualification checks declared
 contracts, and estimate arithmetic consumes supplied inputs. None runs another agent or daemon.

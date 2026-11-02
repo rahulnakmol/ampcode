@@ -83,6 +83,72 @@ class ExportTest(unittest.TestCase):
         self.assertNotEqual(self.export("md", blocked).returncode, 0)
         self.assertFalse(blocked.exists())
 
+    def test_external_attempt_survives_resume_and_requires_matching_readback(self):
+        from datetime import datetime, timezone
+        import hashlib
+        content = Path(self.temp.name) / "debrief.md"
+        self.assertEqual(self.export("md", content).returncode, 0)
+        content_hash = hashlib.sha256(content.read_bytes()).hexdigest()
+        intent = Path(self.temp.name) / "effect.json"
+        intent.write_text(json.dumps({"id": "notion-save", "packet": "brief", "review": "review",
+            "kind": "notion-new-page", "content_hash": content_hash,
+            "authorized_by": "Synthetic consultant", "authorized_at": "2026-11-02T12:00:00+00:00"}))
+        def call(*args, success=True):
+            result = subprocess.run([sys.executable, str(SCRIPTS / "engagement.py"), "--root", str(self.root), *args],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode == 0, success, result.stderr)
+            return json.loads(result.stdout) if success else result.stderr
+        prepared = call("external-prepare", str(intent))
+        self.assertEqual(prepared["state"], "prepared")
+        # Interrupt after durable intent, before manifest commit. A fresh process must not retry.
+        interrupted = subprocess.run([sys.executable, "-c", """
+import sys
+from unittest.mock import patch
+sys.path.insert(0, sys.argv[1])
+from engagement import Engagement
+from external import attempt
+with patch.object(Engagement, 'commit', side_effect=RuntimeError('injected interruption')):
+    attempt(Engagement(sys.argv[2]), 'notion-save')
+""", str(SCRIPTS), str(self.root)], capture_output=True, text=True)
+        self.assertNotEqual(interrupted.returncode, 0)
+        self.assertIn("injected interruption", interrupted.stderr)
+        pending_status = call("external-status", "notion-save")
+        self.assertEqual(pending_status["state"], "prepared")
+        self.assertFalse(pending_status["dependencies_current"])
+        call("external-attempt", "notion-save", success=False)
+        duplicate_path = Path(self.temp.name) / "duplicate.json"
+        duplicate_path.write_text(json.dumps(dict(json.loads(intent.read_text()), id="pending-duplicate")))
+        call("external-prepare", str(duplicate_path), success=False)
+        pending = self.store.status()["pending"]
+        self.assertEqual(len(pending), 1)
+        call("commit", pending[0])
+        self.assertEqual(call("external-status", "notion-save")["state"], "unknown")
+        call("external-attempt", "notion-save", success=False)
+        call("external-prepare", str(intent), success=False)
+        duplicate = dict(json.loads(intent.read_text()), id="different-id")
+        intent.write_text(json.dumps(duplicate))
+        call("external-prepare", str(intent), success=False)
+        observed = {"operation_marker": prepared["operation_marker"], "destination": "review", "outcome": "not-found",
+                    "checked_by": "Synthetic consultant", "checked_at": datetime.now(timezone.utc).isoformat(),
+                    "location": "Synthetic host response", "effect_id": "page-123", "content_hash": content_hash}
+        source = self.record("readback", "source", observed)
+        self.save(source)
+        receipt = Path(self.temp.name) / "receipt.json"
+        receipt.write_text(json.dumps({"id": "readback", "revision": digest(source)}))
+        call("external-reconcile", "notion-save", str(receipt), success=False)
+        revised = dict(source, previous=digest(source), data=dict(observed, outcome="verified", destination="wrong-place"))
+        self.save(revised)
+        receipt.write_text(json.dumps({"id": "readback", "revision": digest(revised)}))
+        call("external-reconcile", "notion-save", str(receipt), success=False)
+        final = dict(revised, previous=digest(revised), data=dict(observed, outcome="verified"))
+        self.save(final)
+        receipt.write_text(json.dumps({"id": "readback", "revision": digest(final)}))
+        self.assertEqual(call("external-reconcile", "notion-save", str(receipt))["state"], "verified")
+        status = call("external-status", "notion-save")
+        self.assertEqual(status["effect_id"], "page-123")
+        self.assertFalse(status["retry_allowed"])
+        call("external-attempt", "notion-save", success=False)
+
     @unittest.skipUnless(importlib.util.find_spec("docx") and importlib.util.find_spec("pptx"), "Install export-requirements.txt for native export checks")
     def test_native_exports_reopen_with_editable_tables_chart_and_notes(self):
         from docx import Document
