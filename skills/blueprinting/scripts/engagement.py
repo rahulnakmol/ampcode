@@ -373,6 +373,10 @@ def main():
     commands.add_parser("baseline").add_argument("decision")
     commands.add_parser("reconcile").add_argument("review", help="JSON reconciliation review")
     commands.add_parser("coverage").add_argument("mission")
+    obligations_parser = commands.add_parser("obligations")
+    obligations_parser.add_argument("--at", required=True)
+    obligations_parser.add_argument("--cadence-seconds", required=True, type=int)
+    obligations_parser.add_argument("--last-check")
     publication_parser = commands.add_parser("publication")
     publication_parser.add_argument("packet")
     publication_parser.add_argument("review")
@@ -405,6 +409,9 @@ def main():
             elif args.command == "coverage":
                 from qualification import coverage
                 result = coverage(store, args.mission)
+            elif args.command == "obligations":
+                from obligations import scan
+                result = scan(store, args.at, args.cadence_seconds, args.last_check)
             elif args.command == "publication":
                 from publication import publication
                 result = publication(store, args.packet, args.review)

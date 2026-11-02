@@ -74,7 +74,7 @@ dependent use, including decisions and artifacts; unrelated work remains current
 detect facts never supplied, a missing dependency omitted by the author or semantic contradictions
 in a source. It cannot authenticate client confirmation or classify confidential prose.
 The separate `baseline` command checks reported client-confirmation records; it is not publication
-permission. Publication gates remain unimplemented, not implicitly satisfied.
+permission. The separate recipient-bound packet check is described in [publication.md](publication.md).
 
 No performance claim is made: this first implementation validates retained history on each call.
 History pruning, multiple writers, network filesystems and independent clone reconciliation are

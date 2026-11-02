@@ -26,9 +26,9 @@ satisfies that response obligation, not the underlying decision. Create a new re
 with an agreed due time, or the consultant's next-working-day check when no agreement exists.
 Never relabel that check as a promised client response.
 
-Deadline arithmetic is implemented; the complete obligation scan and live reminder qualification
-are still pending. Do not call a drafted message sent, an unassigned action owned, or a missed run
-on time. On recovery inspect every open obligation and the time since the last observed run.
+Use [obligations.md](obligations.md) for the local response scan and retained action/receipt contracts.
+Live reminder qualification is still pending. Do not call a drafted message sent, an unassigned
+action owned, or a missed run on time. Inspect every open obligation since the last observed run.
 Do not hide an unresolved decision merely because its reminder was already sent.
 
 ## Journal the intent before any approved host call
