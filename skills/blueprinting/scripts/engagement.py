@@ -118,12 +118,12 @@ class Engagement:
 
     def validate_record(self, value):
         fields = {"schema", "engagement", "id", "kind", "previous", "inputs", "body"}
-        if not isinstance(value, dict) or set(value) != fields or value["schema"] != 1:
+        if not isinstance(value, dict) or set(value) not in (fields, fields | {"data"}) or value["schema"] != 1:
             raise Invalid("Unsupported record schema")
         if value["engagement"] != self.config["engagement"]:
             raise Invalid("Wrong engagement")
         identifier(value["id"])
-        if value["kind"] not in {"source", "note", "claim", "requirement", "decision", "mission", "review", "artifact"}:
+        if value["kind"] not in {"source", "note", "claim", "requirement", "decision", "mission", "review", "artifact", "authority"}:
             raise Invalid("Unknown record kind")
         if value["previous"] is not None:
             revision(value["previous"])
@@ -142,6 +142,23 @@ class Engagement:
             if canonical(edge) in seen or edge["id"] == value["id"]:
                 raise Invalid("Duplicate or self input")
             seen.add(canonical(edge))
+        if "data" in value:
+            if not isinstance(value["data"], dict):
+                raise Invalid("Structured record data must be an object")
+            linked = {(e["id"], e["revision"]) for e in value["inputs"]}
+            def check_refs(item):
+                if isinstance(item, dict):
+                    if set(item) == {"id", "revision"}:
+                        pair = (identifier(item["id"]), revision(item["revision"]))
+                        if pair not in linked:
+                            raise Invalid("Structured reference missing from input edges")
+                    else:
+                        for child in item.values():
+                            check_refs(child)
+                elif isinstance(item, list):
+                    for child in item:
+                        check_refs(child)
+            check_refs(value["data"])
 
     def history(self):
         manifests = []
@@ -255,6 +272,55 @@ class Engagement:
         self.history()
         return snap
 
+    def validate_resolution(self, value, history):
+        from qualification import text, timestamp
+        if not isinstance(value, dict) or set(value) != {"operation", "snapshot", "reviewer", "reason", "at"}:
+            raise Invalid("Invalid reconciliation record")
+        if not text(value["reviewer"]) or not text(value["reason"]) or not timestamp(value["at"]):
+            raise Invalid("Reconciliation needs named reviewer, reason and dated review")
+        operation = revision(value["operation"])
+        original = self.intent(operation)
+        if any(m["operation"] == operation for m in history):
+            raise Invalid("Committed operation cannot be reconciled away")
+        replacement = next((m for m in history if digest(m) == revision(value["snapshot"])), None)
+        if replacement is None:
+            raise Invalid("Reconciliation requires a committed replacement")
+        changes = self.intent(replacement["operation"])["records"]
+        expected = {r["id"] for r in original["records"]}
+        if not expected <= {r["id"] for r in changes}:
+            raise Invalid("Replacement must cover every proposed record")
+        if original["base"] is not None:
+            base = next((m for m in history if digest(m) == original["base"]), None)
+            if base is None or replacement["sequence"] <= base["sequence"]:
+                raise Invalid("Replacement must follow the original base")
+
+    def resolutions(self, history):
+        resolved = {}
+        for path in sorted(self.path("resolutions").glob("*.json")):
+            value = read_json(self.path("resolutions", path.name))
+            if path.stem != digest(value):
+                raise Invalid("Reconciliation record changed")
+            self.validate_resolution(value, history)
+            if value["operation"] in resolved:
+                raise Invalid("Conflicting reconciliation records")
+            resolved[value["operation"]] = value
+        return resolved
+
+    def reconcile(self, value):
+        history = self.history()
+        self.validate_resolution(value, history)
+        resolved = self.resolutions(history)
+        if value["operation"] in resolved and resolved[value["operation"]] != value:
+            raise Invalid("Operation already reconciled differently")
+        path = self.path("resolutions", digest(value) + ".json")
+        if path.exists():
+            sync_directory(path.parent)
+        else:
+            if not history or value["snapshot"] != digest(history[-1]):
+                raise Invalid("Review the latest snapshot before reconciliation")
+            exclusive(path, canonical(value))
+        return {"resolution": path.stem, "evidence_class": "reported"}
+
     def status(self, snapshot=None):
         history = self.history()
         current = history[-1] if history else None
@@ -266,10 +332,11 @@ class Engagement:
         heads = selected["heads"] if selected else {}
         latest = current["heads"] if current else {}
         committed = {m["operation"] for m in history}
+        resolved = self.resolutions(history)
         pending = {}
         for path in sorted(self.path("operations").glob("*.json")):
             intent = self.intent(path.stem)
-            if path.stem not in committed:
+            if path.stem not in committed and path.stem not in resolved:
                 pending[path.stem] = intent
         changing = {r["id"] for intent in pending.values() for r in intent["records"]}
         records = {}
@@ -302,6 +369,8 @@ def main():
     commands.add_parser("prepare").add_argument("records", help="JSON array of exact record envelopes")
     commands.add_parser("commit").add_argument("operation")
     commands.add_parser("status").add_argument("--snapshot")
+    commands.add_parser("baseline").add_argument("decision")
+    commands.add_parser("reconcile").add_argument("review", help="JSON reconciliation review")
     args = parser.parse_args()
     try:
         if args.command == "init":
@@ -312,6 +381,11 @@ def main():
                 result = {"operation": store.prepare(read_json(Path(args.records)))}
             elif args.command == "commit":
                 result = {"snapshot": store.commit(args.operation)}
+            elif args.command == "baseline":
+                from qualification import baseline
+                result = baseline(store, args.decision)
+            elif args.command == "reconcile":
+                result = store.reconcile(read_json(Path(args.review)))
             else:
                 result = store.status(args.snapshot)
         print(json.dumps(result, indent=2))

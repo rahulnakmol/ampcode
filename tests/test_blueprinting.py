@@ -97,6 +97,68 @@ class EngagementRecordsTest(unittest.TestCase):
         path = next(self.root.glob("records/meeting/*.md"))
         self.assertTrue(path.read_bytes().endswith(body.encode()))
 
+    def typed(self, key, kind, data, inputs=(), previous=None):
+        value = self.record(key, f"# {key}\n\nSynthetic evidence for {key}.\n", kind, previous, inputs)
+        value["data"] = data
+        return value
+
+    def ref(self, key, rev):
+        return {"id": key, "revision": rev}
+
+    def test_only_current_written_client_confirmation_can_establish_baseline(self):
+        target, _ = self.save(self.record("allocation", "Allocate 60 released units.", "requirement"))
+        appointment, _ = self.save(self.record("appointment", "Client appointment letter, section 2: COO owns production decisions."))
+        authority, _ = self.save(self.typed("plant-owner", "authority", {
+            "actor": "Client COO", "scopes": ["production"], "status": "confirmed",
+            "verified_by": "Consultant", "basis": self.ref("appointment", appointment)},
+            [self.edge("appointment", appointment)]))
+        for medium, origin, identity, scope, covered, expected in [
+            ("verbal", "client", "confirmed", "production", target, False),
+            ("written", "consultant", "confirmed", "production", target, False),
+            ("written", "client", "uncertain", "production", target, False),
+            ("written", "client", "confirmed", "finance", target, False),
+            ("written", "client", "confirmed", "production", target, True),
+        ]:
+            suffix = str(len(list(self.root.glob("snapshots/*.json"))))
+            confirmation_id, decision_id = "confirm-" + suffix, "decision-" + suffix
+            confirmation, _ = self.save(self.typed(confirmation_id, "source", {
+                "medium": medium, "origin": origin, "author": "Client COO", "identity": identity,
+                "date": "2026-11-02", "location": "Synthetic email message 7", "uncertainties": [],
+                "confirmation": {"scope": scope, "target": self.ref("allocation", covered), "response": "accept"}},
+                [self.edge("allocation", covered)]))
+            self.save(self.typed(decision_id, "decision", {
+                "scope": "production", "state": "accepted", "authority": self.ref("plant-owner", authority),
+                "target": self.ref("allocation", target), "confirmation": self.ref(confirmation_id, confirmation),
+                "verified_by": "Consultant", "verified_at": "2026-11-02T10:00:00+00:00"},
+                [self.edge("plant-owner", authority), self.edge("allocation", target), self.edge(confirmation_id, confirmation)]))
+            result = self.call("baseline", decision_id)
+            self.assertEqual(result["ready"], expected, result)
+            self.assertEqual(result["evidence_class"], "reported")
+        self.save(self.record("allocation", "Allocate 50 released units.", "requirement", previous=target))
+        self.assertFalse(self.call("baseline", decision_id)["ready"])
+
+    def test_reconciliation_preserves_pending_intent_and_requires_covering_replacement(self):
+        source, _ = self.chain()
+        pending = self.prepare(self.record("stock", "60 units reported", previous=source))
+        _, unrelated = self.save(self.record("workshop", "Another workshop was held.", "note"))
+        self.call("commit", pending, error="needs reconciliation")
+        receipt = Path(self.temp.name) / "resolution.json"
+        resolution = {"operation": pending, "snapshot": unrelated, "reviewer": "Consultant",
+                      "reason": "Compared both accounts with the quality lead", "at": "2026-11-02T14:00:00+00:00"}
+        receipt.write_text(json.dumps(resolution))
+        self.call("reconcile", str(receipt), error="must cover")
+        _, replacement = self.save(self.record("stock", "Reconciled: 58 released units; two damaged.", previous=source))
+        self.assertIn(pending, self.call("status")["pending"])
+        resolution["snapshot"] = replacement
+        receipt.write_text(json.dumps(resolution))
+        self.call("reconcile", str(receipt))
+        self.call("reconcile", str(receipt))
+        status = self.call("status")
+        self.assertEqual(status["pending"], [])
+        self.assertTrue(status["records"]["stock"]["current"])
+        self.assertFalse(status["records"]["decision"]["current"])
+        self.assertTrue((self.root / "operations" / f"{pending}.json").exists())
+
     def test_invalid_references_ids_and_wrong_engagement_have_no_committed_effect(self):
         bad = [self.record("../escape", "bad"), self.record("claim", "bad", inputs=[self.edge("missing", "a" * 64)])]
         foreign = self.record("source", "private")

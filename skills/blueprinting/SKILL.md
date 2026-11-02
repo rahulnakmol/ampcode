@@ -9,8 +9,8 @@ Help the consultant turn supplied evidence into a clear next business decision. 
 the runtime and retain its selected mode and specialist routing. This is functional discovery,
 not technical architecture or permission to operate a client's ERP.
 
-**Development status:** the local retained-record foundation is implemented. The full consulting
-workflow, business-acceptance enforcement, exports, cloud handoffs and independent journey
+**Development status:** retained records, explicit reconciliation and reported baseline checks
+are implemented. The full consulting workflow, exports, cloud handoffs and independent journey
 qualification are not yet implemented or qualified. Do not present this source as a complete
 consulting system. Do not install or activate it implicitly.
 
@@ -41,8 +41,9 @@ Original quotations remain unchanged and are explained when needed.
 
 Only written confirmation from the named authorized client, covering the exact decision and
 version, can establish a business baseline. Silence, transcripts, consultant recaps and replies
-to obsolete versions cannot. The local record helper does not enforce this gate yet; no status
-or stored decision body constitutes approval. Publication needs separate approval of content,
+to obsolete versions cannot. Use the `baseline` check described in
+[reference/decisions.md](reference/decisions.md); a fresh record or stored decision body alone
+is not approval. This check validates reported evidence, not its truth. Publication needs separate approval of content,
 audience and destination. Never claim an authenticated receipt from reported evidence.
 
 Keep meeting and working notes in the engagement repo. Notion receives approved summaries and

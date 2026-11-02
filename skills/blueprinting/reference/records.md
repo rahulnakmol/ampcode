@@ -20,8 +20,9 @@ under `notes/` or other unmanaged folders; the helper never edits those files.
 4. After interruption, inspect `status` and the retained operation; repeat `commit` with the
    same operation only when its base is still current. Repeating an already committed operation
    returns its original snapshot. If another operation advanced the base, it blocks for explicit
-   reconciliation. Automated reconciliation of competing pending operations is not implemented;
-   do not delete the old intent to make the warning disappear.
+   reconciliation. Compare the original intent and newer records, retain a replacement operation
+   covering every proposed record, and use `reconcile <review.json>` as described below. Do not
+   delete the old intent to make the warning disappear.
 
 Example record envelope (replace the engagement ID with the configured value):
 
@@ -43,11 +44,22 @@ original body and amendments through history, not an overwritten file. Each inpu
 `allocates`; predecessors represent supersession. Reference only already committed revisions.
 For new dependency chains, commit sources before dependent claims and requirements.
 
-Kinds are source, note, claim, requirement, decision, mission, review and artifact. The body is
+Kinds are source, note, claim, requirement, decision, mission, review, artifact and authority. The body is
 Markdown. Metadata is a JSON object in YAML-compatible frontmatter. A revision hash identifies
 the canonical UTF-8 JSON envelope, with sorted keys and no insignificant JSON whitespace.
-Raw attachments are not automatically stored or committed. Put attribution, uncertainty,
-restrictions and domain details in the body for this slice; typed enforcement is still pending.
+Raw attachments are not automatically stored or committed. Optional `data` holds structured
+fields alongside the human-readable body. Every nested `{id, revision}` reference must also
+appear in `inputs`, so structured evidence cannot bypass staleness tracking. See
+[decisions.md](decisions.md) for reported business-acceptance checks.
+
+## Reconcile competing pending work
+
+The review JSON contains `operation` (original pending hash), `snapshot` (the latest committed
+replacement), `reviewer`, `reason`, and timezone-aware `at`. The replacement operation must
+contain all record IDs proposed by the pending operation and follow its base snapshot. Explain
+how each competing account was handled. Reconciliation clears the pending flag, not old dependent
+conclusions: those remain stale until explicitly revised. The review is immutable and reported,
+not authenticated; it does not establish business approval. Repeating the same review is safe.
 
 ## Integrity and boundaries
 
@@ -60,8 +72,9 @@ block validation rather than silently falling back to an earlier successful stat
 `status` reports revision freshness only. A change to a source or governing record stales every
 dependent use, including decisions and artifacts; unrelated work remains current. It cannot
 detect facts never supplied, a missing dependency omitted by the author or semantic contradictions
-in a source. It cannot authenticate client confirmation or classify confidential prose. Written
-client-confirmation and publication gates remain unimplemented, not implicitly satisfied.
+in a source. It cannot authenticate client confirmation or classify confidential prose.
+The separate `baseline` command checks reported client-confirmation records; it is not publication
+permission. Publication gates remain unimplemented, not implicitly satisfied.
 
 No performance claim is made: this first implementation validates retained history on each call.
 History pruning, multiple writers, network filesystems and independent clone reconciliation are

@@ -27,8 +27,9 @@ See [`plugins/README.md`](./plugins/README.md) and [`skills/README.md`](./skills
 [`skills/blueprinting/`](./skills/blueprinting/SKILL.md) is the enterprise functional-discovery
 capability for consultant workshops, operating models, kickoff, pre-sales and RFP work. Its first
 local helper retains exact Markdown revisions, records pending corrections and reports stale
-dependencies without overwriting human notes. This is an enabling slice, not the complete system:
-business-acceptance checks, document/deck exports, Notion/reminder integration and full journey
+dependencies without overwriting human notes. It also checks reported written-client baselines
+and records explicit reconciliation. This is not the complete system:
+document/deck exports, Notion/reminder integration and full journey
 qualification remain pending. Revision freshness does not establish client approval. Nothing is
 installed or activated by this source addition; Personal publication needs separate approval.
 
