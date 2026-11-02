@@ -6,6 +6,11 @@ can return `ready: false` with specific gaps. The evidence class is always `repo
 consultant must actually inspect the source, authorship, authority and meaning; filling fields
 is not verification. This command does not authorize publishing, client contact or changing scope.
 
+The public `baseline` command checks acceptance only (`intent: accept`, the default).
+An exclusion is not acceptance of a requirement. For an agreed exclusion, set `intent: exclude`
+on both the decision and its confirmation; the mission `coverage` check validates that purpose
+explicitly. Such a decision must not pass the public acceptance check.
+
 Use ordinary records with the following structured `data`. Each exact reference is an object
 with `id` and `revision`, also present in the record's `inputs` edges. Retain sources before
 authority/confirmation records, and those records before the decision that depends on them.

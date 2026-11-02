@@ -371,6 +371,7 @@ def main():
     commands.add_parser("status").add_argument("--snapshot")
     commands.add_parser("baseline").add_argument("decision")
     commands.add_parser("reconcile").add_argument("review", help="JSON reconciliation review")
+    commands.add_parser("coverage").add_argument("mission")
     args = parser.parse_args()
     try:
         if args.command == "init":
@@ -386,6 +387,9 @@ def main():
                 result = baseline(store, args.decision)
             elif args.command == "reconcile":
                 result = store.reconcile(read_json(Path(args.review)))
+            elif args.command == "coverage":
+                from qualification import coverage
+                result = coverage(store, args.mission)
             else:
                 result = store.status(args.snapshot)
         print(json.dumps(result, indent=2))

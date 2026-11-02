@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 from pathlib import Path
 import subprocess
 import sys
@@ -134,6 +135,30 @@ class EngagementRecordsTest(unittest.TestCase):
             result = self.call("baseline", decision_id)
             self.assertEqual(result["ready"], expected, result)
             self.assertEqual(result["evidence_class"], "reported")
+        excluded_source, _ = self.save(self.typed("exclude-source", "source", {
+            "medium": "written", "origin": "client", "author": "Client COO", "identity": "confirmed",
+            "date": "2026-11-02", "location": "Exclusion email", "uncertainties": [],
+            "confirmation": {"scope": "production", "target": self.ref("allocation", target),
+                             "response": "accept", "intent": "exclude"}}, [self.edge("allocation", target)]))
+        exclusion, _ = self.save(self.typed("exclude-decision", "decision", {
+            "scope": "production", "state": "accepted", "intent": "exclude",
+            "authority": self.ref("plant-owner", authority), "target": self.ref("allocation", target),
+            "confirmation": self.ref("exclude-source", excluded_source),
+            "verified_by": "Consultant", "verified_at": "2026-11-02T10:00:00+00:00"},
+            [self.edge("plant-owner", authority), self.edge("allocation", target), self.edge("exclude-source", excluded_source)]))
+        self.assertFalse(self.call("baseline", "exclude-decision")["ready"])
+        intent, _ = self.save(self.record("scope", "Allocation must be supported or explicitly excluded."))
+        accepted = self.call("status")["records"][decision_id]["revision"]
+        ledger = {"intent": self.ref("scope", intent), "criteria": [{"id": "allocate", "description": "Allocation scope resolved"}],
+                  "coverage": [{"criterion": "allocate", "record": self.ref("allocation", target), "disposition": "excluded",
+                                "decision": self.ref(decision_id, accepted)}], "children": [], "findings": [], "gaps": []}
+        mission, _ = self.save(self.typed("scope-mission", "mission", ledger,
+                                         [self.edge("scope", intent), self.edge("allocation", target), self.edge(decision_id, accepted)]))
+        self.assertFalse(self.call("coverage", "scope-mission")["ready"])
+        ledger["coverage"][0]["decision"] = self.ref("exclude-decision", exclusion)
+        self.save(self.typed("scope-mission", "mission", ledger,
+                            [self.edge("scope", intent), self.edge("allocation", target), self.edge("exclude-decision", exclusion)], previous=mission))
+        self.assertTrue(self.call("coverage", "scope-mission")["ready"])
         self.save(self.record("allocation", "Allocate 50 released units.", "requirement", previous=target))
         self.assertFalse(self.call("baseline", decision_id)["ready"])
 
@@ -159,6 +184,59 @@ class EngagementRecordsTest(unittest.TestCase):
         self.assertFalse(status["records"]["decision"]["current"])
         self.assertTrue((self.root / "operations" / f"{pending}.json").exists())
 
+    def test_structured_requirement_cannot_drop_its_evidence_dependency(self):
+        source, _ = self.save(self.record("quality", "Quality holds block stock release."))
+        record = self.typed("release", "requirement", {"sources": [self.ref("quality", source)]})
+        path = Path(self.temp.name) / "bad-link.json"
+        path.write_text(json.dumps([record]))
+        self.call("prepare", str(path), error="missing from input edges")
+
+    def test_coverage_detects_missing_receiver_and_child_findings_not_integrated(self):
+        self.save(self.record("empty-mission", "No coverage assessed yet.", "mission"))
+        self.assertFalse(self.call("coverage", "empty-mission")["ready"])
+        intent, _ = self.save(self.record("business-intent", "Plan only released stock, with accountable handoffs."))
+        intent_edge = self.edge("business-intent", intent)
+        source, _ = self.save(self.typed("interview", "source", {
+            "date": "2026-11-02", "location": "Workshop 1, paragraph 4", "author": "Quality lead",
+            "verification": "checked", "checked_by": "Consultant", "uncertainties": []}))
+        details = {"actor": "Planner", "trigger": "Order released", "rules": ["Exclude held stock"],
+                   "handoffs": [{"to": "", "when": "Stock shortage", "information": "Affected orders"}],
+                   "exceptions": [{"condition": "No stock", "response": "Escalate", "owner": "Planning lead"}],
+                   "outcome": "Feasible allocation", "verification": "Held stock cannot be allocated",
+                   "sources": [self.ref("interview", source)], "gaps": []}
+        requirement, _ = self.save(self.typed("release", "requirement", details, [self.edge("interview", source)]))
+        mission_data = {"intent": self.ref("business-intent", intent),
+                        "criteria": [{"id": "allocate", "description": "Allocate only released stock"}],
+                        "coverage": [{"criterion": "allocate", "record": self.ref("release", requirement),
+                                      "disposition": "supported"}], "children": [], "findings": [], "gaps": []}
+        mission, _ = self.save(self.typed("planning", "mission", mission_data, [self.edge("release", requirement), intent_edge]))
+        self.assertFalse(self.call("coverage", "planning")["ready"])
+        details["handoffs"][0]["to"] = "Procurement lead"
+        requirement, _ = self.save(self.typed("release", "requirement", details,
+                                             [self.edge("interview", source)], previous=requirement))
+        mission_data["coverage"][0]["record"] = self.ref("release", requirement)
+        mission, _ = self.save(self.typed("planning", "mission", mission_data,
+                                         [self.edge("release", requirement), intent_edge], previous=mission))
+        self.assertTrue(self.call("coverage", "planning")["ready"])
+        root_data = dict(mission_data, children=[{"mission": self.ref("planning", mission), "integration": None}])
+        parent, _ = self.save(self.typed("transformation", "mission", root_data,
+                                        [self.edge("release", requirement), self.edge("planning", mission), intent_edge]))
+        self.assertFalse(self.call("coverage", "transformation")["ready"])
+        review, _ = self.save(self.typed("return-planning", "review", {
+            "parent": "transformation", "parent_intent": self.ref("business-intent", intent),
+            "child": self.ref("planning", mission), "findings": [], "unresolved": [],
+            "parent_criteria": mission_data["criteria"], "reviewer": "Consultant", "disposition": "integrated"},
+            [self.edge("planning", mission), intent_edge]))
+        root_data["children"][0]["integration"] = self.ref("return-planning", review)
+        parent_edges = [self.edge("release", requirement), self.edge("planning", mission), self.edge("return-planning", review), intent_edge]
+        parent, _ = self.save(self.typed("transformation", "mission", root_data, parent_edges, previous=parent))
+        self.assertTrue(self.call("coverage", "transformation")["ready"])
+        self.save(self.typed("other-parent", "mission", root_data, parent_edges))
+        self.assertFalse(self.call("coverage", "other-parent")["ready"])
+        root_data["criteria"] = [{"id": "allocate", "description": "Allocate across every plant, including transfers"}]
+        self.save(self.typed("transformation", "mission", root_data, parent_edges, previous=parent))
+        self.assertFalse(self.call("coverage", "transformation")["ready"])
+
     def test_invalid_references_ids_and_wrong_engagement_have_no_committed_effect(self):
         bad = [self.record("../escape", "bad"), self.record("claim", "bad", inputs=[self.edge("missing", "a" * 64)])]
         foreign = self.record("source", "private")
@@ -171,6 +249,42 @@ class EngagementRecordsTest(unittest.TestCase):
                                     capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(self.call("status")["records"], {})
+
+
+class EstimateTest(unittest.TestCase):
+    def test_ranges_preserve_assumptions_and_reject_unsupported_inputs(self):
+        packet = {"schema": 1, "currency": "USD", "rate_date": "2026-11-02",
+                  "assumptions": ["Synthetic rates; excludes tax and travel"], "basis": ["Fixture planning workshop"],
+                  "contingency_percent": "10", "activities": [
+                      {"id": "design", "activity": "Plant design", "role": "Consultant", "basis": "3 plant archetypes",
+                       "quantity": "3", "days_per_unit_low": "2", "days_per_unit_high": "4", "day_rate": "1250", "after": []},
+                      {"id": "validate", "activity": "Validation", "role": "Analyst", "basis": "2 review rounds",
+                       "quantity": "2", "days_per_unit_low": "1.5", "days_per_unit_high": "2.5", "day_rate": "800", "after": ["design"]}]}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "estimate.json"
+            def run():
+                path.write_text(json.dumps(packet))
+                return subprocess.run([sys.executable, str(SCRIPT.with_name("estimate.py")), str(path)],
+                                      capture_output=True, text=True)
+            result = run()
+            self.assertEqual(result.returncode, 0, result.stderr)
+            value = json.loads(result.stdout)
+            self.assertEqual(list(map(Decimal, value["person_days"])), [Decimal(9), Decimal(17)])
+            self.assertEqual(list(map(Decimal, value["base_cost"])), [Decimal(9900), Decimal(19000)])
+            self.assertEqual(list(map(Decimal, value["total_cost"])), [Decimal(10890), Decimal(20900)])
+            self.assertEqual(value["dependency_stages"], [["design"], ["validate"]])
+            packet["activities"][1]["day_rate"] = "1000"
+            changed = json.loads(run().stdout)
+            self.assertEqual(list(map(Decimal, changed["base_cost"])), [Decimal(10500), Decimal(20000)])
+            self.assertNotEqual(changed["input_hash"], value["input_hash"])
+            packet["activities"][0]["after"] = ["validate"]
+            self.assertNotEqual(run().returncode, 0)
+            packet["activities"][0]["after"] = []
+            packet["currency"] = "U1D"
+            self.assertNotEqual(run().returncode, 0)
+            packet["currency"] = "USD"
+            packet["activities"][0]["day_rate"] = "NaN"
+            self.assertNotEqual(run().returncode, 0)
 
 
 if __name__ == "__main__":
