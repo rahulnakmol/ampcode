@@ -10,8 +10,9 @@ the runtime and retain its selected mode and specialist routing. This is functio
 not technical architecture or permission to operate a client's ERP.
 
 **Development status:** retained records, reconciliation, reported baseline/coverage checks,
-estimate arithmetic and domain guidance are implemented. Exports, cloud handoffs and independent
-journey qualification are not yet complete. Do not present this source as a qualified
+estimate arithmetic, recipient-bound packets and generic local exports are implemented. Cloud
+handoffs, tailored executive artifacts and independent journey qualification are not yet complete.
+Do not present this source as a qualified
 consulting system. Do not install or activate it implicitly.
 
 ## Load only what this decision needs
@@ -24,6 +25,7 @@ consulting system. Do not install or activate it implicitly.
 | Save, correct, reconcile or resume records | [records.md](reference/records.md) |
 | Client business agreement | [decisions.md](reference/decisions.md) |
 | Client-safe content or Notion handoff | [publication.md](reference/publication.md) |
+| Editable document, deck or PDF | [exports.md](reference/exports.md) |
 
 Treat helpers as small composable tools: records retain evidence, qualification checks declared
 contracts, and estimate arithmetic consumes supplied inputs. None runs another agent or daemon.

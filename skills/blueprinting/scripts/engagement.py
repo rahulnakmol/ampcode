@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 import tempfile
 
@@ -375,6 +376,11 @@ def main():
     publication_parser = commands.add_parser("publication")
     publication_parser.add_argument("packet")
     publication_parser.add_argument("review")
+    export_parser = commands.add_parser("export")
+    export_parser.add_argument("packet")
+    export_parser.add_argument("review")
+    export_parser.add_argument("--format", required=True, choices=("md", "docx", "pptx", "pdf-document", "pdf-deck"))
+    export_parser.add_argument("--output", required=True)
     args = parser.parse_args()
     try:
         if args.command == "init":
@@ -396,10 +402,17 @@ def main():
             elif args.command == "publication":
                 from publication import publication
                 result = publication(store, args.packet, args.review)
+            elif args.command == "export":
+                from publication import publication
+                from export import render
+                result = publication(store, args.packet, args.review)
+                if not result["ready"]:
+                    raise Invalid("Publication review blocked: " + "; ".join(result["gaps"]))
+                result = render(result["packet"], args.format, args.output)
             else:
                 result = store.status(args.snapshot)
         print(json.dumps(result, indent=2))
-    except (ValueError, OSError, KeyError, TypeError) as error:
+    except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError) as error:
         print(f"Engagement blocked: {error}", file=sys.stderr)
         return 1
     return 0

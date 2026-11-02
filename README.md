@@ -28,8 +28,10 @@ See [`plugins/README.md`](./plugins/README.md) and [`skills/README.md`](./skills
 capability for consultant workshops, operating models, kickoff, pre-sales and RFP work. Its first
 local helper retains exact Markdown revisions, records pending corrections and reports stale
 dependencies without overwriting human notes. It also checks reported written-client baselines
-and records explicit reconciliation. This is not the complete system:
-document/deck exports, Notion/reminder integration and full journey
+and records explicit reconciliation. Functional coverage, estimate arithmetic and recipient-bound
+content packets now support generic local Markdown, Word, PowerPoint and PDF exports.
+This is not the complete system: tailored executive artifacts, native Google Slides,
+Notion/reminder integration and full journey
 qualification remain pending. Revision freshness does not establish client approval. Nothing is
 installed or activated by this source addition; Personal publication needs separate approval.
 

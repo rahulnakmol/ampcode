@@ -71,6 +71,8 @@ def validate_packet(packet):
         elif isinstance(value, list):
             for child in value:
                 yield from strings(child)
+    if any(re.search(r"[\x00-\x09\x0b-\x1f\x7f\u2028\u2029]", s) for s in strings(packet)):
+        raise Invalid("Unsupported control character in packet; use explicit newlines and re-review the content")
     if any(re.search(r"(?i)(?:file:|obsidian:|notion:|https?://(?:[^/]*\.)?notion\.(?:so|site)(?:/|$)|localhost|127\.0\.0\.1)", s)
            for s in strings(packet)):
         raise Invalid("Private source links must be replaced with approved recipient-safe citation labels")
