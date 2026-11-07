@@ -67,6 +67,97 @@ class ExportTest(unittest.TestCase):
                                "export", "brief", "review", "--format", format, "--output", str(destination)],
                               text=True, capture_output=True)
 
+    def test_package_uses_only_inspected_bytes_and_rechecks_freshness(self):
+        from datetime import datetime, timezone
+        from zipfile import ZipFile
+        def call(*args, success=True):
+            run = subprocess.run([sys.executable, str(SCRIPTS / "engagement.py"), "--root", str(self.root), *args],
+                                 capture_output=True, text=True)
+            self.assertEqual(run.returncode == 0, success, run.stderr)
+            if not success:
+                self.assertEqual(run.stdout, "")
+                self.assertNotIn("Traceback", run.stderr)
+            return json.loads(run.stdout) if success else run.stderr
+        heads = self.store.status()["records"]
+        packet = self.store.read_record("brief", heads["brief"]["revision"])
+        publication_review = self.store.read_record("review", heads["review"]["revision"])
+        selection_data = {"schema": 1, "audience": "sponsor", "destination": "review", "files": [
+            {"name": "01-brief.md", "format": "md", "packet": {"id": "brief", "revision": digest(packet)},
+             "review": {"id": "review", "revision": digest(publication_review)}}]}
+        selection = self.record("handoff", "artifact", {"purpose": "export-selection", "selection": selection_data},
+                                [packet, publication_review])
+        self.save(selection)
+        review = self.record("handoff-review", "review", {"purpose": "package-selection", "status": "approved",
+            "selection": {"id": "handoff", "revision": digest(selection)}, "selection_hash": digest(selection_data),
+            "reviewer": "Synthetic consultant", "at": "2026-11-07T10:00:00+00:00",
+            "assessments": {"consistency": "passed", "confidentiality": "passed", "selection": "passed"}}, [selection])
+        self.save(review)
+        # Unsafe names and extra selected metadata must not become filesystem paths or ZIP members.
+        for index, name in enumerate(("../private.md", "/absolute.md", "folder/note.md", "CON.md", "brief.pptx")):
+            invalid_data = dict(selection_data, files=[dict(selection_data["files"][0], name=name)])
+            invalid = self.record(f"selection-{index}", "artifact", {"purpose": "export-selection", "selection": invalid_data},
+                                  [packet, publication_review])
+            self.save(invalid)
+            invalid_review = self.record(f"selection-review-{index}", "review", dict(review["data"],
+                selection={"id": invalid["id"], "revision": digest(invalid)}, selection_hash=digest(invalid_data)), [invalid])
+            self.save(invalid_review)
+            call("package-stage", invalid["id"], invalid_review["id"], f"unsafe-{index}", success=False)
+            self.assertFalse((self.root / ".blueprinting/exports" / f"unsafe-{index}").exists())
+        # A rendering failure leaves an identifiable inactive candidate; a new ID can recover.
+        interrupted = subprocess.run([sys.executable, "-c", """
+import sys
+from unittest.mock import patch
+sys.path.insert(0, sys.argv[1])
+from engagement import Engagement
+from handoff import stage
+with patch('handoff.render', side_effect=RuntimeError('injected interruption')):
+    stage(Engagement(sys.argv[2]), 'handoff', 'handoff-review', 'interrupted')
+""", str(SCRIPTS), str(self.root)], capture_output=True, text=True)
+        self.assertNotEqual(interrupted.returncode, 0)
+        self.assertIn("injected interruption", interrupted.stderr)
+        self.assertEqual(call("package-status", "interrupted")["state"], "incomplete")
+        call("package", "interrupted", "missing", "--output", str(Path(self.temp.name) / "partial.zip"), success=False)
+        call("package-stage", "handoff", "handoff-review", "interrupted", success=False)
+        candidate = call("package-stage", "handoff", "handoff-review", "candidate-one")
+        self.assertEqual({row["candidate"] for row in call("package-status")}, {"interrupted", "candidate-one"})
+        staged = Path(candidate["directory"]) / "01-brief.md"
+        inspected = staged.read_bytes()
+        destination = Path(self.temp.name) / "handoff.zip"
+        call("package", "candidate-one", "missing-inspection", "--output", str(destination), success=False)
+        self.assertFalse(destination.exists())
+        inspection = self.record("inspection", "review", {"purpose": "package-inspection", "status": "approved",
+            "candidate": "candidate-one", "manifest_hash": candidate["manifest_hash"], "files": candidate["files"],
+            "reviewer": "Synthetic inspector", "at": datetime.now(timezone.utc).isoformat(),
+            "assessments": {"rendering": "passed", "editability": "passed", "consistency": "passed", "brand": "passed"}},
+            [selection, review])
+        self.save(inspection)
+        staged.write_bytes(inspected + b"Unreviewed edit")
+        call("package", "candidate-one", "inspection", "--output", str(destination), success=False)
+        self.assertFalse(destination.exists())
+        staged.unlink()
+        outside = Path(self.temp.name) / "outside.md"
+        outside.write_bytes(inspected)
+        staged.symlink_to(outside)
+        call("package", "candidate-one", "inspection", "--output", str(destination), success=False)
+        self.assertFalse(destination.exists())
+        staged.unlink()
+        staged.write_bytes(inspected)
+        (staged.parent / "private-note.txt").write_text("Unselected private note")
+        result = call("package", "candidate-one", "inspection", "--output", str(destination))
+        self.assertEqual(result["status"], "exported-not-delivered")
+        with ZipFile(destination) as archive:
+            self.assertEqual(set(archive.namelist()), {"01-brief.md", "manifest.json"})
+            self.assertEqual(archive.read("01-brief.md"), inspected)
+            manifest = json.loads(archive.read("manifest.json"))
+            self.assertEqual(manifest["files"][0]["sha256"], hashlib.sha256(inspected).hexdigest())
+            self.assertEqual(set(manifest["files"][0]), {"name", "format", "revision", "sha256"})
+            self.assertNotIn(str(self.root), json.dumps(manifest))
+        call("package", "candidate-one", "inspection", "--output", str(destination), success=False)
+        self.store.prepare([dict(self.source, previous=digest(self.source), body="Corrected stock: 60 released.")])
+        blocked = Path(self.temp.name) / "stale.zip"
+        call("package", "candidate-one", "inspection", "--output", str(blocked), success=False)
+        self.assertFalse(blocked.exists())
+
     def test_unregistered_intake_blocks_export_until_inventory_and_packet_are_reviewed(self):
         folder = self.root / "incoming"
         folder.mkdir()

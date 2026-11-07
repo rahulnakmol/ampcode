@@ -412,6 +412,15 @@ def main():
     export_parser.add_argument("review")
     export_parser.add_argument("--format", required=True, choices=("md", "docx", "pptx", "pdf-document", "pdf-deck"))
     export_parser.add_argument("--output", required=True)
+    stage_parser = commands.add_parser("package-stage")
+    stage_parser.add_argument("selection")
+    stage_parser.add_argument("review")
+    stage_parser.add_argument("candidate")
+    commands.add_parser("package-status").add_argument("candidate", nargs="?")
+    package_parser = commands.add_parser("package")
+    package_parser.add_argument("candidate")
+    package_parser.add_argument("inspection")
+    package_parser.add_argument("--output", required=True)
     commands.add_parser("external-prepare").add_argument("intent")
     commands.add_parser("external-attempt").add_argument("effect")
     commands.add_parser("external-status").add_argument("effect")
@@ -476,6 +485,14 @@ def main():
                 if not result["ready"]:
                     raise Invalid("Publication review blocked: " + "; ".join(result["gaps"]))
                 result = render(result["packet"], args.format, args.output)
+            elif args.command in ("package-stage", "package-status", "package"):
+                import handoff
+                if args.command == "package-stage":
+                    result = handoff.stage(store, args.selection, args.review, args.candidate)
+                elif args.command == "package-status":
+                    result = handoff.status(store, args.candidate)
+                else:
+                    result = handoff.package(store, args.candidate, args.inspection, args.output)
             elif args.command.startswith("external-"):
                 import external
                 if args.command == "external-prepare":

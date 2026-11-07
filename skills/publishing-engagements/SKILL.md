@@ -30,6 +30,8 @@ walkthrough according to the reader's decision. Never invent outcomes to complet
 
 Return the reviewed packet, actual inspected exports and explicit limitations. Check editability,
 readability and consistency; hashes identify content, not truth. Current helpers support generic
-Markdown, DOCX, PPTX and PDF only: other formats and tailored branding remain under development.
+Markdown, DOCX, PPTX, PDF and selected exact-byte ZIPs; XLSX and tailored branding remain under development.
+For ZIPs, use the staged-candidate and named-inspection workflow in `reference/exports.md`;
+never regenerate inspected files or archive a directory. Exported does not mean delivered.
 Use only authorized destinations; inspect uncertain effects before retrying. Do not activate
 cloud connections, install branding assets or send client communications implicitly.

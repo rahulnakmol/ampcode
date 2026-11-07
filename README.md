@@ -34,7 +34,9 @@ Registered file observation, explicit Start/Resume, staged template upgrades and
 are implemented locally; see [the template contract](./skills/blueprinting/reference/templates.md).
 The separate `blueprinting-engagement-template` source is being prepared locally, not published.
 Native Obsidian 1.15.0 has bounded synthetic editing, filtering, navigation and save/reopen evidence.
-This is not the complete system: tailored executive artifacts, Excel/ZIP handoffs,
+Selected local ZIP handoffs stage files for reported inspection and package their exact bytes;
+see [the export contract](./skills/blueprinting/reference/exports.md). Export is not delivery.
+This is not the complete system: tailored executive artifacts, Excel handoffs,
 Notion/reminder qualification and full journey qualification remain pending. Google Slides/Docs
 are deferred. Revision freshness does not establish client approval. Nothing is
 installed or activated by this source addition; Personal publication needs separate approval.

@@ -68,7 +68,55 @@ basic bar renderer for a chart whose meaning needs unsupported error bars or ano
 Retain output hashes and named inspections. Owner judgment of the complete transformation deck
 is separate from library round-trip tests on a small synthetic fixture.
 
-Google Slides requires a separately authorized destination and new-file import, followed by real
-edits, saved readback and rendering comparison. Do not rename a PPTX or link a PDF and call it native
-Slides. Do not overwrite an existing cloud file as an import shortcut. This local exporter does not
-implement or qualify that cloud path; unavailable access remains a blocker, not a waived deliverable.
+Google Slides/Docs are deferred under the accepted Office-file scope. These local exports do not
+implement or qualify either cloud path; no conversion, activation or write is authorized implicitly.
+
+## Package the inspected bytes, without regenerating them
+
+Select only needed files, not a vault or a directory glob. Retain an artifact with
+`data.purpose: export-selection` and `data.selection` containing exactly `schema: 1`, `audience`,
+`destination` and nonempty `files`. Each file contains exactly `name`, `format`, `packet`, `review`;
+the last two are exact `{id, revision}` references to current packet and publication-review records.
+Include those references in the artifact's input edges. All packets must share the selected audience
+and destination. Formats are the local formats above; XLSX and generic branding remain forthcoming.
+Use portable leaf names such as `01-decision-brief.docx`: no paths, reserved device names, duplicates,
+case collisions or mismatched extensions. Do not add private metadata to these selections.
+
+Retain a review with purpose `package-selection`, status `approved`, named `reviewer`, timestamp
+`at`, exact `selection` reference, `selection_hash` (canonical selection digest), and assessments
+`consistency`, `confidentiality`, `selection`, each `passed`. Bind its input edge to the selection.
+This is a reported review of facts, figures, caveats, exclusions and open decisions across files,
+not an automated semantic check or client acceptance.
+
+Run `engagement.py --root <root> package-stage <selection-id> <review-id> <candidate-id>` from the
+bound scripts directory. It renders a private `.blueprinting/exports/<candidate-id>` candidate and
+returns exact file hashes and a manifest hash. Local metadata also retains exporter implementation
+hashes, installed library versions and each file's PDF renderer identity. It creates no ZIP yet.
+`package-status [candidate-id]` lists all candidates or one candidate. Resume also surfaces them.
+`awaiting-inspection` describes staged output only; it is not current publication approval or a
+delivery receipt. Recheck publication at the final packaging step.
+
+Inspect those exact staged files. Open/edit/save/reopen disposable copies to check editability;
+do not modify or regenerate the originals after inspection. Retain a review with purpose
+`package-inspection`, status `approved`, named `reviewer`, `at` after staging, `candidate`,
+`manifest_hash`, and the exact returned `files` list. Assessments `rendering`, `editability`,
+`consistency`, `brand` must each be `passed`; for neutral outputs explicitly assess the neutral
+layout rather than invent brand compliance. Its input edges bind both selection and selection review.
+Any required check that cannot pass blocks this review. A recorded assertion does not prove that
+someone opened or inspected a file.
+
+Run `engagement.py --root <root> package <candidate-id> <inspection-id> --output <new-absolute.zip>`.
+It rechecks current publication, pending operations, input observations, selection, inspection and
+exporter identity, reads and hashes the actual file buffers, and archives those same bytes. Only
+selected files and `manifest.json` enter the ZIP; the client manifest contains filename, format,
+packet revision and actual SHA-256, never raw evidence, local paths or renderer metadata. Unselected
+files beside a candidate are not included. Verify extraction and checksums before sharing.
+
+Interrupted staging remains `incomplete` and cannot be packaged. Preserve it for inspection,
+resolve the cause, then stage a new ID; existing candidates and ZIPs are never overwritten.
+Changed files or dependencies require a newly rendered and inspected candidate, not an assertion
+that the old files are still approved. After an interrupted final creation, inspect whether the
+requested ZIP already exists before retrying; it may have been created before the response failed.
+Packaging reports `exported-not-delivered`, without sending, encryption, access control or client
+acceptance. This is a point-in-time, single-writer check with quiescent files, not a hostile-shell
+or concurrent-editor security boundary. Keep candidates and ZIPs in permitted private storage.

@@ -67,10 +67,12 @@ def resume(store, expected):
     policy = state["records"].get(setup["policy"]["id"])
     from obligations import scan
     from indexes import conflicts
+    from handoff import status as handoff_status
     return {"engagement": expected, "root": str(store.root), "journey": setup["journey"],
             "policy": {"initial": setup["policy"], "current": policy}, "records": state,
             "templates": templates.status(store),
             "preserved_index_edits": conflicts(store),
+            "export_candidates": handoff_status(store),
             "obligations": scan(store, datetime.now(timezone.utc).isoformat(), 3600),
             "next": "Review policy, pending work, changed inputs and response gaps before using conclusions",
             "limitations": "Local vault only; configure private Git backup separately. No remote, scheduler or client permission is created."}
