@@ -376,6 +376,24 @@ def main():
     parser.add_argument("--root", required=True)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("init").add_argument("engagement")
+    start_parser = commands.add_parser("start")
+    start_parser.add_argument("config", help="JSON identity, journey, policy and template selection")
+    start_parser.add_argument("--templates", required=True, help="Absolute local template repository path")
+    start_parser.add_argument("--confirm", help="Hash from reviewed Start preview; omit for no-write preview")
+    commands.add_parser("resume").add_argument("engagement", help="Expected engagement identity")
+    commands.add_parser("index", help="Rebuild derived indexes, preserving conflicting human edits")
+    commands.add_parser("template-status")
+    commands.add_parser("template-activate").add_argument("stage")
+    create_parser = commands.add_parser("template-create")
+    create_parser.add_argument("template")
+    create_parser.add_argument("note", help="New working note ID; existing notes are never replaced")
+    for action in ("template-preview", "template-stage"):
+        template_parser = commands.add_parser(action)
+        template_parser.add_argument("source", help="Absolute local template repository path")
+        template_parser.add_argument("selected", nargs="+", help="Explicit template IDs")
+        if action == "template-stage":
+            template_parser.add_argument("--preview", required=True)
+            template_parser.add_argument("--resolutions", help="JSON map of conflict path to local or upstream")
     commands.add_parser("prepare").add_argument("records", help="JSON array of exact record envelopes")
     commands.add_parser("commit").add_argument("operation")
     commands.add_parser("status").add_argument("--snapshot")
@@ -404,9 +422,36 @@ def main():
     try:
         if args.command == "init":
             result = Engagement.create(args.root, args.engagement).status()
+        elif args.command == "start":
+            from workspace import start
+            result = start(args.root, read_json(Path(args.config)), args.templates, args.confirm)
         else:
+            if args.command == "resume" and (not Path(args.root).is_absolute()
+                    or any(p.is_symlink() for p in (Path(args.root), *Path(args.root).parents))):
+                raise Invalid("Resume requires an explicit absolute, non-symlink root")
             store = Engagement(args.root)
-            if args.command == "prepare":
+            if args.command == "resume":
+                from workspace import resume
+                result = resume(store, args.engagement)
+            elif args.command == "index":
+                from indexes import rebuild
+                result = rebuild(store)
+            elif args.command.startswith("template-"):
+                import templates
+                if args.command == "template-status":
+                    result = templates.status(store)
+                elif args.command == "template-activate":
+                    result = templates.activate(store, args.stage)
+                elif args.command == "template-create":
+                    result = templates.create_note(store, args.template, args.note)
+                else:
+                    source = templates.source_package(args.source, args.selected)
+                    if args.command == "template-preview":
+                        result = templates.preview(store, source)[1]
+                    else:
+                        resolutions = read_json(Path(args.resolutions)) if args.resolutions else {}
+                        result = templates.stage(store, source, args.preview, resolutions)
+            elif args.command == "prepare":
                 result = {"operation": store.prepare(read_json(Path(args.records)))}
             elif args.command == "commit":
                 result = {"snapshot": store.commit(args.operation)}

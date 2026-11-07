@@ -30,7 +30,11 @@ local helper retains exact Markdown revisions, records pending corrections and r
 dependencies without overwriting human notes. It also checks reported written-client baselines
 and records explicit reconciliation. Functional coverage, estimate arithmetic and recipient-bound
 content packets now support generic local Markdown, Word, PowerPoint and PDF exports.
-This is not the complete system: tailored executive artifacts, Excel/ZIP handoffs, templates,
+Registered file observation, explicit Start/Resume, staged template upgrades and derived indexes
+are implemented locally; see [the template contract](./skills/blueprinting/reference/templates.md).
+The separate `blueprinting-engagement-template` source is being prepared locally, not published.
+Native Obsidian 1.15.0 has bounded synthetic editing, filtering, navigation and save/reopen evidence.
+This is not the complete system: tailored executive artifacts, Excel/ZIP handoffs,
 Notion/reminder qualification and full journey qualification remain pending. Google Slides/Docs
 are deferred. Revision freshness does not establish client approval. Nothing is
 installed or activated by this source addition; Personal publication needs separate approval.
@@ -48,7 +52,8 @@ Domain entries load the host-selected coordinator and use its shared contracts a
 they do not duplicate state or create a subagent per skill. Standalone coordinator/helper use
 remains supported. Keep complete packages together when preparing an explicitly authorized
 Personal publication; do not copy helpers into domain packages. Installed-host qualification
-is still pending; source routing is not evidence that these skills are active in Amp.
+has bounded orb-only evidence; source routing is not evidence that these skills are active in Amp.
+The tested temporary installations were removed. Full lifecycle qualification remains pending.
 
 ## Meet the advisory team
 

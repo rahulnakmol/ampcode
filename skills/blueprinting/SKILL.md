@@ -36,6 +36,7 @@ through the shared references below; unavailable domain entry is reported, not s
 
 | Current work | Read next |
 | --- | --- |
+| Explicit Start/Resume, template selection/update or Obsidian index | [templates.md](reference/templates.md) |
 | Workshop, questionnaire, evidence batch or debrief | [discovery.md](reference/discovery.md) |
 | Functional specification, operating model, sub-mission return or kickoff | [functional-design.md](reference/functional-design.md) |
 | Fit-gap, pre-sales, RFP response, estimate or roadmap | [proposals.md](reference/proposals.md) |
@@ -55,6 +56,10 @@ Use one explicitly selected private, Obsidian-compatible Git repository per enga
 put client records in this extensions repository. Establish permitted processors, consent,
 retention, client authority, working calendar and destinations before processing real evidence.
 An engagement identifier is not access control; Git does not provide confidentiality by itself.
+
+For new engagements, use the reviewed no-write Start preview and explicit template selection in
+[reference/templates.md](reference/templates.md). Resume requires the expected engagement ID and
+the selected absolute root. It does not activate integrations. Configure private Git backup separately.
 
 Read [reference/records.md](reference/records.md) before running
 `python3 scripts/engagement.py --root <engagement-directory> status` to validate and resume

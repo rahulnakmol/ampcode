@@ -49,7 +49,8 @@ def check(base, required, domain_base=None, domain=None):
     package_file(base, "SKILL.md")
     # Fixed local files only. The manifest cannot supply executable paths or imports.
     helpers = {}
-    for name in ("engagement", "qualification", "publication", "estimate", "export", "upkeep", "external", "obligations", "observation"):
+    for name in ("engagement", "qualification", "publication", "estimate", "export", "upkeep", "external",
+                 "obligations", "observation", "templates", "workspace", "indexes"):
         helpers[name] = str(package_file(base, f"scripts/{name}.py"))
     if (domain_base is None) != (domain is None):
         raise Invalid("Both host-selected domain base and domain name are required")

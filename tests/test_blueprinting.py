@@ -56,6 +56,104 @@ class EngagementRecordsTest(unittest.TestCase):
         self.save(self.record("training", "Training on Tuesday.", "requirement"))
         return source, snapshot
 
+    def test_templates_activate_only_complete_reviewed_assets_and_preserve_local_edits(self):
+        source = Path(self.temp.name) / "templates"
+        (source / "templates").mkdir(parents=True)
+        asset = source / "templates" / "workshop.md"
+        asset.write_text("# Workshop\n\nOriginal questions.\n")
+        manifest = source / "template.json"
+        manifest.write_text(json.dumps({"schema": 1, "version": 1, "requires": 1,
+                                       "files": ["templates/workshop.md"]}))
+        selected = ["workshop"]
+        plan = self.call("template-preview", str(source), *selected)
+        stage = self.call("template-stage", str(source), *selected, "--preview", plan["preview"])["stage"]
+        self.assertIsNone(self.call("template-status")["active"])
+        self.call("template-create", "workshop", "first", error="No active template")
+        staged = self.root / "Blueprinting" / stage / "templates" / "workshop.md"
+        original = staged.read_text()
+        staged.unlink()
+        self.call("template-activate", stage, error="Staged assets")
+        self.call("template-stage", str(source), *selected, "--preview", plan["preview"])
+        self.call("template-activate", stage)
+        note = Path(self.call("template-create", "workshop", "first")["path"])
+        self.assertEqual(note.read_text(), original)
+        note.write_text("Consultant's working evidence.\n")
+        self.call("template-create", "workshop", "first", error="exists")
+        staged.write_text("# Workshop\n\nLocally tailored questions.\n")
+        asset.write_text("# Workshop\n\nUpstream revised questions.\n")
+        manifest.write_text(json.dumps({"schema": 1, "version": 2, "requires": 1,
+                                       "files": ["templates/workshop.md"]}))
+        conflict = self.call("template-preview", str(source), *selected)
+        self.assertEqual(conflict["conflicts"], ["templates/workshop.md"])
+        self.call("template-stage", str(source), *selected, "--preview", conflict["preview"], error="Resolve")
+        resolutions = Path(self.temp.name) / "resolutions.json"
+        resolutions.write_text(json.dumps({"templates/workshop.md": "local"}))
+        stage2 = self.call("template-stage", str(source), *selected, "--preview", conflict["preview"],
+                           "--resolutions", str(resolutions))["stage"]
+        # A concurrent human edit after staging must not be hidden by activation.
+        staged.write_text("Last-minute local question.\n")
+        self.call("template-activate", stage2, error="changed since preview")
+        staged.write_text("# Workshop\n\nLocally tailored questions.\n")
+        self.call("template-activate", stage2)
+        latest = Path(self.call("template-create", "workshop", "second")["path"])
+        self.assertEqual(latest.read_text(), staged.read_text())
+        self.assertEqual(note.read_text(), "Consultant's working evidence.\n")
+        self.assertEqual(self.call("template-status")["active"]["version"], 2)
+        # An allowlisted extension must not let an upgrade replace a retained record.
+        manifest.write_text(json.dumps({"schema": 1, "version": 3, "requires": 1,
+                                       "files": ["records/workshop.md"]}))
+        self.call("template-preview", str(source), *selected, error="Template asset path")
+
+    def test_start_requires_exact_identity_and_confirmation_and_resume_reports_gaps(self):
+        root = Path(self.temp.name) / "new-engagement"
+        config = Path(self.temp.name) / "start.json"
+        source = Path(self.temp.name) / "starter"
+        (source / "templates").mkdir(parents=True)
+        (source / "templates" / "charter.md").write_text("# Charter\n\nUnreviewed working note.\n")
+        (source / "template.json").write_text(json.dumps({"schema": 1, "version": 1, "requires": 1,
+                                                        "files": ["templates/charter.md"]}))
+        config.write_text(json.dumps({"schema": 1, "engagement": "new-client", "journey": "discovery",
+                                     "policy": "Synthetic only; no external effects. Authority unresolved.",
+                                     "templates": ["charter"]}))
+        self.root = root
+        preview = self.call("start", str(config), "--templates", str(source))
+        self.assertFalse(root.exists(), "Unconfirmed Start must not create even a directory")
+        self.assertEqual(preview["state"], "confirmation-required")
+        started = self.call("start", str(config), "--templates", str(source), "--confirm", preview["confirmation"])
+        self.assertEqual(started["engagement"], "new-client")
+        self.call("resume", "other-client", error="Wrong engagement")
+        resumed = self.call("resume", "new-client")
+        self.assertEqual(resumed["journey"], "discovery")
+        self.assertEqual(resumed["templates"]["active"]["version"], 1)
+        self.assertIn("policy", resumed)
+        self.assertEqual(resumed["records"]["input_observation"]["issues"], [])
+        # An occupied root must not be adopted even if it has no engagement.json.
+        occupied = Path(self.temp.name) / "occupied"
+        occupied.mkdir()
+        (occupied / "working.md").write_text("Preserve me.")
+        self.root = occupied
+        self.call("start", str(config), "--templates", str(source), error="empty")
+        self.assertEqual((occupied / "working.md").read_text(), "Preserve me.")
+
+    def test_derived_index_edits_are_preserved_but_never_become_authority(self):
+        source, _ = self.chain()
+        self.call("index")
+        projection = self.root / "Indexes" / "records" / "allocation.md"
+        original = projection.read_text()
+        projection.write_text("Client approved everything.\n")
+        self.assertTrue(self.call("status")["records"]["allocation"]["current"])
+        result = self.call("index")
+        edits = [row for row in result["preserved_edits"] if row["path"] == "Indexes/records/allocation.md"]
+        self.assertEqual(len(edits), 1)
+        self.assertEqual(Path(edits[0]["backup"]).read_text(), "Client approved everything.\n")
+        self.assertEqual(projection.read_text(), original)
+        self.assertEqual(self.call("index")["preserved_edits"], result["preserved_edits"],
+                         "Preserved-edit locations must survive a fresh process and later rebuild")
+        self.save(self.record("stock", "Only 60 units are released.", previous=source))
+        self.call("index")
+        self.assertIn('"revision_state":"stale"', projection.read_text())
+        self.assertFalse(self.call("baseline", "decision")["ready"])
+
     def test_working_file_changes_stale_dependents_and_require_explicit_rename(self):
         note = self.root / "notes" / "stock.md"
         note.parent.mkdir()
