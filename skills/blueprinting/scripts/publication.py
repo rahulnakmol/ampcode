@@ -81,6 +81,11 @@ def validate_packet(packet):
 def publication(store, packet_id, review_id):
     gaps = []
     state = store.status()
+    if state["input_observation"]["issues"]:
+        gaps.append("Unresolved intake; reconcile registered files and declared folders before publication")
+    if any("input_file" in record.get("data", {}) or "intake_folders" in record.get("data", {})
+           for operation in state["pending"] for record in store.intent(operation)["records"]):
+        gaps.append("Pending input reconciliation; review it before publication")
 
     def read(ref, kind=None):
         current = state["records"].get(ref["id"])
@@ -118,6 +123,11 @@ def publication(store, packet_id, review_id):
             or any(v != "passed" for v in assessments.values())):
         gaps.append("Named publication review must cover exact content, recipient, destination and all assessments")
     selected = store.status(packet["snapshot"])
+    for key, head_record in state["records"].items():
+        retained_input = store.read_record(key, head_record["revision"])
+        if ("input_file" in retained_input.get("data", {})
+                and selected["records"].get(key, {}).get("revision") != head_record["revision"]):
+            gaps.append("Input inventory changed since packet source snapshot; review impact and packet")
 
     def policy_check(record, treatments, caveats):
         policy = record.get("data", {}).get("publication", {})

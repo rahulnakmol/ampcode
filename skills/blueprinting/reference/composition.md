@@ -12,8 +12,8 @@ references remain here for standalone coordinator use and backwards-compatible h
    fallback, or switch installations because the selected one is incompatible.
 3. Keep the engagement root separate from every skill base. Require the user's explicitly selected
    root and identity; never infer a client from cwd. Read `reference/records.md`, then run status
-   from the bound helper path before making retained changes. Existing `status` checks retained
-   records/pending operations only; it does not yet detect arbitrary edits to working notes.
+   from the bound helper path before making retained changes. `status` checks retained records,
+   pending operations and registered/declared inputs; it cannot detect unsupplied external facts.
 4. Loading a domain is not a request to create a subagent or another thread. Stay in the current
    execution context unless independent review or a separately authorized task requires otherwise.
    If a domain is unavailable, report that dependency. Do not silently install/activate it.
@@ -50,3 +50,15 @@ consent, acceptance or evidence that all journeys passed. Failure returns `Depen
 and no helper result; report the selected package and missing/incompatible component. Do not
 search for another version, silently install, or execute a helper from a different base. Reload
 and recheck after package changes. This instruction/CLI check is not a host security boundary.
+
+## Install complete packages, then inspect the selected files
+
+With explicit installation authority, copy each complete package directory, including its
+contract.json and any scripts/reference files. Do not assume a successful installer message
+means companion files arrived: the orb's Amp CLI 0.0.1794038434-gd5a1bf local-path `skill add`
+copied only SKILL.md during qualification. Inspect the selected installation and run the contract
+check before use. Do not repair another person's installation or publish globally implicitly.
+
+The host may retain loaded text after local files are removed, even after reload. A remembered
+base or cached skill text is not an available dependency: read the actual selected files on each
+binding and stop when they are absent. Do not use cached paths to switch to a source checkout.

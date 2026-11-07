@@ -61,6 +61,41 @@ how each competing account was handled. Reconciliation clears the pending flag, 
 conclusions: those remain stale until explicitly revised. The review is immutable and reported,
 not authenticated; it does not establish business approval. Repeating the same review is safe.
 
+## Observe human edits without overwriting them
+
+For a supplied file, retain a `source` record with `data.input_file` containing its permitted
+vault-relative `path` and lowercase SHA-256 `sha256` of the original bytes. Keep attribution,
+restrictions, original content/reference and uncertainty in the source; a hash is not a transcript
+or evidence of consent. `prepare` checks the current file against the supplied hash. Registration
+does not interpret the source, approve its claims or infer semantic dependencies.
+
+A versioned settings `note` can declare `data.intake_folders`, a list of explicitly selected
+relative directories such as `incoming`. Do not scan outside permitted storage. Managed record,
+configuration and Git directories cannot be inputs. No arbitrary cwd discovery or watcher runs.
+
+`status` now includes timestamped `input_observation`: changed/missing/unreadable registered files
+stale that source and its declared transitive dependents, including historical snapshot queries.
+All unresolved input observations block publication conservatively, including an uncited registered
+source that changed after review. Missing edges do not establish independence of unseen bytes.
+Unregistered files in declared intake folders, duplicate identity and unsafe/unreadable folder
+entries also block publication. Unrelated records remain readable and retain their revision state.
+Neither scan nor export ingests the file, rewrites a note or deletes history.
+
+Reconcile explicitly by retaining a new source revision and correcting the affected exact edges.
+A rename needs `input_file.renamed_from` matching the prior registered path. On later amendments
+at the same path, omit the old rename marker or retain the unchanged registration. Registration
+and declared intake directories cannot be silently removed to clear a warning. A missing original
+remains missing; restoring its exact bytes makes a later observation match again, not a new approval.
+
+New/corrected registered sources must be present in the packet's reviewed source snapshot before
+publication can pass. Updating a hash alone does not re-review an old packet. Explain impact and
+independence in consultant review, rebuild affected claims and obtain new business confirmation
+where necessary. Helpers cannot determine whether a newly supplied statement contradicts a claim.
+
+These are live read-only observations, not a durable log of every external editor event. Retain
+material findings and pending corrections through the existing record operations. A file can change
+after a scan; report its observation time, re-scan before handoff and never claim continuous freshness.
+
 ## Integrity and boundaries
 
 `operations/` retains change intents; `records/<id>/<hash>.md` retains revisions;

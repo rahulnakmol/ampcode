@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -65,6 +66,50 @@ class ExportTest(unittest.TestCase):
         return subprocess.run([sys.executable, str(SCRIPTS / "engagement.py"), "--root", str(self.root),
                                "export", "brief", "review", "--format", format, "--output", str(destination)],
                               text=True, capture_output=True)
+
+    def test_unregistered_intake_blocks_export_until_inventory_and_packet_are_reviewed(self):
+        folder = self.root / "incoming"
+        folder.mkdir()
+        self.save(self.record("intake-policy", "note", {"intake_folders": ["incoming"]}))
+        allowed = Path(self.temp.name) / "before.md"
+        self.assertEqual(self.export("md", allowed).returncode, 0)
+        path = folder / "late.md"
+        path.write_text("Synthetic late evidence; assess effect on stock claim.")
+        blocked = Path(self.temp.name) / "blocked.md"
+        result = self.export("md", blocked)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Unresolved intake", result.stderr)
+        self.assertFalse(blocked.exists())
+        extra = self.record("late-source", "source", {"input_file": {
+            "path": "incoming/late.md", "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}})
+        operation = self.store.prepare([extra])
+        self.assertNotEqual(self.export("md", blocked).returncode, 0)
+        self.store.commit(operation)
+        result = self.export("md", blocked)
+        self.assertNotEqual(result.returncode, 0, "Registering input is not a review of its impact")
+        self.assertIn("Input inventory changed", result.stderr)
+        self.assertFalse(blocked.exists())
+        # Reported consultant review explicitly places the retained extra source in the
+        # packet's reviewed context. This tests revision binding, not semantic independence.
+        self.packet["snapshot"] = self.store.status()["snapshot"]
+        self.approve(self.packet)
+        self.assertEqual(self.export("md", blocked).returncode, 0)
+        self.assertNotIn("late evidence", blocked.read_text())
+        original = path.read_bytes()
+        path.write_text("Changed after review: unsupported allocation.")
+        changed_output = Path(self.temp.name) / "changed.md"
+        self.assertNotEqual(self.export("md", changed_output).returncode, 0)
+        self.assertFalse(changed_output.exists())
+        # A new review must not confer approval on unretained changed bytes just by
+        # selecting a snapshot containing the old, uncited source registration.
+        self.packet["snapshot"] = self.store.status()["snapshot"]
+        self.approve(self.packet)
+        self.assertNotEqual(self.export("md", changed_output).returncode, 0)
+        path.unlink()
+        self.assertNotEqual(self.export("md", changed_output).returncode, 0)
+        self.assertFalse(changed_output.exists())
+        path.write_bytes(original)
+        self.assertEqual(self.export("md", changed_output).returncode, 0)
 
     def test_markdown_preserves_caveats_notes_and_data_without_raw_sources(self):
         path = Path(self.temp.name) / "brief.md"

@@ -1,3 +1,4 @@
+import hashlib
 import json
 from decimal import Decimal
 from pathlib import Path
@@ -54,6 +55,58 @@ class EngagementRecordsTest(unittest.TestCase):
                                            inputs=[self.edge("allocation", req)]))
         self.save(self.record("training", "Training on Tuesday.", "requirement"))
         return source, snapshot
+
+    def test_working_file_changes_stale_dependents_and_require_explicit_rename(self):
+        note = self.root / "notes" / "stock.md"
+        note.parent.mkdir()
+        note.write_text("Planner reports 120 units.\n")
+        source = self.record("stock", note.read_text())
+        source["data"] = {"input_file": {"path": "notes/stock.md", "sha256": hashlib.sha256(note.read_bytes()).hexdigest()}}
+        rev, snapshot = self.save(source)
+        self.save(self.record("allocation", "Allocate 100 units.", "requirement", inputs=[self.edge("stock", rev)]))
+        self.save(self.record("unrelated", "Training remains open.", "requirement"))
+        self.assertTrue(self.call("status")["records"]["allocation"]["current"])
+        note.write_text("Quality confirms only 60 released units.\n")
+        state = self.call("status")
+        self.assertFalse(state["records"]["allocation"]["current"])
+        self.assertTrue(state["records"]["unrelated"]["current"])
+        self.assertEqual(state["input_observation"]["issues"][0]["state"], "changed")
+        self.assertFalse(self.call("status", "--snapshot", snapshot)["records"]["stock"]["current"])
+        renamed = note.with_name("quality.md")
+        note.rename(renamed)
+        self.assertEqual(self.call("status")["input_observation"]["issues"][0]["state"], "missing")
+        correction = dict(source, previous=rev, body=renamed.read_text(), data={"input_file": {
+            "path": "notes/quality.md", "sha256": hashlib.sha256(renamed.read_bytes()).hexdigest()}})
+        batch = Path(self.temp.name) / "rename.json"
+        batch.write_text(json.dumps([correction]))
+        self.call("prepare", str(batch), error="Explicit rename")
+        correction["data"]["input_file"]["renamed_from"] = "notes/stock.md"
+        new_rev, _ = self.save(correction)
+        state = self.call("status")
+        self.assertTrue(state["records"]["stock"]["current"])
+        self.assertFalse(state["records"]["allocation"]["current"])
+        self.assertEqual(state["input_observation"]["issues"], [])
+        erased = dict(correction, previous=new_rev, data={})
+        batch.write_text(json.dumps([erased]))
+        self.call("prepare", str(batch), error="Cannot remove input registration")
+
+    def test_new_intake_files_and_symlinks_are_unresolved_not_ingested(self):
+        folder = self.root / "incoming"
+        folder.mkdir()
+        policy = self.record("intake-policy", "Inspect supplied evidence before interpretation.", "note")
+        policy["data"] = {"intake_folders": ["incoming"]}
+        self.save(policy)
+        self.assertEqual(self.call("status")["input_observation"]["issues"], [])
+        (folder / "late.md").write_text("New contradictory evidence.")
+        before = {str(p): p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+        state = self.call("status")
+        self.assertEqual(state["input_observation"]["issues"], [
+            {"record": None, "path": "incoming/late.md", "state": "unregistered"}])
+        self.assertNotIn("late", state["records"])
+        self.assertEqual(before, {str(p): p.read_bytes() for p in self.root.rglob("*") if p.is_file()})
+        (folder / "escape").symlink_to(self.temp.name, target_is_directory=True)
+        state = self.call("status")
+        self.assertIn("unsafe", [i["state"] for i in state["input_observation"]["issues"]])
 
     def test_correction_invalidates_transitive_current_use_not_history_or_unrelated_work(self):
         source, old_snapshot = self.chain()

@@ -160,6 +160,8 @@ class Engagement:
                     for child in item:
                         check_refs(child)
             check_refs(value["data"])
+            from observation import validate
+            validate(value)
 
     def history(self):
         manifests = []
@@ -224,6 +226,9 @@ class Engagement:
             self.validate_record(record)
             if record["previous"] != heads.get(record["id"]):
                 raise Invalid("Record predecessor mismatch")
+            from observation import transition
+            old = self.read_record(record["id"], record["previous"]) if record["previous"] else None
+            transition(self, old, record)
             for edge in record["inputs"]:
                 if not any(m["heads"].get(edge["id"]) == edge["revision"] for m in history):
                     raise Invalid("Uncommitted input")
@@ -346,6 +351,9 @@ class Engagement:
                 pair = (key, rev)
                 if pair not in records:
                     records[pair] = self.read_record(key, rev)
+        from observation import scan
+        observation = scan(self, {key: records[(key, rev)] for key, rev in latest.items()})
+        changing.update(i["record"] for i in observation["issues"] if i["record"] is not None)
         stale = {pair for pair in records if pair[0] in changing or latest.get(pair[0]) != pair[1]}
         # Walk exact revision dependencies, not just current record IDs or the chosen snapshot.
         while True:
@@ -358,6 +366,7 @@ class Engagement:
         return {"engagement": self.config["engagement"],
                 "snapshot": digest(selected) if selected else None,
                 "pending": sorted(pending),
+                "input_observation": observation,
                 "records": {key: {"revision": rev, "current": (key, rev) not in stale}
                             for key, rev in heads.items()}}
 
