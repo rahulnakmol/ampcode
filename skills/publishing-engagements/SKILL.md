@@ -27,6 +27,11 @@ Bind content to exact source revisions, audience, destination and reported revie
 restrictions and caveats into all formats. Keep formal specifications detailed and decks concise
 without losing business meaning. Choose SCQA, recommendation-first, options/trade-offs or process
 walkthrough according to the reader's decision. Never invent outcomes to complete the story.
+Apply the executive response framing in `reference/exports.md`: formal Word/Excel summaries state
+decision/action/review/information purpose, requested response, accountable role, implications,
+approval status and agreed date or explicit unknowns. Information-only work does not invent an ask.
+Decks use a grounded editorial argument, viable alternatives and owned next steps, not report
+headings pasted onto slides. Preserve the same facts across audience-specific packets.
 
 Return the reviewed packet, actual inspected exports and explicit limitations. Check editability,
 readability and consistency; hashes identify content, not truth. Current helpers support generic

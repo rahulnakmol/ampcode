@@ -197,24 +197,21 @@ def workbook(packet, path):
             page.set_row(row, height(value, sum(page._blueprint_widths)))
 
         readme = sheet("Read me", packet["title"], [25, 100])
-        for row, (label, value) in enumerate([
-            ("Purpose", "Reviewed supporting analysis for " + packet["audience"] + ". Intended destination: " + packet["destination"]),
-            ("Decision and authority", "Use the supplied decision framing below. Missing approvers and agreed due dates remain unknown."),
-            ("Review boundary", "File identity is not client approval. Editing creates an unreviewed scenario; it does not change retained evidence."),
-            ("Editable inputs", "Amber labelled cells are inputs. Green-grey cells are calculated. Validation also checks pasted edits; invalid scenarios withhold totals."),
-            ("Calculation audit", "Visible Calculation sheets preserve exact decimal arithmetic in integer pieces. Edit inputs, not formulas. No macros or external links."),
-            ("Content fingerprint", packet_hash),
-        ], 3):
-            text(readme, row, 0, label, "header")
-            text(readme, row, 1, value)
-            readme.set_row(row, max(height(label, 25), height(value, 100)))
-        overview_row = 11
+        has_estimate = any(block["kind"] == "estimate" for block in packet["blocks"])
+        text(readme, 3, 0, "Narrative baseline", "header")
+        baseline = "Reviewed text, not client approval. Editing does not update this narrative. Reconcile all content before delivery."
+        if has_estimate:
+            baseline += " Current estimate scenarios follow their baseline summary."
+        text(readme, 3, 1, baseline)
+        readme.set_row(3, max(height("Narrative baseline", 25), height(baseline, 100)))
+        overview_row = 4
 
         for index, block in enumerate(packet["blocks"], 1):
             text(readme, overview_row, 0, f"{index:02d} / {block['id']}", "header")
-            text(readme, overview_row, 1, block["title"] + "\n" + block["text"])
+            summary = "\n".join((block["title"], block["text"], footer(block)))
+            text(readme, overview_row, 1, summary)
             readme.set_row(overview_row, max(height(f"{index:02d} / {block['id']}", 25),
-                                           height(block["title"] + "\n" + block["text"], 100)))
+                                           height(summary, 100)))
             overview_row += 1
             if block["kind"] != "estimate":
                 count = max(5, len(table_data(block)[0])) if block["kind"] != "text" else 5
@@ -379,8 +376,21 @@ def workbook(packet, path):
                 for side, (ref, cached) in enumerate(displayed[key]):
                     page.write_formula(total_row + offset, 7 + side, f'=IF(LEFT($A$4,5)="VALID",\'{calc_name}\'!{ref},"")',
                                        formats["days" if key == "person_days" else "money"], cached)
+            text(readme, overview_row, 0, "Scenario status", "header")
             readme.write_formula(overview_row, 1, f'=\'{name}\'!A4', formats["note"], "VALID INPUTS / UNREVIEWED SCENARIO")
-            overview_row += 2
+            readme.set_row(overview_row, height("INVALID SCENARIO / TOTALS WITHHELD", 100))
+            for offset, (key, label, row, places) in enumerate((
+                ("person_days", "Current person-days", total_row, 6),
+                ("total_cost", "Current total (" + model["currency"] + ")", total_row + 3, 2)), 1):
+                low, high = (value for _, value in displayed[key])
+                number_format = "0." + "0" * places
+                expression = (f'=IF(LEFT(\'{name}\'!A4,5)="VALID",TEXT(\'{name}\'!H{row + 1},"{number_format}")'
+                              f'&" – "&TEXT(\'{name}\'!I{row + 1},"{number_format}"),"")')
+                text(readme, overview_row + offset, 0, label, "header")
+                readme.write_formula(overview_row + offset, 1, expression, formats["text"],
+                                     f"{low:.{places}f} – {high:.{places}f}")
+                readme.set_row(overview_row + offset, max(height(label, 25), height("1000000000.000000 – 1000000000.000000", 100)))
+            overview_row += 4
             # Retain all selected prose and activity provenance visibly, separate from numeric inputs.
             basis = sheet(f"Basis {index}", "Estimate assumptions and activity basis", [16, 28, 22, 42, 24])
             cursor = 3
@@ -401,4 +411,16 @@ def workbook(packet, path):
                 basis.set_row(r, max(height(value, basis._blueprint_widths[c]) for c, value in enumerate(values)))
             page.print_area(0, 0, total_row + 4, 8)
             basis.print_area(0, 0, cursor + len(rows), 4)
+        for label, value in [
+            ("Purpose", "Reviewed supporting analysis for " + packet["audience"] + ". Intended destination: " + packet["destination"]),
+            ("Review boundary", "File identity is not client approval. Editing creates an unreviewed scenario; it does not change retained evidence. Reconcile narrative and charts, then re-review before delivery."),
+            *([("Editable inputs", "Amber labelled cells are inputs. Green-grey cells are calculated. Validation also checks pasted edits; invalid scenarios withhold totals."),
+               ("Calculation audit", "Visible Calculation sheets preserve exact decimal arithmetic in integer pieces. Edit inputs, not formulas. No macros or external links.")]
+              if has_estimate else [("Editable content", "Narrative, registers and any chart data are editable. This workbook has no estimate calculation sheets. Changes require reconciliation and review.")]),
+            ("Content fingerprint", packet_hash),
+        ]:
+            text(readme, overview_row, 0, label, "header")
+            text(readme, overview_row, 1, value)
+            readme.set_row(overview_row, max(height(label, 25), height(value, 100)))
+            overview_row += 1
         readme.print_area(0, 0, overview_row, 1)

@@ -24,6 +24,45 @@ below. This is not a mandatory-template or logo system, arbitrary brand-skill co
 claim of consulting quality. Tailored visual storytelling and the final owner deck assessment
 remain mandatory.
 
+## Frame the executive response before composing pages
+
+For C-suite readers and their immediate leadership, begin Word and Excel with a formal title and
+a concise executive summary. Use reviewed text/table blocks; do not make the renderer infer a
+business decision from a chart. The first summary states the purpose and one disposition:
+
+| Disposition | What the reader needs |
+| --- | --- |
+| For decision | Exact choice requested; recommendation and viable alternatives; implications; accountable deciding role; approval status; agreed response date or explicitly unknown. |
+| For action | Concrete action, accountable role, dependency/authority to act, consequence of delay and agreed due date or explicitly unknown. An action request is not authority to execute it. |
+| For review | Exact version/question needing review, intended reviewer, material uncertainty and agreed response date or explicitly unknown. Review is not business acceptance. |
+| For information | What changed, why it matters and its evidence/status. State that no decision/action is requested; do not invent an approver or deadline to fill a template. |
+
+Distinguish a known role from an unconfirmed named approver and a proposed date from an agreed
+date. Show recommendation, facts and assumptions separately. Put the supporting evidence,
+functional rules/exceptions, options, estimates and unresolved questions after the summary.
+Keep formal headings in written artifacts and workbook sheets; a slogan is not a decision title.
+The workbook overview repeats the supplied narrative, citations and caveats, not business approval.
+It labels that narrative as the reviewed baseline and separately shows current estimate effort,
+cost and validity. Those scenario summaries recalculate and withhold invalid totals; they do not
+rewrite narrative or unrelated charts. Reconcile all edited content and re-review before delivery.
+Editable estimate inputs remain unreviewed scenarios even when totals recalculate correctly.
+
+Compose the deck for the reader's decision, not as one slide per specification section. Use
+grounded SCQA when useful: establish the situation, expose the complication, identify the
+question and offer a qualified answer. Do not label every slide S/C/Q/A or invent an outcome
+to finish that pattern. An answer can be a conditional recommendation or a precise evidence gap.
+Use sentence headlines whose sequence communicates the argument. Show the real alternatives,
+trade-offs and conditions that would change the recommendation, then owned next steps and their
+dependencies. Unknown owners remain unknown; proposed assignments remain visibly proposed.
+
+Use native charts for quantitative comparisons and native diagrams for actual relationships;
+do not add decoration in place of analysis. Keep detailed diagrams in a read-ahead or appendix,
+not an illegible projected executive slide. A deck PDF has no speaker-note register: include a
+selected supporting register or reviewed visible appendix when the handoff needs those details.
+Check all formats against the same source versions for numbers, units, scope, exclusions,
+authority and uncertainty. Separate audience-specific packets are allowed; contradictory facts
+are not. Review the actual pages/slides, not just a coherent outline or successful export.
+
 ## Bind a selected brand without changing business evidence
 
 Schema 3 retains schema 2 blocks and adds required `presentation` with exactly `schema: 1`,
@@ -83,6 +122,9 @@ read raw evidence. Interrupted or failed exports require checking the exact outp
 retrying; a file already present is not permission to overwrite or evidence of delivery.
 
 Word uses native headings and tables; chart values appear as an editable table with units.
+Written notes are labelled supporting notes, with page numbers and table starts kept together.
+Native Word/deck metadata identifies the export time without inheriting a template author's name;
+this is export metadata, not client approval or observed delivery.
 PowerPoint uses native titles, text, tables, bar-chart objects and speaker notes with chart data.
 Markdown retains the same text, caveats, source labels, tables and notes. PDFs are local rendered
 views: `pdf-document` includes the written notes; `pdf-deck` is slides-only and does not include

@@ -314,11 +314,13 @@ class ExportTest(unittest.TestCase):
     @unittest.skipUnless(all(importlib.util.find_spec(name) for name in ("docx", "pptx", "xlsxwriter")),
                          "Install export-requirements.txt for native brand checks")
     def test_selected_brand_reaches_native_formats_without_losing_content(self):
+        from datetime import datetime, timezone
         from docx import Document
         from pptx import Presentation
         from zipfile import ZipFile
         packet, profile = self.branded_packet()
         self.approve(packet, [profile])
+        started = datetime.now(timezone.utc).replace(microsecond=0)
         outputs = {}
         for format in ("docx", "pptx", "xlsx"):
             path = Path(self.temp.name) / ("branded." + format)
@@ -339,6 +341,13 @@ class ExportTest(unittest.TestCase):
             if border.get(qn("w:val")) == "single":
                 self.assertEqual(border.get(qn("w:color")), "733A72")
         deck = Presentation(outputs["pptx"])
+        for properties in (doc.core_properties, deck.core_properties):
+            self.assertEqual(properties.author, "")
+            self.assertEqual(properties.last_modified_by, "")
+            self.assertEqual(properties.comments, "Exported, not delivered or client-approved.")
+            for value in (properties.created, properties.modified):
+                self.assertGreaterEqual(value.replace(tzinfo=timezone.utc), started)
+                self.assertLessEqual(value.replace(tzinfo=timezone.utc), datetime.now(timezone.utc))
         self.assertEqual(deck.slides[0].shapes.title.text_frame.paragraphs[0].font.name, "Liberation Serif")
         self.assertIn("Internal review", "\n".join(s.text for s in deck.slides[0].shapes if s.has_text_frame))
         chart = next(s.chart for s in deck.slides[1].shapes if s.has_chart)
@@ -349,6 +358,8 @@ class ExportTest(unittest.TestCase):
             self.assertIn(b'733A72', archive.read("xl/charts/chart1.xml"))
             self.assertIn(b'Internal review', archive.read("xl/worksheets/sheet1.xml"))
             self.assertNotIn(b'TableStyleMedium2', archive.read("xl/tables/table1.xml"))
+            self.assertNotIn(b'Visible Calculation sheets', archive.read("xl/sharedStrings.xml"))
+            self.assertNotIn(b'Amber labelled cells', archive.read("xl/sharedStrings.xml"))
         multilingual = dict(packet, blocks=[dict(packet["blocks"][0], text="Confirm 订单审批 before release.")])
         self.approve(multilingual, [profile])
         for format in ("docx", "pptx", "xlsx", "pdf-document"):
@@ -555,6 +566,16 @@ with patch('handoff.render', side_effect=RuntimeError('injected interruption')):
             def cells(name):
                 tree = ET.fromstring(archive.read(f"xl/worksheets/sheet{names.index(name) + 1}.xml"))
                 return {cell.attrib["r"]: cell for cell in tree.findall(".//s:c", ns)}
+            overview = "\n".join(strings[int(cell.find("s:v", ns).text)]
+                                 for cell in cells("Read me").values() if cell.get("t") == "s")
+            self.assertIn("Released stock is 20 units below demand", overview)
+            self.assertIn("Synthetic case; quality approval is open.", overview)
+            self.assertIn("Source: Synthetic workshop, section 2", overview)
+            self.assertLess(overview.index("Released stock is 20 units below demand"), overview.index("Editable inputs"))
+            self.assertIn("Narrative baseline", overview)
+            current_total = next(ref for ref, cell in cells("Read me").items()
+                                 if cell.get("t") == "s" and strings[int(cell.find("s:v", ns).text)] == "Current total (USD)")
+            current_total = "B" + current_total[1:]
             table = cells("Content 1")
             self.assertEqual(strings[int(table["A8"].find("s:v", ns).text)], "=1+1")
             self.assertIsNone(table["A8"].find("s:f", ns))
@@ -606,11 +627,14 @@ with patch('handoff.render', side_effect=RuntimeError('injected interruption')):
             self.assertEqual(run.returncode, 0, run.stderr)
             with ZipFile(converted / "input.xlsx") as archive:
                 estimate = cells("Estimate 2")
+                summary_total = cells("Read me")[current_total].find("s:v", ns)
                 if expected:
+                    self.assertEqual([float(value) for value in summary_total.text.split(" – ")], expected)
                     for col, value in zip("HI", expected):
                         self.assertEqual(float(estimate[col + "17"].find("s:v", ns).text), value)
                         self.assertIsNotNone(estimate[col + "17"].find("s:f", ns))
                 else:
+                    self.assertTrue(summary_total is None or summary_total.text is None)
                     for row in range(14, 18):
                         for col in "HI":
                             value = estimate[col + str(row)].find("s:v", ns)
@@ -622,6 +646,52 @@ with patch('handoff.render', side_effect=RuntimeError('injected interruption')):
         blocked = Path(self.temp.name) / "stale.xlsx"
         self.assertNotEqual(self.export("xlsx", blocked).returncode, 0)
         self.assertFalse(blocked.exists())
+
+    @unittest.skipUnless(importlib.util.find_spec("docx") and all(shutil.which(tool)
+                         for tool in ("libreoffice", "pdftotext")), "Native document render tools required")
+    def test_document_pdf_preserves_table_rows_across_page_breaks(self):
+        from branding import NEUTRAL
+        packet, profile = self.branded_packet()
+        # A real bounded executive specimen lost its entire estimate at the page break.
+        # Preserve its content density, but assert content rather than page numbers/layout.
+        common = dict(self.packet["blocks"][0], notes="", caveats=[
+            "Synthetic case; quality approval is open.", "No client approval, release date or SAP fit established."],
+            citations=[dict(self.packet["blocks"][0]["citations"][0],
+                            label="S01 r2: stock; S02 r1: quality; S03 r1: demand; A01 r1: pilot")])
+        blocks = [dict(common, id="decision", kind="text", title="Decision requested and accountable role",
+            text="For decision: Executive sponsor to approve, defer or reject a one-plant functional-design pilot. "
+                 "Recommendation: approve subject to scope, staffing and rates validation; keep the customer date provisional. "
+                 "Implications: USD 43,700-66,700 indicative cost; implementation is excluded. "
+                 "Status: proposed, not approved. Named approver and agreed response date: unknown."),
+            dict(common, id="exposure", kind="table", title="Supply exposure: 30-unit released-stock shortfall",
+                 text="100 units of firm demand exceed 70 released units by 30. The 50 held units are not available without authorized release.",
+                 columns=["Category", "Units"], rows=[["Released", "70"], ["Held", "50"], ["Demand", "100"]]),
+            dict(common, id="options", kind="table", title="Options and business implications",
+                 text="Proposed alternatives; none is approved. A release or dated replenishment would change the assessment.",
+                 columns=["Option", "Benefit", "Limit / condition"], rows=[
+                     ["Design pilot", "Test control boundary", "No near-term supply added"],
+                     ["Defer pilot", "Avoid pilot cost now", "Control gaps stay unresolved"],
+                     ["Replan promise", "Use evidenced supply", "Customer agreement needed"]]),
+            dict(common, id="cost", kind="table", title="Indicative pilot effort and expenditure",
+                 text="One plant; no build or rollout.\nRates dated 2026-11-07; contingency 15%. Cost ≠ price; effort ≠ duration.",
+                 columns=["Measure", "Low", "High"], rows=[
+                     ["Person-days", "38.000000", "58.000000"], ["Base USD", "38000.00", "58000.00"],
+                     ["Contingency USD", "5700.00", "8700.00"], ["Total USD", "43700.00", "66700.00"]])]
+        for theme in (NEUTRAL, packet["presentation"]["theme"]):
+            branded = theme != NEUTRAL
+            selected = dict(packet, title="Executive brief: functional-design pilot", blocks=blocks,
+                            presentation=dict(packet["presentation"], theme=theme,
+                            brand=packet["presentation"]["brand"] if branded else None))
+            self.approve(selected, [profile] if branded else [])
+            path = Path(self.temp.name) / f"tables-{branded}.pdf"
+            result = self.export("pdf-document", path)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            text = subprocess.run(["pdftotext", "-layout", str(path), "-"],
+                                  capture_output=True, text=True, check=True).stdout
+            for block in blocks[1:]:
+                for row in block["rows"]:
+                    for value in row:
+                        self.assertIn(value, text)
 
     @unittest.skipUnless(importlib.util.find_spec("xlsxwriter") and all(shutil.which(tool)
                          for tool in ("libreoffice", "pdftotext", "pdftohtml")), "Native workbook render tools required")

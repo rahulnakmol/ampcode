@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import subprocess
 import tempfile
+from datetime import datetime, timezone
 
 from engagement import Invalid, digest, sync_directory
 from publication import validate_packet
@@ -73,8 +74,17 @@ def markdown(packet, path):
             lines.append("")
         lines += [escape(footer(block)), ""]
         if block["notes"]:
-            lines += ["### Speaker notes", "", escape(block["notes"]), ""]
+            lines += ["### Supporting notes", "", escape(block["notes"]), ""]
     path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def office_metadata(properties, title):
+    properties.title, properties.language = title, "en"
+    for name in ("author", "last_modified_by", "subject", "keywords", "category", "identifier", "version", "content_status"):
+        setattr(properties, name, "")
+    properties.comments = "Exported, not delivered or client-approved."
+    properties.created = properties.modified = datetime.now(timezone.utc)
+    properties.revision = 1
 
 
 def document(packet, path):
@@ -86,12 +96,17 @@ def document(packet, path):
     from PIL import ImageFont
     FONT, INK, TEAL, MUTED = palette(packet)
     doc = Document()
-    doc.core_properties.title = packet["title"]
-    doc.core_properties.author = ""
-    doc.core_properties.language = "en"
+    office_metadata(doc.core_properties, packet["title"])
     for section in doc.sections:
         section.top_margin = section.bottom_margin = Inches(0.7)
         section.left_margin = section.right_margin = Inches(0.8)
+        page_number = section.footer.paragraphs[0]
+        page_number.alignment = 2
+        run = page_number.add_run("Page ")
+        run.font.name, run.font.size = FONT, Pt(9)
+        field = OxmlElement("w:fldSimple")
+        field.set(qn("w:instr"), "PAGE")
+        page_number._p.append(field)
         label = identity(packet)
         if label:
             font_path = subprocess.run(["fc-match", "-f", "%{file}", FONT + ":style=Regular"],
@@ -139,11 +154,14 @@ def document(packet, path):
             explanation.paragraph_format.keep_with_next = True
             word(doc, block, palette(packet))
         if block["kind"] != "text":
+            explanation.paragraph_format.keep_with_next = True
             columns, rows = table_data(block)
             table = doc.add_table(rows=1, cols=len(columns))
             table.style = "Light Shading Accent 1"
             for cell, value in zip(table.rows[0].cells, columns):
                 cell.text = value
+                for paragraph in cell.paragraphs:
+                    paragraph.paragraph_format.keep_with_next = True
             header = OxmlElement("w:tblHeader")
             table.rows[0]._tr.get_or_add_trPr().append(header)
             for values in rows:
@@ -153,7 +171,7 @@ def document(packet, path):
                 row._tr.get_or_add_trPr().append(OxmlElement("w:cantSplit"))
         doc.add_paragraph(footer(block))
         if block["notes"]:
-            doc.add_heading("Speaker notes", 2)
+            doc.add_heading("Supporting notes", 2)
             doc.add_paragraph(block["notes"])
     # Explicit language for assistive readers, beyond document properties.
     lang = OxmlElement("w:lang")
@@ -174,7 +192,7 @@ def presentation(packet, path):
     FONT, INK, TEAL, MUTED = palette(packet)
     deck = Presentation()
     deck.slide_width, deck.slide_height = Inches(13.333), Inches(7.5)
-    deck.core_properties.title, deck.core_properties.author = packet["title"], ""
+    office_metadata(deck.core_properties, packet["title"])
 
     @lru_cache(maxsize=16)
     def font(size, bold):

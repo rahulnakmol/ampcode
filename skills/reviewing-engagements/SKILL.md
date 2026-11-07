@@ -27,6 +27,11 @@ whether claims follow from sources, functional rules include exceptions/receivin
 the intended reader can identify the decision or action. Distinguish facts, recommendations and
 assumptions. Check dates, units, amounts, exclusions and uncertainties across formats. Do not
 average away material factual, confidentiality or authority failures with a high visual score.
+Apply the executive response checks in `reference/exports.md`. A formal Word/Excel summary must
+identify its disposition, response, accountable role, implications and approval/date uncertainty;
+information-only material must not fabricate a decision. Read deck headlines in sequence, then
+test the proposed answer, alternatives and next steps against sources. Reject a polished but
+unsupported conclusion or an unclear ask. Detail-diagram representability is not executive quality.
 
 For selected branding, inspect the exact retained skill rules, reported override/classification
 authority and supported theme mapping. Check actual native glyphs, fonts, table/chart colors and
