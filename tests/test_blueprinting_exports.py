@@ -48,7 +48,7 @@ class ExportTest(unittest.TestCase):
         artifact["previous"] = heads.get("brief", {}).get("revision")
         self.save(artifact)
         assessments = {key: "passed" for key in ("meaning", "language", "confidentiality", "citations")}
-        if packet["schema"] == 3:
+        if packet["schema"] >= 3:
             assessments["brand"] = "passed"
         review = self.record("review", "review", {"purpose": "publication", "status": "approved",
             "packet": {"id": "brief", "revision": digest(artifact)}, "packet_hash": digest(packet),
@@ -90,6 +90,183 @@ class ExportTest(unittest.TestCase):
             "schema": 1, "brand": {"id": profile["id"], "revision": digest(profile)},
             "theme": theme, "issuer": "Synthetic advisory", "classification": "Internal review"})
         return packet, profile
+
+    def diagram_packet(self):
+        from branding import NEUTRAL
+        block = dict(self.packet["blocks"][0], id="release", kind="diagram", title="Release needs quality approval",
+                     text="Proposed handoff: release only after approval. Receiver authority remains open.", notes="")
+        evidence = [block["citations"][0]["record"]]
+        block["diagram"] = {"schema": 1, "layout": "lanes-v1", "purpose": "handoff",
+            "lanes": [{"id": "quality", "label": "Quality"}, {"id": "planning", "label": "Planning"}],
+            "nodes": [{"id": "approve", "lane": "quality", "column": 0, "kind": "decision",
+                       "label": "Approve lot", "evidence": evidence},
+                      {"id": "receive", "lane": "planning", "column": 0, "kind": "activity",
+                       "label": "Receive lot", "evidence": evidence}],
+            "edges": [{"id": "release-lot", "from": "approve", "to": "receive", "kind": "handoff",
+                       "label": "if approved", "evidence": evidence}]}
+        return dict(self.packet, schema=4, blocks=[block], presentation={"schema": 1, "brand": None,
+            "theme": NEUTRAL, "issuer": "Synthetic advisory", "classification": "Internal review"})
+
+    @unittest.skipUnless(all(importlib.util.find_spec(name) for name in ("docx", "pptx", "xlsxwriter")),
+                         "Install export-requirements.txt for native diagram checks")
+    def test_diagram_exports_preserve_editable_graph_and_evidence(self):
+        from zipfile import ZipFile
+        from lxml import etree
+        from pptx import Presentation
+        packet = self.diagram_packet()
+        packet["blocks"][0]["diagram"]["lanes"].append({"id": "unknown-owner", "label": "Approver unknown"})
+        self.approve(packet)
+        for format in ("md", "docx", "pptx", "xlsx"):
+            with self.subTest(format=format):
+                path = Path(self.temp.name) / ("diagram." + format)
+                result = self.export(format, path)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                if format == "md":
+                    output = path.read_text()
+                elif format == "pptx":
+                    deck = Presentation(path)
+                    slide = deck.slides[0]
+                    output = "\n".join(s.text for s in slide.shapes if s.has_text_frame)
+                    output += slide.notes_slide.notes_text_frame.text
+                    self.assertGreaterEqual(sum(s.shape_type == 1 for s in slide.shapes), 2)
+                    self.assertEqual(len(slide._element.xpath('.//a:tailEnd[@type="triangle"]')), 1)
+                else:
+                    with ZipFile(path) as archive:
+                        name = "word/document.xml" if format == "docx" else "xl/sharedStrings.xml"
+                        root = etree.fromstring(archive.read(name))
+                        output = " ".join(root.itertext())
+                        if format == "docx":
+                            self.assertEqual(len(root.xpath('//*[local-name()="wgp"]')), 1)
+                            self.assertEqual(len(root.xpath('//*[local-name()="tailEnd"]')), 1)
+                            self.assertFalse(any(n.startswith("word/media/") for n in archive.namelist()))
+                for value in ("approve", "receive", "if approved", "Synthetic workshop, section 2",
+                              "Synthetic case; quality approval is open.", "Approver unknown", "unknown-owner"):
+                    self.assertIn(value, output)
+                self.assertNotIn("private raw source", output)
+
+    def test_diagram_composition_and_publication_boundaries(self):
+        from copy import deepcopy
+        packet = self.diagram_packet()
+        packet["blocks"][0]["diagram"]["lanes"].append({"id": "unknown-owner", "label": "Approver unknown"})
+        repeated = deepcopy(packet["blocks"][0])
+        repeated["id"] = "return"
+        repeated["diagram"]["edges"] = [dict(repeated["diagram"]["edges"][0],
+            id="return-lot", **{"from": "receive", "to": "approve"}, label="if rejected")]
+        packet["blocks"].append(repeated)
+        self.approve(packet)
+        path = Path(self.temp.name) / "split.md"
+        result = self.export("md", path)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("return-lot", path.read_text())
+        self.assertIn("release, return", path.read_text())
+        self.assertIn("unknown-owner | lane | Approver unknown | Block context", path.read_text())
+        bad = deepcopy(packet)
+        bad["blocks"][1]["diagram"]["nodes"][0]["label"] = "Different entity"
+        self.approve(bad)
+        failed = Path(self.temp.name) / "inconsistent.md"
+        self.assertNotEqual(self.export("md", failed).returncode, 0)
+        self.assertFalse(failed.exists())
+        bad = deepcopy(packet)
+        bad["blocks"][0]["diagram"]["edges"].extend(repeated["diagram"]["edges"])
+        self.approve(bad)
+        failed = Path(self.temp.name) / "overlapping.md"
+        self.assertNotEqual(self.export("md", failed).returncode, 0)
+        self.assertFalse(failed.exists())
+        # An empty authored notes field must not bypass generated-register permission.
+        changed = deepcopy(self.source)
+        changed["previous"] = digest(self.source)
+        changed["data"]["publication"]["grants"][0]["treatments"] = ["excerpt"]
+        self.save(changed)
+        self.source = changed
+        packet = self.diagram_packet()
+        packet["snapshot"] = self.store.status()["snapshot"]
+        ref = {"id": changed["id"], "revision": digest(changed)}
+        block = packet["blocks"][0]
+        block["citations"][0] = dict(block["citations"][0], record=ref)
+        for item in [*block["diagram"]["nodes"], *block["diagram"]["edges"]]:
+            item["evidence"] = [ref]
+        self.approve(packet)
+        failed = Path(self.temp.name) / "denied-notes.md"
+        result = self.export("md", failed)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("no declared permission", result.stderr)
+        self.assertFalse(failed.exists())
+
+    def test_diagram_rejects_missing_lineage_layout_and_review(self):
+        from copy import deepcopy
+        packet = self.diagram_packet()
+        mutations = {
+            "dangling": lambda d: d["edges"][0].update(to="absent"),
+            "self-loop": lambda d: d["edges"][0].update(to="approve"),
+            "missing-evidence": lambda d: d["edges"][0].update(evidence=[]),
+            "same-cell": lambda d: d["nodes"][1].update(lane="quality"),
+            "nonadjacent": lambda d: d["nodes"][1].update(column=1),
+            "unknown-layout": lambda d: d.update(layout="arbitrary"),
+            "unknown-field": lambda d: d["nodes"][0].update(path="private-source.md"),
+            "multiline": lambda d: d["nodes"][0].update(label="Approve\nlot"),
+            "boolean-column": lambda d: d["nodes"][0].update(column=False),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(case=name):
+                changed = deepcopy(packet)
+                mutate(changed["blocks"][0]["diagram"])
+                self.approve(changed)
+                path = Path(self.temp.name) / (name + ".md")
+                self.assertNotEqual(self.export("md", path).returncode, 0)
+                self.assertFalse(path.exists())
+        changed = deepcopy(packet)
+        changed["blocks"][0]["diagram"]["nodes"][0]["evidence"] = [{"id": "stock", "revision": "0" * 64}]
+        with self.assertRaisesRegex(ValueError, "Structured reference missing from input edges"):
+            self.approve(changed)
+        # A real governing input still cannot become diagram evidence without a block citation.
+        other = self.record("other", "source", deepcopy(self.source["data"]))
+        self.save(other)
+        changed = deepcopy(packet)
+        changed["snapshot"] = self.store.status()["snapshot"]
+        changed["blocks"][0]["diagram"]["nodes"][0]["evidence"] = [{"id": "other", "revision": digest(other)}]
+        self.approve(changed, [other])
+        path = Path(self.temp.name) / "uncited-evidence.md"
+        result = self.export("md", path)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("exact evidence from its block citations", result.stderr)
+        self.assertFalse(path.exists())
+        self.approve(packet)
+        head = self.store.status()["records"]["review"]["revision"]
+        review = self.store.read_record("review", head)
+        review["previous"] = head
+        del review["data"]["assessments"]["brand"]
+        self.save(review)
+        path = Path(self.temp.name) / "missing-brand-assessment.md"
+        self.assertNotEqual(self.export("md", path).returncode, 0)
+        self.assertFalse(path.exists())
+
+    @unittest.skipUnless(all(importlib.util.find_spec(name) for name in ("docx", "pptx")),
+                         "Install export-requirements.txt for native diagram checks")
+    def test_diagram_native_maximum_and_overflow_boundary(self):
+        packet = self.diagram_packet()
+        block = packet["blocks"][0]
+        model = block["diagram"]
+        evidence = model["nodes"][0]["evidence"]
+        model["lanes"].append({"id": "controls", "label": "Controls"})
+        model["nodes"] = [{"id": "n" + str(i), "lane": model["lanes"][i // 2]["id"],
+            "column": i % 2, "kind": "activity", "label": label, "evidence": evidence}
+            for i, label in enumerate(("Check lot", "Release lot", "Plan batch", "Receive lot", "Record use", "Confirm lot"))]
+        model["edges"] = [{"id": "e" + str(i), "from": "n" + str(a), "to": "n" + str(b),
+            "kind": "handoff", "label": "if clear", "evidence": evidence}
+            for i, (a, b) in enumerate(((0, 1), (3, 2), (4, 5), (0, 2), (2, 4), (3, 1), (5, 3)))]
+        self.approve(packet)
+        for format in ("docx", "pptx"):
+            path = Path(self.temp.name) / ("maximum." + format)
+            result = self.export(format, path)
+            self.assertEqual(result.returncode, 0, result.stderr)
+        # Structurally allowed text must fail native fit, not silently shrink or truncate.
+        model["nodes"][0]["label"] = "W" * 64
+        self.approve(packet)
+        for format in ("docx", "pptx"):
+            path = Path(self.temp.name) / ("overflow." + format)
+            self.assertNotEqual(self.export(format, path).returncode, 0)
+            self.assertFalse(path.exists())
+        self.assertEqual(self.export("md", Path(self.temp.name) / "portable-diagram.md").returncode, 0)
 
     def test_selected_brand_is_recipient_bound_and_does_not_change_business_evidence(self):
         packet, profile = self.branded_packet()

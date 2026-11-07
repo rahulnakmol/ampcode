@@ -18,6 +18,8 @@ from branding import font_identity, identity, palette
 def narrative_packet(packet):
     """Present the reviewed typed estimate through the same numbers in every narrative format."""
     from estimate import office_values
+    from diagram import registers
+    packet = registers(packet)
     blocks = []
     for block in packet["blocks"]:
         if block["kind"] != "estimate":
@@ -44,7 +46,7 @@ def narrative_packet(packet):
 
 
 def table_data(block):
-    if block["kind"] == "table":
+    if block["kind"] in ("table", "diagram"):
         return block["columns"], block["rows"]
     return (["Category", *[s["name"] if s["name"] == block["unit"] else s["name"] + " (" + block["unit"] + ")"
                            for s in block["series"]]],
@@ -131,7 +133,11 @@ def document(packet, path):
     doc.add_heading(packet["title"], 0)
     for block in packet["blocks"]:
         doc.add_heading(block["title"], 1)
-        doc.add_paragraph(block["text"])
+        explanation = doc.add_paragraph(block["text"])
+        if block["kind"] == "diagram":
+            from diagram import word
+            explanation.paragraph_format.keep_with_next = True
+            word(doc, block, palette(packet))
         if block["kind"] != "text":
             columns, rows = table_data(block)
             table = doc.add_table(rows=1, cols=len(columns))
@@ -219,17 +225,23 @@ def presentation(packet, path):
             raise Invalid(f"{block['id']}: too dense for the slide layout; split and review the packet")
         slide = deck.slides.add_slide(deck.slide_layouts[5])
         title = slide.shapes.title
-        title.left, title.top, title.width, title.height = map(Inches, (0.65, 0.65, 12, 1.15))
+        title_height = .60 if block["kind"] == "diagram" else 1.15
+        title.left, title.top, title.width, title.height = map(Inches, (0.65, 0.65, 12, title_height))
         title.text = block["title"]
-        fits(block["title"], 12, 1.15, 34, True)
+        fits(block["title"], 12, title_height, 34, True)
         style(title.text_frame, 34, INK, True)
         heading = packet["title"] + (" | " + identity(packet) if identity(packet) else "")
         box(slide, 0.65, 0.15, 11.4, 0.35, heading, 12, MUTED)
         box(slide, 12, 0.15, 0.6, 0.35, f"{i:02d}", 12, MUTED)
-        line = slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(0.65), Inches(1.9), Inches(12.6), Inches(1.9))
+        rule_y = 1.4 if block["kind"] == "diagram" else 1.9
+        line = slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(0.65), Inches(rule_y), Inches(12.6), Inches(rule_y))
         line.line.color.rgb, line.line.width = RGBColor.from_string(TEAL), Pt(1.5)
         if block["kind"] == "text":
             box(slide, 0.65, 2.35, 11.95, 3.6, block["text"], 26)
+        elif block["kind"] == "diagram":
+            from diagram import powerpoint
+            box(slide, .7, 1.55, 11.9, .55, block["text"], 16)
+            powerpoint(slide, block, palette(packet))
         elif block["kind"] == "table":
             columns, rows = table_data(block)
             if len(columns) > 4 or len(rows) > 6 or any(len(v) > 80 for row in [columns, *rows] for v in row):

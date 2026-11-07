@@ -92,7 +92,7 @@ def exporter_version(selected, packets):
     fonts = {palette(packet)[0] for item, packet in zip(selected["files"], packets) if item["format"] != "md"}
     return {"libraries": libraries, "fonts": {font: font_identity(font) for font in sorted(fonts)}, "implementation": {
         name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
-        for name in ("export.py", "publication.py", "estimate.py", "workbook.py", "branding.py", "export-requirements.txt")}}
+        for name in ("export.py", "publication.py", "estimate.py", "workbook.py", "branding.py", "diagram.py", "export-requirements.txt")}}
 
 
 def stage(store, selection_id, review_id, candidate):

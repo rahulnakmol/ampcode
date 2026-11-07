@@ -39,7 +39,9 @@ Selected local ZIP handoffs stage files for reported inspection and package thei
 see [the export contract](./skills/blueprinting/reference/exports.md). Export is not delivery.
 Reviewed theme-only brand configuration can bind typography, colors and issuer/classification
 to exact source revisions; it does not import arbitrary templates or mandatory logo assets.
-This is not the complete system: tailored executive artifacts, native diagram composition,
+Schema-4 diagrams add a bounded native Word/PowerPoint mapping with evidence-linked entities,
+directed relationships and cross-view registers. Native and full semantic qualification are ongoing.
+This is not the complete system: tailored executive artifacts, complete diagram qualification,
 Notion/reminder qualification and full journey qualification remain pending. Google Slides/Docs
 are deferred. Revision freshness does not establish client approval. Nothing is
 installed or activated by this source addition; Personal publication needs separate approval.

@@ -106,6 +106,9 @@ def workbook(packet, path):
     from estimate import office_values
     from export import footer, table_data
     from branding import identity, palette
+    from diagram import registers
+    packet_hash = digest(packet)
+    packet = registers(packet)
     FONT, INK, TEAL, MUTED = palette(packet)
 
     with xlsxwriter.Workbook(path, {"strings_to_formulas": False, "strings_to_urls": False}) as book:
@@ -200,7 +203,7 @@ def workbook(packet, path):
             ("Review boundary", "File identity is not client approval. Editing creates an unreviewed scenario; it does not change retained evidence."),
             ("Editable inputs", "Amber labelled cells are inputs. Green-grey cells are calculated. Validation also checks pasted edits; invalid scenarios withhold totals."),
             ("Calculation audit", "Visible Calculation sheets preserve exact decimal arithmetic in integer pieces. Edit inputs, not formulas. No macros or external links."),
-            ("Content fingerprint", digest(packet)),
+            ("Content fingerprint", packet_hash),
         ], 3):
             text(readme, row, 0, label, "header")
             text(readme, row, 1, value)

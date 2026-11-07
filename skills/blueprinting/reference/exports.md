@@ -94,6 +94,39 @@ Unsupported control characters, including tabs and PowerPoint soft breaks, are r
 explicit newlines and re-review. Numeric labels that cannot fit require a reviewed split or change
 of units, not automatic rounding. PDF export requests tagging; that alone does not prove PDF/UA.
 
+## Keep functional diagrams editable and evidence-linked
+
+Schema 4 supports the closed `lanes-v1` diagram contract in [publication.md](publication.md).
+Word uses grouped native shapes, labels and directed lines; PowerPoint uses native shapes and
+straight connectors. No flattened image or table-only fallback substitutes for a selected native
+diagram. Markdown and XLSX intentionally provide the supplementary register, not a graphical
+diagram. Word includes that register after the drawing; slide notes retain it with the direction
+glossary. A continued Word register repeats its column headers. Keep material conditions and
+caveats in visible narrative too; deck PDFs do not include notes.
+
+This first mapping is two columns by at most three role lanes: six nodes and seven adjacent
+relationships per view. Repeated stable IDs connect larger graphs across views. A readable split
+must preserve every relationship and exact evidence reference. Options need comparison criteria
+and trade-offs alongside the drawing; roadmap arrows show dependencies, not calculated dates.
+Purpose labels alone do not qualify a functional model. Cross-view registers refer only to blocks
+actually in this reviewed packet; changing selected content requires fresh composition/review.
+
+The Word canvas is 6.9 × 4 inches, with 1.5 × 0.9-inch nodes, 12 pt node text, 9 pt IDs and 10 pt
+lane/relationship labels. The slide canvas is 12 × 3.8 inches, with 3 × 0.9-inch nodes, 18 pt
+node text, 10 pt IDs, 14 pt lanes and 12 pt relationship labels. These are dense read-ahead/detail
+slides, not large-type room-projected executive summaries. Font metrics, explicit wrapping,
+stroke/arrowhead clearance and label boxes constrain accepted text further than character limits.
+Overflow or collision refuses the affected native export; revise/split and re-review rather than
+shrink labels, remove caveats or omit relationships. The portable register remains available.
+
+Inspect all arrow directions and conditions, crowded shared nodes, maximum/empty-edge diagrams,
+long-label refusal and neutral/selected themes. On disposable native copies, edit node and edge-label
+text, move a node, change a line property, save and reopen. Check retained editable objects, IDs,
+labels and directions; native application object names may change. Arbitrary movement need not
+reroute lines automatically. Intended delivery edits return to the authoritative packet and start
+a new render/review. Only unchanged inspected staged bytes enter the ZIP. Final semantic coverage,
+consulting quality and full mission qualification remain separate from this bounded mapping.
+
 ## Use workbooks for supporting analysis
 
 XLSX preserves selected registers as native filterable tables with frozen headers, literal

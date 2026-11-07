@@ -9,12 +9,12 @@ from qualification import text, timestamp
 
 def validate_packet(packet):
     fields = {"schema", "title", "snapshot", "audience", "destination", "blocks"}
-    if isinstance(packet, dict) and packet.get("schema") == 3:
+    if isinstance(packet, dict) and packet.get("schema") in (3, 4):
         fields.add("presentation")
     if (not isinstance(packet, dict) or set(packet) != fields
-            or type(packet["schema"]) is not int or packet["schema"] not in (1, 2, 3)):
+            or type(packet["schema"]) is not int or packet["schema"] not in (1, 2, 3, 4)):
         raise Invalid("Unsupported content packet; attachments and unknown fields are not exported")
-    if packet["schema"] == 3:
+    if packet["schema"] >= 3:
         from branding import validate
         validate(packet["presentation"])
     revision(packet["snapshot"])
@@ -24,11 +24,14 @@ def validate_packet(packet):
     if not isinstance(blocks, list) or not blocks:
         raise Invalid("Nonempty content blocks required")
     ids = set()
+    diagram_ids = {}
     for block in blocks:
         common = {"id", "kind", "title", "text", "notes", "caveats", "citations"}
         extra = {"text": set(), "table": {"columns", "rows"}, "chart": {"categories", "series", "unit"}}
         if packet["schema"] >= 2:
             extra["estimate"] = {"model"}
+        if packet["schema"] >= 4:
+            extra["diagram"] = {"diagram"}
         if not isinstance(block, dict) or block.get("kind") not in extra or set(block) != common | extra[block["kind"]]:
             raise Invalid("Unsupported content block")
         key = identifier(block["id"])
@@ -54,6 +57,9 @@ def validate_packet(packet):
                 raise Invalid("Exact citation reference required")
             identifier(ref["id"])
             revision(ref["revision"])
+        if block["kind"] == "diagram":
+            from diagram import validate
+            validate(block, diagram_ids)
         if block["kind"] == "table":
             columns, rows = block["columns"], block["rows"]
             if (not isinstance(columns, list) or not columns or any(not text(c) for c in columns)
@@ -125,7 +131,7 @@ def publication(store, packet_id, review_id):
         return result
     review = review_record.get("data", {})
     expected = {"meaning", "language", "confidentiality", "citations"}
-    if packet["schema"] == 3:
+    if packet["schema"] >= 3:
         expected.add("brand")
     assessments = review.get("assessments")
     if (review.get("purpose") != "publication" or review.get("status") != "approved"
@@ -186,7 +192,7 @@ def publication(store, packet_id, review_id):
     cited = {(c["record"]["id"], c["record"]["revision"])
              for block in packet["blocks"] for c in block["citations"]}
     for block in packet["blocks"]:
-        notes = {"notes"} if block["notes"] or block["kind"] == "estimate" else set()
+        notes = {"notes"} if block["notes"] or block["kind"] in ("estimate", "diagram") else set()
         treatments = {c["treatment"] for c in block["citations"]} | notes
         # The packet postdates the source snapshot. Its declared restrictions still apply.
         if "publication" in retained.get("data", {}):
