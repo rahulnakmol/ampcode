@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "status": "candidate-2-development-initial-comparison-awaiting-re-review",
+  "supersedes_manifest_sha256": "895084e98aae4bda6a7e86c7cb7a59f7009b9914e98a76b693ab41172633adcf",
+  "design_sha256": "161cd1901c4ecd456bbc8394370c37c045470383f7eb168b892cfc2b23dd505e",
+  "case_order": [
+    "manufacturing",
+    "service",
+    "finance",
+    "presales",
+    "rfp"
+  ],
+  "stages": {
+    "manufacturing": [
+      "01-discovery.md",
+      "02-kickoff.md",
+      "03-proposal-closeout.md"
+    ],
+    "service": [
+      "01-intake.md",
+      "02-correction.md"
+    ],
+    "finance": [
+      "01-handover.md",
+      "02-readiness.md"
+    ],
+    "presales": [
+      "01-opportunity.md",
+      "02-buying-update.md"
+    ],
+    "rfp": [
+      "01-tender.md",
+      "02-addendum.md"
+    ]
+  },
+  "files": {
+    "README.md": "a276e19be6201480bed9bcc69bb7af3989c6427e0499442cf3aa1faceb9b473a",
+    "check.py": "b1e342ea9f5fcd236bdac0b7020b5acdf3e1c448655563e3f24a6dba2bede94e",
+    "reviewer/answers.md": "11a923845aa6548b765a4583bae654122ffbbe7ca1ab5eae0849b34151a72dae",
+    "reviewer/calibration.md": "e79f940b45320fce0e3a7dd47260b2bc92736962d56a47ad010d31e43ed16471",
+    "reviewer/keys.md": "d1192a24e8fb56ee0f67e9e583710c2171dfeadde7c2c9602b509ae664067829",
+    "reviewer/numeric.json": "8784fa7c7b285dbc4f6d196bd9d9130d93711c4ffdc2f77ebbcb269c555d25a2",
+    "reviewer/review-protocol.md": "d1b7333c19fb2178aaef2f1285e6b7739b6d3de83050ee60de36ef29344ca6ae",
+    "reviewer/topics.md": "7b25759ebb407da4447e77a2af8afe82a2b18ae6ddeaafe9cb9e9e2be9abf121",
+    "worker/finance/01-handover.md": "9eed1fe7c29da92f1da14f560633f6a3f2fe76d0d15abcc1d3c91b6d315d4565",
+    "worker/finance/02-readiness.md": "14782ed3aab95d86acc64b5ccd8477d0f26f898a70f04e2cf75f757c0f1edde4",
+    "worker/finance/brief.md": "f8dead81ee167b471a5c27ccd0309c36ae764c7b7bdbd9d08885d480f86ebacb",
+    "worker/manufacturing/01-discovery.md": "5c8d2f5ad4cfa7196bfdda8a0b809ef61307391c3cc044aa64d49f4605aec1fa",
+    "worker/manufacturing/02-kickoff.md": "98178dce6cad70bfc4be2eb93297ebdb47b594edd7c7d12ede841c2c5431ef44",
+    "worker/manufacturing/03-proposal-closeout.md": "34467d564db75e54fb6facda82d5c10ff01dfc063cd1765b9b008095c327ec61",
+    "worker/manufacturing/brief.md": "62b657a1c94c16838053dbc8154fba32172304df89a8f10760eaf7fc4e220dbe",
+    "worker/presales/01-opportunity.md": "cac55cee6126ea2f494c7cf718bd55b3f52357e0f67532f210a7ca63d61b7b81",
+    "worker/presales/02-buying-update.md": "00be538ae782d23bbe44bb063407bc7f6262111df9e5ff49721b3a21d8d8169b",
+    "worker/presales/brief.md": "f406d641727978ae255978627f6b38367142a7cf540de92df79edc3b4bac7344",
+    "worker/protocol.md": "7a88af40c7e8602a104a695be5867b44d8edb76921d877c954543f34feb9deb8",
+    "worker/rfp/01-tender.md": "46d53a0e31e7cd892d3a1b0bcacab8a8f2b0b22edad09821e8331f0762d20b82",
+    "worker/rfp/02-addendum.md": "8511f6d6d0f346687e1b10690ec0909c088be4acf3bf1c032e5e56080409cc91",
+    "worker/rfp/brief.md": "ae7d90f7a10feb92a42672571cf6fe544c1a614950decf4d295da78ab89042e5",
+    "worker/service/01-intake.md": "daaa423886dc1898f6face1ec43def25b5f4392bbe4ed90d6aa9eef956dc1018",
+    "worker/service/02-correction.md": "a9efe8443b4cf19873cf4b2157535ad6309f2f2fe61b99990c20350b9051382a",
+    "worker/service/brief.md": "634424d77019f7f7ee5f8438c7b7f3ba225294fbe7fcc1e355f8e8fa47eafbf6"
+  }
+}
