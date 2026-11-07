@@ -13,6 +13,7 @@ from engagement import Invalid, canonical, digest, exclusive, identifier, read_j
 from export import render
 from publication import publication
 from qualification import text, timestamp
+from branding import font_identity, palette
 
 
 FORMATS = {"md": ".md", "docx": ".docx", "pptx": ".pptx", "xlsx": ".xlsx", "pdf-document": ".pdf", "pdf-deck": ".pdf"}
@@ -80,7 +81,7 @@ def selection(store, selection_id, review_id):
     return selected_ref, review_ref, selected, packets
 
 
-def exporter_version():
+def exporter_version(selected, packets):
     # Bind implementation/layout identity as well as native renderer identity on each file.
     libraries = {}
     for name in ("python-docx", "python-pptx", "lxml", "Pillow", "XlsxWriter"):
@@ -88,9 +89,10 @@ def exporter_version():
             libraries[name] = version(name)
         except PackageNotFoundError:
             libraries[name] = None
-    return {"libraries": libraries, "implementation": {
+    fonts = {palette(packet)[0] for item, packet in zip(selected["files"], packets) if item["format"] != "md"}
+    return {"libraries": libraries, "fonts": {font: font_identity(font) for font in sorted(fonts)}, "implementation": {
         name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
-        for name in ("export.py", "publication.py", "estimate.py", "workbook.py", "export-requirements.txt")}}
+        for name in ("export.py", "publication.py", "estimate.py", "workbook.py", "branding.py", "export-requirements.txt")}}
 
 
 def stage(store, selection_id, review_id, candidate):
@@ -100,14 +102,14 @@ def stage(store, selection_id, review_id, candidate):
         raise Invalid("Candidate already exists; inspect it or choose a new candidate ID, never overwrite")
     directory.mkdir(parents=True, mode=0o700)
     plan = {"schema": 1, "candidate": candidate, "selection": selected_ref, "review": review_ref,
-            "exporter": exporter_version()}
+            "exporter": exporter_version(selected, packets)}
     exclusive(directory / "plan.json", canonical(plan))
     files = []
     for item, packet in zip(selected["files"], packets):
         result = render(packet, item["format"], store.path(".blueprinting", "exports", candidate, item["name"]))
         files.append({"name": item["name"], "format": item["format"], "revision": item["packet"]["revision"],
                       "sha256": result["sha256"], "renderer": result["renderer"]})
-    if selection(store, selection_id, review_id)[:2] != (selected_ref, review_ref) or exporter_version() != plan["exporter"]:
+    if selection(store, selection_id, review_id)[:2] != (selected_ref, review_ref) or exporter_version(selected, packets) != plan["exporter"]:
         raise Invalid("Selection or exporter changed during staging; candidate remains incomplete")
     manifest = dict(plan, files=files, created_at=datetime.now(timezone.utc).isoformat())
     manifest_hash = digest(manifest)
@@ -147,9 +149,9 @@ def package(store, candidate, inspection_id, output):
     if report["state"] == "incomplete":
         raise Invalid("Incomplete candidates cannot be inspected or packaged")
     manifest = report["manifest"]
-    selected_ref, review_ref, selected, _ = selection(store, manifest["selection"]["id"], manifest["review"]["id"])
+    selected_ref, review_ref, selected, packets = selection(store, manifest["selection"]["id"], manifest["review"]["id"])
     if ((selected_ref, review_ref) != (manifest["selection"], manifest["review"])
-            or exporter_version() != manifest["exporter"]):
+            or exporter_version(selected, packets) != manifest["exporter"]):
         raise Invalid("Candidate selection or exporter changed; render and inspect a new candidate")
     inspection_ref, inspection_record = current(store, inspection_id, "review")
     inspection = inspection_record.get("data", {})
@@ -185,7 +187,7 @@ def package(store, candidate, inspection_id, output):
         # Recheck after assembly; the ZIP contains the same byte buffers whose hashes were checked.
         if (selection(store, selected_ref["id"], review_ref["id"])[:2] != (selected_ref, review_ref)
                 or current(store, inspection_id, "review")[0] != inspection_ref
-                or exporter_version() != manifest["exporter"]):
+                or exporter_version(selected, packets) != manifest["exporter"]):
             raise Invalid("Handoff evidence changed during packaging")
         for item, (_, data) in zip(manifest["files"], files):
             if store.path(".blueprinting", "exports", candidate, item["name"]).read_bytes() != data:

@@ -18,16 +18,56 @@ a proposal needs scope, assumptions and commercial limits. A projected deck need
 than a leave-behind. Use separate reviewed packets when content density differs, retaining common
 facts and caveats. Private motive hypotheses never belong in speaker notes.
 
-The generic export layout uses Liberation Sans, navy text, a teal rule, sentence headlines and
-native tables/charts. It is an initial composition, not a consultancy template, a branded-client
-template system or a claim of consulting quality. Original client branding and tailored visual
-storytelling still require design and review. The final owner deck assessment remains mandatory.
+The neutral export layout uses Liberation Sans, navy text, a teal rule, sentence headlines and
+native tables/charts. Schema 3 also supports reviewed theme-only brand composition, described
+below. This is not a mandatory-template or logo system, arbitrary brand-skill compatibility, or a
+claim of consulting quality. Tailored visual storytelling and the final owner deck assessment
+remain mandatory.
+
+## Bind a selected brand without changing business evidence
+
+Schema 3 retains schema 2 blocks and adds required `presentation` with exactly `schema: 1`,
+`brand`, `theme`, `issuer` and `classification`. `brand` is null for neutral or an exact
+`{id, revision}` artifact reference. `theme` contains `font`, `ink`, `accent`, `muted`: a literal
+installed family and uppercase six-digit RGB colors. Neutral uses exactly Liberation Sans,
+12263A, 086C75 and 465766 respectively. Issuer and classification are nonempty, at most 120
+characters each; native layout limits can require shorter text. Neutral is an explicit choice,
+never a fallback for an unresolved selected brand. Markdown preserves identity, not typography.
+
+Load the engagement-selected branding skill from its actual resolved base. Translate its rules
+into a retained artifact with `data.purpose: brand-configuration` and `data.brand` containing
+exactly `schema: 1`, `identity`, `variant`, `resolved_base` (absolute), `skill` (exact registered
+source reference), `theme`, `issuer`, `classification`, `classification_authority`, `composition`,
+`override`, `unresolved`. Record the skill content as a registered input file. Include every exact
+reference in the containing record's input edges. The profile and skill source need declared
+publication permissions for the packet recipient/destination. Neither private paths nor source
+content are copied into outputs.
+
+This mapping supports only `composition: theme-only`, with an empty `unresolved` list. Describe
+any owner-authorized fixed-template override in `override`, or why none is required. These are
+reported judgments, not authenticated legal/brand approval. Required logos, imagery, templates
+and other assets are not implemented by this mapping: resolve an authorized theme-only treatment
+or block affected output. Do not mark an unresolved mandatory asset satisfied, execute embedded
+code, silently install a skill, or redistribute its library. Voice/tone and legal interpretation
+remain reviewer responsibilities; a palette match is not brand compliance.
+
+The packet presentation must match the profile exactly and publication review adds the `brand`
+assessment. Inherited restrictions and input observation still apply. Brand revisions stale
+dependent outputs and reviews, not independent business decisions. Selected fonts must resolve
+locally without fallback; missing character coverage in either regular or bold blocks native
+output with an authorized-substitution/review instruction. Markdown remains portable. Qualification
+currently covers English samples with Liberation Sans/Serif, not arbitrary languages/font shaping.
+Native staging fingerprints regular/bold font files as well as exporter code and dependencies;
+a font change requires fresh staging and inspection. White-paper contrast
+checks are a minimum, not a complete accessibility assessment. Inspect actual typography, footer
+fit, charts and semantic colors in each selected format, then edit/save/reopen disposable copies.
+Current qualification uses LibreOffice, not Microsoft desktop certification.
 
 ## Run a bounded local export
 
 Use Python 3.11 or newer. Markdown needs the standard library. Word, Excel and PowerPoint need the
 pinned packages in `scripts/export-requirements.txt`, installed into an isolated environment.
-Slides and workbooks also need Fontconfig and Liberation Sans. PDFs need the pinned local LibreOffice 7.4.7.2
+Native files need Fontconfig and the selected font (Liberation Sans for neutral). PDFs need the pinned local LibreOffice 7.4.7.2
 renderer. Qualify a different version before changing the pin; do not disable security updates
 to preserve a renderer version. A version pin is not a security certification.
 
@@ -120,7 +160,7 @@ Select only needed files, not a vault or a directory glob. Retain an artifact wi
 `destination` and nonempty `files`. Each file contains exactly `name`, `format`, `packet`, `review`;
 the last two are exact `{id, revision}` references to current packet and publication-review records.
 Include those references in the artifact's input edges. All packets must share the selected audience
-and destination. Formats are the local formats above; generic branding remains forthcoming.
+and destination. Formats and bounded theme-only composition are described above.
 Use portable leaf names such as `01-decision-brief.docx`: no paths, reserved device names, duplicates,
 case collisions or mismatched extensions. Do not add private metadata to these selections.
 

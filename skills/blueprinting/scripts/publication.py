@@ -9,9 +9,14 @@ from qualification import text, timestamp
 
 def validate_packet(packet):
     fields = {"schema", "title", "snapshot", "audience", "destination", "blocks"}
+    if isinstance(packet, dict) and packet.get("schema") == 3:
+        fields.add("presentation")
     if (not isinstance(packet, dict) or set(packet) != fields
-            or type(packet["schema"]) is not int or packet["schema"] not in (1, 2)):
+            or type(packet["schema"]) is not int or packet["schema"] not in (1, 2, 3)):
         raise Invalid("Unsupported content packet; attachments and unknown fields are not exported")
+    if packet["schema"] == 3:
+        from branding import validate
+        validate(packet["presentation"])
     revision(packet["snapshot"])
     if not all(text(packet[k]) for k in ("title", "audience", "destination")):
         raise Invalid("Packet title, audience and destination required")
@@ -22,7 +27,7 @@ def validate_packet(packet):
     for block in blocks:
         common = {"id", "kind", "title", "text", "notes", "caveats", "citations"}
         extra = {"text": set(), "table": {"columns", "rows"}, "chart": {"categories", "series", "unit"}}
-        if packet["schema"] == 2:
+        if packet["schema"] >= 2:
             extra["estimate"] = {"model"}
         if not isinstance(block, dict) or block.get("kind") not in extra or set(block) != common | extra[block["kind"]]:
             raise Invalid("Unsupported content block")
@@ -120,6 +125,8 @@ def publication(store, packet_id, review_id):
         return result
     review = review_record.get("data", {})
     expected = {"meaning", "language", "confidentiality", "citations"}
+    if packet["schema"] == 3:
+        expected.add("brand")
     assessments = review.get("assessments")
     if (review.get("purpose") != "publication" or review.get("status") != "approved"
             or review.get("packet") != packet_ref or review.get("packet_hash") != digest(packet)
@@ -129,6 +136,16 @@ def publication(store, packet_id, review_id):
             or any(v != "passed" for v in assessments.values())):
         gaps.append("Named publication review must cover exact content, recipient, destination and all assessments")
     selected = store.status(packet["snapshot"])
+    presentation = packet.get("presentation")
+    if presentation and presentation["brand"] is not None:
+        from branding import validate_profile
+        brand = read(presentation["brand"], "artifact")
+        try:
+            skill = validate_profile(brand.get("data", {}), presentation)
+            if "input_file" not in read(skill, "source").get("data", {}):
+                gaps.append("Selected brand skill needs a retained registered source file")
+        except (ValueError, TypeError, KeyError) as error:
+            gaps.append(str(error))
     for key, head_record in state["records"].items():
         retained_input = store.read_record(key, head_record["revision"])
         if ("input_file" in retained_input.get("data", {})

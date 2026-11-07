@@ -37,7 +37,9 @@ The separate `blueprinting-engagement-template` source is being prepared locally
 Native Obsidian 1.15.0 has bounded synthetic editing, filtering, navigation and save/reopen evidence.
 Selected local ZIP handoffs stage files for reported inspection and package their exact bytes;
 see [the export contract](./skills/blueprinting/reference/exports.md). Export is not delivery.
-This is not the complete system: tailored executive artifacts, brand/diagram composition,
+Reviewed theme-only brand configuration can bind typography, colors and issuer/classification
+to exact source revisions; it does not import arbitrary templates or mandatory logo assets.
+This is not the complete system: tailored executive artifacts, native diagram composition,
 Notion/reminder qualification and full journey qualification remain pending. Google Slides/Docs
 are deferred. Revision freshness does not establish client approval. Nothing is
 installed or activated by this source addition; Personal publication needs separate approval.

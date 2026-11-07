@@ -28,6 +28,11 @@ the intended reader can identify the decision or action. Distinguish facts, reco
 assumptions. Check dates, units, amounts, exclusions and uncertainties across formats. Do not
 average away material factual, confidentiality or authority failures with a high visual score.
 
+For selected branding, inspect the exact retained skill rules, reported override/classification
+authority and supported theme mapping. Check actual native glyphs, fonts, table/chart colors and
+identity fit, not only a theme XML value. Missing mandatory assets block affected outputs unless
+an authorized treatment resolves them. Brand review cannot approve an unchanged business decision.
+
 Return findings tied to source and output locations, severity, consequence and the smallest
 needed repair or clarification. Recheck repaired revisions separately. Report what was not
 available or inspected. A structurally current record can still be false; a polished artifact

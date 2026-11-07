@@ -10,6 +10,10 @@ Create an `artifact` record with `data.packet`. Schema 1 packets contain exactly
 used, before saving the packet. Audience and destination are explicit agreed names, not inferred
 from a file extension. New content or a different destination requires a new review.
 
+Schema 3 adds the required neutral-or-selected `presentation` configuration described in
+[exports.md](exports.md), with exact brand/source dependencies and a separate brand assessment.
+Its blocks retain the schema-2 typed-estimate support below.
+
 Each block has `id`, `kind`, `title`, `text`, `notes`, `caveats` and `citations`. `notes` is an
 explicit string, empty if none; it is publishable speaker guidance, never private reflection.
 `caveats` is a list of required qualifications. Citations contain an exact `record` reference,
@@ -85,6 +89,7 @@ Save a `review` record with `purpose: publication`, exact `packet` reference, `p
 (canonical JSON SHA-256), matching `audience` and `destination`, named `reviewer`, timezone-aware
 `at`, `status: approved`, and `assessments` with `meaning`, `language`, `confidentiality` and
 `citations` each `passed` only after actual assessment. Describe checks and repairs in the body.
+Schema 3 also requires `brand: passed`, including the neutral choice when no brand is selected.
 This is separate from client acceptance of business requirements.
 
 Run `python3 scripts/engagement.py --root <engagement-directory> publication <packet-id> <review-id>`.

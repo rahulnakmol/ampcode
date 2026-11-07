@@ -27,7 +27,8 @@ Their current public commands and schemas are unchanged by this instruction spli
 
 Each package carries `contract.json`. Coordinator contract/helper API 1 retains schema-1 records
 and packets; schema-2 packets additionally support bounded typed estimate data and native scenario
-workbooks. Visual-packet extensions remain unfinished. The coordinator manifest lists supported domain
+workbooks. Schema 3 adds reviewed neutral-or-selected theme composition; native diagram extensions
+remain unfinished. The coordinator manifest lists supported domain
 versions. A domain manifest names its version and required coordinator contract. Templates are
 separate packages with their own checked contract; see [templates.md](templates.md).
 

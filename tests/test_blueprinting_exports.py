@@ -42,16 +42,18 @@ class ExportTest(unittest.TestCase):
                                       ["Allocate released stock", "Planner", "Proposed"]])]}
         self.approve(self.packet)
 
-    def approve(self, packet):
+    def approve(self, packet, extra_sources=()):
         heads = self.store.status()["records"]
-        artifact = self.record("brief", "artifact", {"packet": packet}, [self.source])
+        artifact = self.record("brief", "artifact", {"packet": packet}, [self.source, *extra_sources])
         artifact["previous"] = heads.get("brief", {}).get("revision")
         self.save(artifact)
+        assessments = {key: "passed" for key in ("meaning", "language", "confidentiality", "citations")}
+        if packet["schema"] == 3:
+            assessments["brand"] = "passed"
         review = self.record("review", "review", {"purpose": "publication", "status": "approved",
             "packet": {"id": "brief", "revision": digest(artifact)}, "packet_hash": digest(packet),
             "audience": "sponsor", "destination": "review", "reviewer": "Synthetic consultant",
-            "at": "2026-11-02T12:00:00+00:00", "assessments": {
-                "meaning": "passed", "language": "passed", "confidentiality": "passed", "citations": "passed"}}, [artifact])
+            "at": "2026-11-02T12:00:00+00:00", "assessments": assessments}, [artifact])
         review["previous"] = heads.get("review", {}).get("revision")
         self.save(review)
 
@@ -67,6 +69,132 @@ class ExportTest(unittest.TestCase):
         return subprocess.run([sys.executable, str(SCRIPTS / "engagement.py"), "--root", str(self.root),
                                "export", "brief", "review", "--format", format, "--output", str(destination)],
                               text=True, capture_output=True)
+
+    def branded_packet(self):
+        policy = {"grants": [{"audience": "sponsor", "destination": "review",
+                              "treatments": ["excerpt", "notes"]}], "required_caveats": []}
+        path = self.root / "brand-guidance.md"
+        path.write_text("Synthetic brand: serif type, plum accent; no required logo or template.")
+        source = self.record("brand-source", "source", {"input_file": {
+            "path": path.name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}, "publication": policy})
+        self.save(source)
+        theme = {"font": "Liberation Serif", "ink": "25152F", "accent": "733A72", "muted": "59495C"}
+        profile = self.record("brand-profile", "artifact", {"purpose": "brand-configuration", "publication": policy,
+            "brand": {"schema": 1, "identity": "Synthetic advisory", "variant": "Editorial",
+                "resolved_base": str(self.root), "skill": {"id": source["id"], "revision": digest(source)},
+                "theme": theme, "issuer": "Synthetic advisory", "classification": "Internal review",
+                "classification_authority": "Synthetic engagement lead", "composition": "theme-only",
+                "override": "Not required by the synthetic brand", "unresolved": []}}, [source])
+        self.save(profile)
+        packet = dict(self.packet, schema=3, snapshot=self.store.status()["snapshot"], presentation={
+            "schema": 1, "brand": {"id": profile["id"], "revision": digest(profile)},
+            "theme": theme, "issuer": "Synthetic advisory", "classification": "Internal review"})
+        return packet, profile
+
+    def test_selected_brand_is_recipient_bound_and_does_not_change_business_evidence(self):
+        packet, profile = self.branded_packet()
+        business = self.record("business-decision", "decision", {}, [self.source])
+        self.save(business)
+        self.approve(packet, [profile])
+        path = Path(self.temp.name) / "branded.md"
+        result = self.export("md", path)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        output = path.read_text()
+        for value in ("Synthetic advisory", "Internal review", "Released stock is 20 units below demand",
+                      "Synthetic case; quality approval is open."):
+            self.assertIn(value, output)
+        for private in (str(self.root), "brand-guidance.md", "private raw source"):
+            self.assertNotIn(private, output)
+        altered = dict(packet, presentation=dict(packet["presentation"], classification="Public"))
+        self.approve(altered, [profile])
+        self.assertNotEqual(self.export("md", Path(self.temp.name) / "wrong-classification.md").returncode, 0)
+        self.approve(packet, [profile])
+        changed = dict(profile, previous=digest(profile), data=dict(profile["data"],
+            brand=dict(profile["data"]["brand"], classification="Restricted")))
+        self.save(changed)
+        self.assertNotEqual(self.export("md", Path(self.temp.name) / "old-brand.md").returncode, 0)
+        self.assertTrue(self.store.status()["records"]["business-decision"]["current"])
+        self.assertEqual(self.store.status()["records"]["business-decision"]["revision"], digest(business))
+
+    @unittest.skipUnless(all(importlib.util.find_spec(name) for name in ("docx", "pptx", "xlsxwriter")),
+                         "Install export-requirements.txt for native brand checks")
+    def test_brand_identity_refuses_native_overlap(self):
+        packet, profile = self.branded_packet()
+        labels = {"issuer": "W" * 100, "classification": "Internal review"}
+        changed = dict(profile, previous=digest(profile), data=dict(profile["data"],
+            brand=dict(profile["data"]["brand"], **labels)))
+        self.save(changed)
+        packet = dict(packet, snapshot=self.store.status()["snapshot"], presentation=dict(packet["presentation"],
+            brand={"id": changed["id"], "revision": digest(changed)}, **labels))
+        self.approve(packet, [changed])
+        for format in ("docx", "pptx", "xlsx"):
+            with self.subTest(format=format):
+                path = Path(self.temp.name) / ("crowded." + format)
+                self.assertNotEqual(self.export(format, path).returncode, 0)
+                self.assertFalse(path.exists())
+        self.assertEqual(self.export("md", Path(self.temp.name) / "portable.md").returncode, 0)
+
+    @unittest.skipUnless(all(importlib.util.find_spec(name) for name in ("docx", "pptx", "xlsxwriter")),
+                         "Install export-requirements.txt for native brand checks")
+    def test_selected_brand_reaches_native_formats_without_losing_content(self):
+        from docx import Document
+        from pptx import Presentation
+        from zipfile import ZipFile
+        packet, profile = self.branded_packet()
+        self.approve(packet, [profile])
+        outputs = {}
+        for format in ("docx", "pptx", "xlsx"):
+            path = Path(self.temp.name) / ("branded." + format)
+            result = self.export(format, path)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout)["packet_hash"], digest(packet))
+            outputs[format] = path
+        doc = Document(outputs["docx"])
+        self.assertEqual(doc.styles["Normal"].font.name, "Liberation Serif")
+        self.assertEqual(str(doc.styles["Normal"].font.color.rgb), "25152F")
+        self.assertIn("Internal review", doc.sections[0].header.paragraphs[0].text)
+        self.assertIn("Synthetic case; quality approval is open.", "\n".join(p.text for p in doc.paragraphs))
+        # Native consumers may use literal fallback colors instead of the Office theme.
+        from docx.oxml.ns import qn
+        table_style = doc.styles["Light Shading Accent 1"].element
+        self.assertEqual(doc.styles["Title"].element.xpath(".//w:pBdr/w:bottom")[0].get(qn("w:color")), "733A72")
+        for border in table_style.xpath(".//w:tblBorders/* | .//w:tcBorders/*"):
+            if border.get(qn("w:val")) == "single":
+                self.assertEqual(border.get(qn("w:color")), "733A72")
+        deck = Presentation(outputs["pptx"])
+        self.assertEqual(deck.slides[0].shapes.title.text_frame.paragraphs[0].font.name, "Liberation Serif")
+        self.assertIn("Internal review", "\n".join(s.text for s in deck.slides[0].shapes if s.has_text_frame))
+        chart = next(s.chart for s in deck.slides[1].shapes if s.has_chart)
+        self.assertEqual(str(chart.series[0].format.fill.fore_color.rgb), "733A72")
+        self.assertEqual(list(chart.series[0].values), [80, 40, 100])
+        with ZipFile(outputs["xlsx"]) as archive:
+            self.assertIn(b'Liberation Serif', archive.read("xl/styles.xml"))
+            self.assertIn(b'733A72', archive.read("xl/charts/chart1.xml"))
+            self.assertIn(b'Internal review', archive.read("xl/worksheets/sheet1.xml"))
+            self.assertNotIn(b'TableStyleMedium2', archive.read("xl/tables/table1.xml"))
+        multilingual = dict(packet, blocks=[dict(packet["blocks"][0], text="Confirm 订单审批 before release.")])
+        self.approve(multilingual, [profile])
+        for format in ("docx", "pptx", "xlsx", "pdf-document"):
+            blocked_glyph = Path(self.temp.name) / ("unapproved-glyph." + ("pdf" if format == "pdf-document" else format))
+            result = self.export(format, blocked_glyph)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("lacks required glyphs", result.stderr)
+            self.assertFalse(blocked_glyph.exists())
+        self.assertEqual(self.export("md", Path(self.temp.name) / "portable-glyph.md").returncode, 0)
+        # A selected missing font must not silently become the neutral typeface.
+        missing = dict(packet, presentation=dict(packet["presentation"], theme=dict(
+            packet["presentation"]["theme"], font="Blueprinting Missing Font")))
+        changed = dict(profile, previous=digest(profile), data=dict(profile["data"], brand=dict(
+            profile["data"]["brand"], theme=missing["presentation"]["theme"])))
+        self.save(changed)
+        missing["snapshot"] = self.store.status()["snapshot"]
+        missing["presentation"]["brand"] = {"id": changed["id"], "revision": digest(changed)}
+        self.approve(missing, [changed])
+        blocked = Path(self.temp.name) / "missing-font.docx"
+        result = self.export("docx", blocked)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("font unavailable", result.stderr)
+        self.assertFalse(blocked.exists())
 
     def test_package_uses_only_inspected_bytes_and_rechecks_freshness(self):
         from datetime import datetime, timezone

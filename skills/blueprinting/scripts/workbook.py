@@ -104,7 +104,9 @@ def workbook(packet, path):
     import xlsxwriter
     from engagement import Invalid, digest
     from estimate import office_values
-    from export import FONT, INK, TEAL, MUTED, footer, table_data
+    from export import footer, table_data
+    from branding import identity, palette
+    FONT, INK, TEAL, MUTED = palette(packet)
 
     with xlsxwriter.Workbook(path, {"strings_to_formulas": False, "strings_to_urls": False}) as book:
         book.set_properties({"title": packet["title"], "author": "", "comments": "Exported, not delivered or client-approved."})
@@ -130,7 +132,7 @@ def workbook(packet, path):
             match = subprocess.run(["fc-match", "-f", "%{family}\n%{file}", FONT + (":style=Bold" if bold else ":style=Regular")],
                                    capture_output=True, text=True, check=True, timeout=10).stdout.splitlines()
             if len(match) != 2 or match[0] != FONT:
-                raise Invalid("Install Liberation Sans fonts before exporting workbooks")
+                raise Invalid("Selected workbook font unavailable; resolve an authorized substitution and re-review")
             return ImageFont.truetype(match[1], size * 2)
 
         def height(value, width, size=11, bold=False):
@@ -168,7 +170,15 @@ def workbook(packet, path):
             page.set_landscape()
             page.set_margins(.35, .35, .5, .5)
             page.set_tab_color(TEAL)
-            page.set_footer("&LExported, not client-approved&RPage &P")
+            label = (identity(packet) + " | " if identity(packet) else "") + "Exported, not client-approved"
+            footer_width = ((16.54 if sum(columns) > 125 else 11.69) - .7) * 72 - 80
+            if "\n" in label or font(10, False).getlength(label) / 2 > footer_width:
+                raise Invalid("Workbook issuer/classification exceeds the footer; shorten and re-review")
+            label = label.replace("&", "&&")
+            footer_text = f'&L&"{FONT},Regular"&10{label}&RPage &P'
+            if len(footer_text) > 255:
+                raise Invalid("Workbook issuer/classification too long for the footer; shorten and re-review")
+            page.set_footer(footer_text)
             for col, width in enumerate(columns):
                 page.set_column(col, col, width)
             page.merge_range(0, 0, 0, len(columns) - 1, "", formats["title"])
@@ -221,7 +231,7 @@ def workbook(packet, path):
                     page.add_table(cursor, 0, cursor + len(rows), len(columns) - 1, {
                         "data": rows, "columns": [{"header": name, "header_format": formats["header"],
                                                   "format": formats["text"]} for name in columns],
-                        "style": "Table Style Medium 2"})
+                        "style": None})
                     page.freeze_panes(cursor + 1, 1)
                     page.repeat_rows(cursor)
                     page.repeat_columns(0)
@@ -235,12 +245,19 @@ def workbook(packet, path):
                             for offset, value in enumerate(values["values"], 7):
                                 page.write_number(offset, row, value, formats["text"])
                         chart = book.add_chart({"type": "bar"})
+                        # Prevent Calc from adding an unstyled automatic series-name title.
+                        chart.set_title({"none": True})
                         for col in range(1, len(columns)):
                             chart.add_series({"name": [page.name, 6, col],
                                 "categories": [page.name, 7, 0, 6 + len(rows), 0],
-                                "values": [page.name, 7, col, 6 + len(rows), col]})
-                        chart.set_x_axis({"name": block["unit"], "min": min(0, min(v for s in block["series"] for v in s["values"]))})
-                        chart.set_legend({"none": True} if len(columns) == 2 else {"position": "bottom"})
+                                "values": [page.name, 7, col, 6 + len(rows), col],
+                                "fill": {"color": (TEAL, INK, MUTED)[col - 1]}})
+                        chart.set_x_axis({"name": block["unit"], "num_font": {"name": FONT, "size": 11},
+                                          "name_font": {"name": FONT, "size": 11},
+                                          "min": min(0, min(v for s in block["series"] for v in s["values"]))})
+                        chart.set_y_axis({"num_font": {"name": FONT, "size": 11}})
+                        chart.set_legend({"none": True} if len(columns) == 2 else {
+                            "position": "bottom", "font": {"name": FONT, "size": 11}})
                         chart_height = max(288, len(rows) * 22)
                         # The repeated title consumes space on the chart's page too.
                         # Budget points at 100% scale, including two default 15pt rows.

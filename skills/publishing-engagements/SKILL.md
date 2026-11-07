@@ -30,7 +30,9 @@ walkthrough according to the reader's decision. Never invent outcomes to complet
 
 Return the reviewed packet, actual inspected exports and explicit limitations. Check editability,
 readability and consistency; hashes identify content, not truth. Current helpers support generic
-Markdown, DOCX, PPTX, XLSX, PDF and selected exact-byte ZIPs; tailored branding remains under development.
+Markdown, DOCX, PPTX, XLSX, PDF and selected exact-byte ZIPs. For a selected brand, load its actual
+skill and retain the reviewed theme-only mapping in `reference/exports.md`; do not infer compliance
+with unsupported mandatory templates or assets. Inspect native fonts, colors and identity labels.
 For XLSX estimates, test input edits, native recalculation and invalid-state recovery; cached
 totals alone are not verification. Edited files are unreviewed scenarios, not a changed baseline.
 For ZIPs, use the staged-candidate and named-inspection workflow in `reference/exports.md`;

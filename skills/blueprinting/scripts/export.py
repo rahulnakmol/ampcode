@@ -2,6 +2,7 @@
 
 import hashlib
 import html
+import json
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -11,10 +12,7 @@ import tempfile
 
 from engagement import Invalid, digest, sync_directory
 from publication import validate_packet
-
-
-INK, TEAL, MUTED = "12263A", "086C75", "465766"
-FONT = "Liberation Sans"
+from branding import font_identity, identity, palette
 
 
 def narrative_packet(packet):
@@ -62,6 +60,8 @@ def markdown(packet, path):
     def escape(value):
         return re.sub(r"([\\`*_{}\[\]()#!|>])", r"\\\1", html.escape(value, quote=False)).replace("\n", "<br>")
     lines = ["# " + escape(packet["title"]), ""]
+    if identity(packet):
+        lines += [escape(identity(packet)), ""]
     for block in packet["blocks"]:
         lines += ["## " + escape(block["title"]), "", escape(block["text"]), ""]
         if block["kind"] != "text":
@@ -80,6 +80,9 @@ def document(packet, path):
     from docx.shared import Inches, Pt, RGBColor
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+    from lxml import etree
+    from PIL import ImageFont
+    FONT, INK, TEAL, MUTED = palette(packet)
     doc = Document()
     doc.core_properties.title = packet["title"]
     doc.core_properties.author = ""
@@ -87,6 +90,37 @@ def document(packet, path):
     for section in doc.sections:
         section.top_margin = section.bottom_margin = Inches(0.7)
         section.left_margin = section.right_margin = Inches(0.8)
+        label = identity(packet)
+        if label:
+            font_path = subprocess.run(["fc-match", "-f", "%{file}", FONT + ":style=Regular"],
+                                       capture_output=True, text=True, check=True, timeout=10).stdout
+            width = (section.page_width - section.left_margin - section.right_margin) / 12700
+            if "\n" in label or ImageFont.truetype(font_path, 18).getlength(label) / 2 > width:
+                raise Invalid("Document issuer/classification exceeds the header; shorten and re-review")
+            run = section.header.paragraphs[0].add_run(label)
+            run.font.name, run.font.size = FONT, Pt(9)
+            run.font.color.rgb = RGBColor.from_string(MUTED)
+    # Map the built-in editable table theme as well as direct text styles.
+    for relation in doc.part.rels.values():
+        if relation.reltype.endswith("/theme"):
+            theme = etree.fromstring(relation.target_part.blob)
+            ns = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
+            for name in ("majorFont", "minorFont"):
+                theme.find(f".//a:{name}/a:latin", ns).set("typeface", FONT)
+            theme.find(".//a:clrScheme/a:accent1/a:srgbClr", ns).set("val", TEAL)
+            relation.target_part._blob = etree.tostring(theme, xml_declaration=True, encoding="UTF-8", standalone=True)
+    # LibreOffice uses literal style colors even when the Office theme changes.
+    # Resolve the used styles directly, including the title rule and table shading.
+    for name in ("Title", "Heading 1", "Heading 2", "Light Shading Accent 1"):
+        for node in doc.styles[name].element.iter():
+            if node.tag == qn("w:color"):
+                node.set(qn("w:val"), INK)
+            elif node.get(qn("w:themeColor")) == "accent1":
+                node.set(qn("w:color"), TEAL)
+            if node.tag == qn("w:shd"):
+                node.set(qn("w:fill"), "F3F3F3")
+            for attribute in ("themeColor", "themeShade", "themeTint", "themeFill", "themeFillTint"):
+                node.attrib.pop(qn("w:" + attribute), None)
     normal = doc.styles["Normal"]
     normal.font.name, normal.font.size = FONT, Pt(11)
     normal.font.color.rgb = RGBColor.from_string(INK)
@@ -131,6 +165,7 @@ def presentation(packet, path):
     from pptx.enum.shapes import MSO_CONNECTOR
     from pptx.util import Inches, Pt
     from PIL import ImageFont
+    FONT, INK, TEAL, MUTED = palette(packet)
     deck = Presentation()
     deck.slide_width, deck.slide_height = Inches(13.333), Inches(7.5)
     deck.core_properties.title, deck.core_properties.author = packet["title"], ""
@@ -140,7 +175,7 @@ def presentation(packet, path):
         match = subprocess.run(["fc-match", "-f", "%{family}\n%{file}", FONT + (":style=Bold" if bold else ":style=Regular")],
                                capture_output=True, text=True, check=True, timeout=10).stdout.splitlines()
         if len(match) != 2 or match[0] != FONT:
-            raise Invalid("Install Liberation Sans fonts before exporting slides")
+            raise Invalid("Selected slide font unavailable; resolve an authorized substitution and re-review")
         return ImageFont.truetype(match[1], size * 2)
 
     def fits(value, width, height, size, bold=False):
@@ -188,7 +223,8 @@ def presentation(packet, path):
         title.text = block["title"]
         fits(block["title"], 12, 1.15, 34, True)
         style(title.text_frame, 34, INK, True)
-        box(slide, 0.65, 0.15, 11.4, 0.35, packet["title"], 12, MUTED)
+        heading = packet["title"] + (" | " + identity(packet) if identity(packet) else "")
+        box(slide, 0.65, 0.15, 11.4, 0.35, heading, 12, MUTED)
         box(slide, 12, 0.15, 0.6, 0.35, f"{i:02d}", 12, MUTED)
         line = slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(0.65), Inches(1.9), Inches(12.6), Inches(1.9))
         line.line.color.rgb, line.line.width = RGBColor.from_string(TEAL), Pt(1.5)
@@ -236,6 +272,8 @@ def presentation(packet, path):
             if chart.has_legend:
                 chart.legend.position = XL_LEGEND_POSITION.BOTTOM
                 chart.legend.font.size = Pt(16)
+                chart.legend.font.name = FONT
+                chart.legend.font.color.rgb = RGBColor.from_string(MUTED)
             values = [v for series in block["series"] for v in series["values"]]
             chart.value_axis.minimum_scale = min(0, min(values))
             chart.value_axis.maximum_scale = max(0, max(values)) if max(values) > 0 else 1
@@ -244,11 +282,14 @@ def presentation(packet, path):
             style(chart.value_axis.axis_title.text_frame, 16, MUTED)
             for axis in (chart.category_axis, chart.value_axis):
                 axis.tick_labels.font.name, axis.tick_labels.font.size = FONT, Pt(18)
+                axis.tick_labels.font.color.rgb = RGBColor.from_string(MUTED)
             plot = chart.plots[0]
             plot.has_data_labels = True
             plot.data_labels.position = XL_LABEL_POSITION.OUTSIDE_END
             plot.data_labels.font.size = Pt(18)
-            for series, color in zip(chart.series, (TEAL, INK, "6D7680")):
+            plot.data_labels.font.name = FONT
+            plot.data_labels.font.color.rgb = RGBColor.from_string(INK)
+            for series, color in zip(chart.series, (TEAL, INK, MUTED)):
                 series.format.fill.solid()
                 series.format.fill.fore_color.rgb = RGBColor.from_string(color)
         box(slide, 0.7, 6.25, 11.9, 1.0, footer(block), 16, MUTED)
@@ -262,6 +303,8 @@ def presentation(packet, path):
 
 def render(packet, format, output):
     validate_packet(packet)
+    if format != "md":
+        font_identity(palette(packet)[0], json.dumps(packet, ensure_ascii=False))
     output = Path(output).absolute()
     suffix = ".pdf" if format.startswith("pdf-") else "." + format
     if output.suffix.lower() != suffix or output.exists() or output.is_symlink():
