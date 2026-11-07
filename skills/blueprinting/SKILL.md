@@ -38,6 +38,7 @@ through the shared references below; unavailable domain entry is reported, not s
 | --- | --- |
 | Explicit Start/Resume, template selection/update or Obsidian index | [templates.md](reference/templates.md) |
 | Workshop, questionnaire, evidence batch or debrief | [discovery.md](reference/discovery.md) |
+| Supplied recording, local draft transcription or material-span verification | [audio.md](reference/audio.md) |
 | Functional specification, operating model, sub-mission return or kickoff | [functional-design.md](reference/functional-design.md) |
 | Fit-gap, pre-sales, RFP response, estimate or roadmap | [proposals.md](reference/proposals.md) |
 | Save, correct, reconcile or resume records | [records.md](reference/records.md) |

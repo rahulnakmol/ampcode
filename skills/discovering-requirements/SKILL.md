@@ -20,6 +20,9 @@ search for another installation or install one implicitly. Keep native Amp routi
 
 Read the coordinator's `reference/discovery.md`. Read `reference/records.md` before retaining or
 correcting evidence, and `reference/decisions.md` before describing a business agreement.
+For supplied recordings, read its `reference/audio.md` before optional local transcription.
+Use only the bound helper and explicitly permitted environment; missing dependencies or permission
+do not authorize installation or a cloud fallback. Keep every generated transcript provisional.
 
 Prepare agendas and client questionnaires from existing gaps and named responsibilities. Every
 question serves an outcome or uncertainty and states what evidence would distinguish answers.

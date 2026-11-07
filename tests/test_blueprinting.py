@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 from decimal import Decimal
 from pathlib import Path
 import shutil
@@ -342,6 +343,65 @@ class EngagementRecordsTest(unittest.TestCase):
         path = Path(self.temp.name) / "bad-link.json"
         path.write_text(json.dumps([record]))
         self.call("prepare", str(path), error="missing from input edges")
+
+    def test_audio_permission_precedes_processing_and_pins_source_and_environment(self):
+        path = self.root / "incoming" / "workshop.wav"
+        path.parent.mkdir()
+        path.write_bytes(b"not a decodable recording")
+        source, _ = self.save(self.typed("recording", "source", {"medium": "audio", "input_file": {
+            "path": "incoming/workshop.wav", "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}}))
+        basis, _ = self.save(self.typed("consent", "source", {"location": "Synthetic permission fixture"}))
+        allowed = {"purpose": "audio-processing", "status": "approved", "consent": "confirmed",
+                   "source": self.ref("recording", source), "basis": self.ref("consent", basis),
+                   "processor": "faster-whisper-1.2.1/small.en", "environment": str(self.root),
+                   "retention": "Synthetic fixture lifetime", "authorized_by": "Fixture owner",
+                   "reviewer": "Consultant", "at": "2026-01-01T10:00:00+00:00"}
+        previous = None
+        for field, value in (("consent", "unknown"), ("status", "draft"), ("processor", "cloud"),
+                             ("environment", str(self.root.parent)), ("retention", ""),
+                             ("at", "2999-01-01T10:00:00+00:00"), ("consent", "confirmed")):
+            review, _ = self.save(self.typed("process-review", "review", dict(allowed, **{field: value}),
+                [self.edge("recording", source), self.edge("consent", basis)], previous=previous))
+            previous = review
+            before = self.call("status")
+            result = subprocess.run([sys.executable, str(SCRIPT.with_name("audio.py")), "--root", str(self.root),
+                "--model", str(Path(self.temp.name) / "missing-model"), "recording", "process-review", "draft"],
+                capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, "")
+            self.assertIn("pinned local model" if (field, value) == ("consent", "confirmed") else "consent", result.stderr)
+            after = self.call("status")
+            self.assertEqual(after["snapshot"], before["snapshot"])
+            self.assertEqual(after["pending"], [])
+            self.assertNotIn("draft", after["records"])
+
+    @unittest.skipUnless(os.environ.get("BLUEPRINTING_AUDIO_MODEL") and shutil.which("ffmpeg"),
+                         "Set BLUEPRINTING_AUDIO_MODEL with pinned optional audio packages and ffmpeg")
+    def test_video_only_recording_reports_gap_without_retaining_draft(self):
+        path = self.root / "silent.mp4"
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=black:s=16x16:d=0.1",
+                        "-an", "-c:v", "mpeg4", str(path)], check=True)
+        source, _ = self.save(self.typed("recording", "source", {"medium": "audio", "input_file": {
+            "path": path.name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}}))
+        basis, _ = self.save(self.typed("consent", "source", {"location": "Synthetic test permission"}))
+        self.save(self.typed("process-review", "review", {
+            "purpose": "audio-processing", "status": "approved", "consent": "confirmed",
+            "source": self.ref("recording", source), "basis": self.ref("consent", basis),
+            "processor": "faster-whisper-1.2.1/small.en", "environment": str(self.root),
+            "retention": "Fixture lifetime", "authorized_by": "Fixture owner", "reviewer": "Consultant",
+            "at": "2026-01-01T10:00:00+00:00"}, [self.edge("recording", source), self.edge("consent", basis)]))
+        before = self.call("status")
+        result = subprocess.run([sys.executable, str(SCRIPT.with_name("audio.py")), "--root", str(self.root),
+            "--model", os.environ["BLUEPRINTING_AUDIO_MODEL"], "recording", "process-review", "draft"],
+            capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("Audio blocked: No audio stream; request a usable recording", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+        after = self.call("status")
+        self.assertEqual(after["snapshot"], before["snapshot"])
+        self.assertEqual(after["pending"], [])
+        self.assertNotIn("draft", after["records"])
 
     def test_coverage_detects_missing_receiver_and_child_findings_not_integrated(self):
         self.save(self.record("empty-mission", "No coverage assessed yet.", "mission"))

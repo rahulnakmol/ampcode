@@ -50,8 +50,10 @@ def check(base, required, domain_base=None, domain=None):
     # Fixed local files only. The manifest cannot supply executable paths or imports.
     helpers = {}
     for name in ("engagement", "qualification", "publication", "estimate", "export", "upkeep", "external",
-                 "obligations", "observation", "templates", "workspace", "indexes"):
+                 "obligations", "observation", "templates", "workspace", "indexes", "audio"):
         helpers[name] = str(package_file(base, f"scripts/{name}.py"))
+    package_file(base, "scripts/audio-model.json")
+    package_file(base, "scripts/audio-requirements.txt")
     if (domain_base is None) != (domain is None):
         raise Invalid("Both host-selected domain base and domain name are required")
     version = None
