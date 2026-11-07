@@ -158,6 +158,64 @@ with patch('handoff.render', side_effect=RuntimeError('injected interruption')):
         call("package", "candidate-one", "inspection", "--output", str(blocked), success=False)
         self.assertFalse(blocked.exists())
 
+    def test_typed_estimate_preserves_decimal_totals_and_rejects_unsupported_inputs(self):
+        model = {"schema": 1, "currency": "USD", "rate_date": "2026-11-07",
+                 "assumptions": ["Synthetic inputs, not a quotation"], "basis": ["Illustrative workshop scope"],
+                 "contingency_percent": "0", "activities": [
+                     {"id": "scope", "activity": "Scope review", "role": "Analyst", "basis": "Synthetic scope",
+                      "quantity": "1000000", "days_per_unit_low": "1", "days_per_unit_high": "1",
+                      "day_rate": "1", "after": []},
+                     {"id": "validate", "activity": "Validation", "role": "Consultant", "basis": "Synthetic review",
+                      "quantity": "0.999999", "days_per_unit_low": "1.000001", "days_per_unit_high": "2.000001",
+                      "day_rate": "0.005", "after": ["scope"]}]}
+        packet = dict(self.packet, schema=2, blocks=[dict(self.packet["blocks"][0], kind="estimate", model=model)])
+        self.approve(packet)
+        output = Path(self.temp.name) / "estimate.md"
+        result = self.export("md", output)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        body = output.read_text()
+        # Ordinary floating SUM/ROUND incorrectly returns 1000000.01 for the low amount.
+        self.assertIn("1000000.00 | 1000000.01", body)
+        self.assertIn("1000001.000000 | 1000001.999999", body)
+        for value in ("USD", "2026-11-07", "Synthetic inputs", "Synthetic scope", "Consultant", "scope"):
+            self.assertIn(value, body)
+        tie = json.loads(json.dumps(packet))
+        tie["blocks"][0]["model"]["activities"] = [dict(model["activities"][0], quantity="0.5",
+            days_per_unit_low="0.000001", days_per_unit_high="0.000003", day_rate="10000")]
+        self.approve(tie)
+        tie_output = Path(self.temp.name) / "half-up.md"
+        self.assertEqual(self.export("md", tie_output).returncode, 0)
+        self.assertIn("0.000001 | 0.000002", tie_output.read_text())
+        self.assertIn("0.01 | 0.02", tie_output.read_text())
+        for index, (field, value) in enumerate((("quantity", "1000000.000001"),
+                ("day_rate", "0.0000001"), ("day_rate", "1.000000000000000000000000000000000001"),
+                ("day_rate", "1000000"), ("day_rate", "=SUM(A1:A2)"), ("private_field", "Not selected"))):
+            changed = json.loads(json.dumps(packet))
+            changed["blocks"][0]["model"]["activities"][0][field] = value
+            self.approve(changed)
+            target = Path(self.temp.name) / f"invalid-estimate-{index}.md"
+            failure = self.export("md", target)
+            self.assertNotEqual(failure.returncode, 0, failure.stdout)
+            self.assertNotIn("Traceback", failure.stderr)
+            self.assertFalse(target.exists())
+        packet["schema"] = 1
+        self.approve(packet)
+        self.assertNotEqual(self.export("md", Path(self.temp.name) / "schema-one.md").returncode, 0)
+        # Typed assumptions/activity detail become speaker notes even with empty supplied notes.
+        source = json.loads(json.dumps(self.source))
+        source["previous"] = digest(self.source)
+        source["data"]["publication"]["grants"][0]["treatments"] = ["excerpt"]
+        self.save(source)
+        self.source = source
+        packet["schema"] = 2
+        packet["snapshot"] = self.store.status()["snapshot"]
+        packet["blocks"][0]["notes"] = ""
+        packet["blocks"][0]["citations"][0]["record"]["revision"] = digest(source)
+        self.approve(packet)
+        blocked = Path(self.temp.name) / "unpermitted-notes.md"
+        self.assertNotEqual(self.export("md", blocked).returncode, 0)
+        self.assertFalse(blocked.exists())
+
     def test_unregistered_intake_blocks_export_until_inventory_and_packet_are_reviewed(self):
         folder = self.root / "incoming"
         folder.mkdir()

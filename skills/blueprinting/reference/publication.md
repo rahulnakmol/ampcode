@@ -22,6 +22,29 @@ Supported content shapes:
 - `table`: also `columns` and rectangular `rows`, with text cells.
 - `chart`: also `categories`, `series` (each with `name` and numeric `values`) and `unit`.
 
+Schema 2 keeps those fields and additionally permits `estimate` blocks with a `model`. The
+model is the supplied schema-1 estimate input described in [proposals.md](proposals.md), with
+exact fields `schema`, `currency`, `rate_date`, `assumptions`, `basis`, `contingency_percent`,
+`activities`. Each activity has exactly `id`, `activity`, `role`, `basis`, `quantity`,
+`days_per_unit_low`, `days_per_unit_high`, `day_rate`, `after`, and optional matching `currency`.
+No arbitrary formulas, attachments or additional metadata are accepted.
+
+This Office-facing model supports 1–1,000 activities, nonnegative numeric inputs at most
+1,000,000 with at most six decimal places excluding trailing zeros, and calculated magnitudes
+at most 1,000,000,000. Existing positive quantity/rate/high-effort, ordered low/high, valid
+predecessor and 0–100% contingency rules still apply. Unsupported inputs/results fail explicitly.
+The standalone calculator's range is unchanged. Narrative exports retain unrounded calculation
+precision until final decimal half-up rounding: six places for person-days, two for monetary
+values. These are estimate conventions, not currency-minor-unit or invoicing rules.
+
+Typed estimate narrative output includes the range table, rate date and contingency, plus
+activity assumptions, roles, bases and predecessor details in speaker notes. Accordingly, every
+estimate block requires `notes` permission even when its supplied `notes` string is empty.
+Keep decision-critical assumptions in visible text/caveats too: slides-only PDFs omit speaker
+notes. The inherited permission and review gates apply to the entire typed model. Exact arithmetic
+does not validate rates, scope, staffing, confidence, elapsed duration or commercial authority.
+XLSX formulas and their edit/recalculation qualification remain a separate unfinished layer.
+
 Use these blocks to retain claims, assumptions, calculation results, decision asks and caveats
 without changing facts between formats. Attachments and unknown fields are rejected rather than
 silently copied or dropped. Large or unusual content may need a separately reviewed composition;

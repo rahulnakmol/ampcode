@@ -9,7 +9,8 @@ from qualification import text, timestamp
 
 def validate_packet(packet):
     fields = {"schema", "title", "snapshot", "audience", "destination", "blocks"}
-    if not isinstance(packet, dict) or set(packet) != fields or packet["schema"] != 1:
+    if (not isinstance(packet, dict) or set(packet) != fields
+            or type(packet["schema"]) is not int or packet["schema"] not in (1, 2)):
         raise Invalid("Unsupported content packet; attachments and unknown fields are not exported")
     revision(packet["snapshot"])
     if not all(text(packet[k]) for k in ("title", "audience", "destination")):
@@ -21,6 +22,8 @@ def validate_packet(packet):
     for block in blocks:
         common = {"id", "kind", "title", "text", "notes", "caveats", "citations"}
         extra = {"text": set(), "table": {"columns", "rows"}, "chart": {"categories", "series", "unit"}}
+        if packet["schema"] == 2:
+            extra["estimate"] = {"model"}
         if not isinstance(block, dict) or block.get("kind") not in extra or set(block) != common | extra[block["kind"]]:
             raise Invalid("Unsupported content block")
         key = identifier(block["id"])
@@ -31,6 +34,9 @@ def validate_packet(packet):
             raise Invalid("Title, explanatory text and explicit notes required")
         if not isinstance(block["caveats"], list) or any(not text(c) for c in block["caveats"]):
             raise Invalid("Explicit caveat list required")
+        if block["kind"] == "estimate":
+            from estimate import office_values
+            office_values(block["model"])
         citations = block["citations"]
         if not isinstance(citations, list) or not citations:
             raise Invalid("Every block requires source citations")
@@ -163,7 +169,8 @@ def publication(store, packet_id, review_id):
     cited = {(c["record"]["id"], c["record"]["revision"])
              for block in packet["blocks"] for c in block["citations"]}
     for block in packet["blocks"]:
-        treatments = {c["treatment"] for c in block["citations"]} | ({"notes"} if block["notes"] else set())
+        notes = {"notes"} if block["notes"] or block["kind"] == "estimate" else set()
+        treatments = {c["treatment"] for c in block["citations"]} | notes
         # The packet postdates the source snapshot. Its declared restrictions still apply.
         if "publication" in retained.get("data", {}):
             policy_check(retained, treatments, block["caveats"])
@@ -171,7 +178,7 @@ def publication(store, packet_id, review_id):
             if edge["relation"] == "governed-by" or (edge["id"], edge["revision"]) not in cited:
                 restrictions({"id": edge["id"], "revision": edge["revision"]}, treatments, block["caveats"], set())
         for cite in block["citations"]:
-            treatments = {cite["treatment"]} | ({"notes"} if block["notes"] else set())
+            treatments = {cite["treatment"]} | notes
             restrictions(cite["record"], treatments, block["caveats"], set())
     if not gaps:
         result.update(ready=True, packet_hash=digest(packet), packet=packet)

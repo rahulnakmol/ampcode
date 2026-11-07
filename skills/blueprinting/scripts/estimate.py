@@ -3,7 +3,7 @@
 
 import argparse
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, localcontext, ROUND_HALF_UP
 import json
 from pathlib import Path
 import sys
@@ -80,6 +80,48 @@ def calculate(packet):
             "contingency_cost": list(map(str, reserve)), "total_cost": [str(a + b) for a, b in zip(cost, reserve)],
             "dependency_stages": stages, "assumptions": packet["assumptions"], "basis": packet["basis"],
             "limitations": "Arithmetic on supplied assumptions only. Person-days are not elapsed time; dependency stages are not a schedule. Cost is not price. Tax, expenses and commitments are not inferred."}
+
+
+def office_values(model):
+    """The bounded Office contract; leave the standalone calculator's range unchanged."""
+    fields = {"schema", "currency", "rate_date", "assumptions", "basis", "contingency_percent", "activities"}
+    if (not isinstance(model, dict) or set(model) != fields
+            or type(model["schema"]) is not int or model["schema"] != 1
+            or not isinstance(model["activities"], list) or not 1 <= len(model["activities"]) <= 1000):
+        raise Invalid("Office estimates require a closed schema-1 model and 1–1000 activities")
+    row_fields = {"id", "activity", "role", "basis", "quantity", "days_per_unit_low",
+                  "days_per_unit_high", "day_rate", "after"}
+    values = [model["contingency_percent"]]
+    for row in model["activities"]:
+        if not isinstance(row, dict) or set(row) not in (row_fields, row_fields | {"currency"}):
+            raise Invalid("Unknown or missing Office estimate activity fields")
+        values.extend(row[key] for key in ("quantity", "days_per_unit_low", "days_per_unit_high", "day_rate"))
+    for value in values:
+        parsed = number(value)
+        digits = parsed.as_tuple()
+        # Inspect the supplied representation without context rounding; normalize() could
+        # erase a significant digit beyond the active Decimal precision.
+        trailing = 0
+        for digit in reversed(digits.digits):
+            if digit:
+                break
+            trailing += 1
+        if parsed > 1000000 or (parsed and digits.exponent + trailing < -6):
+            raise Invalid("Office numeric inputs must be at most 1000000 with at most six decimal places")
+    # Bounded inputs can yield up to 26 fractional digits after contingency. Preserve
+    # them until the final rounding; default Decimal precision could lose a boundary digit.
+    with localcontext() as context:
+        context.prec = 60
+        result = calculate(model)
+        ranges = [result[key] for key in ("person_days", "base_cost", "contingency_cost", "total_cost")]
+        ranges.extend(row[key] for row in result["activities"] for key in ("person_days", "base_cost"))
+        if any(Decimal(value) > 1000000000 for values in ranges for value in values):
+            raise Invalid("Office calculated magnitudes must not exceed 1000000000")
+        result["display"] = {
+            key: [format(Decimal(value).quantize(Decimal("0.000001" if key == "person_days" else "0.01"),
+                                                rounding=ROUND_HALF_UP), "f") for value in result[key]]
+            for key in ("person_days", "base_cost", "contingency_cost", "total_cost")}
+    return result
 
 
 def main():

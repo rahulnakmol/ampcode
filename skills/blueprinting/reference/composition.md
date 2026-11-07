@@ -26,9 +26,10 @@ Their current public commands and schemas are unchanged by this instruction spli
 ## Check compatibility before domain work
 
 Each package carries `contract.json`. Coordinator contract/helper API 1 retains schema-1 records
-and packets; it does not claim the later template, numeric-workbook or visual-packet contracts.
-The coordinator manifest lists supported domain versions. A domain manifest names its version
-and required coordinator contract. Templates are not bundled or declared compatible yet.
+and packets; schema-2 packets additionally support bounded typed estimate data. Numeric workbooks
+and visual-packet extensions remain unfinished. The coordinator manifest lists supported domain
+versions. A domain manifest names its version and required coordinator contract. Templates are
+separate packages with their own checked contract; see [templates.md](templates.md).
 
 Read the selected domain's manifest and use its `requires` value; do not lower it to make a check
 pass. With `BLUEPRINTING_BASE` and `DOMAIN_BASE` set to the absolute paths returned by Amp, run:

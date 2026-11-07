@@ -90,7 +90,7 @@ def exporter_version():
             libraries[name] = None
     return {"libraries": libraries, "implementation": {
         name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
-        for name in ("export.py", "publication.py", "export-requirements.txt")}}
+        for name in ("export.py", "publication.py", "estimate.py", "export-requirements.txt")}}
 
 
 def stage(store, selection_id, review_id, candidate):

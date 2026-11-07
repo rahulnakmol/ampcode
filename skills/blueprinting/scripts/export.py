@@ -17,6 +17,34 @@ INK, TEAL, MUTED = "12263A", "086C75", "465766"
 FONT = "Liberation Sans"
 
 
+def narrative_packet(packet):
+    """Present the reviewed typed estimate through the same numbers in every narrative format."""
+    from estimate import office_values
+    blocks = []
+    for block in packet["blocks"]:
+        if block["kind"] != "estimate":
+            blocks.append(block)
+            continue
+        model = block["model"]
+        values = office_values(model)
+        notes = [block["notes"], "Assumptions: " + "; ".join(model["assumptions"]),
+                 "Basis: " + "; ".join(model["basis"])]
+        for row in model["activities"]:
+            notes.append(f"{row['id']} — {row['activity']}; role: {row['role']}; basis: {row['basis']}; "
+                         f"quantity: {row['quantity']}; days/unit: {row['days_per_unit_low']}–{row['days_per_unit_high']}; "
+                         f"{model['currency']}/day: {row['day_rate']}; after: {', '.join(row['after']) or 'none'}.")
+        notes.append(values["limitations"])
+        rendered = {key: value for key, value in block.items() if key != "model"}
+        rendered.update(kind="table", columns=["Measure", "Low", "High"], rows=[
+            [label, *values["display"][key]] for key, label in (
+                ("person_days", "Person-days"), ("base_cost", "Base " + model["currency"]),
+                ("contingency_cost", "Contingency " + model["currency"]), ("total_cost", "Total " + model["currency"]))],
+            text=block["text"] + f"\nRates dated {model['rate_date']}; contingency {model['contingency_percent']}%. "
+                 "Cost ≠ price; effort ≠ duration.", notes="\n".join(notes))
+        blocks.append(rendered)
+    return dict(packet, blocks=blocks)
+
+
 def table_data(block):
     if block["kind"] == "table":
         return block["columns"], block["rows"]
@@ -243,7 +271,7 @@ def render(packet, format, output):
         source_format = {"pdf-document": "docx", "pdf-deck": "pptx"}.get(format, format)
         source = base / ("content." + source_format)
         try:
-            {"md": markdown, "docx": document, "pptx": presentation}[source_format](packet, source)
+            {"md": markdown, "docx": document, "pptx": presentation}[source_format](narrative_packet(packet), source)
         except ImportError as error:
             raise Invalid("Install scripts/export-requirements.txt in an isolated Python environment") from error
         renderer = None
