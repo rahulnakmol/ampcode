@@ -1,6 +1,7 @@
 import json
 from decimal import Decimal
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -308,6 +309,100 @@ class EngagementRecordsTest(unittest.TestCase):
                                     capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(self.call("status")["records"], {})
+
+
+class SkillCompositionTest(unittest.TestCase):
+    def test_selected_package_binding_and_incompatible_dependency_controls(self):
+        skills = SCRIPT.parents[2]
+        domains = ("shaping-engagements", "discovering-requirements", "designing-functions",
+                   "publishing-engagements", "reviewing-engagements")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            selected = root / "selected package"
+            alternate = root / "other scope"
+            domain = root / "domain package"
+            for dest in (selected, alternate):
+                shutil.copytree(skills / "blueprinting", dest, ignore=shutil.ignore_patterns("__pycache__"))
+            def run(base=selected, domain_base=None, name=None, requires="1"):
+                args = [sys.executable, str(selected / "scripts/contract.py"),
+                        "--base", str(base), "--requires", requires]
+                if domain_base is not None:
+                    args += ["--domain-base", str(domain_base), "--domain", name]
+                return subprocess.run(args, cwd=root, capture_output=True, text=True)
+            for name in domains:
+                shutil.copytree(skills / name, domain)
+                result = run(domain_base=domain, name=name)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                bound = json.loads(result.stdout)
+                self.assertEqual(bound["base"], str(selected))
+                self.assertEqual(bound["domain"], name)
+                self.assertEqual(bound["helpers"]["engagement"], str(selected / "scripts/engagement.py"))
+                shutil.rmtree(domain)
+            self.assertEqual(run().returncode, 0, "Standalone coordinator must remain usable")
+            result = run(base=alternate)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("executing package", result.stderr)
+            manifest = selected / "contract.json"
+            original = manifest.read_bytes()
+            value = json.loads(original)
+            value["contract"] = 2
+            manifest.write_text(json.dumps(value))
+            result = run()
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("contract", result.stderr)
+            self.assertEqual(result.stdout, "", "Must not return alternate package paths")
+            manifest.write_bytes(original)
+            self.assertNotEqual(run(requires="2").returncode, 0)
+            manifest.unlink()
+            self.assertNotEqual(run().returncode, 0)
+            manifest.write_bytes(original)
+            helper = selected / "scripts/qualification.py"
+            helper.unlink()
+            result = run()
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("qualification.py", result.stderr)
+            helper.symlink_to(alternate / "scripts/qualification.py")
+            self.assertNotEqual(run().returncode, 0, "No cross-install symlink fallback")
+            helper.unlink()
+            shutil.copyfile(alternate / "scripts/qualification.py", helper)
+            marker = root / "unselected-code-executed"
+            foreign = root / "foreign.py"
+            foreign.write_text(f"from pathlib import Path\nPath({str(marker)!r}).touch()\n")
+            entry = selected / "scripts/engagement.py"
+            entry.unlink()
+            entry.symlink_to(foreign)
+            self.assertNotEqual(run().returncode, 0)
+            self.assertFalse(marker.exists(), "Dependency rejection must precede importing an unselected helper")
+            entry.unlink()
+            entry.write_text("class Invalid(ValueError):\n    pass\n")
+            result = run()
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, "")
+            self.assertIn("Dependency blocked", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_domain_version_and_missing_base_fail_without_engagement_effects(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            domain = root / "domain"
+            shutil.copytree(SCRIPT.parents[2] / "designing-functions", domain)
+            original = (domain / "contract.json").read_bytes()
+            args = [sys.executable, str(SCRIPT.with_name("contract.py")), "--base", str(SCRIPT.parents[1]),
+                    "--requires", "1", "--domain", "designing-functions", "--domain-base", str(domain)]
+            for changes in ({"requires": 2}, {"version": 2}, {"skill": "shaping-engagements"},
+                            {"schema": True}, {"requires": True}, {"extra": "unsupported"}):
+                value = json.loads(original)
+                value.update(changes)
+                (domain / "contract.json").write_text(json.dumps(value))
+                result = subprocess.run(args, cwd=root, capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0, changes)
+                self.assertIn("Dependency blocked", result.stderr)
+                self.assertEqual(result.stdout, "")
+            (domain / "contract.json").write_bytes(original)
+            self.assertEqual(subprocess.run(args, cwd=root, capture_output=True).returncode, 0)
+            (domain / "contract.json").unlink()
+            self.assertNotEqual(subprocess.run(args, cwd=root, capture_output=True).returncode, 0)
+            self.assertEqual(sorted(p.name for p in root.iterdir()), ["domain"])
 
 
 class EstimateTest(unittest.TestCase):
