@@ -44,7 +44,7 @@ through the shared references below; unavailable domain entry is reported, not s
 | Save, correct, reconcile or resume records | [records.md](reference/records.md) |
 | Client business agreement | [decisions.md](reference/decisions.md) |
 | Client-safe content or Notion handoff | [publication.md](reference/publication.md) |
-| Editable document, deck, PDF or inspected-byte ZIP | [exports.md](reference/exports.md) |
+| Editable document, deck, workbook, PDF or inspected-byte ZIP | [exports.md](reference/exports.md) |
 | Response deadline or uncertain external handoff | [upkeep.md](reference/upkeep.md) |
 | Due response work, follow-up receipts or recovery scan | [obligations.md](reference/obligations.md) |
 

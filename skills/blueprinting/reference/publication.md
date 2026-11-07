@@ -43,7 +43,8 @@ estimate block requires `notes` permission even when its supplied `notes` string
 Keep decision-critical assumptions in visible text/caveats too: slides-only PDFs omit speaker
 notes. The inherited permission and review gates apply to the entire typed model. Exact arithmetic
 does not validate rates, scope, staffing, confidence, elapsed duration or commercial authority.
-XLSX formulas and their edit/recalculation qualification remain a separate unfinished layer.
+XLSX uses the same model with native scenario formulas; see [exports.md](exports.md) for
+input labels, recalculation, invalid-state handling and the republication boundary.
 
 Use these blocks to retain claims, assumptions, calculation results, decision asks and caveats
 without changing facts between formats. Attachments and unknown fields are rejected rather than

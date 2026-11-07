@@ -29,14 +29,15 @@ capability for consultant workshops, operating models, kickoff, pre-sales and RF
 local helper retains exact Markdown revisions, records pending corrections and reports stale
 dependencies without overwriting human notes. It also checks reported written-client baselines
 and records explicit reconciliation. Functional coverage, estimate arithmetic and recipient-bound
-content packets now support generic local Markdown, Word, PowerPoint and PDF exports.
+content packets now support generic local Markdown, Word, PowerPoint, Excel and PDF exports.
+Excel includes literal registers and bounded native estimate scenarios, not a business baseline.
 Registered file observation, explicit Start/Resume, staged template upgrades and derived indexes
 are implemented locally; see [the template contract](./skills/blueprinting/reference/templates.md).
 The separate `blueprinting-engagement-template` source is being prepared locally, not published.
 Native Obsidian 1.15.0 has bounded synthetic editing, filtering, navigation and save/reopen evidence.
 Selected local ZIP handoffs stage files for reported inspection and package their exact bytes;
 see [the export contract](./skills/blueprinting/reference/exports.md). Export is not delivery.
-This is not the complete system: tailored executive artifacts, Excel handoffs,
+This is not the complete system: tailored executive artifacts, brand/diagram composition,
 Notion/reminder qualification and full journey qualification remain pending. Google Slides/Docs
 are deferred. Revision freshness does not establish client approval. Nothing is
 installed or activated by this source addition; Personal publication needs separate approval.

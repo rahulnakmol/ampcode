@@ -2,6 +2,7 @@ import importlib.util
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -215,6 +216,154 @@ with patch('handoff.render', side_effect=RuntimeError('injected interruption')):
         blocked = Path(self.temp.name) / "unpermitted-notes.md"
         self.assertNotEqual(self.export("md", blocked).returncode, 0)
         self.assertFalse(blocked.exists())
+
+    @unittest.skipUnless(importlib.util.find_spec("xlsxwriter") and shutil.which("libreoffice"),
+                         "Install export-requirements.txt and LibreOffice for native workbook checks")
+    def test_workbook_preserves_literal_registers_and_exact_estimate_values(self):
+        from zipfile import ZipFile
+        from xml.etree import ElementTree as ET
+        model = {"schema": 1, "currency": "USD", "rate_date": "2026-11-07",
+                 "assumptions": ["Synthetic inputs, not a quotation"], "basis": ["Illustrative workshop scope"],
+                 "contingency_percent": "0", "activities": [
+                     {"id": "scope", "activity": "Scope review", "role": "Analyst", "basis": "Synthetic scope",
+                      "quantity": "1000000", "days_per_unit_low": "1", "days_per_unit_high": "1",
+                      "day_rate": "1", "after": []},
+                     {"id": "validate", "activity": "Validation", "role": "Consultant", "basis": "Synthetic review",
+                      "quantity": "0.999999", "days_per_unit_low": "1.000001", "days_per_unit_high": "2.000001",
+                      "day_rate": "0.005", "after": ["scope"]}]}
+        register = dict(self.packet["blocks"][2], rows=[
+            ["=1+1", "+SUM(A1:A2)", "@Unassigned"], ["-1+2", "Quality lead", "Open"]])
+        packet = dict(self.packet, schema=2, blocks=[register,
+            dict(self.packet["blocks"][0], kind="estimate", model=model)])
+        self.approve(packet)
+        output = Path(self.temp.name) / "support.xlsx"
+        result = self.export("xlsx", output)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["packet_hash"], digest(packet))
+        ns = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+        with ZipFile(output) as archive:
+            strings = ["".join(node.itertext()) for node in ET.fromstring(archive.read("xl/sharedStrings.xml"))]
+            sheets = ET.fromstring(archive.read("xl/workbook.xml")).find("s:sheets", ns)
+            names = [node.attrib["name"] for node in sheets]
+            self.assertIn("Read me", names)
+            self.assertTrue(all(node.get("state", "visible") == "visible" for node in sheets))
+            def cells(name):
+                tree = ET.fromstring(archive.read(f"xl/worksheets/sheet{names.index(name) + 1}.xml"))
+                return {cell.attrib["r"]: cell for cell in tree.findall(".//s:c", ns)}
+            table = cells("Content 1")
+            self.assertEqual(strings[int(table["A8"].find("s:v", ns).text)], "=1+1")
+            self.assertIsNone(table["A8"].find("s:f", ns))
+            self.assertEqual(len([name for name in archive.namelist() if name.startswith("xl/tables/table")]), 2)
+            estimate = cells("Estimate 2")
+            for ref, expected in (("H17", "1000000.0"), ("I17", "1000000.01")):
+                self.assertIsNotNone(estimate[ref].find("s:f", ns))
+                self.assertEqual(float(estimate[ref].find("s:v", ns).text), float(expected))
+            self.assertIn("Synthetic inputs, not a quotation", " ".join(strings))
+            self.assertIn("Synthetic workshop, section 2", " ".join(strings))
+            self.assertNotIn("private raw source", " ".join(strings))
+            self.assertFalse(any("externalLink" in name or "vbaProject" in name for name in archive.namelist()))
+        # Native recalculation, not cached values, must preserve the rounding boundary.
+        # Pasted out-of-domain edits must withhold every qualified total.
+        sheet_path = f"xl/worksheets/sheet{names.index('Estimate 2') + 1}.xml"
+        for scenario, edit, expected in (("baseline", None, [1000000.00, 1000000.01]),
+                                         ("edited", ("B8", "2"), [1000000.01, 1000000.02]),
+                                         ("invalid", ("B7", "0"), None),
+                                         ("fine-quantity", ("B7", "999999.000000001"), None),
+                                         ("fine-contingency", ("B11", "99.0000000000001"), None),
+                                         ("retained-quantity", ("B7", "999999.0000000001"), None),
+                                         ("retained-effort", ("C7", "1.000000000000001"), None),
+                                         ("below-power-two", ("B7", "0.9999999999999999"), None),
+                                         ("retained-contingency", ("B11", "99.00000000000001"), None)):
+            folder = Path(self.temp.name) / scenario
+            folder.mkdir()
+            native = folder / "input.xlsx"
+            with ZipFile(output) as source, ZipFile(native, "w") as target:
+                for member in source.infolist():
+                    data = source.read(member.filename)
+                    if member.filename.startswith("xl/worksheets/") and member.filename.endswith(".xml"):
+                        tree = ET.fromstring(data)
+                        if edit and member.filename == sheet_path:
+                            tree.find(f".//s:c[@r='{edit[0]}']/s:v", ns).text = edit[1]
+                        # Force actual formula evaluation on load; converting a workbook
+                        # with intact caches can merely copy those caches in LibreOffice.
+                        for cell in tree.findall(".//s:c", ns):
+                            if cell.find("s:f", ns) is not None:
+                                value = cell.find("s:v", ns)
+                                if value is not None:
+                                    cell.remove(value)
+                        data = ET.tostring(tree, encoding="utf-8", xml_declaration=True)
+                    target.writestr(member, data)
+            converted = folder / "recalculated"
+            converted.mkdir()
+            run = subprocess.run(["libreoffice", "-env:UserInstallation=" + (folder / "profile").as_uri(),
+                                  "--headless", "--convert-to", "xlsx", "--outdir", str(converted), str(native)],
+                                 capture_output=True, text=True, timeout=90)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            with ZipFile(converted / "input.xlsx") as archive:
+                estimate = cells("Estimate 2")
+                if expected:
+                    for col, value in zip("HI", expected):
+                        self.assertEqual(float(estimate[col + "17"].find("s:v", ns).text), value)
+                        self.assertIsNotNone(estimate[col + "17"].find("s:f", ns))
+                else:
+                    for row in range(14, 18):
+                        for col in "HI":
+                            value = estimate[col + str(row)].find("s:v", ns)
+                            self.assertTrue(value is None or value.text is None)
+        original = output.read_bytes()
+        self.assertNotEqual(self.export("xlsx", output).returncode, 0)
+        self.assertEqual(output.read_bytes(), original)
+        self.store.prepare([dict(self.source, previous=digest(self.source), body="Corrected stock.")])
+        blocked = Path(self.temp.name) / "stale.xlsx"
+        self.assertNotEqual(self.export("xlsx", blocked).returncode, 0)
+        self.assertFalse(blocked.exists())
+
+    @unittest.skipUnless(importlib.util.find_spec("xlsxwriter") and all(shutil.which(tool)
+                         for tool in ("libreoffice", "pdftotext", "pdftohtml")), "Native workbook render tools required")
+    def test_workbook_prints_long_titles_and_wide_registers_readably(self):
+        from xml.etree import ElementTree as ET
+        title = ("Requirements and ownership for regional production planning, quality release, exception handling "
+                 "and client approvals — retain every exclusion and unresolved authority decision before agreeing the delivery baseline")
+        register = dict(self.packet["blocks"][2], title=title,
+                        columns=["ID", "Requirement", "Owner", "Evidence", "Acceptance", "Gap", "Decision", "Due date", "Status", "Caveat"],
+                        rows=[["REQ-1", "Controlled release", "Quality lead", "Workshop", "Pending", "Authority", "Open", "Unknown", "Proposed", "Not approved"]])
+        packet = dict(self.packet, title=title, blocks=[register])
+        self.approve(packet)
+        output = Path(self.temp.name) / "wide.xlsx"
+        self.assertEqual(self.export("xlsx", output).returncode, 0)
+        run = subprocess.run(["libreoffice", "-env:UserInstallation=" + (Path(self.temp.name) / "profile").as_uri(),
+                              "--headless", "--convert-to", "pdf", "--outdir", self.temp.name, str(output)],
+                             capture_output=True, text=True, timeout=90)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        pdf = output.with_suffix(".pdf")
+        body = subprocess.run(["pdftotext", str(pdf), "-"], capture_output=True, text=True, check=True).stdout
+        self.assertGreaterEqual(" ".join(body.split()).count("before agreeing the delivery baseline"), 3)
+        for value in ("REQ-1", "Not approved", "quality approval is open", "Synthetic workshop"):
+            self.assertIn(value, body)
+        xml = subprocess.run(["pdftohtml", "-xml", "-zoom", "1", "-i", "-stdout", str(pdf)],
+                             capture_output=True, text=True, check=True).stdout
+        tree = ET.fromstring(xml)
+        register_pages = [page for page in tree.findall("page") if "Controlled release" in " ".join(page.itertext())]
+        self.assertEqual(len(register_pages), 1)
+        self.assertIn("Not approved", " ".join(register_pages[0].itertext()), "All ten row fields must print together")
+        sizes = [int(font.attrib["size"]) for font in tree.findall(".//fontspec")]
+        self.assertTrue(sizes)
+        self.assertGreaterEqual(min(sizes), 9, "Supported wide registers must not shrink into unreadable print")
+
+        # A page break cannot make a chart fit below an arbitrarily tall repeated title.
+        chart = dict(self.packet["blocks"][1], title=title + "; " + title,
+                     categories=[f"Category {i}" for i in range(20)],
+                     series=[{"name": "Count", "values": list(range(20))}])
+        self.approve(dict(self.packet, title=chart["title"], blocks=[chart]))
+        blocked = Path(self.temp.name) / "split-chart.xlsx"
+        result = self.export("xlsx", blocked)
+        self.assertNotEqual(result.returncode, 0, "An accepted chart must fit on its printed page")
+        self.assertIn("split and review", result.stderr)
+        self.assertFalse(blocked.exists())
+        self.approve(dict(self.packet, title=title, blocks=[dict(chart, title=title)]))
+        supported = Path(self.temp.name) / "readable-chart.xlsx"
+        result = self.export("xlsx", supported)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_unregistered_intake_blocks_export_until_inventory_and_packet_are_reviewed(self):
         folder = self.root / "incoming"

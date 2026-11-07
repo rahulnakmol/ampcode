@@ -410,7 +410,7 @@ def main():
     export_parser = commands.add_parser("export")
     export_parser.add_argument("packet")
     export_parser.add_argument("review")
-    export_parser.add_argument("--format", required=True, choices=("md", "docx", "pptx", "pdf-document", "pdf-deck"))
+    export_parser.add_argument("--format", required=True, choices=("md", "docx", "pptx", "xlsx", "pdf-document", "pdf-deck"))
     export_parser.add_argument("--output", required=True)
     stage_parser = commands.add_parser("package-stage")
     stage_parser.add_argument("selection")

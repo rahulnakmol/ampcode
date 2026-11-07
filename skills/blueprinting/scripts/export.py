@@ -271,7 +271,11 @@ def render(packet, format, output):
         source_format = {"pdf-document": "docx", "pdf-deck": "pptx"}.get(format, format)
         source = base / ("content." + source_format)
         try:
-            {"md": markdown, "docx": document, "pptx": presentation}[source_format](narrative_packet(packet), source)
+            if source_format == "xlsx":
+                from workbook import workbook
+                workbook(packet, source)
+            else:
+                {"md": markdown, "docx": document, "pptx": presentation}[source_format](narrative_packet(packet), source)
         except ImportError as error:
             raise Invalid("Install scripts/export-requirements.txt in an isolated Python environment") from error
         renderer = None

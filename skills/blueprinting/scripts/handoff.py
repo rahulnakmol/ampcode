@@ -15,7 +15,7 @@ from publication import publication
 from qualification import text, timestamp
 
 
-FORMATS = {"md": ".md", "docx": ".docx", "pptx": ".pptx", "pdf-document": ".pdf", "pdf-deck": ".pdf"}
+FORMATS = {"md": ".md", "docx": ".docx", "pptx": ".pptx", "xlsx": ".xlsx", "pdf-document": ".pdf", "pdf-deck": ".pdf"}
 
 
 def current(store, key, kind):
@@ -90,7 +90,7 @@ def exporter_version():
             libraries[name] = None
     return {"libraries": libraries, "implementation": {
         name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
-        for name in ("export.py", "publication.py", "estimate.py", "export-requirements.txt")}}
+        for name in ("export.py", "publication.py", "estimate.py", "workbook.py", "export-requirements.txt")}}
 
 
 def stage(store, selection_id, review_id, candidate):

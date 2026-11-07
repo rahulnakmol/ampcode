@@ -25,14 +25,14 @@ storytelling still require design and review. The final owner deck assessment re
 
 ## Run a bounded local export
 
-Use Python 3.11 or newer. Markdown needs the standard library. Word and PowerPoint need the
+Use Python 3.11 or newer. Markdown needs the standard library. Word, Excel and PowerPoint need the
 pinned packages in `scripts/export-requirements.txt`, installed into an isolated environment.
-Slides also need Fontconfig and Liberation Sans. PDFs need the pinned local LibreOffice 7.4.7.2
+Slides and workbooks also need Fontconfig and Liberation Sans. PDFs need the pinned local LibreOffice 7.4.7.2
 renderer. Qualify a different version before changing the pin; do not disable security updates
 to preserve a renderer version. A version pin is not a security certification.
 
 Run `python3 scripts/engagement.py --root <engagement-directory> export <packet-id> <review-id>
---format <format> --output <new-file>` as one command. Formats: `md`, `docx`, `pptx`, `pdf-document`,
+--format <format> --output <new-file>` as one command. Formats: `md`, `docx`, `pptx`, `xlsx`, `pdf-document`,
 `pdf-deck`. Use a matching extension, an existing parent directory and a new file path. Existing
 files, including human-edited exports, are never replaced. Stage files in private local storage,
 not a cloud-synced folder whose upload would bypass the separate sharing review.
@@ -53,6 +53,48 @@ or caveats to make a slide fit. Font measurements reduce overflow risk but do no
 Unsupported control characters, including tabs and PowerPoint soft breaks, are rejected; use
 explicit newlines and re-review. Numeric labels that cannot fit require a reviewed split or change
 of units, not automatic rounding. PDF export requests tagging; that alone does not prove PDF/UA.
+
+## Use workbooks for supporting analysis
+
+XLSX preserves selected registers as native filterable tables with frozen headers, literal
+text, source labels and caveats. Selected charts have an editable native bar chart and a visible
+numeric table. No raw evidence is fetched, no sheet is hidden and no macros or external links
+are generated. Use reviewed stable IDs in registers; the renderer never invents missing owners
+or turns a gap into zero. Register layouts support at most 10 columns and 10,000 rows, with
+unique case-insensitive headers of at most 255 characters. Charts support at most 20 categories
+and three series. Text that cannot fit a readable row is refused; split and re-review rather
+than shrink, truncate or remove qualifications. Font measurements still require render inspection.
+Print layouts keep 100% scale: narrow sheets use landscape A4; wider estimates/registers use
+landscape A3. Chart pages follow their data table instead of splitting the chart across pages.
+The repeated title and chart must fit the printable height together; excessive combined height
+is refused with a split/review instruction. At dense category counts, the chart application may
+display alternate axis labels; the accompanying table retains every category and value.
+Use the declared paper size or a separately reviewed narrower packet, not fit-to-one-page printing
+that makes the text unreadable. Required print assets still need inspection in the target application.
+
+Schema-2 estimates retain labelled quantity, low/high effort, rate and contingency inputs,
+calculated low/high totals, and a separate visible assumptions/activity-basis sheet. Numeric
+bounds and decimal half-up conventions are in [publication.md](publication.md). Native generated
+formulas use base-1,000,000 integer pieces on visible Calculation sheets, avoiding floating-point
+SUM/ROUND disagreements at decimal ties. Those audit grids are screen-readable; only their
+explanation is in the print area. Person-days and money retain six and two displayed decimals.
+
+Recalculate in the spreadsheet application. Initial caches are for display, not proof of correct
+recalculation. Invalid pasted numeric edits withhold totals, name the affected row/contingency or
+output bound, and recover after correction. Precision checks compare scaled binary pieces against
+six-place-rounded inputs; approximate equality and numeric-to-text conversion are not sufficient.
+The status always calls the workbook an unreviewed
+scenario; numeric validity is not commercial approval. Edit labelled inputs, not formulas or
+activity identity. Formula tampering, spreadsheet-engine precision loss before validation, and
+hostile files imported after export are outside this authoring boundary. No workbook protection
+is claimed as security. Editing a file never changes the engagement baseline or authorizes
+republication: reconcile intended changes into a newly reviewed packet and render a new candidate.
+
+Verify actual edits, recalculation, save/reopen, both sides of rounding/limit boundaries and
+invalid-state recovery. Compare the displayed results exactly with the authoritative Decimal
+model, not just cached values; unrounded tolerance cannot excuse a different displayed amount.
+LibreOffice qualification is not Microsoft Excel desktop certification. Do not label formula
+presence, successful ZIP creation or a reported inspection as an application-level test.
 
 ## Inspect the actual handoff
 
@@ -78,7 +120,7 @@ Select only needed files, not a vault or a directory glob. Retain an artifact wi
 `destination` and nonempty `files`. Each file contains exactly `name`, `format`, `packet`, `review`;
 the last two are exact `{id, revision}` references to current packet and publication-review records.
 Include those references in the artifact's input edges. All packets must share the selected audience
-and destination. Formats are the local formats above; XLSX and generic branding remain forthcoming.
+and destination. Formats are the local formats above; generic branding remains forthcoming.
 Use portable leaf names such as `01-decision-brief.docx`: no paths, reserved device names, duplicates,
 case collisions or mismatched extensions. Do not add private metadata to these selections.
 
