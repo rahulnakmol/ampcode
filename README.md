@@ -30,10 +30,25 @@ local helper retains exact Markdown revisions, records pending corrections and r
 dependencies without overwriting human notes. It also checks reported written-client baselines
 and records explicit reconciliation. Functional coverage, estimate arithmetic and recipient-bound
 content packets now support generic local Markdown, Word, PowerPoint and PDF exports.
-This is not the complete system: tailored executive artifacts, native Google Slides,
-Notion/reminder integration and full journey
-qualification remain pending. Revision freshness does not establish client approval. Nothing is
+This is not the complete system: tailored executive artifacts, Excel/ZIP handoffs, templates,
+Notion/reminder qualification and full journey qualification remain pending. Google Slides/Docs
+are deferred. Revision freshness does not establish client approval. Nothing is
 installed or activated by this source addition; Personal publication needs separate approval.
+
+| Blueprinting task | Skill |
+| --- | --- |
+| Engagement continuity, policy and shared helpers | [blueprinting](./skills/blueprinting/SKILL.md) |
+| Opportunity, pre-sales and RFP | [shaping-engagements](./skills/shaping-engagements/SKILL.md) |
+| Workshops, questionnaires and evidence | [discovering-requirements](./skills/discovering-requirements/SKILL.md) |
+| Process, operating model and functional handover | [designing-functions](./skills/designing-functions/SKILL.md) |
+| Narrative, reviewed packets and exports | [publishing-engagements](./skills/publishing-engagements/SKILL.md) |
+| Source-grounded functional and communication review | [reviewing-engagements](./skills/reviewing-engagements/SKILL.md) |
+
+Domain entries load the host-selected coordinator and use its shared contracts and helpers;
+they do not duplicate state or create a subagent per skill. Standalone coordinator/helper use
+remains supported. Keep complete packages together when preparing an explicitly authorized
+Personal publication; do not copy helpers into domain packages. Installed-host qualification
+is still pending; source routing is not evidence that these skills are active in Amp.
 
 ## Meet the advisory team
 

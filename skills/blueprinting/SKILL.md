@@ -15,6 +15,23 @@ handoffs, tailored executive artifacts and independent journey qualification are
 Do not present this source as a qualified
 consulting system. Do not install or activate it implicitly.
 
+## Coordinate the current task
+
+Read [composition.md](reference/composition.md) before using a domain skill. Keep engagement
+identity, policy and shared helpers here; load only the domain needed for the current decision:
+
+| Work | Domain skill |
+| --- | --- |
+| Opportunity, pre-sales, RFP, proposal and estimate | `shaping-engagements` |
+| Workshop, questionnaire, intake and debrief | `discovering-requirements` |
+| Process, operating model, functional specification and kickoff | `designing-functions` |
+| Narrative, client-safe packet and editable handoff | `publishing-engagements` |
+| Evidence, functional coverage and communication assessment | `reviewing-engagements` |
+
+When a domain loaded this coordinator, return the shared context without loading that domain
+again. Domain loading does not spawn agents. Standalone coordinator/helper use remains supported
+through the shared references below; unavailable domain entry is reported, not silently installed.
+
 ## Load only what this decision needs
 
 | Current work | Read next |
