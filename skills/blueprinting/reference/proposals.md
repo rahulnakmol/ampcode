@@ -54,3 +54,23 @@ rates or assumptions change, and keep earlier versions and their limitations.
 
 Missing estimating inputs produce named questions, not fabricated numbers. A valid synthetic
 calculation proves arithmetic only, not the realism of an enterprise transformation estimate.
+
+## Keep continuity when the opportunity changes
+
+Retain an opportunity disposition with the reported state (`won`, `lost` or `paused`), exact source,
+named decision maker, date, reason, uncertainty and next obligations. A CRM label or consultant's
+prediction is not evidence that a contract was signed. Update the working note for navigation;
+retain the supporting source and disposition separately through the record protocol.
+
+- **Won:** keep the same engagement identity. Carry proposal scope, exclusions, estimates and
+  unresolved assumptions into kickoff. Identify which functional versions have written client
+  confirmation; a commercial win does not approve every requirement or establish readiness.
+- **Lost:** preserve known reasons separately from hypotheses and missing client feedback. Record
+  outstanding obligations and permission/retention decisions. Do not delete the opportunity or
+  turn its private evidence into a reusable reference, testimonial or case study.
+- **Paused:** name the trigger for reconsideration, accountable owner and agreed review date, or
+  state that the date is unknown. A pause is not a deadline extension, withdrawal or schedule grant.
+
+Reopening uses the retained history, then reassesses changed evidence, authority, rates and scope.
+It does not restore stale approvals. Apply the response-obligation amendment/withdrawal contracts
+when due work actually changes. Do not infer outreach permission from a next-action field.

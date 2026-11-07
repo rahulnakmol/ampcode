@@ -19,7 +19,7 @@ class ObligationTest(unittest.TestCase):
         self.calendar = self.save("calendar", "source", {"calendar": {
             "zone": "Asia/Kolkata", "weekdays": [0, 1, 2, 3, 4], "holidays": []}})
         self.decision = self.save("release", "decision", {"state": "open", "question": "Who can release held stock?",
-            "first_raised": "2026-11-06T16:00:00+05:30"})
+            "scope": "production", "first_raised": "2026-11-06T16:00:00+05:30"})
         self.data = {"purpose": "response-obligation", "decision": self.decision,
             "owner": None, "start": "2026-11-06T16:00:00+05:30", "due": "2026-11-09T16:00:00+05:30",
             "calendar": self.calendar, "due_basis": "next-working-day", "next_action": "Ask the quality lead for the release authority."}
@@ -45,6 +45,52 @@ class ObligationTest(unittest.TestCase):
 
     def scan(self, at="2026-11-10T17:00:00+05:30", *args):
         return self.call("obligations", "--at", at, "--cadence-seconds", "3600", *args)
+
+    def test_written_withdrawal_stops_due_work_without_accepting_or_erasing_uncertainty(self):
+        appointment = self.save("appointment", "source", {"location": "Synthetic authority appointment"})
+        authority = self.save("authority", "authority", {"status": "confirmed", "actor": "Client COO",
+            "scopes": ["production"], "verified_by": "Consultant", "basis": appointment}, [appointment])
+        confirmation_data = {"medium": "written", "origin": "client", "author": "Client COO", "identity": "confirmed",
+            "date": "2026-11-09", "location": "Synthetic withdrawal email", "uncertainties": [],
+            "confirmation": {"scope": "production", "target": self.decision, "response": "accept", "intent": "withdraw"}}
+        confirmation = self.save("withdraw-email", "source", dict(confirmation_data, medium="verbal"), [self.decision])
+        data = {"state": "accepted", "intent": "withdraw", "target": self.decision, "scope": "production",
+            "authority": authority, "confirmation": confirmation, "verified_by": "Consultant",
+            "verified_at": "2026-11-09T17:00:00+05:30"}
+        draft = self.save("withdraw-release", "decision", {"state": "draft"})
+        withdrawal = self.save("withdraw-release", "decision", data, [self.decision, authority, confirmation],
+            previous=draft["revision"])
+        self.assertEqual(next(d for d in self.scan()["decisions"] if d["id"] == "release")["state"], "open")
+        confirmation = self.save("withdraw-email", "source", confirmation_data, [self.decision], previous=confirmation["revision"])
+        withdrawal = self.save("withdraw-release", "decision", dict(data, confirmation=confirmation),
+            [self.decision, authority, confirmation], previous=withdrawal["revision"])
+        report = self.scan()
+        self.assertEqual(report["decisions"][0]["state"], "withdrawn")
+        self.assertEqual(report["decisions"][0]["first_raised"], "2026-11-06T16:00:00+05:30")
+        row = report["obligations"][0]
+        self.assertEqual(row["state"], "withdrawn")
+        self.assertEqual(row["due"], self.data["due"])
+        self.assertEqual(row["late_seconds"], 3600)
+        self.assertEqual(row["notification"], "not-needed")
+        self.assertFalse(self.call("baseline", "withdraw-release")["ready"], "Withdrawal must never pass acceptance")
+        note = self.save("not-a-sent-action", "artifact", {"purpose": "note"})
+        for key, follows, refs in (("malformed-follow", ["bad"], []), ("empty-follow", [], []),
+                                   ("malformed-id", {"id": []}, []), ("wrong-follow", note, [note])):
+            self.save(key, "artifact", dict(self.data, follows=follows), [self.decision, self.calendar, *refs])
+            invalid = next(r for r in self.scan()["obligations"] if r["id"] == key)
+            self.assertEqual(invalid["state"], "overdue")
+            self.assertEqual(invalid["notification"], "needed")
+            self.assertTrue(invalid["gaps"])
+        self.save("unknown-send", "source", {"purpose": "reminder-receipt", "obligation": self.obligation,
+            "marker": row["reminder_marker"], "stage": row["reminder_stage"], "outcome": "unknown",
+            "checked_by": "Consultant", "checked_at": "2026-11-09T16:30:00+05:30", "location": "Synthetic timeout"},
+            [self.obligation])
+        self.assertEqual(self.scan()["obligations"][0]["notification"], "reconcile")
+        # A changed authority basis reopens current use, without deleting the withdrawal history.
+        self.save("appointment", "source", {"location": "Appointment corrected"}, previous=appointment["revision"])
+        reopened = self.scan()
+        self.assertEqual(next(d for d in reopened["decisions"] if d["id"] == "release")["state"], "open")
+        self.assertEqual(reopened["obligations"][0]["state"], "overdue")
 
     def test_overdue_unassigned_work_survives_gap_and_draft_followup(self):
         check = self.save("last-check", "artifact", {"purpose": "obligation-check",

@@ -46,7 +46,11 @@ def baseline(store, decision_id, expected_intent="accept"):
     if not text(scope):
         gaps.append("Decision scope required")
     target = record(data.get("target"))
-    if target.get("kind") not in {"requirement", "mission", "artifact"}:
+    if expected_intent == "withdraw":
+        if (target.get("kind") != "decision" or target.get("data", {}).get("state") != "open"
+                or target.get("data", {}).get("scope") != scope):
+            gaps.append("Withdrawal must identify an exact open decision in the same scope")
+    elif target.get("kind") not in {"requirement", "mission", "artifact"}:
         gaps.append("A requirement, mission or artifact version must be decided")
     authority = record(data.get("authority"), "authority").get("data", {})
     record(authority.get("basis"), "source")
@@ -69,7 +73,7 @@ def baseline(store, decision_id, expected_intent="accept"):
     confirmation = source.get("confirmation", {})
     if not isinstance(confirmation, dict) or (confirmation.get("target") != data.get("target")
             or confirmation.get("scope") != scope or confirmation.get("response") != "accept"
-            or data.get("intent", "accept") not in ("accept", "exclude")
+            or data.get("intent", "accept") not in ("accept", "exclude", "withdraw")
             or confirmation.get("intent", "accept") != data.get("intent", "accept")):
         gaps.append("Confirmation does not accept this exact scope and version")
     return {"ready": not gaps, "evidence_class": "reported", "decision": decision_id,

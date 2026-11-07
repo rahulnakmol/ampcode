@@ -1,6 +1,6 @@
 """Read-only response scan. Reported receipts are not authenticated delivery or decisions."""
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from engagement import Invalid, digest, revision
 from qualification import baseline, text, timestamp
@@ -42,9 +42,44 @@ def scan(store, at, cadence_seconds, last_check=None):
             chain.append(store.read_record(record["id"], chain[-1]["previous"]))
         return list(reversed(chain))
 
+    withdrawals = {}
+    withdrawal_records = set()
+    for key, record in records.items():
+        chain = [item for item in history(record) if item["kind"] == "decision"]
+        if not any(item.get("data", {}).get("intent") == "withdraw" for item in chain):
+            continue
+        # An incomplete separate draft can be completed, but an existing question or business
+        # acceptance cannot disappear by changing its intent to withdrawal.
+        earlier = [item.get("data", {}) for item in chain if item.get("data", {}).get("intent") != "withdraw"]
+        if any(data.get("state") not in (None, "draft") or text(data.get("question"))
+               or "first_raised" in data or data.get("intent") is not None for data in earlier):
+            continue
+        withdrawal_records.add(key)
+        result = baseline(store, key, "withdraw")
+        if not result["ready"]:
+            gaps.extend(f"{key}: {gap}" for gap in result["gaps"])
+            continue
+        data = record["data"]
+        target = data["target"]
+        try:
+            closed = instant(data["verified_at"])
+            original = next(item for item in history(records[target["id"]]) if item["kind"] == "decision").get("data", {})
+            if not instant(original.get("first_raised")) <= closed <= now:
+                raise Invalid("Withdrawal review must follow the original question and precede this check")
+            source = read(data["confirmation"], "source")
+            if date.fromisoformat(source["date"]) > closed.date():
+                raise Invalid("Withdrawal review predates its written confirmation")
+        except Invalid as error:
+            gaps.append(f"{key}: {error}")
+            continue
+        prior = withdrawals.get(target["id"])
+        if prior is None or closed < instant(prior["qualified_at"]):
+            withdrawals[target["id"]] = {"decision": target, "withdrawal": ref(key),
+                                           "qualified_at": data["verified_at"]}
+
     decisions = []
     for key, record in records.items():
-        if not any(item["kind"] == "decision" for item in history(record)):
+        if key in withdrawal_records or not any(item["kind"] == "decision" for item in history(record)):
             continue
         original = next(item for item in history(record) if item["kind"] == "decision")
         first = original.get("data", {}).get("first_raised")
@@ -59,7 +94,7 @@ def scan(store, at, cadence_seconds, last_check=None):
         resolved = record["kind"] == "decision" and baseline(store, key)["ready"]
         if data.get("state") in ("accepted", "withdrawn") and not resolved:
             gaps.append(f"{key}: claimed closure lacks current qualified decision evidence")
-        decisions.append({"id": key, "state": "resolved" if resolved else "open", "first_raised": first,
+        decisions.append({"id": key, "state": "withdrawn" if key in withdrawals else "resolved" if resolved else "open", "first_raised": first,
                           "age_seconds": age, "question": data.get("question", original.get("data", {}).get("question"))})
 
     protected = ("decision", "owner", "start", "due", "calendar", "due_basis", "next_action", "follows", "agreement")
@@ -161,6 +196,16 @@ def scan(store, at, cadence_seconds, last_check=None):
             gaps.append(f"{key}: {error}")
 
     for row in rows:
+        if row["follows"] is not None:
+            parent = actions.get(row["follows"].get("id")) if (isinstance(row["follows"], dict)
+                     and text(row["follows"].get("id"))) else None
+            if not parent or row["follows"] != ref(row["follows"]["id"]):
+                row["gaps"].append("Next response does not follow a current verified sent action")
+        withdrawal = withdrawals.get(row["decision"].get("id")) if (isinstance(row["decision"], dict)
+                     and text(row["decision"].get("id"))) else None
+        if withdrawal and (withdrawal["decision"] != row["decision"] or not row["current"] or row["gaps"]
+                           or instant(withdrawal["qualified_at"]) < instant(row["start"])):
+            withdrawal = None
         matched = [(key, value) for key, value in actions.items()
                    if value["obligation"] == {"id": row["id"], "revision": row["revision"]}]
         if matched and row["current"] and not row["gaps"]:
@@ -170,15 +215,17 @@ def scan(store, at, cadence_seconds, last_check=None):
             successors = [item for item in rows if item["follows"] == ref(key) and item["decision"] == row["decision"]
                           and item["current"] and not item["gaps"] and not item["unassigned"]
                           and instant(item["start"]) == action["sent"]]
-            if not successors:
+            if not successors and not withdrawal:
                 row["gaps"].append("Sent follow-up has no current owned next response obligation")
-        if row["follows"]:
-            parent = actions.get(row["follows"].get("id")) if isinstance(row["follows"], dict) else None
-            if not parent or row["follows"] != ref(row["follows"]["id"]):
-                row["gaps"].append("Next response does not follow a current verified sent action")
+        if withdrawal:
+            row["state"] = "withdrawn"
+            row["withdrawal"] = withdrawal
+            row["overdue_seconds"] = 0
+            lateness = max(0, (instant(withdrawal["qualified_at"]) - instant(row["due"])).total_seconds())
+            row["late_seconds"] = min(row["late_seconds"], lateness) if row["late_seconds"] is not None else lateness
         marker = digest({"obligation": {"id": row["id"], "revision": row["revision"]}, "stage": row["reminder_stage"]})
         row["reminder_marker"] = marker
-        row["notification"] = "needed" if row["state"] != "action-recorded" else "not-needed"
+        row["notification"] = "not-needed" if row["state"] in ("action-recorded", "withdrawn") else "needed"
         for receipt_key, receipt_record in records.items():
             receipt = receipt_record.get("data", {})
             unknown = [item for item in history(receipt_record)
@@ -250,6 +297,7 @@ def scan(store, at, cadence_seconds, last_check=None):
     else:
         gaps.append("No previous observed check; monitoring coverage is unknown")
     return {"schema": 1, "checked_at": at, "snapshot": state["snapshot"], "evidence_class": "reported",
-            "decisions": decisions, "obligations": rows, "pending_operations": state["pending"],
+            "decisions": decisions, "withdrawals": list(withdrawals.values()),
+            "obligations": rows, "pending_operations": state["pending"],
             "recovery": recovery, "gaps": gaps, "remote_effect": False,
             "limitations": "Full retained scan, not a scheduler or delivery proof. Review gaps and actual evidence; no client contact is authorized."}

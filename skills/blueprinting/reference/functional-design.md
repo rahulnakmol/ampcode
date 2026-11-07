@@ -74,3 +74,23 @@ owners, resource assumptions, unresolved decisions and delivery dependencies. Ca
 assumptions forward explicitly. Produce a kickoff pack only for the needed scope: baseline and
 exceptions, responsibilities, decision calendar, workstreams, readiness checks, acceptance and
 first actions. A commercial signature does not prove all functional details were agreed.
+
+## Handover and closeout preserve unresolved work
+
+For each handed-over outcome, identify the exact baseline, receiving role, expected capability,
+acceptance example, evidence, remaining exception and responsibility for resolving it. Record
+knowledge-transfer needs and actual readiness separately from the planned session. A delivered
+file or attended workshop is not evidence that the receiving team can perform the work.
+
+Keep handover preparation, reviewed publication, observed delivery, recipient acknowledgment and
+client business acceptance separate. Select only useful deliverables; include the reviewed file
+manifest and unresolved obligations without exposing private working notes. An unowned dependency
+keeps that handover item open even when the parent workstream is labelled done.
+
+Closeout compares agreed outcomes with demonstrated outcomes and explicitly unmeasured benefits.
+Retain client feedback as attributed evidence, not a testimonial license. Assign outstanding
+commitments, benefit-check owners/dates, review questions and retention decisions. Do not mark an
+unknown benefit as zero or achieved, erase history to close an engagement, delete evidence under
+an inferred retention policy, or enable follow-up contact automatically. A reusable lesson needs
+the permission, contrary evidence and later outcome check described in discovery.md. Keep its
+original context and retirement history; another engagement's approval is never inherited.

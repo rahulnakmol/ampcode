@@ -13,11 +13,23 @@ a client or activate a schedule.
 
 ## A decision is not its next response
 
-Keep `first_raised` and `question` on the first `decision` revision. The scan preserves that original
+Keep `first_raised`, `question` and the business `scope` on the first open `decision` revision. The scan preserves that original
 time even after a later follow-up or owner transfer. Missing original time remains a gap. Business
 closure requires the existing current `baseline` check. A bare `accepted` or `withdrawn` label is
-not closure. Explicit withdrawal qualification is not yet implemented; retain its evidence and
-keep it visible for review rather than treating the label as authority.
+not closure. To withdraw an open question, retain a **separate** decision with `intent: withdraw`
+and the written confirmation/authority fields from [decisions.md](decisions.md). Its exact `target`
+is the open decision, not a requirement; its scope must match. Both decision and client confirmation
+must say `intent: withdraw`. Keep the original open record and age intact. The withdrawal review
+time must follow the original question and the written confirmation, and not be in the future.
+
+The scan reports qualified `withdrawals`, marks their questions and current matching responses
+`withdrawn`, and withholds new reminder work. Due times remain visible; `late_seconds` measures
+time until the reported withdrawal review, or the earlier qualifying sent response when present.
+Unknown sends and pending operations still require reconciliation. Stale withdrawal evidence
+reopens current qualification without erasing its history. A response created after the withdrawal,
+or one with unresolved data/amendment gaps, stays visible for review rather than being suppressed.
+This does not accept a business baseline, exclude a requirement, undo a previously accepted business
+decision, delete history or prove client authorship. Those are different decisions and reviews.
 
 Retain an `artifact` with `purpose: response-obligation` for each action due:
 
