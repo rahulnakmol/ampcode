@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Prepares an Amp orb for this repository. Runs once per fresh orb and again on stale snapshots,
+# so every step is idempotent and cheap when its result already exists.
+#
+# `make check` needs only amp, bun, and python3 (standard library), which the orb base image
+# provides. The rest prepares the distill skill's runtime: a private yt-dlp venv, ffmpeg, and a
+# Chromium executable for `distill.py pdf`.
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+bun_version=1.4.4 # Keep in sync with .github/workflows/check.yml.
+
+step() {
+	local label=$1 start=$SECONDS
+	shift
+	echo "==> $label"
+	"$@"
+	echo "<== $label ($((SECONDS - start))s)"
+}
+
+check_toolchain() {
+	local tool missing=()
+	for tool in git amp bun python3 node; do
+		command -v "$tool" >/dev/null || missing+=("$tool")
+	done
+	if ((${#missing[@]})); then
+		echo "error: missing required tools: ${missing[*]}" >&2
+		return 1
+	fi
+	if [[ $(bun --version) != "$bun_version" ]]; then
+		echo "warning: bun $(bun --version) differs from CI's bun $bun_version"
+	fi
+	echo "amp $(amp --version | awk '{ print $1 }'), bun $(bun --version), $(python3 --version), node $(node --version)"
+}
+
+install_ffmpeg() {
+	if command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null; then
+		echo 'ffmpeg already installed'
+		return
+	fi
+	sudo apt-get update -q
+	sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q ffmpeg
+}
+
+install_distill_runtime() {
+	# ~/.local/bin is on PATH in orb login shells, so linking there needs no profile changes.
+	local bin_dir=$HOME/.local/bin browser
+	mkdir -p "$bin_dir"
+
+	# The orb's agent-browser ships Chrome for Testing outside PATH; expose the newest one so
+	# `distill.py pdf` finds it as `chromium`. Relinking on each run follows base image updates.
+	browser=$(find "$HOME/.agent-browser/browsers" -maxdepth 2 -path '*/chrome-*/chrome' -type f 2>/dev/null |
+		sort -V | tail -n 1)
+	if [[ -z $browser ]]; then
+		echo 'no agent-browser Chrome found; distill.py pdf needs --browser or DISTILL_BROWSER'
+	elif [[ -L $bin_dir/chromium ]] || ! command -v chromium >/dev/null; then
+		ln -sfn "$browser" "$bin_dir/chromium"
+		echo "chromium -> $browser"
+	fi
+
+	# Creates ~/.cache/distilling-videos/venv with yt-dlp[default]; no network once it exists.
+	"$repo_root/skills/distill/scripts/bootstrap.sh"
+	ln -sfn "${XDG_CACHE_HOME:-$HOME/.cache}/distilling-videos/venv/bin/yt-dlp" "$bin_dir/yt-dlp"
+}
+
+cd "$repo_root"
+step 'Check toolchain' check_toolchain
+step 'Install ffmpeg' install_ffmpeg
+step 'Install distill runtime' install_distill_runtime
