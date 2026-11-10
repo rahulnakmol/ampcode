@@ -103,6 +103,16 @@ A reconciled old marker never counts as delivery for an amended obligation's new
 Use the external-effect journal before authorized host calls; never infer retry permission from
 a scan. Neither source hashes nor reported receipts establish host-side idempotency.
 
+For an Amp thread reminder, inspect the actual assistant reply before reconciling. If the
+conversation view omits its identity, use read-only `amp threads export <thread-id>` and match
+one completed assistant message by the exact reminder marker and expected content. Retain its
+provider-returned `protocolMessageID` as `effect_id`, the thread URL as `location`, and the
+observed message text and check time. A schedule ID, locally invented identifier or text match
+without a provider identity is not a sent receipt. If export or identity is unavailable, keep
+the outcome unknown; do not resend automatically. Exports contain the whole conversation:
+use restricted temporary storage, retain only the necessary receipt evidence, and remove the
+full export after inspection. Later manual readback does not become an earlier scheduled check.
+
 After inspecting a successful scan, retain an `artifact` check with purpose `obligation-check`,
 outcome `observed`, actual `checked_at`, and the report/snapshot in its body. Supply that record on
 the next check. Recovery reports elapsed seconds and scheduled intervals strictly missed before
