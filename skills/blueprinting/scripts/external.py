@@ -6,7 +6,7 @@ from pathlib import Path
 import tempfile
 
 from engagement import Invalid, digest, identifier, revision
-from export import markdown
+from export import render
 from publication import publication
 from qualification import text, timestamp
 
@@ -60,7 +60,7 @@ def prepare(store, value):
             raise Invalid("Matching content/destination already has an operation; a new ID must not bypass reconciliation")
     with tempfile.TemporaryDirectory() as temporary:
         content = Path(temporary) / "content.md"
-        markdown(checked["packet"], content)
+        render(checked["packet"], "md", content)
         if hashlib.sha256(content.read_bytes()).hexdigest() != value["content_hash"]:
             raise Invalid("Content hash must match the reviewed packet's Markdown export")
     inputs = [{"relation": "derived-from", "id": key, "revision": state["records"][key]["revision"]}
@@ -77,6 +77,11 @@ def attempt(store, key):
     record, head = current(store, key)
     if not head["current"] or record["data"]["state"] != "prepared":
         raise Invalid("Only a current prepared operation may begin; reconcile any uncertain prior attempt")
+    checked = publication(store, record["data"]["packet"]["id"], record["data"]["review"]["id"])
+    if not checked["ready"]:
+        raise Invalid("Publication blocked: " + "; ".join(checked["gaps"]))
+    if checked["packet_hash"] != record["data"]["packet_hash"]:
+        raise Invalid("Prepared packet changed; review a new operation before attempting an effect")
     data = dict(record["data"], state="unknown", attempted_at=datetime.now(timezone.utc).isoformat())
     # Write uncertainty BEFORE the host tool call. A crash cannot leave a retryable prepared state.
     result = save(store, key, data, record["inputs"], head["revision"])

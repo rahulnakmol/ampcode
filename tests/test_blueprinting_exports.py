@@ -804,6 +804,77 @@ with patch('handoff.render', side_effect=RuntimeError('injected interruption')):
         self.assertNotEqual(self.export("md", blocked).returncode, 0)
         self.assertFalse(blocked.exists())
 
+    def test_external_attempt_rechecks_intake_without_advancing_a_blocked_journal(self):
+        original_root = self.root
+        for scenario in ("late-file", "pending-registration", "unrelated-note"):
+            with self.subTest(scenario=scenario):
+                self.root = Path(self.temp.name) / scenario
+                shutil.copytree(original_root, self.root)
+                self.store = Engagement(self.root)
+                (self.root / "incoming").mkdir()
+                self.save(self.record("intake-policy", "note", {"intake_folders": ["incoming"]}))
+                content = Path(self.temp.name) / (scenario + ".md")
+                self.assertEqual(self.export("md", content).returncode, 0)
+                intent = Path(self.temp.name) / (scenario + ".json")
+                intent.write_text(json.dumps({"id": "effect", "packet": "brief", "review": "review",
+                    "kind": "notion-new-page", "content_hash": hashlib.sha256(content.read_bytes()).hexdigest(),
+                    "authorized_by": "Synthetic consultant", "authorized_at": "2026-11-02T12:00:00+00:00"}))
+                def call(*args):
+                    return subprocess.run([sys.executable, str(SCRIPTS / "engagement.py"), "--root", str(self.root), *args],
+                                          capture_output=True, text=True)
+                prepared = call("external-prepare", str(intent))
+                self.assertEqual(prepared.returncode, 0, prepared.stderr)
+                before = self.store.status()["records"]["effect"]["revision"]
+                if scenario == "late-file":
+                    (self.root / "incoming/late.md").write_text("New publication restriction awaiting review")
+                elif scenario == "pending-registration":
+                    source = self.root / "manual-source.md"
+                    source.write_text("Supplied evidence awaiting registration review")
+                    self.store.prepare([self.record("new-source", "source", {"input_file": {
+                        "path": source.name, "sha256": hashlib.sha256(source.read_bytes()).hexdigest()}})])
+                else:
+                    self.save(self.record("unrelated", "note", {}))
+                attempted = call("external-attempt", "effect")
+                status = json.loads(call("external-status", "effect").stdout)
+                if scenario == "unrelated-note":
+                    self.assertEqual(attempted.returncode, 0, attempted.stderr)
+                    self.assertEqual(status["state"], "unknown")
+                else:
+                    self.assertNotEqual(attempted.returncode, 0)
+                    self.assertIn("Publication blocked", attempted.stderr)
+                    self.assertEqual(status["state"], "prepared")
+                    self.assertEqual(self.store.status()["records"]["effect"]["revision"], before)
+
+    def test_external_prepare_uses_supported_markdown_rendering(self):
+        model = {"schema": 1, "currency": "USD", "rate_date": "2026-11-07",
+                 "assumptions": ["Synthetic scope"], "basis": ["Supplied test inputs"], "contingency_percent": "15",
+                 "activities": [{"id": "scope", "activity": "Scope", "role": "Analyst", "basis": "Synthetic",
+                    "quantity": "2", "days_per_unit_low": "3", "days_per_unit_high": "5", "day_rate": "700", "after": []}]}
+        estimate = dict(self.packet, schema=2, blocks=[dict(self.packet["blocks"][0], kind="estimate", model=model)])
+        for label, packet in (("estimate", estimate), ("diagram", self.diagram_packet())):
+            with self.subTest(packet=label):
+                self.approve(packet)
+                content = Path(self.temp.name) / (label + ".md")
+                exported = self.export("md", content)
+                self.assertEqual(exported.returncode, 0, exported.stderr)
+                self.assertIn("4830.00 | 8050.00" if label == "estimate" else "release-lot", content.read_text())
+                intent = Path(self.temp.name) / (label + ".json")
+                value = {"id": label + "-effect", "packet": "brief", "review": "review",
+                    "kind": "notion-new-page", "content_hash": "0" * 64,
+                    "authorized_by": "Synthetic consultant", "authorized_at": "2026-11-02T12:00:00+00:00"}
+                intent.write_text(json.dumps(value))
+                rejected = subprocess.run([sys.executable, str(SCRIPTS / "engagement.py"), "--root", str(self.root),
+                    "external-prepare", str(intent)], capture_output=True, text=True)
+                self.assertNotEqual(rejected.returncode, 0)
+                self.assertIn("Content hash must match", rejected.stderr)
+                self.assertNotIn(value["id"], self.store.status()["records"])
+                value["content_hash"] = hashlib.sha256(content.read_bytes()).hexdigest()
+                intent.write_text(json.dumps(value))
+                prepared = subprocess.run([sys.executable, str(SCRIPTS / "engagement.py"), "--root", str(self.root),
+                    "external-prepare", str(intent)], capture_output=True, text=True)
+                self.assertEqual(prepared.returncode, 0, prepared.stderr)
+                self.assertEqual(json.loads(prepared.stdout)["state"], "prepared")
+
     def test_external_attempt_survives_resume_and_requires_matching_readback(self):
         from datetime import datetime, timezone
         import hashlib
