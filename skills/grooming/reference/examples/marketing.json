@@ -1,0 +1,362 @@
+{
+  "contract": "backlog/v1",
+  "title": "Close Assist launch campaign, Q1 2027",
+  "approvers": [
+    {
+      "name": "Leah Brandt (CMO)",
+      "github": "lbrandt"
+    },
+    {
+      "name": "Sam Iyer (Head of Sales, mid-market)",
+      "github": "siyer"
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "title": "Pre-launch ready",
+      "due": "2027-02-26"
+    },
+    {
+      "id": "M2",
+      "title": "Launch weeks",
+      "due": "2027-03-31"
+    }
+  ],
+  "items": [
+    {
+      "id": "I-1",
+      "type": "initiative",
+      "title": "Launch Close Assist to mid-market finance leaders",
+      "domain": "marketing",
+      "problem": "Close Assist ships on 2027-03-03 with no pipeline: the mid-market finance audience does not know the product, and sales has 0 qualified opportunities for it (E2, E3).",
+      "drivers": [
+        {
+          "id": "D-1",
+          "statement": "Revenue: sales needs 60 qualified opportunities for Close Assist in Q2 to hit the new-product bookings plan"
+        },
+        {
+          "id": "D-2",
+          "statement": "Positioning: establish the brand in month-end close automation before two competitors launch in H1"
+        }
+      ],
+      "outcome": "By the end of March, 400 marketing-qualified leads from the target audience have entered the funnel and sales has accepted 60 of them as opportunities.",
+      "owner": "Leah Brandt",
+      "prd": "brief.md",
+      "non_goals": [
+        "Enterprise accounts (handled by field marketing)",
+        "Paid search outside the UK and Germany"
+      ],
+      "trace": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "G-1",
+      "type": "goal",
+      "parent": "I-1",
+      "title": "400 marketing-qualified leads from the target audience by 31 March",
+      "metric": "MQLs with campaign 'q1-close-assist' and a finance title at 200–2,000-employee companies, from the CRM",
+      "baseline": "0",
+      "target": "400",
+      "by": "2027-03-31",
+      "drivers": [
+        "D-1",
+        "D-2"
+      ],
+      "trace": [
+        "R-1"
+      ]
+    },
+    {
+      "id": "G-2",
+      "type": "goal",
+      "parent": "I-1",
+      "title": "Sales accepts 60 opportunities from the campaign by 30 April",
+      "metric": "Opportunities with source campaign 'q1-close-assist' in stage 'accepted', from the CRM",
+      "baseline": "0",
+      "target": "60",
+      "by": "2027-04-30",
+      "drivers": [
+        "D-1"
+      ],
+      "trace": [
+        "R-2"
+      ]
+    },
+    {
+      "id": "F-1",
+      "type": "feature",
+      "parent": "G-1",
+      "title": "Launch webinar with a live close demo",
+      "description": "A 45-minute webinar on 2027-03-10 where a customer controller and our product lead run a live month-end close, with a registration page, a 3-email invitation sequence, and an on-demand recording.",
+      "benefit_hypothesis": "We believe a live demo with a peer controller will convert better than ads; we will know when the webinar produces at least 200 of the 400 MQLs.",
+      "wsjf": {
+        "business_value": 13,
+        "time_criticality": 13,
+        "risk_reduction": 5,
+        "job_size": 8
+      },
+      "milestone": "M1",
+      "trace": [
+        "R-1",
+        "AC-1"
+      ]
+    },
+    {
+      "id": "S-1",
+      "type": "story",
+      "parent": "F-1",
+      "title": "Webinar registration page is live with tracking",
+      "as_a": "finance director at a mid-market company",
+      "i_want": "a registration page that tells me in under a minute what I will see and lets me register with 4 fields",
+      "so_that": "I can decide to attend from the invitation email",
+      "work": "launch",
+      "acceptance": [
+        {
+          "id": "S-1.1",
+          "given": "the approved copy from S-2",
+          "when": "the page is published",
+          "then": "it has exactly 4 form fields, loads in under 2 seconds on 4G in the page-speed test, and every registration creates a CRM contact with campaign 'q1-close-assist'"
+        },
+        {
+          "id": "S-1.2",
+          "given": "a test registration",
+          "when": "it is submitted",
+          "then": "the confirmation email with a calendar file arrives within 5 minutes"
+        }
+      ],
+      "priority": "must",
+      "size": "S",
+      "status": "ready",
+      "depends_on": [
+        "S-2"
+      ],
+      "owner": "Marketing ops",
+      "trace": [
+        "AC-1"
+      ]
+    },
+    {
+      "id": "S-2",
+      "type": "story",
+      "parent": "F-1",
+      "title": "Webinar copy and invitation emails are approved",
+      "as_a": "campaign manager",
+      "i_want": "the landing page copy and a 3-email invitation sequence written to the messaging brief",
+      "so_that": "every channel says the same thing about the webinar",
+      "work": "content",
+      "acceptance": [
+        {
+          "id": "S-2.1",
+          "given": "the messaging brief v2",
+          "when": "the copy is delivered",
+          "then": "the page copy and all 3 emails use the brief's headline and 3 proof points, and each email is under 150 words"
+        },
+        {
+          "id": "S-2.2",
+          "given": "the delivered copy",
+          "when": "legal and the CMO review it",
+          "then": "both approvals are recorded in the copy doc by 2027-02-12"
+        }
+      ],
+      "priority": "must",
+      "size": "M",
+      "status": "ready",
+      "owner": "Content team",
+      "trace": [
+        "AC-1"
+      ]
+    },
+    {
+      "id": "F-2",
+      "type": "feature",
+      "parent": "G-1",
+      "title": "LinkedIn launch programme for UK and German finance leaders",
+      "description": "Organic posts from the company page and two executives, plus a paid sponsored-content campaign targeted at finance titles in 200–2,000-employee companies in the UK and Germany, all driving to the webinar.",
+      "benefit_hypothesis": "We believe targeted LinkedIn reach will fill the webinar; we will know when LinkedIn sources at least 50% of webinar registrations.",
+      "wsjf": {
+        "business_value": 8,
+        "time_criticality": 13,
+        "risk_reduction": 3,
+        "job_size": 5
+      },
+      "milestone": "M2",
+      "trace": [
+        "R-1",
+        "AC-2"
+      ]
+    },
+    {
+      "id": "S-3",
+      "type": "story",
+      "parent": "F-2",
+      "title": "Six launch-week posts are scheduled with tracking",
+      "as_a": "campaign manager",
+      "i_want": "6 LinkedIn posts for launch week scheduled from the company page and the two executive accounts",
+      "so_that": "we reach 40,000 impressions in the target audience during launch week",
+      "work": "launch",
+      "acceptance": [
+        {
+          "id": "S-3.1",
+          "given": "the approved post copy and images",
+          "when": "the posts are scheduled",
+          "then": "all 6 appear in the scheduler between 3 and 7 March and every link carries utm_campaign=q1-close-assist"
+        }
+      ],
+      "priority": "must",
+      "size": "S",
+      "status": "ready",
+      "depends_on": [
+        "S-2"
+      ],
+      "owner": "Social team",
+      "trace": [
+        "AC-2"
+      ]
+    },
+    {
+      "id": "S-4",
+      "type": "story",
+      "parent": "F-2",
+      "title": "Paid campaign runs within budget and targeting",
+      "as_a": "paid media specialist",
+      "i_want": "a sponsored-content campaign for finance titles at 200–2,000-employee companies in the UK and Germany",
+      "so_that": "the webinar reaches buyers outside our followers",
+      "work": "launch",
+      "acceptance": [
+        {
+          "id": "S-4.1",
+          "given": "a budget of 18,000 EUR for 3–28 March",
+          "when": "the campaign is live",
+          "then": "daily spend stays at or below 750 EUR and the audience estimate is between 150,000 and 250,000 members"
+        },
+        {
+          "id": "S-4.2",
+          "given": "the campaign has run for 7 days",
+          "when": "the weekly review happens",
+          "then": "any ad with a click-through rate below 0.4% is paused and replaced within 2 business days"
+        }
+      ],
+      "priority": "should",
+      "size": "M",
+      "status": "ready",
+      "owner": "Paid media",
+      "trace": [
+        "AC-2"
+      ]
+    },
+    {
+      "id": "S-5",
+      "type": "story",
+      "parent": "F-2",
+      "title": "Campaign dashboard shows leads and opportunities by source",
+      "as_a": "CMO",
+      "i_want": "a dashboard of registrations, MQLs, and accepted opportunities by source for campaign 'q1-close-assist'",
+      "so_that": "I can move budget between channels weekly",
+      "work": "report",
+      "acceptance": [
+        {
+          "id": "S-5.1",
+          "given": "CRM data for the campaign",
+          "when": "the dashboard refreshes each morning at 07:00",
+          "then": "it shows registrations, MQLs, and accepted opportunities for each of the 4 sources, and its MQL total matches the CRM report within 1%"
+        }
+      ],
+      "priority": "should",
+      "size": "S",
+      "status": "ready",
+      "owner": "Marketing ops",
+      "trace": [
+        "R-2"
+      ]
+    },
+    {
+      "id": "F-3",
+      "type": "feature",
+      "parent": "G-2",
+      "title": "Sales follows up every webinar lead within one business day",
+      "description": "A shared follow-up play for the mid-market sales development team: routing rules, a call script built on the webinar demo, and a 1-business-day follow-up commitment for every MQL from the campaign.",
+      "benefit_hypothesis": "We believe fast, demo-specific follow-up will turn webinar interest into opportunities; we will know when at least 15% of campaign MQLs become accepted opportunities.",
+      "wsjf": {
+        "business_value": 8,
+        "time_criticality": 8,
+        "risk_reduction": 2,
+        "job_size": 3
+      },
+      "milestone": "M2",
+      "trace": [
+        "R-2",
+        "AC-3"
+      ]
+    },
+    {
+      "id": "S-6",
+      "type": "story",
+      "parent": "F-3",
+      "title": "Every campaign MQL is routed and called within one business day",
+      "as_a": "sales development representative for mid-market",
+      "i_want": "campaign MQLs routed to me by territory with the webinar call script attached",
+      "so_that": "I call each lead while the demo is fresh",
+      "work": "process",
+      "acceptance": [
+        {
+          "id": "S-6.1",
+          "given": "an MQL with campaign 'q1-close-assist'",
+          "when": "it is created in the CRM",
+          "then": "it is assigned to an SDR in its territory within 15 minutes, with the call script linked"
+        },
+        {
+          "id": "S-6.2",
+          "given": "the weekly SLA report",
+          "when": "sales leadership reviews it each Monday",
+          "then": "at least 90% of last week's campaign MQLs show a logged call within 1 business day"
+        }
+      ],
+      "priority": "must",
+      "size": "S",
+      "status": "ready",
+      "owner": "Sales operations",
+      "trace": [
+        "AC-3"
+      ]
+    },
+    {
+      "id": "B-1",
+      "type": "bug",
+      "parent": "F-1",
+      "title": "Invitation email 2 links to the old registration page",
+      "observed": "The 'Register now' button in invitation email 2 points to /webinars/close-2026, which returns 404; 312 recipients clicked it on 2027-02-24.",
+      "expected": "Every link in the sequence opens the live registration page (S-1.1).",
+      "steps": [
+        "Open the scheduled invitation email 2 in the email tool",
+        "Click 'Register now'"
+      ],
+      "environment": "Email tool, sequence 'q1-close-assist-invite', email 2",
+      "work": "launch",
+      "acceptance": [
+        {
+          "id": "B-1.1",
+          "given": "the corrected email 2",
+          "when": "each of its 4 links is clicked in the test send",
+          "then": "all 4 open the live registration page with utm_campaign=q1-close-assist"
+        },
+        {
+          "id": "B-1.2",
+          "given": "the 312 people who clicked the broken link",
+          "when": "the fix is live",
+          "then": "each receives a correction email within 24 hours"
+        }
+      ],
+      "priority": "must",
+      "urgency": "critical",
+      "size": "XS",
+      "status": "ready",
+      "owner": "Marketing ops",
+      "trace": [
+        "AC-1"
+      ]
+    }
+  ]
+}

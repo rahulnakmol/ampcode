@@ -1,8 +1,8 @@
 # Using the skills in Amp
 
 Choose a skill by the result you need. You can name it directly in a normal Amp
-message: **“Use grilling…”**, **“Use crafting…”**, **“Use delivering…”**, or
-**“Distill this video…”**. The examples below are prompts to paste into chat, not
+message: **“Use grilling…”**, **“Use crafting…”**, **“Use delivering…”**,
+**“Use planning…”**, or **“Distill this video…”**. The examples below are prompts to paste into chat, not
 terminal commands. Natural-language triggers help Amp select an installed skill;
 they are not exact-match keywords or a guarantee that a skill was loaded. Name
 the skill explicitly when you want it, and ask Amp which skill it is using if unclear.
@@ -15,8 +15,14 @@ the skill explicitly when you want it, and ask Amp which skill it is using if un
 | Design how a person or agent experiences something | **crafting** | design, redesign, craft, prototype, mock up, polish, critique, accessibility audit, user flow | Journeys, states, design direction, mockups/specification and critique |
 | Deliver a substantial software outcome | **delivering** | use delivering, deliver this feature, execute this approved brief, resume this mission | Implemented and verified slices, two reviews, evidence and authorized integration |
 | Turn public YouTube research into an original article | **distill** | distill this video, distill these videos, write a whitepaper from these videos | Original evidence-backed article, research brief and supported offline package |
+| Plan an initiative from workshop inputs to an agreed backlog | **planning** | plan this initiative, run a planning mission, from workshop notes to backlog | Charter, gated stages, signed-off PRD, ready backlog in GitHub or Excel, traceability |
+| Turn notes, transcripts, minutes and drafts into evidence | **synthesizing** | synthesize these notes, extract requirements from this transcript | `evidence.md`: sources, cited evidence, contradictions, open questions, stakeholders |
+| Write a PRD, process-change brief or campaign brief | **specifying** | write a PRD, draft the brief, complete this PRD | `prd.md` with drivers, measurable goals, requirements and criteria; initiative seeded in the backlog |
+| Groom a backlog of executable stories | **grooming** | groom, refine, break down, split, size, prioritise, triage feedback | `backlog.json` that passes the contract and Definition of Ready; trace report |
+| Publish a backlog and collect sign-off | **syncing** | sync to GitHub, export to Excel, pull comments and approvals | Issues, sub-issues, milestones, Project items or a workbook; sign-offs and feedback back in the file |
 
-These are the four skills maintained in this repository. Archi, Darci and Opsci are
+These are the nine skills maintained in this repository; the planning skills are covered in
+[Mission-driven planning](mission-driven-planning.md). Archi, Darci and Opsci are
 [advisory modes/tools](advisory-team.md); Swift, Weave and Prime are execution modes,
 not skills. Selecting a mode does not select a workflow or start a mission.
 
@@ -154,6 +160,29 @@ and unqualified. See [current capability limits](../README.md#distill).
 **Next:** review the argument and evidence before publication or archival.
 [Skill instructions](../skills/distill/SKILL.md).
 
+## Planning: from workshop to agreed, traceable backlog
+
+**Use when:** you own an initiative (product, operations change or new way of working,
+or marketing campaign) and need to go from raw inputs to a PRD stakeholders sign off and a
+backlog teams can execute, with proof later that it met the business goals. `planning`
+conducts the mission; `synthesizing`, `specifying`, `grooming` and `syncing` each work
+alone too.
+
+```text
+Use planning to run a mission for our month-end close (operations). Inputs are in
+planning/close-3-days/inputs/. Approvers are priya-r and tokafor on GitHub; sync to
+acme/close. Success means a signed-off PRD and a ready backlog by 31 January.
+```
+
+**A good result looks like:** a confirmed charter; evidence that cites sources; a PRD with
+numbered drivers, goals and measurable criteria tested by a fresh reader; a backlog that
+passes `validate --require-ready`; a sync plan shown before any write; sign-offs and
+feedback read back from GitHub; and a gate-by-gate report.
+
+**Not good:** a PRD with unmeasurable goals, stories without numbers in their acceptance
+criteria, issues created without your approval, or "done" claimed from a closed issue.
+See [Mission-driven planning](mission-driven-planning.md) for stages, entry points and limits.
+
 ## Combine skills without unnecessary ceremony
 
 - **“I have an idea.”** Grilling makes it concrete; crafting designs relevant
@@ -164,6 +193,8 @@ and unqualified. See [current capability limits](../README.md#distill).
   valid approval and check drift rather than repeat every earlier discussion.
 - **“These videos may inform our product decision.”** Distill can supply research;
   its article does not itself approve a design or start a software mission.
+- **“The backlog is agreed; build the software stories.”** Hand ready stories to
+  delivering; the backlog's acceptance criteria become its expectations.
 - **“Fix this typo.”** Use a normal Amp request. A mission is disproportionate.
 
 Skills must be installed to be loaded. Ask Amp to check availability and reload existing
