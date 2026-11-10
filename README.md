@@ -8,6 +8,7 @@ This GitHub repository is the readable source of truth. Amp loads published copi
 
 - **[Using the skills](./docs/using-skills.md):** choose a skill, learn when to use it, copy a prompt, and understand what a good result looks like.
 - **[Mission-driven development](./docs/mission-driven-development.md):** take an idea or requirement through design, implementation, review and delivery; start or resume a mission.
+- **[Mission-driven planning](./docs/mission-driven-planning.md):** take a product, operations, or marketing initiative from workshop notes to a signed-off PRD and an executable backlog in GitHub or Excel, traced to delivered outcomes.
 - **[Advisory team](./docs/advisory-team.md):** use Archi, Darci and Opsci for architecture and operational advice.
 
 ## Layout
@@ -193,6 +194,34 @@ Install/publish `grilling` alongside it for the expectation loop; if unavailable
 the dependency rather than silently installing it. Source integration does not publish skills to
 Amp Personal Skills or the coordinator to Amp Personal Plugins. Rolling, stable release, deployment, and Personal publication retain
 their separate gates.
+
+## Planning
+
+A planning mission is for a product, operations, or marketing strategist who is also the
+delivery lead. It takes one initiative from workshop notes, transcripts, minutes, or rough drafts
+to a PRD stakeholders sign off and a backlog of executable stories in the tracker they use, then
+keeps score against the initiative's business drivers. Five small skills, each usable alone:
+
+| Skill | Does | Output |
+| --- | --- | --- |
+| [`planning`](./skills/planning/SKILL.md) | Charters the mission, picks the entry point, runs gates G1–G7, defines done | Charter and gate-by-gate report |
+| [`synthesizing`](./skills/synthesizing/SKILL.md) | Turns raw inputs into cited evidence, contradictions, open questions, stakeholders | `evidence.md` |
+| [`specifying`](./skills/specifying/SKILL.md) | Writes the PRD with `grilling`: drivers, measurable goals, requirements, criteria; fresh-reader review | `prd.md`, initiative and goals in `backlog.json` |
+| [`grooming`](./skills/grooming/SKILL.md) | Builds and maintains the backlog contract; splits, sizes, triages, records delivery | `backlog.json`, checked by `backlog.py` |
+| [`syncing`](./skills/syncing/SKILL.md) | Plans and applies GitHub sync (issues, sub-issues, milestones, Projects); pulls `/approve` and comments; exports Excel | Tracker items; sign-offs and feedback in the file |
+
+The [backlog contract](./skills/grooming/reference/contract.md) is SAFe-inspired without epics:
+initiative (drivers, PRD) → goals (metric, baseline, target) → features (benefit hypothesis,
+WSJF) → stories sized XS–L with measurable acceptance criteria, plus bugs with urgency and
+feedback filed on exactly one feature. `backlog.py trace` reports the chain from what was
+described, to what was agreed, delivered, and achieved, and lists every gap.
+
+Stakeholders work only in the tracker: they comment, and sign off with `/approve`. Every tracker
+write and every reply in the user's name waits for the user's approval of a shown plan. Scripts
+are standard-library Python; GitHub calls use the signed-in `gh`. Linear and Azure DevOps
+adapters are planned, with the mapping in
+[`trackers.md`](./skills/syncing/reference/trackers.md); there is no audio transcription and no
+plugin. See the [guide](./docs/mission-driven-planning.md) for prompts, entry points, and limits.
 
 ## Using modes without changing the Dial
 

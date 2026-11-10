@@ -1,0 +1,428 @@
+{
+  "contract": "backlog/v1",
+  "title": "Month-end close in three days",
+  "approvers": [
+    {
+      "name": "Priya Raman (Finance Operations lead)",
+      "github": "priya-r"
+    },
+    {
+      "name": "Tom Okafor (Group Controller)",
+      "github": "tokafor"
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "title": "PI 27.1: pilot UK01",
+      "due": "2027-02-26"
+    },
+    {
+      "id": "M2",
+      "title": "PI 27.2: all EU entities",
+      "due": "2027-05-28"
+    }
+  ],
+  "items": [
+    {
+      "id": "I-1",
+      "type": "initiative",
+      "title": "Close the books in three business days",
+      "domain": "operations",
+      "problem": "Month-end close takes 7 business days. Accounts payable clerks spend about 3 of them matching bank lines to invoices by hand in spreadsheets, and the controller cannot see which close tasks are late until day 5 (E2, E5, E9).",
+      "drivers": [
+        {
+          "id": "D-1",
+          "statement": "Cost: cut the 60 hours a month spent on manual bank reconciliation, freeing the AP team for supplier queries"
+        },
+        {
+          "id": "D-2",
+          "statement": "Control: give the group controller ledger-locked numbers for the board pack by business day 4, as the audit committee asked in its 2026 findings"
+        }
+      ],
+      "outcome": "UK01 and then all EU entities close in 3 business days, clerks review only reconciliation exceptions, and the controller sees close progress daily.",
+      "owner": "Priya Raman",
+      "prd": "prd.md",
+      "non_goals": [
+        "Replacing the ERP general ledger",
+        "Changing intercompany settlement terms"
+      ],
+      "trace": [
+        "E1",
+        "E2",
+        "E5",
+        "E9"
+      ]
+    },
+    {
+      "id": "G-1",
+      "type": "goal",
+      "parent": "I-1",
+      "title": "Close duration falls from 7 to 3 business days",
+      "metric": "Business days from period end to ledger lock, from the close calendar",
+      "baseline": "7",
+      "target": "3",
+      "by": "2027-06-30",
+      "drivers": [
+        "D-2"
+      ],
+      "trace": [
+        "R-1",
+        "E3",
+        "E14"
+      ]
+    },
+    {
+      "id": "G-2",
+      "type": "goal",
+      "parent": "I-1",
+      "title": "Manual reconciliation effort falls from 60 to 10 hours a month",
+      "metric": "Hours logged to the 'bank reconciliation' time code per month across AP",
+      "baseline": "60",
+      "target": "10",
+      "by": "2027-04-30",
+      "drivers": [
+        "D-1"
+      ],
+      "trace": [
+        "R-2",
+        "E5"
+      ],
+      "measurements": [
+        {
+          "at": "2027-03-03",
+          "value": "22",
+          "source": "Time code report, February 2027 (UK01 pilot)"
+        }
+      ]
+    },
+    {
+      "id": "F-1",
+      "type": "feature",
+      "parent": "G-2",
+      "title": "Bank lines reconcile to open invoices nightly",
+      "description": "A scheduled automation matches the previous day's bank statement lines to open AP invoices, posts confident matches, and routes the rest to an exception report the AP team works each morning.",
+      "benefit_hypothesis": "We believe matching bank lines to invoices automatically every night will cut manual reconciliation to exceptions only; we will know when reconciliation hours fall below 20 in the first pilot month.",
+      "wsjf": {
+        "business_value": 13,
+        "time_criticality": 8,
+        "risk_reduction": 5,
+        "job_size": 5
+      },
+      "milestone": "M1",
+      "trace": [
+        "R-2",
+        "AC-3",
+        "AC-4"
+      ]
+    },
+    {
+      "id": "S-1",
+      "type": "story",
+      "parent": "F-1",
+      "title": "Confirm the bank file format and match keys",
+      "as_a": "finance systems analyst",
+      "i_want": "a 3-day time-boxed spike that decides which bank file format (CAMT.053 or MT940) and which match keys (amount, reference, date window) the nightly job uses",
+      "so_that": "the automation is built against the format the bank actually delivers",
+      "work": "research",
+      "acceptance": [
+        {
+          "id": "S-1.1",
+          "given": "sample files for the last 3 months from Barclays UK01",
+          "when": "the spike ends",
+          "then": "a decision note of at most 1 page names the format, the match keys, and the expected auto-match rate on the 3 months of samples, and is linked on this issue"
+        }
+      ],
+      "priority": "must",
+      "size": "S",
+      "status": "ready",
+      "owner": "Finance systems",
+      "trace": [
+        "AC-3",
+        "E11"
+      ],
+      "delivery": {
+        "at": "2027-01-21",
+        "evidence": [
+          "https://github.com/acme/close/issues/45#issuecomment-2302",
+          "Decision note: CAMT.053, keys amount + end-to-end reference + 3-day value-date window, 87% auto-match on samples"
+        ],
+        "criteria": {
+          "S-1.1": "met"
+        }
+      }
+    },
+    {
+      "id": "S-2",
+      "type": "story",
+      "parent": "F-1",
+      "title": "Nightly job posts confident bank-to-invoice matches",
+      "as_a": "accounts payable clerk",
+      "i_want": "the nightly job to post every bank line that matches exactly one open invoice on the keys decided in S-1",
+      "so_that": "I only handle lines that need judgment",
+      "work": "automate",
+      "acceptance": [
+        {
+          "id": "S-2.1",
+          "given": "yesterday's UK01 bank file has arrived by 01:00",
+          "when": "the 02:00 job runs",
+          "then": "each line matching exactly one open invoice is posted with the bank reference in the journal memo"
+        },
+        {
+          "id": "S-2.2",
+          "given": "a line matches two or more open invoices",
+          "when": "the job runs",
+          "then": "nothing is posted for that line and it appears in the exception report with every candidate invoice"
+        },
+        {
+          "id": "S-2.3",
+          "given": "the bank file has not arrived by 02:00",
+          "when": "the job runs",
+          "then": "it posts nothing and emails the AP shared mailbox before 02:15"
+        },
+        {
+          "id": "S-2.4",
+          "given": "a line matches exactly one open invoice except for an FX rounding difference of at most 0.05 GBP",
+          "when": "the job runs",
+          "then": "the line is posted and the difference is booked to the FX rounding account 7920"
+        }
+      ],
+      "priority": "must",
+      "size": "M",
+      "status": "ready",
+      "depends_on": [
+        "S-1"
+      ],
+      "owner": "Finance systems",
+      "trace": [
+        "AC-3",
+        "E6",
+        "E10"
+      ]
+    },
+    {
+      "id": "S-3",
+      "type": "story",
+      "parent": "F-1",
+      "title": "Exception report is ready for the AP team by 07:00",
+      "as_a": "accounts payable clerk",
+      "i_want": "a daily exception report listing every unmatched bank line with its candidate invoices",
+      "so_that": "I can clear exceptions before the 10:00 cash position call",
+      "work": "report",
+      "acceptance": [
+        {
+          "id": "S-3.1",
+          "given": "the nightly job has finished",
+          "when": "it is 07:00 UK time",
+          "then": "the report is in the AP SharePoint folder with one row per unmatched line, its amount, value date, reference, and up to 3 candidate invoices"
+        },
+        {
+          "id": "S-3.2",
+          "given": "every line matched",
+          "when": "the report is generated",
+          "then": "it still appears, with zero rows and the count of posted matches in the header"
+        }
+      ],
+      "priority": "must",
+      "size": "S",
+      "status": "ready",
+      "depends_on": [
+        "S-2"
+      ],
+      "owner": "Finance systems",
+      "trace": [
+        "AC-4",
+        "E4"
+      ]
+    },
+    {
+      "id": "F-2",
+      "type": "feature",
+      "parent": "G-1",
+      "title": "Day-by-day close calendar with named owners",
+      "description": "A three-day close calendar replaces the current seven-day checklist: every close task has an owner, a due day (D+1 to D+3), and a dependency, and the team is trained on it before the pilot close.",
+      "benefit_hypothesis": "We believe a three-day calendar with one owner per task will remove the idle waits between close tasks; we will know when the UK01 pilot closes in 4 business days or fewer.",
+      "wsjf": {
+        "business_value": 13,
+        "time_criticality": 13,
+        "risk_reduction": 8,
+        "job_size": 3
+      },
+      "milestone": "M1",
+      "trace": [
+        "R-1",
+        "AC-1",
+        "E7",
+        "E8"
+      ]
+    },
+    {
+      "id": "S-4",
+      "type": "story",
+      "parent": "F-2",
+      "title": "Three-day close calendar is published for UK01",
+      "as_a": "group controller",
+      "i_want": "the close checklist rewritten as a D+1 to D+3 calendar with one owner and one due day per task",
+      "so_that": "everyone knows what must be finished each day of the close",
+      "work": "process",
+      "acceptance": [
+        {
+          "id": "S-4.1",
+          "given": "the current 74-task UK01 checklist",
+          "when": "the calendar is published in the close workbook",
+          "then": "every task has exactly one named owner, a due day between D+1 and D+3, and its predecessor tasks, and tasks that move earlier are listed for review"
+        },
+        {
+          "id": "S-4.2",
+          "given": "the published calendar",
+          "when": "the group controller and the Finance Ops lead review it",
+          "then": "each has signed the calendar's approval tab before 2027-02-12"
+        }
+      ],
+      "priority": "must",
+      "size": "M",
+      "status": "ready",
+      "owner": "Tom Okafor",
+      "trace": [
+        "AC-1"
+      ]
+    },
+    {
+      "id": "S-5",
+      "type": "story",
+      "parent": "F-2",
+      "title": "UK01 close team is trained on the new calendar",
+      "as_a": "UK01 close team member",
+      "i_want": "a 45-minute walkthrough of the calendar and the exception report",
+      "so_that": "I can run my tasks in the February pilot without asking for help",
+      "work": "enable",
+      "acceptance": [
+        {
+          "id": "S-5.1",
+          "given": "the 8 people named as task owners in the calendar",
+          "when": "the session runs before 2027-02-19",
+          "then": "all 8 attended or watched the recording and the attendance list is attached here"
+        }
+      ],
+      "priority": "must",
+      "size": "S",
+      "status": "ready",
+      "depends_on": [
+        "S-4",
+        "S-3"
+      ],
+      "owner": "Priya Raman",
+      "trace": [
+        "AC-2",
+        "E17"
+      ]
+    },
+    {
+      "id": "F-3",
+      "type": "feature",
+      "parent": "G-1",
+      "title": "Controller sees close progress every day",
+      "description": "A dashboard shows, per entity and close day, which calendar tasks are done, late, or blocked.",
+      "benefit_hypothesis": "We believe daily visibility of late tasks will let the controller intervene on day 1; we will know when no entity finishes more than 1 day after its calendar date.",
+      "wsjf": {
+        "business_value": 5,
+        "time_criticality": 3,
+        "risk_reduction": 3,
+        "job_size": 8
+      },
+      "milestone": "M2",
+      "trace": [
+        "R-3",
+        "AC-5",
+        "E9"
+      ]
+    },
+    {
+      "id": "S-6",
+      "type": "story",
+      "parent": "F-3",
+      "title": "Close progress dashboard by entity and day",
+      "as_a": "group controller",
+      "i_want": "a dashboard of close tasks by entity and close day with late tasks highlighted",
+      "so_that": "I can intervene on day 1 instead of discovering slippage on day 5",
+      "work": "report",
+      "acceptance": [
+        {
+          "id": "S-6.1",
+          "given": "task status is updated in the close workbook",
+          "when": "the dashboard refreshes at 08:00 and 14:00",
+          "then": "it shows done, late, and blocked task counts for each entity and close day, at most 15 minutes after each refresh"
+        }
+      ],
+      "priority": "should",
+      "size": "L",
+      "status": "draft",
+      "depends_on": [
+        "S-4"
+      ],
+      "trace": [
+        "R-3",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "B-1",
+      "type": "bug",
+      "parent": "F-1",
+      "title": "Nightly job posts the same bank line twice when the file is re-sent",
+      "observed": "On 2027-03-02 the bank re-sent the 1 March file at 03:10; the 04:00 retry posted 212 lines that were already posted at 02:00 (journal batches JB-8812 and JB-8820).",
+      "expected": "Each bank line is posted at most once, whatever the number of deliveries (S-2.1).",
+      "steps": [
+        "Deliver a bank file and let the 02:00 job post it",
+        "Deliver the same file again",
+        "Run the job again"
+      ],
+      "environment": "UK01, production ERP, Barclays CAMT.053 feed",
+      "work": "automate",
+      "acceptance": [
+        {
+          "id": "B-1.1",
+          "given": "a bank file whose lines were already posted",
+          "when": "the same file is delivered and the job runs again",
+          "then": "0 new journal lines are posted and the run log lists each skipped line's bank reference"
+        },
+        {
+          "id": "B-1.2",
+          "given": "a re-sent file that adds 3 new lines to an already posted file",
+          "when": "the job runs",
+          "then": "exactly the 3 new lines are posted"
+        }
+      ],
+      "priority": "must",
+      "urgency": "critical",
+      "size": "S",
+      "status": "ready",
+      "owner": "Finance systems",
+      "trace": [
+        "AC-3"
+      ]
+    }
+  ],
+  "feedback": [
+    {
+      "id": "FB-1",
+      "feature": "F-1",
+      "from": "tokafor",
+      "summary": "Lines that match one invoice but differ by FX rounding of up to 0.05 GBP should still auto-post, or the exception report will be mostly noise.",
+      "source": "https://github.com/acme/close/issues/44#issuecomment-2210",
+      "at": "2027-01-14T08:12:00Z",
+      "disposition": "accepted",
+      "resolution": "S-2 gained S-2.4 (post FX rounding differences up to 0.05 GBP)"
+    },
+    {
+      "id": "FB-2",
+      "feature": "F-3",
+      "from": "priya-r",
+      "summary": "Could the dashboard also forecast the close date?",
+      "source": "https://github.com/acme/close/issues/47#issuecomment-2231",
+      "at": "2027-01-14T10:40:00Z",
+      "disposition": "declined",
+      "resolution": "Out of scope for M2; the calendar already fixes the target date. Revisit after two closes on the dashboard."
+    }
+  ]
+}

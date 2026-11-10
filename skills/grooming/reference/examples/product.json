@@ -1,0 +1,173 @@
+{
+  "contract": "backlog/v1",
+  "title": "Self-serve team onboarding",
+  "approvers": [
+    { "name": "Dana Whitfield (VP Product)", "github": "dwhitfield" },
+    { "name": "Marco Silva (Head of Customer Success)", "github": "msilva-cs" }
+  ],
+  "milestones": [
+    { "id": "M1", "title": "Release 4.2", "due": "2027-03-19" },
+    { "id": "M2", "title": "Release 4.3", "due": "2027-04-30" }
+  ],
+  "items": [
+    {
+      "id": "I-1",
+      "type": "initiative",
+      "title": "New workspaces reach five active users without a CSM call",
+      "domain": "product",
+      "problem": "Mid-market admins invite users one at a time; median time from signup to 5 active users is 10 days, 38% of trials never reach it, and CSMs spend about 2 hours per account walking admins through setup (E1, E4, E6).",
+      "drivers": [
+        { "id": "D-1", "statement": "Revenue: trial-to-paid conversion in the mid-market segment is 14% against a 20% plan" },
+        { "id": "D-2", "statement": "Cost: onboarding calls consume 1.5 CSM FTE that the plan assigns to expansion" }
+      ],
+      "outcome": "An admin can bring their team in on day 1 on their own, and most trials reach 5 active users in the first 2 days.",
+      "owner": "Dana Whitfield",
+      "prd": "prd.md",
+      "non_goals": ["SCIM provisioning (planned for the enterprise tier)", "Changing trial length"],
+      "trace": ["E1", "E4", "E6"]
+    },
+    {
+      "id": "G-1",
+      "type": "goal",
+      "parent": "I-1",
+      "title": "Median days from signup to 5 active users falls from 10 to 2",
+      "metric": "Median days from workspace creation to the 5th user with a session, from the product analytics 'activation' funnel",
+      "baseline": "10",
+      "target": "2",
+      "by": "2027-06-30",
+      "drivers": ["D-1"],
+      "trace": ["R-1", "E1"]
+    },
+    {
+      "id": "G-2",
+      "type": "goal",
+      "parent": "I-1",
+      "title": "Onboarding calls per new mid-market account fall from 1 to 0.2",
+      "metric": "CSM calls tagged 'onboarding' per new mid-market account per month, from the CRM",
+      "baseline": "1",
+      "target": "0.2",
+      "by": "2027-06-30",
+      "drivers": ["D-2"],
+      "trace": ["R-2", "E6"]
+    },
+    {
+      "id": "F-1",
+      "type": "feature",
+      "parent": "G-1",
+      "title": "Admins import their team from a CSV",
+      "description": "Workspace admins upload a CSV of names and emails, see row-level validation before anything is created, and send all invitations in one step.",
+      "benefit_hypothesis": "We believe bulk CSV import will let admins invite their whole team in one sitting; we will know when median days to 5 active users is 4 or fewer for workspaces created after Release 4.2.",
+      "wsjf": { "business_value": 13, "time_criticality": 8, "risk_reduction": 3, "job_size": 5 },
+      "milestone": "M1",
+      "trace": ["R-1", "AC-1", "AC-2"]
+    },
+    {
+      "id": "S-1",
+      "type": "story",
+      "parent": "F-1",
+      "title": "Admin uploads a CSV and sees row-level validation",
+      "as_a": "workspace admin",
+      "i_want": "to upload a CSV of up to 500 users and see which rows are invalid before anyone is invited",
+      "so_that": "I fix mistakes once instead of chasing failed invitations",
+      "work": "build",
+      "acceptance": [
+        { "id": "S-1.1", "given": "a CSV with 500 rows, 3 of them with malformed emails", "when": "the admin uploads it", "then": "the preview lists 497 valid rows and exactly 3 errors with their row numbers within 5 seconds" },
+        { "id": "S-1.2", "given": "a CSV with 501 rows", "when": "the admin uploads it", "then": "the upload is refused with the message 'Up to 500 users per file' and no row is stored" },
+        { "id": "S-1.3", "given": "a row whose email already belongs to a workspace member", "when": "the preview renders", "then": "that row is marked 'already a member' and is excluded from the 497 count" }
+      ],
+      "priority": "must",
+      "size": "M",
+      "status": "ready",
+      "owner": "Team Atlas",
+      "trace": ["AC-1"]
+    },
+    {
+      "id": "S-2",
+      "type": "story",
+      "parent": "F-1",
+      "title": "Admin sends every valid invitation in one step",
+      "as_a": "workspace admin",
+      "i_want": "to send invitations to all valid rows from the preview with one confirmation",
+      "so_that": "my team gets access on day 1",
+      "work": "build",
+      "acceptance": [
+        { "id": "S-2.1", "given": "a preview with 497 valid rows", "when": "the admin confirms", "then": "497 invitation emails are queued within 60 seconds and the admin sees a summary with 0 failures" },
+        { "id": "S-2.2", "given": "the email provider rejects 2 addresses", "when": "sending finishes", "then": "the summary lists those 2 addresses with the provider's reason and a 'resend' action" }
+      ],
+      "priority": "must",
+      "size": "S",
+      "status": "ready",
+      "depends_on": ["S-1"],
+      "owner": "Team Atlas",
+      "trace": ["AC-2"]
+    },
+    {
+      "id": "F-2",
+      "type": "feature",
+      "parent": "G-2",
+      "title": "Setup checklist guides admins through the first day",
+      "description": "A five-step checklist on the admin home page covers inviting users, creating the first project, connecting the calendar, setting roles, and booking optional help, and reports completion to Customer Success.",
+      "benefit_hypothesis": "We believe a guided checklist will answer the questions CSMs answer on onboarding calls; we will know when onboarding calls per new account fall below 0.5 within 6 weeks of Release 4.3.",
+      "wsjf": { "business_value": 8, "time_criticality": 3, "risk_reduction": 5, "job_size": 8 },
+      "milestone": "M2",
+      "trace": ["R-2", "AC-3"]
+    },
+    {
+      "id": "S-3",
+      "type": "story",
+      "parent": "F-2",
+      "title": "Admin home page shows a five-step setup checklist",
+      "as_a": "workspace admin in my first 14 days",
+      "i_want": "a checklist that shows which of the 5 setup steps I have finished and links to each",
+      "so_that": "I can finish setup without booking a call",
+      "work": "build",
+      "acceptance": [
+        { "id": "S-3.1", "given": "a workspace created in the last 14 days", "when": "the admin opens the home page", "then": "the checklist shows all 5 steps with each finished step ticked" },
+        { "id": "S-3.2", "given": "the admin has finished all 5 steps", "when": "the last step completes", "then": "the checklist collapses to a single 'Setup complete' line and a 'setup_complete' event is sent to the CRM within 10 minutes" }
+      ],
+      "priority": "must",
+      "size": "M",
+      "status": "ready",
+      "owner": "Team Beacon",
+      "trace": ["AC-3"]
+    },
+    {
+      "id": "S-4",
+      "type": "story",
+      "parent": "F-2",
+      "title": "Decide whether SSO setup belongs in the checklist",
+      "as_a": "product manager for onboarding",
+      "i_want": "a 5-day research spike on how many new mid-market admins need SSO in week 1, ending in a decision to add or leave out an SSO step",
+      "so_that": "the checklist covers the setup that actually blocks teams",
+      "work": "research",
+      "acceptance": [
+        { "id": "S-4.1", "given": "CRM notes and support tickets for the last 120 new mid-market accounts", "when": "the spike ends", "then": "a decision note states the share of accounts that needed SSO in week 1 and recommends add or leave out" }
+      ],
+      "priority": "could",
+      "size": "S",
+      "status": "draft",
+      "trace": ["E9"]
+    },
+    {
+      "id": "B-1",
+      "type": "bug",
+      "parent": "F-1",
+      "title": "CSV preview rejects valid emails with a plus sign",
+      "observed": "Rows such as 'ana+ops@example.com' are flagged 'malformed email' in the preview (support ticket 48213, 3 accounts affected on 2027-03-24).",
+      "expected": "Plus-addressed emails are valid, so they count as valid rows (S-1.1).",
+      "steps": ["Create a CSV with the row 'Ana Ops,ana+ops@example.com'", "Upload it as a workspace admin", "Look at the preview"],
+      "environment": "Production, Release 4.2, all browsers",
+      "work": "build",
+      "acceptance": [
+        { "id": "B-1.1", "given": "a CSV with 10 plus-addressed emails", "when": "the admin uploads it", "then": "all 10 rows are valid and 0 errors are listed" },
+        { "id": "B-1.2", "given": "a CSV with the row 'x@@example.com'", "when": "the admin uploads it", "then": "exactly 1 error is listed for that row" }
+      ],
+      "priority": "must",
+      "urgency": "high",
+      "size": "XS",
+      "status": "ready",
+      "owner": "Team Atlas",
+      "trace": []
+    }
+  ]
+}
