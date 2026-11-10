@@ -415,6 +415,7 @@ def workbook(packet, path):
             ("Purpose", "Reviewed supporting analysis for " + packet["audience"] + ". Intended destination: " + packet["destination"]),
             ("Review boundary", "File identity is not client approval. Editing creates an unreviewed scenario; it does not change retained evidence. Reconcile narrative and charts, then re-review before delivery."),
             *([("Editable inputs", "Amber labelled cells are inputs. Green-grey cells are calculated. Validation also checks pasted edits; invalid scenarios withhold totals."),
+               ("Recalculation", "LibreOffice: run a full recalculation (Ctrl+Shift+F9) after edits and on reopening. Check scenario status and totals before use. Conversion alone is not a recalculation check; stale cached totals must not support a decision."),
                ("Calculation audit", "Visible Calculation sheets preserve exact decimal arithmetic in integer pieces. Edit inputs, not formulas. No macros or external links.")]
               if has_estimate else [("Editable content", "Narrative, registers and any chart data are editable. This workbook has no estimate calculation sheets. Changes require reconciliation and review.")]),
             ("Content fingerprint", packet_hash),

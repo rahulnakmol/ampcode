@@ -195,7 +195,9 @@ SUM/ROUND disagreements at decimal ties. Those audit grids are screen-readable; 
 explanation is in the print area. Person-days and money retain six and two displayed decimals.
 
 Recalculate in the spreadsheet application. Initial caches are for display, not proof of correct
-recalculation. Invalid pasted numeric edits withhold totals, name the affected row/contingency or
+recalculation. The workbook's Read me sheet gives the supported LibreOffice procedure: full
+recalculation (Ctrl+Shift+F9) after edits and on reopening, then inspect status and totals.
+Headless conversion alone does not establish recalculation. Invalid pasted numeric edits withhold totals, name the affected row/contingency or
 output bound, and recover after correction. Precision checks compare scaled binary pieces against
 six-place-rounded inputs; approximate equality and numeric-to-text conversion are not sufficient.
 The status always calls the workbook an unreviewed

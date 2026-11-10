@@ -573,6 +573,9 @@ with patch('handoff.render', side_effect=RuntimeError('injected interruption')):
             self.assertIn("Source: Synthetic workshop, section 2", overview)
             self.assertLess(overview.index("Released stock is 20 units below demand"), overview.index("Editable inputs"))
             self.assertIn("Narrative baseline", overview)
+            self.assertIn("Ctrl+Shift+F9", overview)
+            self.assertIn("after edits and on reopening", overview)
+            self.assertIn("Conversion alone is not a recalculation check", overview)
             current_total = next(ref for ref, cell in cells("Read me").items()
                                  if cell.get("t") == "s" and strings[int(cell.find("s:v", ns).text)] == "Current total (USD)")
             current_total = "B" + current_total[1:]
