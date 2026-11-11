@@ -9,11 +9,12 @@ Help the consultant turn supplied evidence into a clear next business decision. 
 the runtime and retain its selected mode and specialist routing. This is functional discovery,
 not technical architecture or permission to operate a client's ERP.
 
-**Development status:** retained records, reconciliation, reported baseline/coverage checks,
-estimate arithmetic, recipient-bound packets and generic local exports are implemented. Cloud
-handoffs, tailored executive artifacts and independent journey qualification are not yet complete.
-Do not present this source as a qualified
-consulting system. Do not install or activate it implicitly.
+**Qualification boundary:** this capability has bounded English synthetic/redacted evaluation,
+independent reviews, inspected editable handoffs and owner acceptance of the demonstrated packet.
+These do not establish production client outcomes, authenticated business acceptance or Microsoft
+desktop certification. Notion evidence includes a controlled human-edit simulation; reminder
+evidence includes manual recovery, not continuous monitoring. Google Slides/Docs are deferred.
+Do not install, activate integrations or process real client evidence implicitly.
 
 ## Coordinate the current task
 

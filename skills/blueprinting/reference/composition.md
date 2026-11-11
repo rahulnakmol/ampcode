@@ -28,7 +28,8 @@ Their current public commands and schemas are unchanged by this instruction spli
 Each package carries `contract.json`. Coordinator contract/helper API 1 retains schema-1 records
 and packets; schema-2 packets additionally support bounded typed estimate data and native scenario
 workbooks. Schema 3 adds reviewed neutral-or-selected theme composition; schema 4 adds bounded
-evidence-linked native diagrams and supporting registers. Full qualification remains unfinished.
+evidence-linked native diagrams and supporting registers. Qualification is bounded to the
+synthetic/redacted scenarios described in SKILL.md, not production-client certification.
 The coordinator manifest lists supported domain
 versions. A domain manifest names its version and required coordinator contract. Templates are
 separate packages with their own checked contract; see [templates.md](templates.md).

@@ -40,10 +40,12 @@ see [the export contract](./skills/blueprinting/reference/exports.md). Export is
 Reviewed theme-only brand configuration can bind typography, colors and issuer/classification
 to exact source revisions; it does not import arbitrary templates or mandatory logo assets.
 Schema-4 diagrams add a bounded native Word/PowerPoint mapping with evidence-linked entities,
-directed relationships and cross-view registers. Native and full semantic qualification are ongoing.
-This is not the complete system: tailored executive artifacts, complete diagram qualification,
-Notion/reminder qualification and full journey qualification remain pending. Google Slides/Docs
-are deferred. Revision freshness does not establish client approval. Nothing is
+directed relationships and cross-view registers. Bounded English synthetic/redacted evaluation,
+two independent reviews and owner acceptance of the demonstrated editable handoff are complete.
+This is not production-client validation or Microsoft desktop certification. Notion qualification
+includes a controlled human-edit simulation; two reminder wakes and later manual recovery do not
+establish continuous monitoring. Google Slides/Docs are deferred. Revision freshness does not
+establish client approval. Nothing is
 installed or activated by this source addition; Personal publication needs separate approval.
 
 | Blueprinting task | Skill |
@@ -60,7 +62,8 @@ they do not duplicate state or create a subagent per skill. Standalone coordinat
 remains supported. Keep complete packages together when preparing an explicitly authorized
 Personal publication; do not copy helpers into domain packages. Installed-host qualification
 has bounded orb-only evidence; source routing is not evidence that these skills are active in Amp.
-The tested temporary installations were removed. Full lifecycle qualification remains pending.
+The tested temporary installations were removed. Verify all helper/reference files and selected
+host paths after publication; lifecycle observations do not establish production outcomes.
 
 ## Meet the advisory team
 
