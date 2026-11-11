@@ -101,3 +101,70 @@ Open, by design or for later:
   real Amp thread the planner runs them; their effect on these scores is untested.
 - The pass bar (every judge mean ≥ 4.0) was not met in two rounds. Judges were briefed as
   skeptics, and every verdict but one was "approve with changes".
+
+## Round 3 (rev3)
+
+All five missions reran on the skills as merged after rev2 (dev at `bb9440d`), with the same
+personas, judges, and rubric. The personas answered only from their briefs: anything the brief
+did not cover got "not sure, use your judgement and label it", so later rounds carried more
+labelled assumptions (owners, counting rules, controls) than decisions. Issue bodies in the
+stakeholder views use the rendering from before the named-section templates (#30).
+
+Machine checks passed in all five: `validate --require-ready` 0 errors (warnings only for
+drafts held behind research, and in s4 for traces to the earlier ledger the owner declared
+lost); `trace` gaps only for sign-offs; reading ease 69 to 80 at 6 to 12 words per sentence.
+
+| Scenario | Mean of judge means, rev1 → rev2 → rev3 | Hard-check fails, rev3 | Main remaining findings |
+| --- | --- | --- | --- |
+| s1 | 3.65 → 3.61 → 3.49 | none (rev2: 2) | The 66% margin goal predates the plan's own ramp and annual-contract rules; stories marked ready while the plan says sizes are about a fifth of the team's estimate; the revenue check compares invoices, not recognised revenue |
+| s2 | 3.59 → 3.69 → 3.63 | none | One mistaken tap gives a slot away with no undo; patients with basic phones cannot answer a link; the patient pack misstates the 30% target; rollout to 8% is half-planned |
+| s3 | 3.45 → 3.51 → 3.39 | none; the bank's reviewer rejects again | Finished reels still skip the bank; the plan books the bank's approval date and no resubmission window; no channel funnel shows how 200,000 is reached |
+| s4 | 3.49 → 3.69 → 3.67 | none (rev2: all 7) | No named person owns a feature; a parked deal's 2,000-row work queues ahead of 9 customer tickets; customer replies promise dates the plan calls assumptions |
+| s5 | 3.43 → 3.49 → 3.33 | H8 from all 7 (two also H2, H6) | Live use waits only for the board, not for a finished model risk assessment; guardrails flag but never pause; 7 of 9 features have no owner |
+
+Average score per dimension over all 35 judgements, rev2 → rev3: plain English 3.86 → 3.89,
+value 3.77 → 3.71, lean 3.80 → 3.71, traceability 3.86 → 3.69, executability 3.51 → 3.31,
+robustness 3.26 → 3.14, approvability 3.14 → 3.06. Two judgements were "reject" (s3 bank
+reviewer, s5 Stripe lens); the other 33 were "approve with changes".
+
+What the rev2 fixes did:
+
+| Fix after rev2 | Held in rev3? |
+| --- | --- |
+| Ready gate holds drafts behind research as a warning | Yes: s4's H4 fail is gone; s2 and s5 hold pilot work as drafts without errors |
+| A promise written as a principle needs a testing criterion | Yes for "a handler always confirms" (no judge failed it); s5's H8 moved to the next unstated gate |
+| Holds and pauses have a deadline and a default | Yes: s1's held-invoice H6 is gone |
+| A gap against the team's own estimate is raised before sign-off | Raised (s1: 58.5 vs about 300 person-days), but stories stay `ready`, which judges call "a label, not a fact" |
+| Goals get a leading measure with a checkpoint | Present (s3: 60,000 by 24 Oct), but nothing happens when it is missed |
+| Rank score out of issue bodies | Yes in bodies; it still shows in the status comment's trace table |
+
+The scores moved by about as much as they did between rev1 and rev2, in the other direction, so
+a single run per scenario does not separate a skill change from run-to-run variation. The
+hard-check and verdict changes are the reliable signal: two scenarios lost their hard fails, and
+s5 and s3 fail the same way they did before.
+
+Defects that recur across rounds and missions, with the fix each points to:
+
+| Defect | Seen in rev3 | Proposed fix |
+| --- | --- | --- |
+| Features without a named owner pass every machine check; gate 6 fails only by hand | s1, s3, s4, s5 judges; 4 of 5 runners | `validate --require-ready` errors on a feature with no `owner`; grooming asks for owners in the same round as sizes |
+| A go-live depends on a gate in name only (draft risk assessment; bank approval of scripts, not finished ads) | s5 (H8 for the second round), s3 (bank reject for the second round) | PRD template: every precondition for live use or spend is a `depends_on` on the story that completes it, and an acceptance criterion on the final artefact, not a draft |
+| Guardrails and checkpoints report but never act | s5, s3, s1 | Every guardrail and leading measure states the action on breach (pause, stop, or a named decision by a date) |
+| Stories `ready` while the team's estimate says the sizes are far off | s1 | A gap of half or more keeps the affected stories `draft` until the team re-sizes |
+| An outside approver's decision is booked as an outcome, with no resubmission round | s3, s2 | When an outside party approves, plan the submission date, their decision date, and one resubmission inside the deadline |
+| Stakeholder issues carry E-codes, the full PRD, and a trace dump as the status comment | all | Named-section templates (#30) cover body structure; also replace the status comment's trace table with a five-line status (dates, blockers, who acts) |
+
+Skill instructions the runners found unclear or contradictory (most reported by several):
+
+- `synthesizing` makes the fresh-context check "required before `specifying`", while `planning`
+  says a review that cannot run leaves the gate pending and work carries on.
+- Nothing says whether a severity-4 control or an owner the planner chose after "use your
+  judgement" counts as agreed.
+- The vague-word check rejects the domain term "fast-track"; a strict "under Rs 250" and "to the
+  cent" cannot be written in the allowed `at most` / `at least` form.
+- `planning` says to write "gate 1", never "G1", but its own gate table uses G1 to G7.
+- Charter questions have no stated place in the three-questions-per-round limit.
+- The Excel check asks to "read the workbook back" without a reader.
+
+Open, carried from rev2: sign-off by people outside GitHub still cannot be recorded, and
+fresh-context reviews still never ran in the simulation.
