@@ -20,7 +20,9 @@ before building one; the notes below are design intent, not tested behaviour.
 ## GitHub (built)
 
 See the table in `SKILL.md`. Hierarchy uses sub-issues; type, work, priority, size, urgency,
-status, and domain use labels; milestones are repository milestones.
+status, and domain use labels; milestones are repository milestones. With `--project`, the
+same values also go into Project fields, milestones become slots of an iteration field named
+Schedule, and a Roadmap view shows features on it.
 
 ## Excel (built, export only)
 

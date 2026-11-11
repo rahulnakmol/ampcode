@@ -6,7 +6,7 @@
     { "name": "Marco Silva (Head of Customer Success)", "github": "msilva-cs" }
   ],
   "milestones": [
-    { "id": "M1", "title": "Release 4.2", "due": "2027-03-19" },
+    { "id": "M1", "title": "Release 4.2", "start": "2027-02-08", "due": "2027-03-19" },
     { "id": "M2", "title": "Release 4.3", "due": "2027-04-30" }
   ],
   "items": [

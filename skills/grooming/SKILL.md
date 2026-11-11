@@ -32,26 +32,40 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
    `backlog.json`. If it is missing, create them from the PRD first.
 2. **Features per goal.** For each goal, list the capabilities, process changes, or campaign
    components that move its metric. Each feature gets a description, a benefit hypothesis tied
-   to the goal's metric, WSJF scores relative to the other features, a milestone, and traces to
+   to the goal's metric, WSJF scores relative to the other features, a milestone, an `owner`
+   (one named person, not a team, and not an approver who will not do the work), and traces to
    `R-`/`AC-` IDs. A feature that moves no goal is out of scope or reveals a missing goal: ask.
+   Dependencies and milestone dates decide the order first; the rank score (WSJF) only orders
+   features that could go either way. If the two disagree, fix the scores.
 3. **Stories per feature.** Write each as one executable unit:
    - a specific actor, not "user"; the change; the value in goal terms;
    - acceptance criteria as Given/When/Then that are the story's definition of done: every
      `then` has a quantity and at least one has a real number, date, time, or amount;
-   - `work` type, `priority` (MoSCoW), `size` XS (half a day) to L (one iteration);
+   - `work` type, `priority` (MoSCoW: `must` only when the milestone fails without it, so not
+     every story is a must), `size` XS (half a day) to L (one iteration);
    - `depends_on` for real ordering only; `trace` to the PRD criterion it satisfies.
 4. **Split anything bigger than L.** Mark it `XL` and `draft`, then split by workflow step,
    business rule, data variation, entity or region, channel, or happy path versus exceptions.
    Each part must still deliver something checkable. Remove the XL item when its parts exist.
 5. **Unknowns become `research` stories** with a time box and the decision they produce, rather
-   than guesses dressed as requirements. Work that depends on the decision is not written as
-   stories yet: note it in the feature's `acceptance` or `notes`, and add the stories once the
-   research story is delivered. The ready gate covers what can be executed now.
+   than guesses dressed as requirements. Work that depends on the decision is either written now
+   as `draft` stories that depend on the research story, or moved with its PRD criteria to a
+   later milestone, said plainly in the PRD. A milestone never promises work that has no story:
+   `trace` reports a criterion that only a feature lists. A story whose start depends on a
+   condition nobody has measured yet ("only if the preview takes under 5 seconds") depends on a
+   research story that measures it, and stays `draft` until it passes. The ready gate holds
+   such drafts (a warning, not an error) while their research story is undelivered.
 6. **Bugs** go under the feature whose behaviour they break, with observed, expected, steps, a
    reproduction criterion, priority, and urgency.
-7. **Validate until clean**, mark stories `ready` as they pass, then run the gate:
+7. **Check each milestone fits.** Count the working days from today to its `due` date and add
+   up each owner's story sizes in it (XS ½, S 2, M 5, L 10 days at most; a research story counts
+   its time box). When an owner's work does not fit, move stories to a later milestone or name
+   the fallback in the feature's `notes`. When the total differs from the team's own estimate by
+   half or more, say so and have the team re-size before sign-off. Never leave a milestone that
+   cannot be met.
+8. **Validate until clean**, mark stories `ready` as they pass, then run the gate:
    `validate --require-ready` with 0 errors.
-8. **Fresh-context executability review** (below), then hand over to `syncing`.
+9. **Fresh-context executability review** (below), then hand over to `syncing`.
 
 Every child has one parent. If a story serves two features, it is two stories or the features
 are cut wrongly.
@@ -63,7 +77,11 @@ changes, bugs, or feedback), work through its "Next session" agenda in order. Ea
 becomes backlog edits: new features with their story seeds turned into executable stories, a
 change to the named feature, a bug under its feature, or a feedback entry. Give new items IDs
 here, cite the intake's evidence in `trace`, and tell the owner which sign-offs each change
-reopens. A row marked `assumed` is confirmed with the owner before it changes the backlog.
+reopens. A row marked `assumed` is confirmed with the owner before it changes the backlog. For
+every ask that came from outside the team (a customer ticket, a stakeholder email), say who
+tells that person the outcome, through the channel they used, and by when. Draft the reply for
+the user to approve; acceptance checks that test the fix use the requester's own example (their
+file, their case) when there is one.
 
 ## Triage feedback
 
@@ -90,11 +108,27 @@ remain.
 
 ## Fresh-context executability review
 
-Give a subagent only `backlog.json`, the PRD, and the contract. Ask it, for every `must` story and
+Give a subagent only `backlog.json`, the PRD, and the contract (with no PRD, as for new asks
+against an existing backlog, give `intake.md` and `evidence.md` instead). Ask it, for every `must` story and
 every `critical` or `high` bug: how would you do this, and how would you prove it is done? List
 every question you would have to ask first. Also ask which PRD requirements no story covers.
 Each question is a gap: fix the story, then recheck with a new fresh reader. Record the result in
 the mission's README.
+
+## Write in plain English
+
+Stories and bugs are read by the people doing the work and by approvers who sign off. Write so that someone who was not in the room can read it once, understand it, and approve
+it.
+
+- Short sentences, about 20 words at most, one idea each. Short bullets over long paragraphs.
+- Everyday words. Spell out each acronym and planning term the first time, such as "rank score
+  (WSJF)" or "must have (MoSCoW)".
+- Numbers and names instead of adjectives: "by 07:00", not "early"; "the AP team", not
+  "stakeholders".
+- Say who does what: "the nightly job posts matches", not "matches are posted".
+- Keep IDs next to words, never alone: "the exception report (S-3)", not "S-3".
+- An acceptance criterion reads as one plain sentence when Given, When, and Then are joined.
+
 
 ## Adapt it
 
