@@ -337,7 +337,10 @@ class FakeProject:
         if tail == ["fields"]:
             field = {"id": self.new_id(), "node_id": f"F{self.next_id}", "name": body["name"], "data_type": body["data_type"]}
             if "single_select_options" in body:
-                field["options"] = [{"id": f"o{self.new_id()}", "name": o["name"]} for o in body["single_select_options"]]
+                if not all(isinstance(o["name"], str) and isinstance(o["description"], str) for o in body["single_select_options"]):
+                    raise RuntimeError("gh api: HTTP 422 data matches no possible input")  # as the live API does
+                field["options"] = [{"id": f"o{self.new_id()}", "name": {"raw": o["name"], "html": o["name"]}}
+                                    for o in body["single_select_options"]]
             if "iteration_configuration" in body:
                 field["configuration"] = {"iterations": [
                     {"id": f"it{self.new_id()}", "title": {"raw": i["title"]}, "start_date": i["start_date"], "duration": i["duration"]}
@@ -348,8 +351,11 @@ class FakeProject:
             return [{"id": cid, "content_type": "Issue", "content": {"id": c["issue"]},
                      "fields": [self.shown(name, value) for name, value in c["values"].items()]} for cid, c in self.cards.items()]
         if tail == ["items"]:
+            if any(c["issue"] == body["id"] for c in self.cards.values()):
+                raise RuntimeError("gh: Content already exists in this project (HTTP 422)")
             cid = self.new_id()
             self.cards[cid] = {"issue": body["id"], "values": {}}
+            self.add_sub_issues(body["id"])
             return {"id": cid}
         if tail[0] == "items" and method == "PATCH":
             by_id = {f["id"]: f for f in self.fields.values()}
@@ -360,6 +366,15 @@ class FakeProject:
             self.views.append(body)
             return {}
         raise AssertionError(f"unexpected project call {method} {route}")
+
+    def add_sub_issues(self, issue_id):
+        """Like GitHub's default workflow: a new card's sub-issues get cards of their own."""
+        number = next(n for n, i in self.github.issues.items() if i["id"] == issue_id)
+        for child in self.github.subs.get(number, []):
+            child_id = self.github.issues[child]["id"]
+            if not any(c["issue"] == child_id for c in self.cards.values()):
+                self.cards[self.new_id()] = {"issue": child_id, "values": {}}
+                self.add_sub_issues(child_id)
 
     def shown(self, name, value):
         """A card value as the REST API returns it: options and iterations by name, numbers as numbers."""

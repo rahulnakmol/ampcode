@@ -645,7 +645,8 @@ def apply_project(data, gh, spec, actions, remote):
     for a in (a for a in actions if a["do"] == "project field"):
         body = {"name": a["name"], "data_type": a["type"]}
         if a["options"]:
-            body["single_select_options"] = [{"name": {"raw": o, "html": o}, "color": "GRAY", "description": {"raw": "", "html": ""}} for o in a["options"]]
+            # Plain strings: the live API rejects the {raw, html} objects it returns (checked 2026-11-11).
+            body["single_select_options"] = [{"name": o, "color": "GRAY", "description": ""} for o in a["options"]]
         if a["type"] == "iteration":
             slots = a["slots"] or [("Unscheduled", datetime.now().date().isoformat(), 14)]
             body["iteration_configuration"] = {"start_date": slots[0][1], "duration": slots[0][2],
@@ -660,12 +661,18 @@ def apply_project(data, gh, spec, actions, remote):
         gh.graphql("mutation($f:ID!,$c:ProjectV2IterationFieldConfigurationInput!){ updateProjectV2Field(input:{fieldId:$f, iterationConfiguration:$c}){ clientMutationId } }",
                    {"f": field["node_id"], "c": {"startDate": merged[0]["startDate"], "duration": merged[0]["duration"], "iterations": merged}})
         fields = project.fields()
-    cards = project.items([f["id"] for f in fields.values()])
+    field_ids = [f["id"] for f in fields.values()]
+    cards = project.items(field_ids)
     for a in actions:
         if a["do"] == "project add":
             issue = remote[a["id"]]
             if issue["id"] not in cards:
-                cards[issue["id"]] = (gh.call("POST", f"{project.base}/items", {"type": "Issue", "id": issue["id"]})["id"], {})
+                try:
+                    cards[issue["id"]] = (gh.call("POST", f"{project.base}/items", {"type": "Issue", "id": issue["id"]})["id"], {})
+                except RuntimeError as exc:
+                    if "already exists" not in str(exc):
+                        raise
+                    cards = project.items(field_ids)  # GitHub adds a card's sub-issues by itself
         elif a["do"] == "project values":
             item_id = cards[remote[a["id"]]["id"]][0]
             updates = [{"id": fields[name]["id"], "value": _value_for(fields[name], value)} for name, value in a["set"].items()]

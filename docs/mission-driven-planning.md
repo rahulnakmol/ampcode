@@ -103,7 +103,7 @@ python3 skills/syncing/scripts/sync.py excel skills/grooming/reference/examples/
 | Skills `planning`, `synthesizing`, `specifying`, `grooming`, `syncing` | Built; instructions only, no plugin |
 | Contract checks, tree, sign-off status, trace report (`backlog.py`) | Built; unit-tested |
 | GitHub sync (issues, sub-issues, labels, milestones, pull, status comment) | Built; unit-tested against an in-memory fake of the GitHub API |
-| GitHub Projects | Built; unit-tested against the fake: cards, fields (type, priority, urgency, size, readiness, rank score, schedule), a Roadmap view, and a backlog table. Not yet run against a live Project |
+| GitHub Projects | Built: cards, fields (type, priority, urgency, size, readiness, rank score, schedule), a Roadmap view, and a backlog table. Unit-tested against a fake, and run against a live user Project on 2026-11-11 (first sync, a card edited in GitHub, a milestone date moved) |
 | Excel export | Built; tested by reading the workbook back |
 | Linear, Azure DevOps | Planned; mapping recorded in `skills/syncing/reference/trackers.md` |
 | Audio transcription | Not included: supply transcripts from your meeting tool |
