@@ -4,6 +4,10 @@ For the user journey, start with [Mission-driven development](mission-driven-dev
 or [Using the skills](using-skills.md). This reference covers kickoff variants,
 coordinator setup, tool inputs and operational limits.
 
+This coordinator governs software delivery, not [Blueprinting engagements](blueprinting.md).
+Blueprinting uses skills and local engagement helpers, with no additional mission plugin.
+Software owner acknowledgment and CI do not establish client business acceptance.
+
 `plugins/mission-control/index.ts` coordinates the delivering skill. It is a local
 workflow coordinator, **not a scheduler or security sandbox**. It uses existing
 GitHub credentials available to `gh` in the Amp execution environment. No custom

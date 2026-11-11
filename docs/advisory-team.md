@@ -2,6 +2,8 @@
 
 These three advisors return recommendations, not source changes. Use a dedicated mode for a conversation, or a consultation tool for a bounded question inside an implementation thread.
 
+For client workshops, functional specifications, operating models and pre-sales/RFP discovery, use [Blueprinting](blueprinting.md). These advisors address technical architecture, data and operations; their recommendations do not substitute for a named client's business acceptance.
+
 ## Choose the advisor
 
 | Mode / CLI key | Consultation tool | Best for | Main model |

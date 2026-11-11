@@ -2,7 +2,7 @@
 
 Choose a skill by the result you need. You can name it directly in a normal Amp
 message: **“Use grilling…”**, **“Use crafting…”**, **“Use delivering…”**,
-**“Use planning…”**, or **“Distill this video…”**. The examples below are prompts to paste into chat, not
+**“Use planning…”**, **“Use blueprinting…”**, or **“Distill this video…”**. The examples below are prompts to paste into chat, not
 terminal commands. Natural-language triggers help Amp select an installed skill;
 they are not exact-match keywords or a guarantee that a skill was loaded. Name
 the skill explicitly when you want it, and ask Amp which skill it is using if unclear.
@@ -20,9 +20,16 @@ the skill explicitly when you want it, and ask Amp which skill it is using if un
 | Write a PRD, process-change brief or campaign brief | **specifying** | write a PRD, draft the brief, complete this PRD | `prd.md` with drivers, measurable goals, requirements and criteria; initiative seeded in the backlog |
 | Groom a backlog of executable stories | **grooming** | groom, refine, break down, split, size, prioritise, triage feedback | `backlog.json` that passes the contract and Definition of Ready; trace report |
 | Publish a backlog and collect sign-off | **syncing** | sync to GitHub, export to Excel, pull comments and approvals | Issues, sub-issues, milestones, Project items or a workbook; sign-offs and feedback back in the file |
+| Run an enterprise functional-discovery engagement | **blueprinting** | start or resume a consulting engagement, functional discovery, ERP/CRM workshops | Retained evidence, decision lineage, explicit gaps and coordinated functional handoffs |
+| Prepare client workshops and interpret supplied evidence | **discovering-requirements** | workshop agenda, client questionnaire, attributed transcript, debrief | Cited findings, contradictions and owned follow-up questions |
+| Design business processes and operating models | **designing-functions** | as-is/to-be, roles, exceptions, handoffs, functional specification, kickoff | Traceable functional design, alternatives and acceptance gaps |
+| Qualify an offer or prepare an RFP response | **shaping-engagements** | pre-sales, bid decision, proposal, fit-gap, effort estimate | Grounded commercial scope, assumptions, estimates and unresolved obligations |
+| Prepare reviewed consulting documents and decks | **publishing-engagements** | executive brief, editable handoff, client-safe packet | Inspected selected exports with evidence and sharing restrictions |
+| Challenge consulting evidence and deliverables | **reviewing-engagements** | review functional coverage, check claims, review proposal or handoff | Source-grounded findings tied to exact revisions |
 
-These are the nine skills maintained in this repository; the planning skills are covered in
-[Mission-driven planning](mission-driven-planning.md). Archi, Darci and Opsci are
+The planning skills are covered in [Mission-driven planning](mission-driven-planning.md);
+the six enterprise consulting skills are covered in [Start a Blueprinting engagement](blueprinting.md).
+Source availability and publication to your own Amp account are separate. Archi, Darci and Opsci are
 [advisory modes/tools](advisory-team.md); Swift, Weave and Prime are execution modes,
 not skills. Selecting a mode does not select a workflow or start a mission.
 
@@ -182,6 +189,35 @@ feedback read back from GitHub; and a gate-by-gate report.
 **Not good:** a PRD with unmeasurable goals, stories without numbers in their acceptance
 criteria, issues created without your approval, or "done" claimed from a closed issue.
 See [Mission-driven planning](mission-driven-planning.md) for stages, entry points and limits.
+
+## Blueprinting: from client evidence to a functional decision
+
+**Use when:** consultants or business analysts need workshops, as-is/to-be processes,
+operating models, functional specifications, implementation kickoff or pre-sales/RFP work.
+Choose `planning` for a tracker-ready backlog, not as a substitute for Blueprinting's client
+authority and evidence rules. Blueprinting is functional consulting, not technical architecture.
+
+```text copy Copy Blueprinting Workshop Prompt
+Use blueprinting to prepare a discovery workshop about our order-to-cash handoffs.
+The audience is the finance and operations leads. Help us identify the next business
+decision, missing evidence, actors and receiving teams. Draft an agenda and questionnaire.
+Check processing restrictions before reading client material. Do not create a vault,
+activate integrations or send the questionnaire yet.
+```
+
+**Give Amp:** the business problem, journey, audience, desired decision, available evidence,
+client authority and known processing restrictions. For retained engagement setup, also supply
+an explicit absolute private root and an authorized compatible template package on the execution
+machine. The skills are published to Rahul's User Skills; the separate template repository is
+not remotely published. Missing templates block template-backed Start, not a draft agenda.
+
+**A good result looks like:** attributed evidence, explicit contradictions and missing voices,
+questions tied to decisions, traceable functional requirements, scope-bound client confirmation,
+and only the editable handoffs needed for the journey. A transcript is not business approval;
+an export is not permission to share. Qualification is synthetic/redacted, not production certification.
+
+Follow [Start a Blueprinting engagement](blueprinting.md) for the complete kickoff prompt,
+preview/confirmation boundary, domain choices, resume prompt and current limits.
 
 ## Combine skills without unnecessary ceremony
 
