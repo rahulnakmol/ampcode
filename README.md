@@ -22,6 +22,49 @@ tests/                    Bun plugin tests and Python skill-script tests
 
 See [`plugins/README.md`](./plugins/README.md) and [`skills/README.md`](./skills/README.md) before adding an extension.
 
+## Blueprinting — under development
+
+[`skills/blueprinting/`](./skills/blueprinting/SKILL.md) is the enterprise functional-discovery
+capability for consultant workshops, operating models, kickoff, pre-sales and RFP work. Its first
+local helper retains exact Markdown revisions, records pending corrections and reports stale
+dependencies without overwriting human notes. It also checks reported written-client baselines
+and records explicit reconciliation. Functional coverage, estimate arithmetic and recipient-bound
+content packets now support generic local Markdown, Word, PowerPoint, Excel and PDF exports.
+Excel includes literal registers and bounded native estimate scenarios, not a business baseline.
+Registered file observation, explicit Start/Resume, staged template upgrades and derived indexes
+are implemented locally; see [the template contract](./skills/blueprinting/reference/templates.md).
+The separate `blueprinting-engagement-template` source is being prepared locally, not published.
+Native Obsidian 1.15.0 has bounded synthetic editing, filtering, navigation and save/reopen evidence.
+Selected local ZIP handoffs stage files for reported inspection and package their exact bytes;
+see [the export contract](./skills/blueprinting/reference/exports.md). Export is not delivery.
+Reviewed theme-only brand configuration can bind typography, colors and issuer/classification
+to exact source revisions; it does not import arbitrary templates or mandatory logo assets.
+Schema-4 diagrams add a bounded native Word/PowerPoint mapping with evidence-linked entities,
+directed relationships and cross-view registers. Bounded English synthetic/redacted evaluation,
+two independent reviews and owner acceptance of the demonstrated editable handoff are complete.
+This is not production-client validation or Microsoft desktop certification. Notion qualification
+includes a controlled human-edit simulation; two reminder wakes and later manual recovery do not
+establish continuous monitoring. Google Slides/Docs are deferred. Revision freshness does not
+establish client approval. Nothing is
+installed or activated by this source addition; Personal publication needs separate approval.
+
+| Blueprinting task | Skill |
+| --- | --- |
+| Engagement continuity, policy and shared helpers | [blueprinting](./skills/blueprinting/SKILL.md) |
+| Opportunity, pre-sales and RFP | [shaping-engagements](./skills/shaping-engagements/SKILL.md) |
+| Workshops, questionnaires and evidence | [discovering-requirements](./skills/discovering-requirements/SKILL.md) |
+| Process, operating model and functional handover | [designing-functions](./skills/designing-functions/SKILL.md) |
+| Narrative, reviewed packets and exports | [publishing-engagements](./skills/publishing-engagements/SKILL.md) |
+| Source-grounded functional and communication review | [reviewing-engagements](./skills/reviewing-engagements/SKILL.md) |
+
+Domain entries load the host-selected coordinator and use its shared contracts and helpers;
+they do not duplicate state or create a subagent per skill. Standalone coordinator/helper use
+remains supported. Keep complete packages together when preparing an explicitly authorized
+Personal publication; do not copy helpers into domain packages. Installed-host qualification
+has bounded orb-only evidence; source routing is not evidence that these skills are active in Amp.
+The tested temporary installations were removed. Verify all helper/reference files and selected
+host paths after publication; lifecycle observations do not establish production outcomes.
+
 ## Meet the advisory team
 
 **Start with the [advisory team usage guide](./docs/advisory-team.md)** for installation, example prompts, interviews, consultations, access limits, troubleshooting, and model updates.

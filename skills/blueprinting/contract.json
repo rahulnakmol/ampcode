@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "skill": "blueprinting",
+  "version": 1,
+  "contract": 1,
+  "helper": 1,
+  "domains": {
+    "shaping-engagements": 1,
+    "discovering-requirements": 1,
+    "designing-functions": 1,
+    "publishing-engagements": 1,
+    "reviewing-engagements": 1
+  }
+}
