@@ -29,7 +29,7 @@ Finance systems builds and runs the automation.
 ## Scope
 - In: UK01 pilot in the February close; all EU entities by 28 May (E13).
 - Non-goals: replacing the ERP general ledger; changing intercompany settlement terms (E12);
-  forecasting the close date (Q2, declined for now).
+  forecasting the close date (E20, declined for now).
 
 ## Requirements
 - **R-1 The close runs to a three-day calendar with one owner per task.** (D-2, E7, E8, E14)
@@ -46,7 +46,7 @@ Finance systems builds and runs the automation.
     08:00 and 14:00.
 
 ## Constraints and assumptions
-- Decision (Tom Okafor, 2027-01-08): pilot target is 4 days; the 30 June target is 3 (E14, E18).
+- Decision (Tom Okafor, 2027-01-12): pilot target is 4 days; the 30 June target is 3 (E14, E18, E19).
 - Constraint: MT940 is available now; CAMT.053 needs 4 weeks' notice (E11). A 3-day spike decides
   the format and match keys before the automation is built.
 - Assumption (revisit if the pilot auto-match rate is below 70%): most lines match exactly one

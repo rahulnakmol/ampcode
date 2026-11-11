@@ -6,7 +6,8 @@ numbers are fictional.
 | Stage | File | What to notice |
 | --- | --- | --- |
 | Inputs | `inputs/`: workshop transcript, minutes, Priya's rough draft | Three sources disagree slightly on the target (3 vs 4 days) |
-| G1 Evidence | [`evidence.md`](evidence.md) | 18 evidence rows citing source and timestamp; the 3-vs-4-day contradiction and 3 open questions surfaced, not resolved |
+| G1 Evidence | [`evidence.md`](evidence.md) | 18 evidence rows from the inputs citing source and timestamp, plus 3 decision rows from the intake interview |
+| G1 Intent | [`intake.md`](intake.md) | The draft intent ("automate reconciliation") widened to the close itself; two grilling rounds settle the 3-vs-4-day contradiction; every ask placed, one parked; the agenda and pick-up prompt for the PRD session |
 | G2–G3 PRD | [`prd.md`](prd.md) | Drivers D-1 (cost) and D-2 (audit control); goals with baselines; R-1 to R-3 with measurable AC-1 to AC-5; the contradiction settled as a recorded decision |
 | G4–G7 Backlog | `grooming/reference/examples/operations.json` | 3 features ranked by WSJF; 6 stories and 1 critical bug; FX-rounding feedback accepted into S-2.4; a delivered spike (S-1); a goal measured mid-way (G-2 at 22 hours). S-6 is still draft, so this snapshot is mid-grooming and fails `--require-ready` |
 

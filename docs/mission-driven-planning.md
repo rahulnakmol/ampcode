@@ -28,7 +28,7 @@ folder) and asks you to confirm it before any stage starts.
 
 | Gate | You give | Amp does | You get |
 | --- | --- | --- | --- |
-| **G1 Evidence** | Notes, transcripts, minutes, drafts | `synthesizing`: numbers every source and claim, with who said it and where; lists contradictions and open questions | `evidence.md` you can check against the sources |
+| **G1 Evidence and intent** | Notes, transcripts, minutes, drafts; answers to a few questions | `synthesizing`: numbers every source and claim, with who said it and where; then uses `grilling` to settle the intent and place each ask (new initiative, new goal, feature, change, bug, feedback) | `evidence.md` you can check against the sources, and `intake.md`: the kickoff for the PRD or the agenda for a backlog session |
 | **G2 PRD drafted** | Answers to a few questions per round | `specifying` with `grilling`: drivers, measurable goals, requirements with measurable acceptance criteria; a fresh reader tests it | `prd.md` and the initiative in `backlog.json` |
 | **G3 PRD agreed** | Your OK on the sync plan | `syncing`: the initiative issue carries the PRD; approvers comment `/approve` | Sign-off recorded in the file |
 | **G4 Backlog ready** | Decisions on scope, priority, splits | `grooming`: features with benefit hypotheses and WSJF; stories sized XS–L with measurable done criteria; bugs with urgency | `backlog.json` that passes `validate --require-ready` |
@@ -77,6 +77,7 @@ Export it with the backlog to Excel (`syncing excel`) for people who want a spre
 | Your situation | Say this |
 | --- | --- |
 | Workshop just happened | "Use planning; inputs are in `inputs/`; start with synthesizing." |
+| New asks for a backlog you already have | "Use synthesizing on these notes against `backlog.json`, and prepare the grooming session." |
 | Rethinking how a team works | "Use planning for a new way of working in [team]; use the operations template." |
 | Campaign | "Use planning for the [campaign]; domain marketing; brief draft attached." |
 | PRD already approved | "Use grooming to turn `prd.md` into a backlog, then syncing to [repo]." |
