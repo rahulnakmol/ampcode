@@ -6,6 +6,7 @@ No network calls: GitHub is an in-memory fake behind the same `gh api` paths.
 
 import copy
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -566,6 +567,32 @@ class GitHubSync(unittest.TestCase):
         item(self.data, "B-1")["observed"] += " Seen again on 2027-03-09."
         item(self.data, "S-3")["delivery"] = {"at": "2027-02-20", "evidence": ["run log"], "criteria": {"S-3.1": "met", "S-3.2": "met"}}
         sync.apply(self.data, self.base, self.gh)
+        self.assertEqual(backlog.approval_state(self.data, item(self.data, "F-1"), base=self.base), "approved")
+
+    def test_issue_bodies_have_named_sections_and_a_project_can_bring_its_own_template(self):
+        headings = lambda iid: re.findall(r"(?m)^## (.+)$", sync.render(self.data, item(self.data, iid), self.base)[1])  # noqa: E731
+        self.assertEqual(headings("S-2"), ["User story", "Acceptance criteria (definition of done)", "Depends on", "Owner", "Sources"])
+        self.assertEqual(headings("S-1")[:2], ["User story", "Acceptance criteria (definition of done)"])
+        self.assertNotIn("Depends on", headings("S-1"))  # an empty section is left out, heading and all
+        self.assertEqual(headings("G-1"), ["Metric", "Baseline and target", "Serves business drivers", "Sources"])
+        Path(self.base, "issue-templates").mkdir()
+        Path(self.base, "issue-templates/story.md").write_text("Read this first.\n\n## Done when\n{acceptance}\n\n## Why\n{user_story}\n")
+        title, body, _, _ = sync.render(self.data, item(self.data, "S-2"), self.base)
+        self.assertTrue(body.startswith("Read this first.\n\n## Done when\n- [ ] **S-2.1**"))
+        self.assertIn("## Why\n**As an accounts payable clerk**", body)
+        self.assertTrue(body.endswith("<!-- backlog:S-2 -->"))  # identity is kept whatever the template says
+        Path(self.base, "issue-templates/story.md").write_text("## Size\n{size}\n")
+        with self.assertRaisesRegex(RuntimeError, r"unknown slots \['size'\]"):
+            sync.render(self.data, item(self.data, "S-2"), self.base)
+
+    def test_a_new_issue_layout_updates_bodies_without_reopening_sign_off(self):
+        sync.apply(self.data, self.base, self.gh)
+        self.sign_off("F-1")
+        Path(self.base, "issue-templates").mkdir()
+        Path(self.base, "issue-templates/story.md").write_text("## Done when\n{acceptance}\n\n## Story\n{user_story}\n")
+        self.assertIn(("update", "S-2"), [(a["do"], a.get("id")) for a in sync.plan(self.data, self.base, self.gh)])
+        sync.apply(self.data, self.base, self.gh)
+        self.assertTrue(self.fake.issues[self.number("S-2")]["body"].startswith("## Done when"))
         self.assertEqual(backlog.approval_state(self.data, item(self.data, "F-1"), base=self.base), "approved")
 
     def test_editing_the_prd_reopens_the_prd_gate(self):

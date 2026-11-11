@@ -39,12 +39,36 @@ How the backlog appears in GitHub:
 | Backlog | GitHub |
 | --- | --- |
 | Initiative, goal, feature, story, bug | One issue each, titled `[ID] title`, with labels `backlog`, `type:…`, and `work:`, `priority:`, `size:`, `urgency:`, `status:`, `domain:` as they apply |
+| Issue body | Named sections from the type's template (below): for a story, User story, Acceptance criteria, Depends on, Owner, Sources, Notes |
 | Parent and child | Sub-issues: goals under the initiative, features under goals, stories and bugs under features |
 | Milestone | Repository milestone matched by title; stories and bugs inherit their feature's |
 | PRD | Written in full into the initiative issue body, so `/approve` there signs off the PRD and goals |
 | Stories covered by sign-off | Listed in the feature issue body |
 | Identity | A hidden `<!-- backlog:ID -->` marker in each body |
 | GitHub Project | `--project OWNER/NUMBER` puts every issue on that Project as a card, with the fields and views below |
+
+### Issue templates
+
+Each issue body is filled from a Markdown template per type in [`templates/`](templates/):
+
+| Type | Sections |
+| --- | --- |
+| Initiative | Problem, Outcome, Business drivers, Goals, Non-goals, Owner, PRD, How to sign off |
+| Goal | Metric, Baseline and target, Serves business drivers |
+| Feature | What we deliver, Why: benefit hypothesis, Done when, Stories your sign-off covers, Owner, How to sign off |
+| Story | User story, Acceptance criteria (definition of done), Depends on, Owner |
+| Bug | What happens, What should happen, Steps to reproduce, Environment, Acceptance criteria, Depends on, Owner |
+
+Every type ends with Sources and Notes. A section is a `## ` heading followed by slots such as
+`{acceptance}`; a section whose slots are all empty is left out, so issues show no empty
+headings. To change the layout for one backlog, copy a template to `issue-templates/<type>.md`
+beside `backlog.json` and rename, reorder, or drop sections, or add fixed text. A slot the
+script does not know is an error that lists the slots it does know. The identity marker is
+always added after the template.
+
+A new layout changes every body, so the next plan shows an `update` for each issue. Content is
+unchanged, so sign-offs stay current. If a template change alters what approvers agreed to
+(for example, it drops acceptance criteria), ask them to approve again.
 
 ### GitHub Project: fields and roadmap
 
@@ -137,6 +161,8 @@ the guarantees each adapter must keep. Until then, sync to GitHub or export to E
 
 - **Your own labels or colours:** change `OWN_LABEL_PREFIXES` and `LABEL_COLORS` in `sync.py`
   and the tests together.
+- **Issue layout:** copy a template to `issue-templates/<type>.md` beside `backlog.json` (see
+  [Issue templates](#issue-templates)).
 - **Organisation issue types:** labels are used because personal repositories lack issue types;
   an organisation can map to its types in `render`.
 - **Very long PRDs:** GitHub bodies hold 65,536 characters; the script refuses longer ones.

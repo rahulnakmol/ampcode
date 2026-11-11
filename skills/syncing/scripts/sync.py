@@ -58,70 +58,86 @@ def content_hash(title, body):
 
 # Rendering ------------------------------------------------------------------------------------
 
+TEMPLATES = Path(__file__).resolve().parent.parent / "templates"
+SLOT = re.compile(r"\{([a-z_]+)\}")
+
+
+def _bullets(items):
+    return "\n".join(f"- {i}" for i in items)
+
+
+def _criteria(item):
+    return "\n".join(f"- [ ] **{ac.get('id')}** Given {ac.get('given')}, when {ac.get('when')}, then {ac.get('then')}."
+                     for ac in item.get("acceptance") or [])
+
+
+def sections(data, item, base):
+    """{slot: Markdown} that the item's issue template fills; an empty slot drops its section."""
+    kids = backlog.children(data)
+    kind = item["type"]
+    by_id = lambda k: backlog.id_key(k["id"])  # noqa: E731
+    values = {"trace": ", ".join(item.get("trace") or []), "notes": item.get("notes") or "",
+              "owner": item.get("owner") or "", "sign_off": SIGN_OFF if kind in ("initiative", "feature") else "",
+              "depends_on": ", ".join(item.get("depends_on") or []) if kind in ("story", "bug") else ""}
+    if kind == "initiative":
+        goals = sorted((k for k in kids.get(item["id"], []) if k["type"] == "goal"), key=by_id)
+        prd = ""
+        if item.get("prd"):
+            path = Path(base) / item["prd"]
+            if not path.exists():
+                raise RuntimeError(f"{item['id']}: PRD '{item['prd']}' not found; stakeholders would sign off without it")
+            prd = "<details><summary>Full PRD (part of what you approve)</summary>\n\n" + path.read_text(encoding="utf-8").strip() + "\n\n</details>"
+        values.update(problem=item["problem"], outcome=item["outcome"], prd=prd,
+                      drivers=_bullets(f"**{d['id']}** {d['statement']}" for d in item["drivers"]),
+                      goals=_bullets(f"**{g['id']}** {g['title']}: {g['baseline']} → {g['target']} by {g['by']}" for g in goals),
+                      non_goals=_bullets(item.get("non_goals") or []))
+    elif kind == "goal":
+        drivers = {d["id"]: d["statement"] for d in backlog.items_by_id(data)[item["parent"]]["drivers"]}
+        values.update(metric=item["metric"], baseline_target=f"{item['baseline']} → {item['target']} by {item['by']}",
+                      drivers=_bullets(f"**{d}** {drivers.get(d, '')}" for d in item["drivers"]))
+    elif kind == "feature":
+        stories = sorted((k for k in kids.get(item["id"], []) if k["type"] == "story"), key=by_id)
+        values.update(description=item["description"], benefit_hypothesis=item["benefit_hypothesis"],
+                      acceptance=_bullets(item.get("acceptance") or []),
+                      stories=_bullets(f"**{s['id']}** {s['title']} ({s.get('size')}, {s.get('priority')})" for s in stories))
+    elif kind == "story":
+        values.update(user_story=f"**{as_a(item.get('as_a'))}**, **I want** {item.get('i_want', '')}, **so that** {item.get('so_that', '')}.",
+                      acceptance=_criteria(item))
+    else:
+        steps = item.get("steps") if isinstance(item.get("steps"), list) else [item.get("steps") or ""]
+        values.update(observed=item.get("observed", ""), expected=item.get("expected", ""),
+                      steps="\n".join(f"{n}. {s}" for n, s in enumerate(steps, 1)),
+                      environment=item.get("environment") or "", acceptance=_criteria(item))
+    return values
+
+
+def fill(template, values, name="template"):
+    """Fill a Markdown template. A '## ' section whose slots are all empty is left out."""
+    unknown = sorted(set(SLOT.findall(template)) - set(values))
+    if unknown:
+        raise RuntimeError(f"{name}: unknown slots {unknown}; use {sorted(values)}")
+    parts = re.split(r"(?m)^(?=## )", template)
+    kept = []
+    for part in parts:
+        slots = SLOT.findall(part)
+        if slots and not any(str(values[s]).strip() for s in slots):
+            continue
+        kept.append(SLOT.sub(lambda m: str(values[m.group(1)]).strip(), part).strip())
+    return "\n\n".join(p for p in kept if p)
+
+
+def template_for(kind, base):
+    """The project's own issue-templates/<type>.md beside backlog.json, else the default."""
+    own = Path(base) / "issue-templates" / f"{kind}.md"
+    path = own if own.exists() else TEMPLATES / f"{kind}.md"
+    return path.read_text(encoding="utf-8"), str(path)
+
+
 def render(data, item, base):
     """Title, body, labels, and milestone title for one item. Only title and body are hashed."""
-    kids = backlog.children(data)
-    kind, lines = item["type"], []
-    add = lines.append
-    if kind == "initiative":
-        add(f"**Problem.** {item['problem']}\n")
-        add("**Business drivers**\n")
-        lines.extend(f"- **{d['id']}** {d['statement']}" for d in item["drivers"])
-        add(f"\n**Outcome.** {item['outcome']}\n\n**Owner.** {item['owner']}\n")
-        if item.get("non_goals"):
-            add("**Non-goals**\n")
-            lines.extend(f"- {g}" for g in item["non_goals"])
-            add("")
-        goals = sorted((k for k in kids.get(item["id"], []) if k["type"] == "goal"), key=lambda k: backlog.id_key(k["id"]))
-        if goals:
-            add("**Goals**\n")
-            lines.extend(f"- **{g['id']}** {g['title']}: {g['baseline']} → {g['target']} by {g['by']}" for g in goals)
-            add("")
-        if item.get("prd"):
-            prd = Path(base) / item["prd"]
-            if not prd.exists():
-                raise RuntimeError(f"{item['id']}: PRD '{item['prd']}' not found; stakeholders would sign off without it")
-            add("<details><summary>Full PRD (part of what you approve)</summary>\n\n" + prd.read_text(encoding="utf-8").strip() + "\n\n</details>\n")
-        add(SIGN_OFF)
-    elif kind == "goal":
-        parent = backlog.items_by_id(data)[item["parent"]]
-        drivers = {d["id"]: d["statement"] for d in parent["drivers"]}
-        add(f"**Metric.** {item['metric']}\n\n**Baseline → target.** {item['baseline']} → {item['target']} by {item['by']}\n")
-        add("**Serves drivers**\n")
-        lines.extend(f"- **{d}** {drivers.get(d, '')}" for d in item["drivers"])
-        add("")
-    elif kind == "feature":
-        add(f"{item['description']}\n\n**Benefit hypothesis.** {item['benefit_hypothesis']}\n")
-        if item.get("acceptance"):
-            add("**Feature acceptance**\n")
-            lines.extend(f"- {a}" for a in item["acceptance"])
-            add("")
-        stories = sorted((k for k in kids.get(item["id"], []) if k["type"] == "story"), key=lambda k: backlog.id_key(k["id"]))
-        add("**Stories your sign-off covers**\n")
-        lines.extend(f"- **{s['id']}** {s['title']} ({s.get('size')}, {s.get('priority')})" for s in stories)
-        add("\n" + SIGN_OFF)
-    elif kind == "story":
-        add(f"**{as_a(item.get('as_a'))}**, **I want** {item.get('i_want', '')}, **so that** {item.get('so_that', '')}.\n")
-        _criteria(item, add)
-    else:
-        add(f"**Observed.** {item.get('observed', '')}\n\n**Expected.** {item.get('expected', '')}\n")
-        add("**Steps to reproduce**\n")
-        steps = item.get("steps") if isinstance(item.get("steps"), list) else [item.get("steps") or ""]
-        lines.extend(f"{n}. {s}" for n, s in enumerate(steps, 1))
-        add("")
-        if item.get("environment"):
-            add(f"**Environment.** {item['environment']}\n")
-        _criteria(item, add)
-    if kind in ("story", "bug") and item.get("depends_on"):
-        add(f"**Depends on:** {', '.join(item['depends_on'])}\n")
-    if kind in ("feature", "story", "bug") and item.get("owner"):
-        add(f"**Owner:** {item['owner']}\n")
-    if item.get("trace"):
-        add(f"**Sources in the plan:** {', '.join(item['trace'])}\n")
-    if item.get("notes"):
-        add(f"**Notes.** {item['notes']}\n")
-    add(f"<!-- backlog:{item['id']} -->")
-    body = "\n".join(lines)
+    kind = item["type"]
+    template, name = template_for(kind, base)
+    body = fill(template, sections(data, item, base), name) + f"\n\n<!-- backlog:{item['id']} -->"
     if len(body) > MAX_BODY:
         raise RuntimeError(f"{item['id']}: tracker body is {len(body)} characters; GitHub allows 65,536. Shorten it (for a PRD, link the file instead)")
     title = f"[{item['id']}] {item['title']}"
@@ -131,13 +147,6 @@ def render(data, item, base):
         if item.get(field):
             labels.append(f"{field}:{item[field]}")
     return title, body, labels, _milestone_title(data, item)
-
-
-def _criteria(item, add):
-    add("**Acceptance criteria (definition of done)**\n")
-    for ac in item.get("acceptance") or []:
-        add(f"- [ ] **{ac.get('id')}** Given {ac.get('given')}, when {ac.get('when')}, then {ac.get('then')}.")
-    add("")
 
 
 def _milestone_title(data, item):
@@ -347,7 +356,9 @@ def apply(data, base, gh, project=None, overwrite=(), expect=None):
             _record(ids[a["id"]], issue, content_hash(a["title"], a["body"]), changed=True)
         elif do == "update":
             issue = gh.call("PATCH", gh.path(f"issues/{a['number']}"), {"title": a["title"], "body": a["body"]})
-            _record(ids[a["id"]], issue, content_hash(a["title"], a["body"]), changed=True)
+            # A new layout (issue template) with the same content does not reopen sign-off.
+            stored = ((ids[a["id"]].get("external") or {}).get("github") or {}).get("fingerprint")
+            _record(ids[a["id"]], issue, content_hash(a["title"], a["body"]), changed=stored != backlog.fingerprint(ids[a["id"]], base))
         elif do == "record":
             _record(ids[a["id"]], {"number": a["number"], "id": a["issue_id"], "html_url": a["url"],
                                    "updated_at": a["updated_at"]}, a["hash"], changed=False)
