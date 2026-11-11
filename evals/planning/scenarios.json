@@ -1,0 +1,72 @@
+{
+  "about": "Five end-to-end planning missions. The runner sees only `opening`, the scenario's fixtures, and the planning skills. The owner's hidden `persona` answers its questions; anything the persona does not cover is answered 'not sure, use your judgement and label it'. Judges see the deliverables, the transcript of rounds, `checks`, and rubric.md; they never see the skills or the persona.",
+  "frontier_panel": [
+    { "company": "Amazon", "lens": "Working backwards from the customer: would this survive a PR/FAQ and a six-page narrative review? Clear tenets, measurable input and output metrics, mechanisms not good intentions, a single-threaded owner." },
+    { "company": "Apple", "lens": "Focus and craft: is the scope ruthlessly cut to what matters, is every item's owner (DRI) clear, is the experience end to end, and is anything shipped half-done?" },
+    { "company": "Google", "lens": "OKRs and design-doc rigour: are objectives ambitious but measurable, are key results outcomes not tasks, are alternatives and risks written down, and could a reviewer approve it from the document alone?" },
+    { "company": "Stripe", "lens": "Writing culture and user trust: is the writing precise and plain, are edge cases and failure modes for users handled, is money or risk treated with care, and does the plan earn trust?" },
+    { "company": "Linear", "lens": "Lean, opinionated execution: is the backlog small, sharp, and sequenced, with no ceremony, no bloat, and issues a builder can pick up today?" }
+  ],
+  "scenarios": [
+    {
+      "id": "s1-usage-billing",
+      "domain": "product",
+      "entry": "Greenfield from a workshop: transcript, CFO email, rough draft",
+      "opening": "Use planning to run a mission for moving Relaybase from seat pricing to usage pricing (product). Inputs are in inputs/. I'm Maya Chen, Head of Product and owner. Approvers: me (maya-c) and Daniel Ortiz, CFO (dortiz). We'll track it in GitHub, repo relaybase/pricing. Success means a PRD ready for sign-off and a backlog that passes the ready gate.",
+      "persona": "Maya Chen, Head of Product at Relaybase (CI/CD build service, about 970 paying accounts). Decisions you hold: launch for NEW customers on 1 June, not 1 April (you accept Tom's estimate after the workshop); existing customers migrate from 1 September with 90 days' notice; annual contracts keep seat pricing until renewal. Caps: hard caps only on the free tier; paid accounts get soft caps with alerts at 50, 80 and 100 percent of a budget they set, and builds never stop. Price: 0.8 cents per Linux minute, 2.4 cents per macOS minute, 2,000 free minutes, to be validated with 10 design partners by 15 May; if fewer than 7 of 10 accept the price, you revisit it. Metering must lose zero billable minutes: a daily reconciliation against runner logs is acceptable. Success metrics you care about: gross margin from 61 to 66 percent by 31 December from pricing alone; billing tickets no more than 80 a month in the first quarter after launch; churn of migrated accounts no higher than 2 percent above the usual 1.5 percent monthly. The 14 percent of accounts facing more than 20 percent increases get a personal email from their account manager and a 6-month discount ramp. Runner cost work is out of scope (separate initiative). Revenue reporting split by seat vs usage is a must from day one. You like short documents and get impatient with jargon.",
+      "judges": {
+        "internal": "Daniel Ortiz, CFO of Relaybase. Cares about margin, revenue recognition, billing accuracy, and not losing customers. Not technical. Reads on his phone between meetings.",
+        "external": "Ana Ruiz, platform engineering lead at a 60-engineer customer of Relaybase who pays about $4,000 a month. Cares about predictable bills, no builds stopped, clear notice, and a usage page she can trust."
+      },
+      "checks": ["The April-vs-June and hard-vs-soft-cap contradictions are surfaced and resolved by the owner, not silently picked", "Zero-loss metering or reconciliation appears as a measurable acceptance criterion", "Revenue reporting by seat vs usage is in scope from day one", "Runner cost work is a non-goal", "Customers facing large increases are handled explicitly"]
+    },
+    {
+      "id": "s2-clinic-no-shows",
+      "domain": "operations",
+      "entry": "Process reimagination and new way of working with automation and reporting: minutes, interviews, a KPI extract",
+      "opening": "Use planning for our outpatient no-shows initiative (operations). Inputs are in inputs/. I'm Grace Mensah, Director of Operations. Approvers: me (gmensah) and Dr Samuel Okoro (sokoro). GitHub repo st-aldric/outpatients. I need something the clinical leads and the patient group can approve.",
+      "persona": "Grace Mensah, Director of Operations, St Aldric Health Trust. Target: did-not-attend rate from 14.2 to 8 percent trust-wide by March 2028; pilot target for dermatology and physiotherapy is 12 percent by 31 October 2027 (pilot runs from 1 July). The booking team must not get more work: success also means rebook phone calls fall by at least 30 percent in pilot clinics. SMS reminders 7 and 2 days before with confirm, cancel, rebook links; messages must be neutral (clinic name only as 'St Aldric Outpatients'), never sent for sexual health or mental health clinics; sender name 'StAldricNHS' and a phone number in every message. Letters and the phone line stay for everyone; patients without a mobile number get a phone call 2 days before only if capacity allows, otherwise just the letter. PAS integration is out of scope; the nightly CSV export and a daily worklist for the booking team are the way. Freed slots: offer them to the waiting list by SMS, first to accept gets it, booking team confirms in PAS. Weekly DNA report per clinic every Monday by 09:00. Information governance sign-off by Mark Ellis (DPO) is a gate before the first SMS. Budget: SMS cost up to 15,000 pounds in year 1. You care that the patient group (Joan Whitley) can read and approve the plan.",
+      "judges": {
+        "internal": "Dr Samuel Okoro, Clinical Lead for Outpatients. Cares about patient safety, privacy for sensitive clinics, and not adding clinical admin. Skeptical of IT projects.",
+        "external": "Joan Whitley, 74, member of the Patient Advisory Group. Not technical. Cares that older patients and people without smartphones are not left behind and that messages are clear and trustworthy."
+      },
+      "checks": ["Sexual health and mental health clinics are excluded from SMS, with a check", "Letters and phone stay available, and people without mobiles are handled", "The booking team's workload is measured, not assumed", "Information governance sign-off is a gate before any SMS", "Uses the nightly CSV export, not a PAS integration"]
+    },
+    {
+      "id": "s3-diwali-launch",
+      "domain": "marketing",
+      "entry": "Campaign from a messy brief, an agency proposal, and a founders' chat",
+      "opening": "Use planning for the SplitPay Diwali launch campaign (marketing). Inputs in inputs/. I'm Arjun Rao, Growth lead. Approvers: me (arjun-r) and Neha Kapoor, CEO (neha-k). Repo paisapath/growth. We have very little time, so keep it tight.",
+      "persona": "Arjun Rao, Growth lead at PaisaPath (Indian payments app, 3.1M monthly active users). Today is 24 September 2027. Feature goes live 14 October. Goal: 2 lakh (200,000) activations by 15 November, activation = first split settled by UPI AutoPay. Budget: Rs 40 lakh committed; up to Rs 60 lakh only if cost per activation stays under Rs 250 after the first 10 days (CFO rule) - check on 24 October. Referral: Rs 50 each side, capped at 50,000 referrals, funded from the separate growth budget. Channels: creators and in-app first; YouTube only if budget goes to 60 lakh. Creators may only post teasers before 14 October, no feature claims. Every ad and creator script needs partner bank (Kotak) approval, 5 working days; no 'free money' or guaranteed-cashback wording. Agency needs final copy by 30 September, so the bank must get copy by 23 September... which is already past: you accept moving creator go-live to 14 October and teasers from 10 October using pre-approved brand copy only. Hindi and English; regions Hindi belt plus Bangalore, Pune, Hyderabad. Dashboard: daily activations, cost per activation by channel, referral count against the cap. You hate long decks.",
+      "judges": {
+        "internal": "Neha Kapoor, CEO and founder of PaisaPath. Cares about cost per activation, brand safety after last year's pulled ad, and speed. Wants to approve in five minutes.",
+        "external": "Meera Iyer, marketing compliance reviewer at the partner bank. Approves all ad copy. Cares about RBI rules on cashback and referral claims, accurate wording, and enough time to review."
+      },
+      "checks": ["The 40L vs 60L budget conflict is resolved into a measurable rule", "The bank's 5-working-day review is planned into the dates and the timing conflict is surfaced", "Creators do not claim the feature before 14 October", "Referral cap and funding are explicit", "Activation is defined and is the success metric, not impressions"]
+    },
+    {
+      "id": "s4-onboarding-grooming",
+      "domain": "product",
+      "entry": "New asks against an existing backlog, then a grooming session: tickets, sales notes, a Slack thread",
+      "opening": "Use synthesizing on the new inputs in inputs/ against our backlog.json, then run the grooming session. I'm Dana Whitfield, VP Product, owner of the onboarding initiative. Approvers stay the same.",
+      "persona": "Dana Whitfield, VP Product. The goal stays activation: median days to 5 active users is 4.5 now, target 2 by 30 June. Decisions: CSV files with a byte-order mark or semicolon separators must import (new bug-like change under F-1; treat it as a bug since users reasonably expect Google Sheets exports to work, urgency high). The plus-sign email problem recurring means bug B-1 is reopened, not a new bug; urgency high. Roles in the CSV: yes, a new story under F-1, should-have. M365 spam: a new feature under G-2? No - under G-1, 'invitations reach the inbox', must-have, research first (3 days) on SPF/DKIM and Microsoft allow-listing guidance. 'Connect calendar' confusion: change to the checklist story S-3, mark the step optional. SSO, SCIM, and Northgate's no-email-invitation requirement: parked, they belong to the enterprise-tier initiative in Q3; tell Sales in writing. Raising the 500-row limit to 2,000: accepted as a story under F-1, should-have, only if it does not slow the preview beyond 5 seconds for 2,000 rows; otherwise a later spike. Grooming session is next Tuesday with Team Atlas and Team Beacon.",
+      "judges": {
+        "internal": "Priya Nair, engineering manager of Team Atlas, who will build most of this. Cares about stories her team can start without meetings, sizes that are honest, and not being whiplashed by sales requests.",
+        "external": "Tom Harris, IT admin at Acme Logistics, a customer who raised ticket #51022. Cares that his problem is understood, fixed, and that he can see what was decided."
+      },
+      "checks": ["The recurring plus-sign problem reopens B-1 instead of creating a duplicate bug", "SSO/SCIM is parked with a reason, not silently dropped or pulled in", "The 500-row limit request is decided with a measurable condition", "Existing IDs are reused; new items get new IDs; nothing is renumbered", "Every new or changed item traces to the new evidence"]
+    },
+    {
+      "id": "s5-claims-triage",
+      "domain": "product",
+      "entry": "Frontier AI solution with high uncertainty and compliance: exec memo, legal notes, a call transcript",
+      "opening": "Use planning for an AI-assisted motor claims triage initiative. Inputs in inputs/. I'm Elena Petrova, Chief Claims Officer, owner. Approvers: me (epetrova) and Sofia Lindqvist, Head of Compliance (slindqvist). Repo northwind/claims-ai. This is new territory for us; I need a plan the board can trust in September.",
+      "persona": "Elena Petrova, Chief Claims Officer, Northwind Mutual (motor insurer, 410,000 claims a year). Target: first decision on route within 1 business day for 80 percent of claims by 30 June 2028 (today 4.6 days average); complaints per 1,000 claims must not rise above today's 7.1; fraud leakage must not rise (measured as confirmed fraud found after payment, today 0.9 percent of paid value). Human handler always confirms; the AI only proposes route and reserve. Phase 1 (to the September board): a 10-week discovery with research spikes - data access and lawful basis for inference-only use (no training on customer data in phase 1), a shadow-mode test on 2,000 historical claims comparing AI route proposals with handler decisions, target agreement at least 85 percent with no protected-characteristic proxies in features, and a model risk assessment draft. Phase 2 (only after board approval): pilot with 20 handlers in one region. Audit trail of every suggestion and decision kept 7 years. Budget EUR 1.8M year 1, phase 1 under EUR 300k. Injured-party claims always go to the complex route. You want plain answers; the board are not technologists.",
+      "judges": {
+        "internal": "Sofia Lindqvist, DPO and Head of Compliance. Cares about lawful basis, human oversight, bias testing, audit trail, and the model risk assessment before any production use.",
+        "external": "Martin Keller, independent policyholder advocate who reviews insurers' customer-facing changes for an ombudsman scheme. Not technical. Cares that customers are treated fairly, can get an explanation, and that injured people are not fast-tracked wrongly."
+      },
+      "checks": ["Unknowns become time-boxed research stories with decisions, not guessed requirements", "Human confirmation of every AI proposal is explicit and testable", "No production use before the model risk assessment and board approval", "Protected characteristics and proxies are addressed with a check", "Injured-party claims are routed safely"]
+    }
+  ]
+}

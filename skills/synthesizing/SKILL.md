@@ -30,7 +30,8 @@ was said from what was agreed.
 Work in the folder that holds (or will hold) `backlog.json`: `evidence.md` and `intake.md` sit
 beside it, and inputs go in its `inputs/` folder so citations stay valid. For an existing
 backlog, append to its `evidence.md`. If that file is missing, ask for it first. If it is lost,
-start sources at `SRC100` and evidence above the highest `E` ID the backlog traces, and say so
+start sources at `SRC100` and evidence at `E100` (or the next hundred above the highest `E` ID
+the backlog traces), and say so
 in the intake: the old traces cannot be checked, and `validate` warns about them until the old
 ledger is restored. A row nothing cites yet may be corrected in place. Leave out personal data the plan does not need (phone numbers, health, salaries); name
 people by role when the user asks.
@@ -151,7 +152,23 @@ backlog traces point at real evidence.
 8. **Review, then confirm.** Run the fresh-context check (below) and repair the files. Then show
    the owner the intent and placement table and ask them to confirm or correct it: this is the
    intake's last round and counts as one. Nothing is specced or groomed on an unconfirmed
-   intake.
+   intake. If the owner already corrected the intents and said to carry on, their reply is the
+   confirmation: record it as such in `intake.md` and do not stop again.
+
+## Write in plain English
+
+The intake goes to people who decide; the ledger goes to people who check. Write so that someone who was not in the room can read it once, understand it, and approve
+it.
+
+- Short sentences, about 20 words at most, one idea each. Short bullets over long paragraphs.
+- Everyday words. Spell out each acronym and planning term the first time, such as "rank score
+  (WSJF)" or "must have (MoSCoW)".
+- Numbers and names instead of adjectives: "by 07:00", not "early"; "the AP team", not
+  "stakeholders".
+- Say who does what: "the nightly job posts matches", not "matches are posted".
+- Keep IDs next to words, never alone: "the exception report (S-3)", not "S-3".
+- Exception: evidence rows marked `quoted` keep the speaker's exact words.
+
 
 ## Adapt it
 

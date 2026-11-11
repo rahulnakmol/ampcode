@@ -81,7 +81,7 @@ def render(data, item, base):
             prd = Path(base) / item["prd"]
             if not prd.exists():
                 raise RuntimeError(f"{item['id']}: PRD '{item['prd']}' not found; stakeholders would sign off without it")
-            add("<details open><summary>PRD</summary>\n\n" + prd.read_text(encoding="utf-8").strip() + "\n\n</details>\n")
+            add("<details><summary>Full PRD (part of what you approve)</summary>\n\n" + prd.read_text(encoding="utf-8").strip() + "\n\n</details>\n")
         add(SIGN_OFF)
     elif kind == "goal":
         parent = backlog.items_by_id(data)[item["parent"]]
@@ -91,15 +91,13 @@ def render(data, item, base):
         lines.extend(f"- **{d}** {drivers.get(d, '')}" for d in item["drivers"])
         add("")
     elif kind == "feature":
-        w = item["wsjf"]
         add(f"{item['description']}\n\n**Benefit hypothesis.** {item['benefit_hypothesis']}\n")
-        add(f"**WSJF {backlog.wsjf_score(item)}** = (value {w['business_value']} + time {w['time_criticality']} + risk {w['risk_reduction']}) ÷ size {w['job_size']}\n")
         if item.get("acceptance"):
             add("**Feature acceptance**\n")
             lines.extend(f"- {a}" for a in item["acceptance"])
             add("")
         stories = sorted((k for k in kids.get(item["id"], []) if k["type"] == "story"), key=lambda k: backlog.id_key(k["id"]))
-        add("**Stories covered by sign-off**\n")
+        add("**Stories your sign-off covers**\n")
         lines.extend(f"- **{s['id']}** {s['title']} ({s.get('size')}, {s.get('priority')})" for s in stories)
         add("\n" + SIGN_OFF)
     elif kind == "story":
@@ -114,13 +112,12 @@ def render(data, item, base):
         if item.get("environment"):
             add(f"**Environment.** {item['environment']}\n")
         _criteria(item, add)
-    if kind in ("story", "bug"):
-        if item.get("depends_on"):
-            add(f"**Depends on:** {', '.join(item['depends_on'])}\n")
-        if item.get("owner"):
-            add(f"**Owner:** {item['owner']}\n")
+    if kind in ("story", "bug") and item.get("depends_on"):
+        add(f"**Depends on:** {', '.join(item['depends_on'])}\n")
+    if kind in ("feature", "story", "bug") and item.get("owner"):
+        add(f"**Owner:** {item['owner']}\n")
     if item.get("trace"):
-        add(f"**Traces to:** {', '.join(item['trace'])}\n")
+        add(f"**Sources in the plan:** {', '.join(item['trace'])}\n")
     if item.get("notes"):
         add(f"**Notes.** {item['notes']}\n")
     add(f"<!-- backlog:{item['id']} -->")
@@ -169,17 +166,16 @@ def gh_call(method, path, body=None, paginate=False):
     return [x for page in result for x in page] if paginate else result
 
 
-def gh_project_add(owner, number, url):
-    run = subprocess.run(["gh", "project", "item-add", str(number), "--owner", owner, "--url", url],
-                         capture_output=True, text=True)
-    if run.returncode != 0:
-        raise RuntimeError(f"adding {url} to project {owner}/{number} failed: {run.stderr.strip()}")
-
-
 class GitHub:
-    def __init__(self, repo, call=gh_call, project_add=gh_project_add):
-        self.repo, self.call, self.project_add = repo, call, project_add
+    def __init__(self, repo, call=gh_call):
+        self.repo, self.call = repo, call
         self._me = None
+
+    def graphql(self, query, variables):
+        result = self.call("POST", "graphql", {"query": query, "variables": variables}) or {}
+        if result.get("errors"):
+            raise RuntimeError("GitHub GraphQL: " + "; ".join(e.get("message", "?") for e in result["errors"]))
+        return result["data"]
 
     def path(self, suffix):
         return f"repos/{self.repo}/{suffix}"
@@ -305,7 +301,7 @@ def plan(data, base, gh, overwrite=(), project=None):
             actions.append({"do": "orphan", "id": iid, "number": issue["number"],
                             "why": "in GitHub but not in backlog.json; close or re-add it by hand"})
     if project:
-        actions.append({"do": "project", "project": project})
+        actions += plan_project(data, gh, project, remote, conflicts, overwrite)
     return actions
 
 
@@ -370,13 +366,9 @@ def apply(data, base, gh, project=None, overwrite=(), expect=None):
                 a = {"do": "conflict", "id": a["id"], "number": child["number"],
                      "why": f"could not link under {a['parent']} (moved to another parent in GitHub?): {exc}"}
                 conflicts.add(a["id"])
-        elif do == "project":
-            owner, number = a["project"].split("/")
-            for item in data["items"]:
-                url = ((item.get("external") or {}).get("github") or {}).get("url")
-                if url:
-                    gh.project_add(owner, number, url)
         done.append(a)
+    if project:
+        apply_project(data, gh, project, actions, remote)
     for item in data["items"]:
         ext = (item.get("external") or {}).get("github")
         if ext and item["id"] not in conflicts:
@@ -448,6 +440,8 @@ def pull(data, gh, since=None):
 def report_comment(data, base, today):
     """The status comment for stakeholders: the trace report, trimmed to fit a GitHub comment."""
     text, _ = backlog.trace_report(data, base, today)
+    # Planner housekeeping, not something stakeholders can act on.
+    text = "\n".join(line for line in text.splitlines() if not line.startswith("Evidence not traced")) + "\n"
     if len(text) > MAX_BODY:
         head, _, rest = text.partition("## Stories and bugs")
         text = head + "_Stories and bugs omitted for length; see the backlog export._\n\n" + rest[rest.find("## Feedback"):] if "## Feedback" in rest else head
@@ -470,9 +464,243 @@ def post_report(data, base, gh, today):
     return urls
 
 
+# GitHub Projects ------------------------------------------------------------------------------
+
+# The fields this script owns in a Project. Stakeholders may add their own; these are matched by
+# name. "Status" is GitHub's built-in workflow field and is never touched.
+PROJECT_FIELDS = [
+    ("Item type", "single_select", ["initiative", "goal", "feature", "story", "bug"]),
+    ("Priority", "single_select", ["must", "should", "could", "wont"]),
+    ("Urgency", "single_select", ["critical", "high", "medium", "low"]),
+    ("Size", "single_select", ["XS", "S", "M", "L", "XL"]),
+    ("Readiness", "single_select", ["draft", "ready"]),
+    ("Rank score", "number", None),
+    ("Schedule", "iteration", None),
+]
+PROJECT_VIEWS = [
+    # name, layout, filter, group by, sort by (field name, direction)
+    ("Roadmap", "roadmap", 'label:"type:feature"', None, None),
+    ("Backlog by milestone", "table", 'label:"type:story","type:bug"', "Schedule", ("Priority", "asc")),
+]
+
+
+def schedule(data):
+    """[(title, start, days)] for milestones with a due date: the roadmap's time slots."""
+    from datetime import date, timedelta
+    slots, previous = [], None
+    for m in sorted((m for m in data.get("milestones", []) if m.get("due")), key=lambda m: m["due"]):
+        due = date.fromisoformat(m["due"])
+        if m.get("start"):
+            start = date.fromisoformat(m["start"])
+        elif previous:
+            start = previous + timedelta(days=1)
+        else:
+            raise RuntimeError(f"milestone {m['id']} needs a 'start' date to be placed on the Project roadmap")
+        if previous and start <= previous:
+            raise RuntimeError(f"milestone {m['id']} starts before the previous milestone ends; GitHub schedule slots cannot overlap")
+        slots.append((m["title"], start.isoformat(), (due - start).days + 1))
+        previous = due
+    return slots
+
+
+def project_values(data, item):
+    """{field name: value} this script wants on an item's Project card; None clears the field."""
+    kind = item["type"]
+    work = kind in ("story", "bug")
+    slot = _milestone_title(data, item)
+    if slot not in {m["title"] for m in data.get("milestones", []) if m.get("due")}:
+        slot = None  # a milestone without a due date has no slot on the schedule
+    return {
+        "Item type": kind,
+        "Priority": item.get("priority") if work else None,
+        "Urgency": item.get("urgency") if kind == "bug" else None,
+        "Size": item.get("size") if work else None,
+        "Readiness": item.get("status") if work else None,
+        "Rank score": backlog.wsjf_score(item) if kind == "feature" else None,
+        "Schedule": slot if kind in ("feature", "story", "bug") else None,
+    }
+
+
+def _text_value(value):
+    """A Project field value from the REST API as plain text, whatever its shape."""
+    if isinstance(value, dict):
+        for key in ("name", "title"):
+            if key in value:
+                inner = value[key]
+                return inner.get("raw") if isinstance(inner, dict) else inner
+        return value.get("raw")
+    return value
+
+
+def _field_names(field):
+    return [(_text_value(o.get("name")), o["id"]) for o in field.get("options") or []]
+
+
+def _iterations(field):
+    return [{"id": i["id"], "title": _text_value(i.get("title")), "startDate": i["start_date"], "duration": i["duration"]}
+            for i in (field.get("configuration") or {}).get("iterations") or []]
+
+
+class Project:
+    def __init__(self, gh, spec):
+        owner, _, number = spec.partition("/")
+        if not number.isdigit():
+            raise RuntimeError(f"--project must be OWNER/NUMBER, not {spec!r}")
+        self.gh, self.owner, self.number = gh, owner, int(number)
+        kind = (gh.call("GET", f"users/{owner}") or {}).get("type")
+        self.scope = "orgs" if kind == "Organization" else "users"
+        self.base = f"{self.scope}/{owner}/projectsV2/{number}"
+
+    def fields(self):
+        return {f["name"]: f for f in self.gh.call("GET", f"{self.base}/fields?per_page=100", paginate=True)}
+
+    def items(self, field_ids):
+        """{issue id: (project item id, {field name: value as text})}."""
+        query = f"{self.base}/items?per_page=100" + "".join(f"&fields[]={i}" for i in field_ids)
+        found = {}
+        for it in self.gh.call("GET", query, paginate=True):
+            content = it.get("content") or {}
+            if it.get("content_type") != "Issue" or "id" not in content:
+                continue
+            values = {f.get("name"): _text_value(f.get("value")) for f in it.get("fields") or []}
+            found[content["id"]] = (it["id"], values)
+        return found
+
+    def views(self):
+        owner_field = "organization" if self.scope == "orgs" else "user"
+        query = f"query($o:String!,$n:Int!){{ {owner_field}(login:$o){{ projectV2(number:$n){{ views(first:50){{ nodes{{ name }} }} }} }} }}"
+        result = self.gh.graphql(query, {"o": self.owner, "n": self.number})
+        return {v["name"] for v in result[owner_field]["projectV2"]["views"]["nodes"]}
+
+
+def plan_project(data, gh, spec, remote, conflicts, overwrite):
+    """Project actions: fields, schedule slots, cards, card values, and views. Reads only."""
+    project = Project(gh, spec)
+    actions, fields = [], project.fields()
+    slots = schedule(data)
+    for name, kind, options in PROJECT_FIELDS:
+        have = fields.get(name)
+        if not have:
+            actions.append({"do": "project field", "name": name, "type": kind, "options": options,
+                            "slots": slots if kind == "iteration" else None})
+            continue
+        if have.get("data_type") != kind:
+            raise RuntimeError(f"Project field {name!r} exists as {have.get('data_type')}, not {kind}; rename it in GitHub")
+        if options:
+            missing = [o for o in options if o not in {n for n, _ in _field_names(have)}]
+            if missing:
+                raise RuntimeError(f"Project field {name!r} lacks options {missing}; add them in GitHub or rename the field")
+        if kind == "iteration":
+            existing = {i["title"]: i for i in _iterations(have)}
+            if any(existing.get(t, {}).get("startDate") != s or existing.get(t, {}).get("duration") != d for t, s, d in slots):
+                actions.append({"do": "project schedule", "slots": slots})
+
+    cards = project.items([f["id"] for f in fields.values()]) if fields else {}
+    for item in sorted(data["items"], key=lambda i: (ORDER[i["type"]], backlog.id_key(i["id"]))):
+        if item["id"] in conflicts:
+            continue
+        issue = remote.get(item["id"])
+        want = project_values(data, item)
+        stored = ((item.get("external") or {}).get("github") or {}).get("project") or {}
+        card = cards.get(issue["id"]) if issue else None
+        if not card:
+            actions.append({"do": "project add", "id": item["id"]})
+            change = {k: v for k, v in want.items() if v is not None}
+        else:
+            current = {name: card[1].get(name) for name in want}
+            if "fields" in stored:
+                edited = [n for n in want if _same(current[n]) != _same(stored["fields"].get(n))]
+            else:  # a card this file never wrote: values someone set by hand are not overwritten
+                edited = [n for n in want if current[n] not in (None, "") and _same(current[n]) != _same(want[n])]
+            if edited and item["id"] not in overwrite:
+                actions.append({"do": "conflict", "id": item["id"], "number": issue["number"],
+                                "why": f"Project fields {edited} changed in GitHub since the last sync; merge, or pass --overwrite"})
+                continue
+            change = {k: v for k, v in want.items() if _same(current[k]) != _same(v)}
+        if change:
+            actions.append({"do": "project values", "id": item["id"], "set": change})
+
+    views = project.views()
+    for name, layout, flt, group, sort in PROJECT_VIEWS:
+        if name not in views:
+            actions.append({"do": "project view", "name": name, "layout": layout, "filter": flt})
+    return actions
+
+
+def _same(value):
+    """Compare Project values loosely: numbers as numbers, everything else as text."""
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def apply_project(data, gh, spec, actions, remote):
+    """Run the Project actions from plan_project and record what was written."""
+    project = Project(gh, spec)
+    ids = backlog.items_by_id(data)
+    fields = project.fields()
+    for a in (a for a in actions if a["do"] == "project field"):
+        body = {"name": a["name"], "data_type": a["type"]}
+        if a["options"]:
+            body["single_select_options"] = [{"name": {"raw": o, "html": o}, "color": "GRAY", "description": {"raw": "", "html": ""}} for o in a["options"]]
+        if a["type"] == "iteration":
+            slots = a["slots"] or [("Unscheduled", datetime.now().date().isoformat(), 14)]
+            body["iteration_configuration"] = {"start_date": slots[0][1], "duration": slots[0][2],
+                                               "iterations": [{"title": t, "start_date": s, "duration": d} for t, s, d in slots]}
+        fields[a["name"]] = gh.call("POST", f"{project.base}/fields", body)
+    for a in (a for a in actions if a["do"] == "project schedule"):
+        field = fields["Schedule"]
+        existing = {i["title"]: i for i in _iterations(field)}
+        wanted = {t: {"title": t, "startDate": s, "duration": d, **({"id": existing[t]["id"]} if t in existing else {})} for t, s, d in a["slots"]}
+        keep = [i for t, i in existing.items() if t not in wanted]  # slots stakeholders added stay
+        merged = sorted(keep + list(wanted.values()), key=lambda i: i["startDate"])
+        gh.graphql("mutation($f:ID!,$c:ProjectV2IterationFieldConfigurationInput!){ updateProjectV2Field(input:{fieldId:$f, iterationConfiguration:$c}){ clientMutationId } }",
+                   {"f": field["node_id"], "c": {"startDate": merged[0]["startDate"], "duration": merged[0]["duration"], "iterations": merged}})
+        fields = project.fields()
+    cards = project.items([f["id"] for f in fields.values()])
+    for a in actions:
+        if a["do"] == "project add":
+            issue = remote[a["id"]]
+            if issue["id"] not in cards:
+                cards[issue["id"]] = (gh.call("POST", f"{project.base}/items", {"type": "Issue", "id": issue["id"]})["id"], {})
+        elif a["do"] == "project values":
+            item_id = cards[remote[a["id"]]["id"]][0]
+            updates = [{"id": fields[name]["id"], "value": _value_for(fields[name], value)} for name, value in a["set"].items()]
+            gh.call("PATCH", f"{project.base}/items/{item_id}", {"fields": updates})
+        elif a["do"] == "project view":
+            name, layout, flt, group, sort = next(v for v in PROJECT_VIEWS if v[0] == a["name"])
+            body = {"name": name, "layout": layout, "filter": flt}
+            if group:
+                body["group_by"] = [fields[group]["id"]]
+            if sort:
+                body["sort_by"] = [[fields[sort[0]]["id"], sort[1]]]
+            gh.call("POST", f"{project.base}/views", body)
+    for item in data["items"]:
+        ext = (item.get("external") or {}).get("github")
+        if ext and item["id"] in remote and not any(a["do"] == "conflict" and a.get("id") == item["id"] for a in actions):
+            ext["project"] = {"project": spec, "fields": project_values(data, item)}
+
+
+def _value_for(field, value):
+    if value is None:
+        return None
+    if field.get("data_type") == "single_select":
+        return dict(_field_names(field))[value]
+    if field.get("data_type") == "iteration":
+        match = [i["id"] for i in _iterations(field) if i["title"] == value]
+        if not match:
+            raise RuntimeError(f"no schedule slot named {value!r}; give its milestone a 'due' date")
+        return match[0]
+    return value
+
+
 # Excel ----------------------------------------------------------------------------------------
 
-def excel_rows(data, base):
+def excel_rows(data, base, today=None):
+    today = today or datetime.now().date().isoformat()
     ids, kids = backlog.items_by_id(data), backlog.children(data)
     head = ["ID", "Type", "Parent", "Title", "Statement", "Domain or work", "Priority", "Urgency", "Size",
             "Status", "WSJF", "Milestone", "Owner", "Depends on", "Drivers", "Traces to", "Sign-off", "Delivery", "Tracker link"]
@@ -491,7 +719,7 @@ def excel_rows(data, base):
             drivers = [f"{d['id']}: {d['statement']}" for d in drivers]
         sign = backlog.approval_state(data, item, base=base) if kind in ("initiative", "feature") else ""
         delivery = backlog.delivery_state(item) if kind in ("story", "bug") else (
-            backlog.goal_state(item, datetime.now().date().isoformat()) if kind == "goal" else "")
+            backlog.goal_state(item, today) if kind == "goal" else "")
         rows.append([
             item["id"], kind, item.get("parent", ""), item["title"], statement,
             item.get("domain") or item.get("work") or "", item.get("priority", ""), item.get("urgency", ""),
@@ -510,7 +738,7 @@ def excel_rows(data, base):
     fb += [[f["id"], f["feature"], f["from"], f.get("at", ""), f["summary"], f["disposition"], f.get("resolution", ""), f.get("source", "")]
            for f in data.get("feedback", [])]
     ms = [["ID", "Title", "Due"]] + [[m["id"], m["title"], m.get("due", "")] for m in data.get("milestones", [])]
-    _, gaps = backlog.trace_report(data, base, datetime.now().date().isoformat())
+    _, gaps = backlog.trace_report(data, base, today)
     return [("Backlog", rows), ("Acceptance criteria", criteria), ("Feedback", fb), ("Milestones", ms),
             ("Traceability gaps", [["Gap"]] + [[g] for g in gaps])]
 
@@ -612,8 +840,14 @@ def _print_actions(actions):
             extra = f"+{a['add']} -{a['remove']}"
         if a["do"] == "link":
             extra = f"sub-issue of {a['parent']}"
-        if a["do"] == "project":
-            target = a["project"]
+        if a["do"] == "project field":
+            target = f"{a['name']} ({a['type']})"
+        if a["do"] in ("project schedule",):
+            target = ", ".join(t for t, _, _ in a["slots"])
+        if a["do"] == "project values":
+            extra = ", ".join(f"{k}={v}" for k, v in a["set"].items())
+        if a["do"] == "project view":
+            target = f"{a['name']} ({a['layout']}, {a['filter']})"
         print(f"{a['do']:16} {target} {extra}".rstrip())
         if a.get("diff"):
             print("\n".join("    " + line for line in a["diff"].splitlines()))
@@ -627,21 +861,23 @@ def main(argv=None):
     g.add_argument("action", choices=("plan", "apply", "pull", "report"))
     g.add_argument("file")
     g.add_argument("--repo", required=True, help="OWNER/NAME")
-    g.add_argument("--project", help="OWNER/NUMBER of a GitHub Project to add every item to")
+    g.add_argument("--project", help="OWNER/NUMBER of a GitHub Project: cards, fields, schedule, and roadmap views")
     g.add_argument("--overwrite", default="", help="comma-separated IDs whose GitHub edits may be overwritten")
     g.add_argument("--expect", help="apply: the digest printed by the plan the user approved")
     g.add_argument("--since", help="pull: only comments updated on or after YYYY-MM-DD")
     g.add_argument("--post", action="store_true", help="report: post or update the comment instead of printing it")
+    g.add_argument("--today", default=datetime.now().date().isoformat(), help="report: date to judge goals against and stamp")
     x = sub.add_parser("excel", help="export to .xlsx")
     x.add_argument("file")
     x.add_argument("--out", required=True)
+    x.add_argument("--today", default=datetime.now().date().isoformat(), help="date to judge goals against")
     args = parser.parse_args(argv)
     base = Path(args.file).resolve().parent
 
     try:
         if args.adapter == "excel":
             data = _load_valid(args.file)
-            write_xlsx(args.out, excel_rows(data, base))
+            write_xlsx(args.out, excel_rows(data, base, args.today))
             print(f"wrote {args.out}")
             return 0
         data = _load_valid(args.file)
@@ -654,7 +890,7 @@ def main(argv=None):
                 print(f"digest: {plan_digest(actions)}  (apply with --expect {plan_digest(actions)} once approved)")
             return 1 if any(a["do"] == "conflict" for a in actions) else 0
         if args.action == "report":
-            today = datetime.now().date().isoformat()
+            today = args.today
             if not args.post:
                 print(report_comment(data, base, today), end="")
                 return 0

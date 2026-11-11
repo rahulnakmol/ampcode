@@ -33,7 +33,7 @@ REQUIRED = {
 OPTIONAL = {
     "initiative": {"prd", "non_goals"},
     "goal": {"measurements"},
-    "feature": {"acceptance", "milestone"},
+    "feature": {"acceptance", "milestone", "owner"},
     "story": {"depends_on", "milestone", "owner", "delivery"},
     "bug": {"environment", "depends_on", "milestone", "owner", "delivery"},
 }
@@ -60,7 +60,7 @@ QUANTITY = re.compile(
     re.I,
 )
 GENERIC_ACTORS = {"user", "users", "customer", "customers", "stakeholder", "stakeholders", "team"}
-TIME_BOX = re.compile(r"\d+\s*-?\s*(hour|day|week|sprint|iteration)s?\b", re.I)
+TIME_BOX = re.compile(r"\d+\s*-?\s*(working[\s-]*|business[\s-]*)?(hour|day|week|sprint|iteration)s?\b", re.I)
 DECISION = re.compile(r"\b(decid\w*|decision|recommend\w*|choose|chooses|select\w*)\b", re.I)
 ITEM_REF = re.compile(r"\b[IGFSB]-\d+\b")
 ANY_ID = re.compile(r"\b(?:[IGFSBDR]|AC|FB)-\d+(?:\.\d+)?\b|\bE\d+\b")
@@ -160,14 +160,19 @@ def validate(data, require_ready=False, base=None):
         if not isinstance(m, dict) or not _text(m.get("id")) or not _text(m.get("title")):
             err(where, "needs 'id' and 'title'")
             continue
-        if set(m) - {"id", "title", "due"}:
-            err(m["id"], f"unknown fields {sorted(set(m) - {'id', 'title', 'due'})}")
+        if set(m) - {"id", "title", "start", "due"}:
+            err(m["id"], f"unknown fields {sorted(set(m) - {'id', 'title', 'start', 'due'})}")
         if m["id"] in milestones:
             err(m["id"], "duplicate milestone id")
         if m["title"] in titles:
             err(m["id"], "duplicate milestone title; trackers match on titles")
-        if "due" in m and not _iso_date(m["due"]):
-            err(m["id"], "'due' must be YYYY-MM-DD")
+        for key in ("start", "due"):
+            if key in m and not _iso_date(m[key]):
+                err(m["id"], f"'{key}' must be YYYY-MM-DD")
+        if _iso_date(m.get("start")) and _iso_date(m.get("due")) and m["start"] > m["due"]:
+            err(m["id"], "'start' is after 'due'")
+        if "start" in m and "due" not in m:
+            err(m["id"], "'start' needs a 'due' date")
         milestones[m["id"]] = m
         titles.add(m["title"])
 
@@ -250,12 +255,20 @@ def validate(data, require_ready=False, base=None):
                 err(fb.get("id", "feedback"), "duplicate feedback must name another existing FB- id")
 
     if require_ready:
+        waiting = {}  # draft work that waits on a research story not yet delivered: held, not failed
         for iid, item in seen.items():
             if item["type"] in ("story", "bug") and item.get("status") == "draft":
-                err(iid, "is still draft")
-        promoted = [(w, m) for w, m in warnings if _is_story_level(w, seen)]
-        warnings = [(w, m) for w, m in warnings if not _is_story_level(w, seen)]
+                deps = item.get("depends_on") if isinstance(item.get("depends_on"), list) else []
+                research = [d for d in deps if isinstance(d, str) and isinstance(seen.get(d), dict)
+                            and seen[d].get("work") == "research" and not seen[d].get("delivery")]
+                if research:
+                    waiting[iid] = research
+                else:
+                    err(iid, "is still draft")
+        promoted = [(w, m) for w, m in warnings if _is_story_level(w, seen) and w not in waiting]
+        warnings = [(w, m) for w, m in warnings if not _is_story_level(w, seen) or w in waiting]
         errors.extend(promoted)
+        warnings += [(iid, f"draft until research {', '.join(r)} is delivered") for iid, r in waiting.items()]
 
     if base is not None:
         _check_trace_sources(data, seen, Path(base), warn)
@@ -535,7 +548,11 @@ def goal_state(goal, today):
         return "missed (not measured)" if overdue else "not measured"
     latest = ms[-1]["value"]
     base, target, value = _number(goal.get("baseline")), _number(goal.get("target")), _number(latest)
-    if None not in (base, target, value):
+    limit = re.match(r"\s*at (most|least)\s+(-?\d+(?:\.\d+)?)", str(goal.get("target")), re.I)
+    if limit and value is not None:  # a limit, such as a guardrail: direction comes from the words
+        bound = float(limit.group(2))
+        achieved = value <= bound if limit.group(1).lower() == "most" else value >= bound
+    elif None not in (base, target, value):
         achieved = value <= target if base > target else value >= target
     else:
         achieved = str(latest).strip().lower() == str(goal.get("target")).strip().lower()
@@ -579,9 +596,13 @@ def trace_report(data, base, today, tracker="github", require_all=False):
             out.append(f"| {ini['id']} | {d.get('id')}: {d.get('statement')} | {', '.join(served) or '-'} | {status} |")
         prd = Path(base) / ini["prd"] if _text(ini.get("prd")) else None
         if prd and prd.exists():
+            # A feature groups criteria; only a story or bug delivers one.
+            built = {t for i in seen.values() if i.get("type") in ("story", "bug") for t in i.get("trace") or []}
             for ref in sorted(prd_ids(prd.read_text(encoding="utf-8")), key=id_key):
                 if ref not in traced:
                     gaps.append(f"{ref} in {ini['prd']} is traced by no item")
+                elif ref.startswith("AC-") and ref not in built:
+                    gaps.append(f"{ref} in {ini['prd']} is traced only by a feature; no story or bug delivers it")
 
     out += ["", "## Goals", "", "| Goal | Drivers | Baseline → target, by | Latest | Status |", "| --- | --- | --- | --- | --- |"]
     for g in goals:
@@ -593,7 +614,7 @@ def trace_report(data, base, today, tracker="github", require_all=False):
         if not any(k.get("type") == "feature" for k in kids.get(g["id"], [])):
             gaps.append(f"{g['id']} has no feature")
 
-    out += ["", "## Features", "", "| Feature | Goal | WSJF | Sign-off | Stories delivered | Criteria met |", "| --- | --- | --- | --- | --- | --- |"]
+    out += ["", "## Features", "", "| Feature | Goal | Rank score | Sign-off | Stories delivered | Acceptance checks met |", "| --- | --- | --- | --- | --- | --- |"]
     for f in (i for i in ordered if i.get("type") == "feature"):
         work = [k for k in kids.get(f["id"], []) if k.get("type") in ("story", "bug")]
         stories = [k for k in work if k["type"] == "story"]

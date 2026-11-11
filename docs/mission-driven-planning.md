@@ -103,11 +103,11 @@ python3 skills/syncing/scripts/sync.py excel skills/grooming/reference/examples/
 | Skills `planning`, `synthesizing`, `specifying`, `grooming`, `syncing` | Built; instructions only, no plugin |
 | Contract checks, tree, sign-off status, trace report (`backlog.py`) | Built; unit-tested |
 | GitHub sync (issues, sub-issues, labels, milestones, pull, status comment) | Built; unit-tested against an in-memory fake of the GitHub API |
-| GitHub Projects | Issues are added to a Project; Project fields and views (status, size, dates, roadmap) are not set yet |
+| GitHub Projects | Built; unit-tested against the fake: cards, fields (type, priority, urgency, size, readiness, rank score, schedule), a Roadmap view, and a backlog table. Not yet run against a live Project |
 | Excel export | Built; tested by reading the workbook back |
 | Linear, Azure DevOps | Planned; mapping recorded in `skills/syncing/reference/trackers.md` |
 | Audio transcription | Not included: supply transcripts from your meeting tool |
-| Roadmap visuals, dedicated discovery workshops | Not yet: milestones and WSJF order act as the roadmap |
+| Dedicated discovery workshops | Not yet: the roadmap is the Project's Roadmap view, or milestones and WSJF order without a Project |
 
 Gates are instructions the agent follows plus checks scripts enforce; no plugin blocks a step.
 Sign-off identity is the tracker's: anyone with a listed GitHub login can approve.

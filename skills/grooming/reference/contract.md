@@ -119,7 +119,7 @@ An outcome, not a task, with a number someone can check.
 | `target` | yes | The value that counts as success, string or number |
 | `by` | yes | `YYYY-MM-DD` |
 | `drivers` | yes | IDs of the parent initiative's drivers this goal serves, at least one |
-| `measurements` | no | `[{ "at": "YYYY-MM-DD", "value": "4", "source": "…" }]`, oldest first. The latest decides: when baseline, target, and value all start with a number, the goal is achieved at or past the target (inclusive) in the direction from baseline to target; otherwise only when `value` equals `target`, ignoring case. For "under 10", set the target to the largest acceptable value |
+| `measurements` | no | `[{ "at": "YYYY-MM-DD", "value": "4", "source": "…" }]`, oldest first. The latest decides: when baseline, target, and value all start with a number, the goal is achieved at or past the target (inclusive) in the direction from baseline to target; otherwise only when `value` equals `target`, ignoring case. For a limit, write the target as `at most 80` or `at least 85%`: the latest value is compared with that number whatever the baseline, so guardrails ("must not rise above 7.1") and goals with no baseline yet work too |
 | `trace` | yes | At least one entry |
 
 ## Feature
@@ -131,6 +131,7 @@ An outcome, not a task, with a number someone can check.
 | `wsjf` | yes | Checked: exactly `business_value`, `time_criticality`, `risk_reduction`, `job_size`, each 1, 2, 3, 5, 8, 13, or 20. Review: scored relative to the other features. Score = (value + time criticality + risk reduction) ÷ job size; `backlog.py tree` ranks by it |
 | `acceptance` | no | List of plain-language conditions for the whole feature |
 | `milestone` | no | A milestone `id`; stories and bugs inherit it unless they set their own |
+| `owner` | no | The one named person accountable for the feature. Review: a person, not a team or role, and not an approver who will not do the work |
 | `trace` | yes | At least one entry |
 
 ## Story: the executable unit
@@ -197,7 +198,8 @@ the fix. Priority says how much the fix matters; urgency says how soon it must l
 6. Every `depends_on` ID is a story or bug in the file, is not the item itself, and forms no cycle.
 
 `validate --require-ready` is the final grooming gate. Every warning about a story or bug becomes
-an error, and it also fails on any `draft` story or bug, any parent without the children listed
+an error, and it also fails on any `draft` story or bug (except one that depends on a `research`
+story not yet delivered: that is held, with a warning), any parent without the children listed
 above, any driver no goal serves, and any `open` feedback. It does not look at sign-offs;
 `backlog.py status` does.
 
@@ -247,9 +249,12 @@ the PRD, changes the PRD.
 
 ## Milestones (checked)
 
-`{ "id": "M1", "title": "PI 27.1: pilot UK01", "due": "2027-02-26" }`. IDs and titles are unique,
-because trackers match milestones on titles; `due` is an optional `YYYY-MM-DD`. Milestones are
-the roadmap: PIs or releases that features, stories, and bugs are planned into.
+`{ "id": "M1", "title": "PI 27.1: pilot UK01", "start": "2027-01-11", "due": "2027-02-26" }`. IDs
+and titles are unique, because trackers match milestones on titles. `start` and `due` are
+optional `YYYY-MM-DD` dates; `start` needs `due` and is not after it. Milestones are the roadmap:
+PIs or releases that features, stories, and bugs are planned into. On a GitHub Project roadmap,
+a milestone with a `due` date runs from its `start`, or else from the day after the previous
+milestone's `due`; the first milestone needs a `start`.
 
 ## Approvers and sign-off
 

@@ -14,7 +14,7 @@ S=<this skill>/scripts/sync.py
 python3 $S github plan   backlog.json --repo acme/close [--project acme/7]   # read-only; prints a digest
 python3 $S github apply  backlog.json --repo acme/close [--project acme/7] --expect <digest>
 python3 $S github pull   backlog.json --repo acme/close [--since 2027-01-14]
-python3 $S github report backlog.json --repo acme/close [--post]
+python3 $S github report backlog.json --repo acme/close [--post] [--today 2027-04-21]
 python3 $S excel backlog.json --out backlog.xlsx
 ```
 
@@ -44,7 +44,37 @@ How the backlog appears in GitHub:
 | PRD | Written in full into the initiative issue body, so `/approve` there signs off the PRD and goals |
 | Stories covered by sign-off | Listed in the feature issue body |
 | Identity | A hidden `<!-- backlog:ID -->` marker in each body |
-| GitHub Project | `--project OWNER/NUMBER` adds every issue to that Project. Project fields (status, size, WSJF, dates) are not set yet; group or filter by the labels and milestone instead |
+| GitHub Project | `--project OWNER/NUMBER` puts every issue on that Project as a card, with the fields and views below |
+
+### GitHub Project: fields and roadmap
+
+With `--project`, the plan also creates and fills these Project fields, matched by name:
+
+| Field | Type | Value |
+| --- | --- | --- |
+| Item type | single select | initiative, goal, feature, story, bug |
+| Priority, Size, Readiness | single select | the story's or bug's `priority`, `size`, and `status` |
+| Urgency | single select | bugs only |
+| Rank score | number | the feature's WSJF score: higher goes first |
+| Schedule | iteration | the milestone of the feature, story, or bug; one slot per milestone with a `due` date |
+
+It also creates two views: **Roadmap** (roadmap layout, features only, bars placed by
+Schedule) and **Backlog by milestone** (table of stories and bugs, grouped by Schedule, sorted
+by Priority). GitHub's own `Status` field is left to the delivery team.
+
+Each Schedule slot runs from the milestone's `start`, or from the day after the previous
+milestone's `due`. The first milestone therefore needs a `start`; the plan stops with an error
+if it has none, or if a field with one of these names exists with another type.
+
+- **Token:** a fine-grained token cannot create user-owned Projects (`createProjectV2` is
+  refused). Use a classic token with the `project` scope, or an organisation Project the token
+  has Projects permission on.
+- **Once, after the first apply:** open the Roadmap view and check that its date field is
+  Schedule (the API cannot set it; GitHub picks an iteration field when one exists).
+- **Edits on cards are kept:** a Priority, Size, or Schedule changed on a card since the last
+  sync, or set by hand on a card this file never wrote, is a `conflict`, like an edited issue.
+  Moving a milestone's dates moves its slot and keeps the cards on it; slots someone added by
+  hand stay.
 
 Safety rules the script enforces:
 

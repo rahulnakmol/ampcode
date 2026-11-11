@@ -139,6 +139,15 @@ class Structure(unittest.TestCase):
         data = example()
         errors, _ = backlog.validate(data, require_ready=True)
         self.assertIn("is still draft", messages(errors, "S-6"))
+        # Draft work may wait on research that is not delivered yet, but not on delivered research.
+        held = copy.deepcopy(data)
+        item(held, "S-6")["depends_on"] = ["S-1"]
+        errors, _ = backlog.validate(held, require_ready=True)
+        self.assertIn("is still draft", messages(errors, "S-6"))  # S-1's decision is already in
+        del item(held, "S-1")["delivery"]
+        errors, warnings = backlog.validate(held, require_ready=True)
+        self.assertEqual(messages(errors, "S-6"), [])
+        self.assertIn("draft until research S-1 is delivered", messages(warnings, "S-6"))
         item(data, "S-6")["status"] = "ready"
         data["feedback"].append({"id": "FB-3", "feature": "F-2", "from": "x", "summary": "y", "disposition": "open"})
         data["items"] = [i for i in data["items"] if i["id"] != "S-6"]
@@ -176,17 +185,27 @@ class Traceability(unittest.TestCase):
         self.assertEqual(backlog.goal_state(unknown, "2027-05-02"), "in progress")
         rising = {"baseline": "0", "target": "400", "by": "2027-03-31", "measurements": [{"at": "2027-03-31", "value": "399"}]}
         self.assertEqual(backlog.goal_state(rising, "2027-03-31"), "in progress")
+        # A limit above today's value ("tickets must stay at most 80", today 40) is direction-free.
+        limit = {"baseline": "40", "target": "at most 80", "by": "2027-09-30", "measurements": [{"at": "2027-07-01", "value": "120"}]}
+        self.assertEqual(backlog.goal_state(limit, "2027-07-02"), "in progress")
+        limit["measurements"].append({"at": "2027-08-01", "value": "80"})
+        self.assertEqual(backlog.goal_state(limit, "2027-08-02"), "achieved")
+        floor = {"baseline": "unknown", "target": "At least 85%", "by": "2027-08-27", "measurements": [{"at": "2027-08-20", "value": "84.5%"}]}
+        self.assertEqual(backlog.goal_state(floor, "2027-08-28"), "missed")
 
     def test_trace_reports_untraced_prd_requirements_and_partial_delivery(self):
         data = example()
         item(data, "S-2")["delivery"] = {"at": "2027-02-20", "evidence": ["PR 88"],
                                           "criteria": {"S-2.1": "met", "S-2.2": "met", "S-2.3": "not met", "S-2.4": "met"}}
+        item(data, "S-3")["trace"] = ["E4"]  # AC-4 is now listed on feature F-1 only
         with tempfile.TemporaryDirectory() as tmp:
             Path(tmp, "prd.md").write_text("- **R-1** a\n- **R-2** b\n- **R-3** c\n- **R-9** d\n**AC-1** **AC-2** **AC-3** **AC-4** **AC-5**\n"
                                            "## Change log\n- removed R-7 and AC-8")
             text, gaps = backlog.trace_report(data, tmp, "2027-03-10")
         self.assertIn("R-9 in prd.md is traced by no item", gaps)
         self.assertIn("S-2 partial: S-2.3 not met", gaps)
+        self.assertIn("AC-4 in prd.md is traced only by a feature; no story or bug delivers it", gaps)
+        self.assertFalse([g for g in gaps if g.startswith("AC-3 ")])  # delivered by S-1, S-2, and B-1
         self.assertNotIn("R-1 in prd.md is traced by no item", gaps)
         self.assertFalse([g for g in gaps if "R-7" in g or "AC-8" in g])  # mentioned, not defined
         self.assertIn("| I-1 | D-1:", text)
@@ -198,6 +217,7 @@ class FakeGitHub:
     def __init__(self, me="planner"):
         self.issues, self.milestones, self.labels, self.subs, self.comments = {}, {}, set(), {}, []
         self.writes, self.clock, self.me = 0, 0, me
+        self.project = FakeProject(self)
 
     def now(self):
         self.clock += 1
@@ -207,6 +227,8 @@ class FakeGitHub:
         route = path.split("?")[0]
         if route == "user":
             return {"login": self.me}
+        if route.startswith("users/acme") or route == "graphql":
+            return self.project.call(method, route, body)
         route = route.removeprefix("repos/acme/close/")
         parts = route.split("/")
         if method != "GET":
@@ -226,6 +248,9 @@ class FakeGitHub:
             number = len(self.milestones) + 1
             self.milestones[number] = {"number": number, "title": body["title"], "due_on": body.get("due_on")}
             return self.milestones[number]
+        if method == "PATCH" and parts[0] == "milestones":
+            self.milestones[int(parts[1])].update(body)
+            return self.milestones[int(parts[1])]
         if method == "POST" and route == "issues":
             number = len(self.issues) + 1
             self.issues[number] = {"number": number, "id": 9000 + number, "title": body["title"], "body": body["body"],
@@ -282,13 +307,89 @@ class FakeGitHub:
         return comment
 
 
+class FakeProject:
+    """User project acme/7, in the REST shapes of fields and items and the GraphQL views and iteration update."""
+
+    def __init__(self, github):
+        self.github, self.fields, self.cards, self.views, self.next_id = github, {}, {}, [], 100
+
+    def new_id(self):
+        self.next_id += 1
+        return self.next_id
+
+    def call(self, method, route, body):
+        if route == "users/acme":
+            return {"login": "acme", "type": "User"}
+        if route == "graphql":
+            if "updateProjectV2Field" in body["query"]:
+                self.github.writes += 1
+                field = next(f for f in self.fields.values() if f["node_id"] == body["variables"]["f"])
+                field["configuration"]["iterations"] = [
+                    {"id": i.get("id") or f"it{self.new_id()}", "title": {"raw": i["title"]}, "start_date": i["startDate"],
+                     "duration": i["duration"]} for i in body["variables"]["c"]["iterations"]]
+                return {"data": {}}
+            return {"data": {"user": {"projectV2": {"views": {"nodes": [{"name": v["name"]} for v in self.views]}}}}}
+        if method != "GET":
+            self.github.writes += 1
+        tail = route.removeprefix("users/acme/projectsV2/7/").split("/")
+        if tail == ["fields"] and method == "GET":
+            return list(self.fields.values())
+        if tail == ["fields"]:
+            field = {"id": self.new_id(), "node_id": f"F{self.next_id}", "name": body["name"], "data_type": body["data_type"]}
+            if "single_select_options" in body:
+                field["options"] = [{"id": f"o{self.new_id()}", "name": o["name"]} for o in body["single_select_options"]]
+            if "iteration_configuration" in body:
+                field["configuration"] = {"iterations": [
+                    {"id": f"it{self.new_id()}", "title": {"raw": i["title"]}, "start_date": i["start_date"], "duration": i["duration"]}
+                    for i in body["iteration_configuration"]["iterations"]]}
+            self.fields[body["name"]] = field
+            return field
+        if tail == ["items"] and method == "GET":
+            return [{"id": cid, "content_type": "Issue", "content": {"id": c["issue"]},
+                     "fields": [self.shown(name, value) for name, value in c["values"].items()]} for cid, c in self.cards.items()]
+        if tail == ["items"]:
+            cid = self.new_id()
+            self.cards[cid] = {"issue": body["id"], "values": {}}
+            return {"id": cid}
+        if tail[0] == "items" and method == "PATCH":
+            by_id = {f["id"]: f for f in self.fields.values()}
+            for update in body["fields"]:
+                self.cards[int(tail[1])]["values"][by_id[update["id"]]["name"]] = update["value"]
+            return {}
+        if tail == ["views"]:
+            self.views.append(body)
+            return {}
+        raise AssertionError(f"unexpected project call {method} {route}")
+
+    def shown(self, name, value):
+        """A card value as the REST API returns it: options and iterations by name, numbers as numbers."""
+        field = self.fields[name]
+        for option in field.get("options", []):
+            if option["id"] == value:
+                return {"name": name, "value": {"id": value, "name": option["name"]}}
+        for it in field.get("configuration", {}).get("iterations", []):
+            if it["id"] == value:
+                return {"name": name, "value": {"id": value, "title": it["title"]}}
+        return {"name": name, "value": value}
+
+    def card(self, issue_number):
+        issue_id = self.github.issues[issue_number]["id"]
+        return next(c for c in self.cards.values() if c["issue"] == issue_id)
+
+    def card_text(self, issue_number):
+        return {name: sync._text_value(self.shown(name, v)["value"]) for name, v in self.card(issue_number)["values"].items()}
+
+    def option(self, name, text):
+        return next(o["id"] for o in self.fields[name]["options"] if o["name"]["raw"] == text)
+
+
 class GitHubSync(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.base = self.tmp.name
         Path(self.base, "prd.md").write_text((ROOT / "skills/planning/reference/worked-example/prd.md").read_text())
         self.fake = FakeGitHub()
-        self.gh = sync.GitHub("acme/close", call=self.fake.call, project_add=lambda *a: None)
+        self.gh = sync.GitHub("acme/close", call=self.fake.call)
         self.data = example()
 
     def tearDown(self):
@@ -317,6 +418,66 @@ class GitHubSync(unittest.TestCase):
         self.assertEqual(sync.plan(self.data, self.base, self.gh), [])
         sync.apply(self.data, self.base, self.gh)
         self.assertEqual(self.fake.writes, writes)
+
+    def project_plan(self, **kw):
+        return [a for a in sync.plan(self.data, self.base, self.gh, project="acme/7", **kw) if a["do"].startswith("project") or a["do"] == "conflict"]
+
+    def test_project_gets_fields_schedule_cards_and_views_then_nothing_to_do(self):
+        sync.apply(self.data, self.base, self.gh, project="acme/7")
+        p = self.fake.project
+        self.assertEqual(set(p.fields), {"Item type", "Priority", "Urgency", "Size", "Readiness", "Rank score", "Schedule"})
+        slots = [(i["title"]["raw"], i["start_date"], i["duration"]) for i in p.fields["Schedule"]["configuration"]["iterations"]]
+        # M1 runs from its start to its due date; M2 from the day after M1's due date to its own.
+        self.assertEqual(slots, [("PI 27.1: pilot UK01", "2027-01-11", 47), ("PI 27.2: all EU entities", "2027-02-27", 91)])
+        self.assertEqual(len(p.cards), len(self.data["items"]))
+        s6 = p.card_text(self.number("S-6"))
+        self.assertEqual((s6["Item type"], s6["Priority"], s6["Schedule"]), ("story", "should", "PI 27.2: all EU entities"))  # slot from F-3
+        f1 = p.card_text(self.number("F-1"))
+        self.assertNotIn("Priority", f1)
+        self.assertEqual(f1["Rank score"], backlog.wsjf_score(item(self.data, "F-1")))
+        self.assertEqual({v["name"]: v["layout"] for v in p.views}, {"Roadmap": "roadmap", "Backlog by milestone": "table"})
+        writes = self.fake.writes
+        self.assertEqual(sync.plan(self.data, self.base, self.gh, project="acme/7"), [])
+        sync.apply(self.data, self.base, self.gh, project="acme/7")
+        self.assertEqual(self.fake.writes, writes)
+
+    def test_project_card_edited_in_github_is_a_conflict_until_overwrite(self):
+        sync.apply(self.data, self.base, self.gh, project="acme/7")
+        p = self.fake.project
+        p.card(self.number("S-2"))["values"]["Priority"] = p.option("Priority", "could")
+        item(self.data, "S-1")["priority"] = "should"
+        actions = [(a["do"], a["id"]) for a in self.project_plan()]
+        self.assertIn(("conflict", "S-2"), actions)
+        self.assertNotIn(("project values", "S-2"), actions)
+        self.assertIn(("project values", "S-1"), actions)  # a local change with no edit in GitHub just flows
+        forced = [(a["id"], a["set"]) for a in self.project_plan(overwrite=("S-2",)) if a["do"] == "project values"]
+        self.assertIn(("S-2", {"Priority": "must"}), forced)
+        # A card value set by hand before this file ever wrote the card is not overwritten either.
+        del item(self.data, "S-3")["external"]["github"]["project"]
+        p.card(self.number("S-3"))["values"]["Size"] = p.option("Size", "XL")
+        self.assertIn(("conflict", "S-3"), [(a["do"], a["id"]) for a in self.project_plan()])
+
+    def test_moving_a_due_date_moves_the_slot_and_keeps_cards_on_it(self):
+        sync.apply(self.data, self.base, self.gh, project="acme/7")
+        p = self.fake.project
+        before = [i["id"] for i in p.fields["Schedule"]["configuration"]["iterations"]]
+        self.data["milestones"][1]["due"] = "2027-06-11"
+        self.assertEqual([a["do"] for a in self.project_plan()], ["project schedule"])
+        sync.apply(self.data, self.base, self.gh, project="acme/7")
+        slots = p.fields["Schedule"]["configuration"]["iterations"]
+        self.assertEqual([i["id"] for i in slots], before)
+        self.assertEqual(slots[1]["duration"], 105)
+        self.assertEqual(p.card_text(self.number("F-3"))["Schedule"], "PI 27.2: all EU entities")
+        self.assertEqual(sync.plan(self.data, self.base, self.gh, project="acme/7"), [])
+
+    def test_project_refuses_a_wrong_field_type_and_a_first_milestone_without_start(self):
+        self.fake.project.fields["Size"] = {"id": 1, "node_id": "F1", "name": "Size", "data_type": "text"}
+        with self.assertRaisesRegex(RuntimeError, "'Size' exists as text"):
+            sync.plan(self.data, self.base, self.gh, project="acme/7")
+        del self.fake.project.fields["Size"]
+        del self.data["milestones"][0]["start"]
+        with self.assertRaisesRegex(RuntimeError, "M1 needs a 'start'"):
+            sync.plan(self.data, self.base, self.gh, project="acme/7")
 
     def test_lost_sync_records_rebind_by_marker_when_github_matches(self):
         sync.apply(self.data, self.base, self.gh)

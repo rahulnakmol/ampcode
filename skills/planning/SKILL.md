@@ -58,7 +58,9 @@ add `research` stories for the unknowns rather than guessing requirements.
 Load each skill when its stage starts and follow it. Gates pass in order, with one exception:
 grooming (G4) may run while the PRD awaits sign-off (G3), but the backlog is not synced for
 sign-off (G5) until G3 passes. Do not move past a gate that fails; say what is missing and what
-would close it.
+would close it. A gate whose checks pass but whose fresh-context review could not run is
+`pending`, not failed: carry on, call the later work provisional, and run every missing review
+before asking anyone to sign off (G3, G5).
 
 | Gate | Passes when | Checked by |
 | --- | --- | --- |
@@ -67,7 +69,7 @@ would close it.
 | **G3 PRD agreed** | `backlog.py status` shows the initiative `approved` (add `--all-approvers` when the charter needs every approver), not `unsynced changes` or `stale` | `syncing pull`, then `backlog.py status` |
 | **G4 Backlog ready** | `backlog.py validate --require-ready` reports 0 errors; a fresh reader can execute the must-have stories without asking questions | `grooming` |
 | **G5 Backlog agreed** | `sync plan` prints `nothing to do`, and `backlog.py status` exits 0: every feature approved, no open feedback | `syncing`, `backlog.py status` |
-| **G6 Handed off** | Each ready story has an owner, a milestone, and a delivery route: `delivering` for software work in any domain, the named team for the rest | the backlog and the charter |
+| **G6 Handed off** | Each feature has a named person as `owner`; each ready story has an owner and a milestone, and its `work` type sets the delivery route: `delivering` for software work in any domain, the named team for the rest | the backlog and the charter |
 | **G7 Achieved** | Delivered items have delivery records; goals have measurements; `backlog.py trace` lists no gaps, or each remaining gap has an owner and date in the charter | `backlog.py trace` |
 
 Fresh-context reviews follow the Elephant-Goldfish method used in `grilling` and `delivering`:
@@ -104,6 +106,24 @@ closed.
   and achieved, and what happened to each piece of feedback.
 - Sharing with people who do use Amp: publish the trace report or a PRD draft as an artifact
   when the user asks for one; the files stay the source of truth.
+
+## Write in plain English
+
+Every file and report in a mission is read by people outside the planning thread. The other planning skills apply these rules; apply them to the charter and gate reports too. Write so that someone who was not in the room can read it once, understand it, and approve
+it.
+
+- Short sentences, about 20 words at most, one idea each. Short bullets over long paragraphs.
+- Everyday words. Spell out each acronym and planning term the first time, such as "rank score
+  (WSJF)" or "must have (MoSCoW)".
+- Numbers and names instead of adjectives: "by 07:00", not "early"; "the AP team", not
+  "stakeholders".
+- Say who does what: "the nightly job posts matches", not "matches are posted".
+- Keep IDs next to words, never alone: "the exception report (S-3)", not "S-3".
+- Write "gate 1" in documents people read, never "G1", which looks like goal G-1. Never name
+  skills, scripts, or agent steps in text stakeholders read (notes, PRD, issue bodies).
+- Report honestly: say what changed after the owner last confirmed, and what still waits for
+  sign-off, instead of "confirmed".
+
 
 ## 6. Adapt it
 
