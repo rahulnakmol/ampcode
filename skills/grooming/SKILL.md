@@ -56,6 +56,15 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
 Every child has one parent. If a story serves two features, it is two stories or the features
 are cut wrongly.
 
+## Run a session from an intake
+
+When `synthesizing` hands over a confirmed `intake.md` (new features under existing goals,
+changes, bugs, or feedback), work through its "Next session" agenda in order. Each placement row
+becomes backlog edits: new features with their story seeds turned into executable stories, a
+change to the named feature, a bug under its feature, or a feedback entry. Give new items IDs
+here, cite the intake's evidence in `trace`, and tell the owner which sign-offs each change
+reopens. A row marked `assumed` is confirmed with the owner before it changes the backlog.
+
 ## Triage feedback
 
 `syncing pull` adds tracker comments as `open` feedback on a feature and prints comments on

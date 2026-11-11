@@ -205,7 +205,7 @@ keeps score against the initiative's business drivers. Five small skills, each u
 | Skill | Does | Output |
 | --- | --- | --- |
 | [`planning`](./skills/planning/SKILL.md) | Charters the mission, picks the entry point, runs gates G1–G7, defines done | Charter and gate-by-gate report |
-| [`synthesizing`](./skills/synthesizing/SKILL.md) | Turns raw inputs into cited evidence, contradictions, open questions, stakeholders | `evidence.md` |
+| [`synthesizing`](./skills/synthesizing/SKILL.md) | Turns raw inputs into cited evidence, then grills the owner to a confirmed intent and places each ask in the backlog (new initiative, goal, feature, change, bug, feedback) | `evidence.md`, `intake.md` (kickoff or session agenda) |
 | [`specifying`](./skills/specifying/SKILL.md) | Writes the PRD with `grilling`: drivers, measurable goals, requirements, criteria; fresh-reader review | `prd.md`, initiative and goals in `backlog.json` |
 | [`grooming`](./skills/grooming/SKILL.md) | Builds and maintains the backlog contract; splits, sizes, triages, records delivery | `backlog.json`, checked by `backlog.py` |
 | [`syncing`](./skills/syncing/SKILL.md) | Plans and applies GitHub sync (issues, sub-issues, milestones, Projects); pulls `/approve` and comments; exports Excel | Tracker items; sign-offs and feedback in the file |

@@ -6,6 +6,7 @@
 | SRC1 | inputs/2027-01-08-close-workshop.vtt | transcript | 2027-01-08 | Tom Okafor (Group Controller), Priya Raman (Finance Operations lead), Ana Costa (AP clerk, UK01), Lukas Brenner (Finance systems) |
 | SRC2 | inputs/2027-01-08-minutes.md | minutes | 2027-01-08 | same as SRC1 |
 | SRC3 | inputs/2027-01-12-priya-draft.md | rough draft | 2027-01-12 | Priya Raman |
+| SRC4 | intake interview (intake.md) | interview | 2027-01-12 | Priya Raman (owner), Tom Okafor |
 
 ## Evidence
 | ID | Kind | Statement | Who | Where | Confidence |
@@ -28,14 +29,17 @@
 | E16 | idea | The dashboard could also forecast the close date. | Priya Raman | SRC3 last line | paraphrased |
 | E17 | need | Train the close team before the February close. | Priya Raman | SRC3 item 4 | paraphrased |
 | E18 | assumption | 4 days is realistic for the pilot; 3 once the automation is stable. | Priya Raman | SRC1 00:16:20; SRC2 §3 | paraphrased |
+| E19 | decision | The pilot target is a 4-day close; the 30 June target is 3 days. Both are goals of one initiative. | Tom Okafor | SRC4 round 1 | paraphrased |
+| E20 | decision | Forecasting the close date is out of scope for now; revisit after two closes on the dashboard. | Priya Raman, Tom Okafor | SRC4 round 1 | paraphrased |
+| E21 | decision | This is one new operations initiative, owned by Priya; no existing backlog covers it. Next step is the PRD. | Priya Raman | SRC4 round 2 | paraphrased |
 
 ## Contradictions
 - E14 vs E18: the board target is 3 days by June, while Finance Operations expects 4 days in the
-  pilot. Compatible if the pilot target is 4 and the June target is 3; confirm with Tom and Priya.
+  pilot. Resolved at intake by E19.
 
 ## Open questions
 - Q1: MT940 or CAMT.053, and which match keys? Lukas Brenner, by 15 January (SRC2 §4).
-- Q2: Should the dashboard forecast the close date (E16)? Priya Raman and Tom Okafor.
+- Q2: Should the dashboard forecast the close date (E16)? Answered at intake: no, for now (E20).
 - Q3: What FX rounding difference may auto-post (E10)? Tom Okafor.
 
 ## Stakeholders

@@ -14,7 +14,7 @@ This skill is the conductor. Each stage is a separate skill that also works on i
 
 | Stage | Skill | Produces |
 | --- | --- | --- |
-| Evidence | `synthesizing` | `evidence.md`: sources, evidence (`E1`…), contradictions, open questions, stakeholders |
+| Evidence and intent | `synthesizing` (uses `grilling`) | `evidence.md`: sources, cited evidence (`E1`…), contradictions, stakeholders; `intake.md`: confirmed intent, where each ask goes in the backlog, candidates, and the next session's agenda |
 | PRD | `specifying` (uses `grilling`) | `prd.md` with drivers (`D-1`), goals, requirements (`R-1`), criteria (`AC-1`); the initiative and goals in `backlog.json` |
 | Backlog | `grooming` | Features, executable stories, bugs, and feedback in `backlog.json`, checked by `backlog.py` |
 | Tracker | `syncing` | GitHub issues, sub-issues, milestones, Projects, or an Excel workbook; sign-offs and feedback pulled back |
@@ -43,7 +43,8 @@ report, and stop at the first gate that needs their decision or a stakeholder's 
 
 | You have | Start at | Skip |
 | --- | --- | --- |
-| Workshop notes, transcripts, minutes, emails, or rough drafts: a new product, a process to reimagine or new way of working, or a campaign | Evidence; `specifying` then picks the product, operations, or marketing template | nothing |
+| Workshop notes, transcripts, minutes, emails, or rough drafts: a new product, a process to reimagine or new way of working, or a campaign | Evidence and intent; `specifying` then picks the product, operations, or marketing template | nothing |
+| New asks for an existing backlog: meeting notes, an email, a list of requests | Evidence and intent against the existing `backlog.json`; the intake routes each ask to `specifying` (new goal) or a `grooming` session | stages the intake does not route to |
 | An approved PRD or brief | `specifying` to fill gaps against its checklist, then Backlog | Evidence, unless you want traced sources |
 | A rough backlog in a tracker or spreadsheet | Backlog: `grooming` rebuilds it against the contract and the PRD | Evidence and PRD only if the user accepts weaker traceability; record that in the charter |
 | Stakeholder comments on synced items | `syncing pull`, then `grooming` triage, then `syncing` again | earlier stages |
@@ -61,7 +62,7 @@ would close it.
 
 | Gate | Passes when | Checked by |
 | --- | --- | --- |
-| **G1 Evidence** | Every input is listed as a source; every evidence row cites its source and location; contradictions and open questions are listed | `synthesizing` checklist and its fresh-context spot check |
+| **G1 Evidence and intent** | Every input is a source; every evidence row cites its source and location; every contradiction is resolved, assumed, or owned; the owner confirmed the intake's intent and placement | `synthesizing` checklist and its fresh-context check |
 | **G2 PRD drafted** | `specifying`'s checklist passes, a fresh reader can explain the PRD back, and `backlog.py validate` passes on the initiative and goals | `specifying` |
 | **G3 PRD agreed** | `backlog.py status` shows the initiative `approved` (add `--all-approvers` when the charter needs every approver), not `unsynced changes` or `stale` | `syncing pull`, then `backlog.py status` |
 | **G4 Backlog ready** | `backlog.py validate --require-ready` reports 0 errors; a fresh reader can execute the must-have stories without asking questions | `grooming` |

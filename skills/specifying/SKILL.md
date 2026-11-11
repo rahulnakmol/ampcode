@@ -11,8 +11,10 @@ of fact traces to evidence (`E7`) or is labelled as a decision or assumption.
 
 ## Inputs and outputs
 
-- **In:** `evidence.md` from `synthesizing` when there is one; otherwise the user's notes, an
-  existing draft, or an interview from scratch.
+- **In:** `evidence.md` and a confirmed `intake.md` from `synthesizing` when there are ones:
+  the intake fixes the intent, the placement (new initiative or a new goal under an existing
+  one), candidate drivers, goals, and features, and the agenda; do not re-ask its decisions.
+  Otherwise the user's notes, an existing draft, or an interview from scratch.
 - **Out:** `prd.md` beside `backlog.json`, plus the initiative and its goals in `backlog.json`
   (contract: `grooming/reference/contract.md`). Syncing the initiative puts the PRD in front of
   stakeholders for `/approve`.
@@ -22,8 +24,9 @@ of fact traces to evidence (`E7`) or is labelled as a decision or assumption.
 1. **Pick the template** in [reference/prd-template.md](reference/prd-template.md): the common
    core, with the section for `product`, `operations`, or `marketing` inserted after
    Requirements.
-2. **Fill it from evidence first.** Cite evidence IDs inline (`E5`). Do not ask the user what the
-   ledger already answers.
+2. **Fill it from the intake and evidence first.** Start from the intake's candidates and its
+   "Still open" list. Cite evidence IDs inline (`E5`). Do not ask the user what the ledger or
+   the intake already answers.
 3. **Grill the gaps.** Load `grilling` and run its rounds only on what is missing, contradicted,
    or a decision: drivers and their numbers, goal baselines and targets, scope cuts, risk
    appetite, sign-off. Every contradiction in the ledger becomes a question or a labelled
