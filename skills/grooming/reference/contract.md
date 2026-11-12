@@ -131,7 +131,7 @@ An outcome, not a task, with a number someone can check.
 | `wsjf` | yes | Checked: exactly `business_value`, `time_criticality`, `risk_reduction`, `job_size`, each 1, 2, 3, 5, 8, 13, or 20. Review: scored relative to the other features. Score = (value + time criticality + risk reduction) ÷ job size; `backlog.py tree` ranks by it |
 | `acceptance` | no | List of plain-language conditions for the whole feature |
 | `milestone` | no | A milestone `id`; stories and bugs inherit it unless they set their own |
-| `owner` | for ready | The one named person accountable for the feature. Checked: `--require-ready` fails without one (a warning before). Review: a person, not a team or role, and not an approver who will not do the work. An owner the planner chose for the user is written as an assumption in the feature's `notes` |
+| `owner` | for ready | The one named person accountable for the feature. Checked: `--require-ready` fails without one, or on a placeholder such as "to be named", "name to confirm", or "TBD" (a warning before). Review: a person, not a team or role, and not an approver who will not do the work. An owner the planner chose for the user is written as an assumption in the feature's `notes` |
 | `trace` | yes | At least one entry |
 
 ## Story: the executable unit
@@ -195,12 +195,14 @@ the fix. Priority says how much the fix matters; urgency says how soon it must l
 4. `size` is not `XL`.
 5. A `research` story's `i_want` or a `then` states a time box (a number followed by hour, day,
    week, sprint, or iteration) and a decision (decide, decision, recommend, choose, or select).
+   Its `size` is the smallest size that holds the time box (a 3-day spike is `M`); a mismatch
+   is a warning.
 6. Every `depends_on` ID is a story or bug in the file, is not the item itself, and forms no cycle.
 
 `validate --require-ready` is the final grooming gate. Every warning about a story or bug becomes
 an error, and it also fails on any `draft` story or bug (except one that depends on a `research`
 story not yet delivered: that is held, with a warning), any parent without the children listed
-above, any feature without an `owner`, any driver no goal serves, and any `open` feedback. It
+above, any feature without a named `owner`, any driver no goal serves, and any `open` feedback. It
 does not look at sign-offs;
 `backlog.py status` does.
 

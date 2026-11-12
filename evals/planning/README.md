@@ -30,7 +30,8 @@ on demand, not in CI.
 3. **Check what scripts can check.** `backlog.py validate --require-ready` (H4), `trace` (H6),
    `readability.py` on `intake.md`, `prd.md`, and `stakeholder-view.md`. Build
    `stakeholder-view.md` from `sync.render` for every item plus `sync.report_comment`: exactly
-   what stakeholders would see in GitHub.
+   what stakeholders would see in GitHub, with `<details>` sections shown folded, as GitHub
+   first shows them.
 4. **Judge.** Two read-only judge subagents per mission, briefed as skeptics. One scores as the
    internal and the external stakeholder, the other as the five company lenses. Judges read the
    deliverables, `rounds.md`, the inputs, the checks, and the rubric, never the skills or the

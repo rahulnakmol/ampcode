@@ -3,6 +3,13 @@
 Status: signed off  ·  Owner: Priya Raman  ·  Approvers: Priya Raman (@priya-r), Tom Okafor (@tokafor)
 Last change: 2027-01-14, FX rounding tolerance added to AC-3 after Tom's comment
 
+## In short
+UK01 closes its books in 3 business days by 30 June 2027, down from 7 today.
+A nightly job matches bank lines to invoices, cutting hand matching from 60 to 10 hours a month.
+Every close task gets one named owner and a due day, and the controller sees progress twice a day.
+The pilot runs in the February close; all EU entities follow by 28 May. The ERP ledger does not change.
+Signing approves these goals, the three requirements, and the two milestone dates.
+
 ## Problem
 UK01 locks its ledger on business day 7, sometimes 8 (E3), and the board pack follows on day 10
 (E1). About 60 hours a month go to matching bank lines to invoices by hand (E2, E5), and the

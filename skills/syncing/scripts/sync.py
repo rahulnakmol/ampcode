@@ -86,7 +86,10 @@ def sections(data, item, base):
             path = Path(base) / item["prd"]
             if not path.exists():
                 raise RuntimeError(f"{item['id']}: PRD '{item['prd']}' not found; stakeholders would sign off without it")
-            prd = "<details><summary>Full PRD (part of what you approve)</summary>\n\n" + path.read_text(encoding="utf-8").strip() + "\n\n</details>"
+            text = path.read_text(encoding="utf-8").strip()
+            short = re.search(r"(?ms)^## In short\n(.*?)(?=^## |\Z)", text)
+            prd = (short.group(1).strip() + "\n\n" if short else "") + \
+                "<details><summary>Full PRD (part of what you approve)</summary>\n\n" + text + "\n\n</details>"
         values.update(problem=item["problem"], outcome=item["outcome"], prd=prd,
                       drivers=_bullets(f"**{d['id']}** {d['statement']}" for d in item["drivers"]),
                       goals=_bullets(f"**{g['id']}** {g['title']}: {g['baseline']} → {g['target']} by {g['by']}" for g in goals),
@@ -449,8 +452,8 @@ def pull(data, gh, since=None):
 
 
 def report_comment(data, base, today):
-    """The status comment for stakeholders: five plain lines on goals, dates, blockers, sign-off,
-    and feedback. The full chain stays in `backlog.py trace` and the Excel export."""
+    """The status comment for stakeholders: five plain points on goals (one per line), dates,
+    blockers, sign-off, and feedback. The full chain stays in `backlog.py trace` and the Excel export."""
     seen = backlog.items_by_id(data)
     ordered = sorted(seen.values(), key=lambda i: backlog.id_key(i["id"]))
     named = lambda i: f"{i.get('title', '')} ({i['id']})"
@@ -466,11 +469,15 @@ def report_comment(data, base, today):
     for m in sorted((m for m in data.get("milestones", []) if m.get("due")), key=lambda m: m["due"]):
         mine = [i for i in work if (i.get("milestone") or seen.get(i.get("parent"), {}).get("milestone")) == m["id"]]
         done = sum(1 for i in mine if backlog.delivery_state(i) == "delivered")
-        if mine and done < len(mine):
-            late = ", overdue" if m["due"] < today else ""
-            dates.append(f"{m['title']} due {m['due']}{late}: {done} of {len(mine)} stories and bugs delivered")
+        if mine and done < len(mine) and m["due"] < today:
+            # Work can be live without a delivery record, so a passed date is not called late.
+            dates.append(f"{m['title']} was due {m['due']}: delivery recorded for {done} of {len(mine)} stories and bugs")
+        elif mine and done < len(mine):
+            dates.append(f"{m['title']} due {m['due']}: {done} of {len(mine)} stories and bugs delivered")
 
-    blocked, held = [], {}
+    blocked = [f"{named(f)} has no named owner" for f in ordered
+               if f.get("type") == "feature" and not backlog.named_owner(f.get("owner"))]
+    held = {}
     for i in work:
         state = backlog.delivery_state(i)
         if state.startswith(("partial", "closed")):
@@ -500,7 +507,7 @@ def report_comment(data, base, today):
         return "; ".join(parts[:most]) + more if parts else empty
 
     lines = [
-        f"- **Goals:** {few(goals, 'none yet')}.",
+        "- **Goals:**" + ("".join(f"\n  - {g}." for g in goals) if goals else " none yet."),
         f"- **Next dates:** {few(dates, 'nothing scheduled is still open', 3)}.",
         f"- **Blocked:** {few(blocked, 'nothing')}.",
         f"- **Not yet signed by:** {few(signoff, 'nobody: every approver has signed everything')}.",
