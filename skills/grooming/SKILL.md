@@ -34,10 +34,11 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
    components that move its metric. Each feature gets a description, a benefit hypothesis tied
    to the goal's metric, WSJF scores relative to the other features, a milestone, an `owner`
    (one named person, not a team, and not an approver who will not do the work), and traces to
-   `R-`/`AC-` IDs. `--require-ready` fails on a feature with no owner, so ask for owners in
-   the same question round as sizes and milestones. If the user leaves the choice to you, name
-   the person whose role does the work and write "Owner assumed: …; confirm before sign-off" in
-   the feature's `notes`. A feature that moves no goal is out of scope or reveals a missing goal: ask.
+   `R-`/`AC-` IDs. `--require-ready` fails on a feature with no owner or a placeholder ("lead
+   (to be named)", "name to confirm", "TBD"), so ask for owners in the same question round as
+   sizes and milestones. If the user leaves the choice to you, name the person whose role does
+   the work; when the evidence names nobody in that role, name the mission owner until someone
+   is. Write "Owner assumed: …; confirm before sign-off" in the feature's `notes`. A feature that moves no goal is out of scope or reveals a missing goal: ask.
    Dependencies and milestone dates decide the order first; the rank score (WSJF) only orders
    features that could go either way. If the two disagree, fix the scores.
 3. **Stories per feature.** Write each as one executable unit:
@@ -47,6 +48,11 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
    - `work` type, `priority` (MoSCoW: `must` only when the milestone fails without it, so not
      every story is a must), `size` XS (half a day) to L (one iteration);
    - `depends_on` for real ordering only; `trace` to the PRD criterion it satisfies.
+   - **Test every part of the criterion you trace.** Each channel, group, and promise in a PRD
+     criterion needs a check that tests it: "stop texts by phone or on the page" needs a phone
+     check and a page check; "0 customer records are used for training" needs a check on that
+     rule, not only on what the assistant may read. A part no check tests gets its own check or
+     story.
    - **Go-live and spend wait on finished gates.** A story that goes live, reaches customers,
      or commits money `depends_on` every story that completes one of its preconditions (an
      assessment, an approval, a contract, a sign-off). Those stories' criteria test the final
@@ -67,14 +73,19 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
 6. **Bugs** go under the feature whose behaviour they break, with observed, expected, steps, a
    reproduction criterion, priority, and urgency.
 7. **Check each milestone fits.** Count the working days from today to its `due` date and add
-   up each owner's story sizes in it (XS ½, S 2, M 5, L 10 days at most; a research story counts
-   its time box). When an owner's work does not fit, move stories to a later milestone or name
+   up each owner's story sizes in it at the top of each size: XS ½, S 2, M 5, L 10 days. A
+   research story is sized by its time box (a 3-day spike is M), and `validate` warns when it is
+   not. Use only this scale in every sum you show. When an owner's work does not fit, move stories to a later milestone or name
    the fallback in the feature's `notes`. Never leave a milestone that cannot be met.
    - **Sizes against the team's estimate.** When your total differs from the team's own
      estimate by half or more, your sizes are not ready. Re-size with the team's numbers if you
      have them: split stories until the total is within half of their estimate, and move what
      no longer fits. Otherwise keep the affected stories `draft` until the team re-sizes; the
      ready gate (gate 4) stays open and you say so.
+   - **No team estimate yet.** Your sizes stand: keep the stories `ready` and say in each
+     feature's `notes` that the sizes are yours. Plan a dated session where the team sizes them,
+     as the next action in the report. Gate 4 stays open until the team has sized them; then
+     the bullet above applies.
    - **Outside approvals.** When someone outside the team approves work (a bank, a regulator, a
      data protection officer, a patient group), plan three dates: when it is submitted, when
      they decide, and one resubmission that still meets the deadline. Count their review days
@@ -99,7 +110,10 @@ here, cite the intake's evidence in `trace`, and tell the owner which sign-offs 
 reopens. A row marked `assumed` is confirmed with the owner before it changes the backlog. For
 every ask that came from outside the team (a customer ticket, a stakeholder email), say who
 tells that person the outcome, through the channel they used, and by when. Draft the reply for
-the user to approve; acceptance checks that test the fix use the requester's own example (their
+the user to approve. It states only what the evidence confirms: a cause nobody has reproduced
+reads "we can see … and are reproducing it with your file", and a date the team has not
+confirmed reads "we are aiming for 30 April and will confirm after planning on 27 April". It
+says when the person hears next, such as when the fix ships or the date moves. Acceptance checks that test the fix use the requester's own example (their
 file, their case) when there is one.
 
 ## Triage feedback
@@ -114,8 +128,8 @@ initiatives and goals separately. For each entry decide with the owner:
 Initiative and goal comments either become feedback on the right feature (create a new entry
 with the comment URL as `source`, so `pull` does not list it again) or a PRD change through
 `specifying`. Changing a signed-off item makes its sign-off stale; tell the
-owner which gate reopens. Draft replies to commenters for the user to approve; never post them
-yourself without approval.
+owner which gate reopens. Draft replies to commenters for the user to approve, stating only what the
+evidence confirms; never post them yourself without approval.
 
 ## Record delivery and outcomes
 
@@ -130,7 +144,8 @@ remain.
 Give a subagent only `backlog.json`, the PRD, and the contract (with no PRD, as for new asks
 against an existing backlog, give `intake.md` and `evidence.md` instead). Ask it, for every `must` story and
 every `critical` or `high` bug: how would you do this, and how would you prove it is done? List
-every question you would have to ask first. Also ask which PRD requirements no story covers.
+every question you would have to ask first. Also ask which PRD requirements, or parts of an
+acceptance criterion, no story's checks test.
 Each question is a gap: fix the story, then recheck with a new fresh reader. Record the result in
 the mission's README.
 
@@ -185,6 +200,8 @@ Ready: As a workspace admin I want to upload a CSV of up to 500 users and see in
 ## Check your work
 
 - `backlog.py validate --require-ready` reports 0 errors, and you ran it after the last edit.
+- Every part of each traced PRD criterion has a check that tests it.
+- Every reply to someone outside the team states only what the evidence confirms.
 - `backlog.py tree` shows every goal with features and every feature with stories.
 - The fresh-context executability review found no unanswered question, or each is resolved.
 - No feedback is `open` at hand-over.

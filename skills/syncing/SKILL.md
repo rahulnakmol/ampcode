@@ -42,7 +42,7 @@ How the backlog appears in GitHub:
 | Issue body | Named sections from the type's template (below): for a story, User story, Acceptance criteria, Depends on, Owner, Sources, Notes |
 | Parent and child | Sub-issues: goals under the initiative, features under goals, stories and bugs under features |
 | Milestone | Repository milestone matched by title; stories and bugs inherit their feature's |
-| PRD | Written in full into the initiative issue body, so `/approve` there signs off the PRD and goals |
+| PRD | Its "In short" section opens the initiative's PRD section, with the full PRD folded below it, so `/approve` there signs off the PRD and goals |
 | Stories covered by sign-off | Listed in the feature issue body |
 | Identity | A hidden `<!-- backlog:ID -->` marker in each body |
 | GitHub Project | `--project OWNER/NUMBER` puts every issue on that Project as a card, with the fields and views below |
@@ -138,9 +138,12 @@ feature issue (see `planning`, section 5).
 
 ## Show stakeholders where things stand
 
-`report` prints the status comment: five plain lines for people who will not open the backlog.
-They cover goals with their latest reading, the next milestone dates with delivery counts, what is
-blocked (and which research it waits on), who has not signed what yet, and open feedback. The
+`report` prints the status comment: five plain points for people who will not open the backlog.
+They cover goals with their latest reading (one per line), the next milestone dates with delivery
+counts, what is blocked (features with no named owner, and drafts with the research they wait
+on), who has not signed what yet, and open feedback. A milestone whose date has passed shows how
+many items have a delivery record, not "overdue": work can be live before its delivery is
+recorded. The
 full chain from driver to delivery stays in `backlog.py trace` and the Excel export. With
 `--post` (after the user approves the text) it creates the comment on each initiative issue, or
 updates the one it posted before, so stakeholders see what was agreed, delivered, and achieved

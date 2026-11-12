@@ -102,6 +102,15 @@ class DefinitionOfReady(unittest.TestCase):
         self.assertIn("research story must state its time box, such as '3-day'", messages(errors, "S-1"))
         self.assertIn("research story must state the decision it produces", messages(errors, "S-1"))
 
+    def test_research_story_is_sized_by_its_time_box(self):
+        s1 = item(self.data, "S-1")  # a 3-day spike: more than S (2 days), so M
+        self.assertEqual(messages(backlog.validate(self.data)[1], "S-1"), [])
+        s1["size"] = "S"
+        _, warnings = backlog.validate(self.data)
+        self.assertIn("research time box '3-day' is size M, not S: size it by its time box", messages(warnings, "S-1"))
+        errors, _ = backlog.validate(self.data, require_ready=True)
+        self.assertIn("research time box '3-day' is size M, not S: size it by its time box", messages(errors, "S-1"))
+
     def test_draft_story_may_be_partial_but_schema_errors_still_fail(self):
         s6 = item(self.data, "S-6")
         del s6["size"]
@@ -157,6 +166,11 @@ class Structure(unittest.TestCase):
         errors, _ = backlog.validate(data, require_ready=True)
         self.assertIn("has no owner: name the one person accountable for it", messages(errors, "F-1"))
         self.assertEqual(messages(errors, "F-2"), [])  # F-2 names its owner
+        item(data, "F-2")["owner"] = "Finance systems lead (name to confirm on 27 April)"
+        errors, _ = backlog.validate(data, require_ready=True)
+        self.assertIn("owner 'Finance systems lead (name to confirm on 27 April)' is a placeholder: "
+                      "name the one person accountable for it", messages(errors, "F-2"))
+        item(data, "F-2")["owner"] = "Lukas Brenner"
         self.assertIn("feedback is still open", messages(errors, "FB-3"))
         self.assertIn("has no story yet", messages(errors, "F-3"))
         self.assertIn("driver D-3 is served by no goal", messages(errors, "I-1"))
@@ -579,6 +593,11 @@ class GitHubSync(unittest.TestCase):
         self.assertEqual(headings("S-1")[:2], ["User story", "Acceptance criteria (definition of done)"])
         self.assertNotIn("Depends on", headings("S-1"))  # an empty section is left out, heading and all
         self.assertEqual(headings("G-1"), ["Metric", "Baseline and target", "Serves business drivers", "Sources"])
+        # Approvers read the PRD's "In short" first; the full PRD they sign stays one click away.
+        body = sync.render(self.data, item(self.data, "I-1"), self.base)[1]
+        prd = body.split("## PRD\n", 1)[1]
+        self.assertTrue(prd.startswith("UK01 closes its books in 3 business days"))
+        self.assertLess(prd.index("Signing approves"), prd.index("<details><summary>Full PRD"))
         Path(self.base, "issue-templates").mkdir()
         Path(self.base, "issue-templates/story.md").write_text("Read this first.\n\n## Done when\n{acceptance}\n\n## Why\n{user_story}\n")
         title, body, _, _ = sync.render(self.data, item(self.data, "S-2"), self.base)
@@ -646,6 +665,7 @@ class GitHubSync(unittest.TestCase):
     def test_status_report_is_one_comment_updated_in_place(self):
         sync.apply(self.data, self.base, self.gh)
         self.sign_off("F-2", "tokafor")
+        item(self.data, "F-3")["owner"] = "Data lead (to be named)"
         sync.post_report(self.data, self.base, self.gh, "2027-03-10")
         sync.post_report(self.data, self.base, self.gh, "2027-03-11")
         reports = [c for c in self.fake.comments if sync.REPORT_MARKER in c["body"]]
@@ -658,7 +678,15 @@ class GitHubSync(unittest.TestCase):
         signed = next(l for l in body.splitlines() if l.startswith("- **Not yet signed by:**"))
         self.assertIn("Priya Raman (Finance Operations lead) on I-1, F-1, F-2, F-3", signed)
         self.assertIn("Tom Okafor (Group Controller) on I-1, F-1, F-3", signed)
-        self.assertIn("PI 27.1: pilot UK01 due 2027-02-26, overdue: 1 of", body)
+        # A passed date reports what is recorded, not that live work is late.
+        self.assertIn("PI 27.1: pilot UK01 was due 2027-02-26: delivery recorded for 1 of", body)
+        self.assertNotIn("overdue", body)
+        goals = body.split("- **Goals:**\n", 1)[1].split("\n- **", 1)[0].splitlines()
+        self.assertEqual(len(goals), len([i for i in self.data["items"] if i["type"] == "goal"]))
+        self.assertTrue(all(g.startswith("  - ") for g in goals))  # one goal per line
+        blocked = next(l for l in body.splitlines() if l.startswith("- **Blocked:**"))
+        self.assertIn("(F-3) has no named owner", blocked)
+        self.assertNotIn("(F-1) has no named owner", blocked)
         before = len(self.data["feedback"])
         sync.pull(self.data, self.gh)
         self.assertEqual(len(self.data["feedback"]), before)  # the report is not feedback

@@ -146,7 +146,7 @@
         { "id": "S-4.1", "given": "CRM notes and support tickets for the last 120 new mid-market accounts", "when": "the spike ends", "then": "a decision note states the share of accounts that needed SSO in week 1 and recommends add or leave out" }
       ],
       "priority": "could",
-      "size": "S",
+      "size": "M",
       "status": "draft",
       "trace": ["E9"]
     },

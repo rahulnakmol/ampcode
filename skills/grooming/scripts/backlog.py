@@ -61,6 +61,10 @@ QUANTITY = re.compile(
 )
 GENERIC_ACTORS = {"user", "users", "customer", "customers", "stakeholder", "stakeholders", "team"}
 TIME_BOX = re.compile(r"\d+\s*-?\s*(working[\s-]*|business[\s-]*)?(hour|day|week|sprint|iteration)s?\b", re.I)
+DAYS_PER = {"hour": 1 / 8, "day": 1, "week": 5, "sprint": 10, "iteration": 10}
+SIZE_DAYS = (("XS", 0.5), ("S", 2), ("M", 5), ("L", 10))
+PLACEHOLDER_OWNER = re.compile(
+    r"\b(to be (named|confirmed|agreed|decided)|to confirm|names? (needed|to confirm)|tbd|tbc|unassigned|unknown)\b", re.I)
 DECISION = re.compile(r"\b(decid\w*|decision|recommend\w*|choose|chooses|select\w*)\b", re.I)
 ITEM_REF = re.compile(r"\b[IGFSB]-\d+\b")
 ANY_ID = re.compile(r"\b(?:[IGFSBDR]|AC|FB)-\d+(?:\.\d+)?\b|\bE\d+\b")
@@ -117,6 +121,11 @@ def wsjf_score(feature):
 
 def _text(value):
     return isinstance(value, str) and value.strip() != ""
+
+
+def named_owner(value):
+    """True when an owner names someone, not a placeholder such as 'Data lead (to be named)'."""
+    return _text(value) and not PLACEHOLDER_OWNER.search(value)
 
 
 def _iso_date(value):
@@ -206,6 +215,8 @@ def validate(data, require_ready=False, base=None):
             (err if require_ready else warn)(iid, f"has no {child_kind[0]} yet")
         if kind == "feature" and not _text(item.get("owner")):
             (err if require_ready else warn)(iid, "has no owner: name the one person accountable for it")
+        elif kind == "feature" and not named_owner(item["owner"]):
+            (err if require_ready else warn)(iid, f"owner '{item['owner']}' is a placeholder: name the one person accountable for it")
     for iid in _cycle_members(deps):
         _dor(seen[iid], "depends_on forms a cycle", err, warn)
     for iid, item in seen.items():
@@ -408,8 +419,14 @@ def _check_work_item(item, seen, err, warn):
 
     if kind == "story" and item.get("work") == "research":
         texts = " ".join([item.get("i_want") or ""] + [a.get("then") or "" for a in criteria or [] if isinstance(a, dict)])
-        if not TIME_BOX.search(texts):
+        box = TIME_BOX.search(item.get("i_want") or "") or TIME_BOX.search(texts)
+        if not box:
             _dor(item, "research story must state its time box, such as '3-day'", err, warn)
+        else:
+            days = int(re.match(r"\d+", box.group(0)).group(0)) * DAYS_PER[box.group(2).lower()]
+            fits = next((s for s, most in SIZE_DAYS if days <= most), "XL")
+            if item.get("size") in dict(SIZE_DAYS) and item["size"] != fits:
+                warn(iid, f"research time box '{box.group(0)}' is size {fits}, not {item['size']}: size it by its time box")
         if not DECISION.search(texts):
             _dor(item, "research story must state the decision it produces", err, warn)
 
