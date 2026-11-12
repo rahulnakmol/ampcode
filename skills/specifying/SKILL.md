@@ -54,18 +54,23 @@ of fact traces to evidence (`E7`) or is labelled as a decision or assumption.
 - Every driver has a number or an observable condition, and at least one goal serves it.
 - Every goal has metric, baseline, target, and date. A baseline of `unknown` comes with a
   requirement to measure it.
+- A goal that several parts add up to shows how they add up: each part with its source or a
+  labelled assumption, and the result the plan expects if every part is met. When that falls
+  short of the target, "In short" says so and names the gap.
 - Every requirement has at least one acceptance criterion with a number, date, time, or count;
   none relies on words like fast, easy, robust, or improved.
 - Scope and non-goals are explicit; nothing in scope contradicts a non-goal. A promise written
   as a principle or a non-goal ("a person always decides", "nothing goes live before the
   review") also has an acceptance criterion that tests it, with a count that must be 0.
 - Each fact cites evidence or is labelled `Decision (who, when)` or `Assumption (revisit if …)`.
-- Risks name an owner and a mitigation; open questions name who answers and by when.
+- Risks name an owner and a mitigation; open questions name who answers, by when, and which
+  requirements wait on the answer (grooming makes each a research story).
 - Sign-off names the approvers and their tracker handles.
 - "In short" opens the PRD and reads with no IDs; nothing explains the tools (backlog rules,
   rank score sums) to stakeholders.
 - Alternatives include doing nothing. Every severity-4 edge case is handled by a control with a
-  threshold, not a count.
+  threshold, not a count. The control says what sets it off and what catches the case when
+  nobody sets it, such as an injury mentioned in a call but not flagged.
 - A decision someone reported for another person reads `Decision (who; reported by …, confirm
   at sign-off)`.
 

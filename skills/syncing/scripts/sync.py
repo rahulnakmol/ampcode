@@ -36,6 +36,7 @@ LABEL_COLORS = {"backlog": "5319e7", "type": "1d76db", "work": "0e8a16", "priori
                 "size": "c5def5", "urgency": "b60205", "status": "fbca04", "domain": "006b75"}
 MARKER = re.compile(r"<!-- backlog:([IGFSB]-\d+) -->")
 REPORT_MARKER = "<!-- backlog:report -->"
+ASSUMED_OWNER = re.compile(r"\bowner assumed\b", re.I)  # grooming's note until the owner agrees
 MAX_BODY = 60000
 SIGN_OFF = "_To sign off, comment `/approve` as the first line. Any other comment is recorded as feedback._"
 
@@ -154,6 +155,8 @@ def render(data, item, base):
 
 def _milestone_title(data, item):
     ids = backlog.items_by_id(data)
+    if item.get("priority") == "wont":
+        return None  # a won't-have item is out of every release
     mid = item.get("milestone")
     if not mid and item["type"] in ("story", "bug"):
         mid = ids.get(item.get("parent"), {}).get("milestone")
@@ -457,7 +460,7 @@ def report_comment(data, base, today):
     seen = backlog.items_by_id(data)
     ordered = sorted(seen.values(), key=lambda i: backlog.id_key(i["id"]))
     named = lambda i: f"{i.get('title', '')} ({i['id']})"
-    work = [i for i in ordered if i.get("type") in ("story", "bug")]
+    work = [i for i in ordered if i.get("type") in ("story", "bug") and i.get("priority") != "wont"]
 
     goals = []
     for g in (i for i in ordered if i.get("type") == "goal"):
@@ -475,20 +478,27 @@ def report_comment(data, base, today):
         elif mine and done < len(mine):
             dates.append(f"{m['title']} due {m['due']}: {done} of {len(mine)} stories and bugs delivered")
 
-    blocked = [f"{named(f)} has no named owner" for f in ordered
-               if f.get("type") == "feature" and not backlog.named_owner(f.get("owner"))]
+    blocked = []
+    for f in (i for i in ordered if i.get("type") == "feature"):
+        if not backlog.named_owner(f.get("owner")):
+            blocked.append(f"{named(f)} has no named owner")
+        elif ASSUMED_OWNER.search(f.get("notes") or ""):
+            blocked.append(f"{named(f)} has an assumed owner who has not agreed yet")
     held = {}
     for i in work:
         state = backlog.delivery_state(i)
         if state.startswith(("partial", "closed")):
             blocked.append(f"{named(i)} is {state}")
         elif i.get("status") == "draft":
-            research = [d for d in i.get("depends_on") or [] if d in seen
-                        and seen[d].get("work") == "research" and not seen[d].get("delivery")]
+            research = backlog.research_holds(i, seen)
             for d in research:
                 held.setdefault(d, []).append(i["id"])
             if not research:
                 blocked.append(f"{named(i)} is not ready yet")
+        else:
+            for d in i.get("depends_on") or []:
+                if seen.get(d, {}).get("status") == "draft" and seen[d].get("priority") != "wont":
+                    held.setdefault(d, []).append(i["id"])
     blocked += [f"{', '.join(ids)} {'waits' if len(ids) == 1 else 'wait'} on {named(seen[d])}" for d, ids in held.items()]
 
     waiting = {}

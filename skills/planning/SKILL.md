@@ -67,7 +67,7 @@ before asking anyone to sign off (G3, G5).
 | **G1 Evidence and intent** | Every input is a source; every evidence row cites its source and location; every contradiction is resolved, assumed, or owned; the owner confirmed the intake's intent and placement | `synthesizing` checklist and its fresh-context check |
 | **G2 PRD drafted** | `specifying`'s checklist passes, a fresh reader can explain the PRD back, and `backlog.py validate` passes on the initiative and goals | `specifying` |
 | **G3 PRD agreed** | `backlog.py status` shows the initiative `approved` (add `--all-approvers` when the charter needs every approver), not `unsynced changes` or `stale` | `syncing pull`, then `backlog.py status` |
-| **G4 Backlog ready** | `backlog.py validate --require-ready` reports 0 errors (it also checks each feature has a named `owner`, not a placeholder); the team has sized the stories and its total is within half of yours (with no team estimate yet, the gate stays open until a dated sizing session); a fresh reader can execute the must-have stories without asking questions | `grooming` |
+| **G4 Backlog ready** | `backlog.py validate --require-ready` reports 0 errors (it also checks each feature has a named `owner`, not a placeholder); the team has sized the stories at a dated session, and your total differs from theirs by less than half of their estimate (with no team estimate yet, the gate stays open until that session has happened); a fresh reader can execute the must-have stories without asking questions | `grooming` |
 | **G5 Backlog agreed** | `sync plan` prints `nothing to do`, and `backlog.py status` exits 0: every feature approved, no open feedback | `syncing`, `backlog.py status` |
 | **G6 Handed off** | Each feature `owner` is a named person who agreed to it, not an assumption; each ready story has an owner and a milestone, and its `work` type sets the delivery route: `delivering` for software work in any domain, the named team for the rest | the backlog and the charter |
 | **G7 Achieved** | Delivered items have delivery records; goals have measurements; `backlog.py trace` lists no gaps, or each remaining gap has an owner and date in the charter | `backlog.py trace` |
@@ -155,4 +155,6 @@ its backlog is `grooming/reference/examples/operations.json`.
 - Each passed gate has the evidence named in its row: a command and its output, or a recorded
   fresh-context review.
 - `backlog.py status` and `backlog.py trace` were run in this session, not quoted from earlier.
+- Every number the PRD states (dates, amounts, counts, sizes) reads the same in the README,
+  intake, report, and backlog.
 - Anything not done is listed with who must act next.
