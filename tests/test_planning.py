@@ -158,6 +158,28 @@ class Structure(unittest.TestCase):
         errors, warnings = backlog.validate(held, require_ready=True)
         self.assertEqual(messages(errors, "S-6"), [])
         self.assertIn("draft until research S-1 is delivered", messages(warnings, "S-6"))
+        # The hold follows the chain: S-6 waits on S-2, which waits on the research S-1.
+        item(held, "S-6")["depends_on"] = ["S-2"]
+        errors, warnings = backlog.validate(held, require_ready=True)
+        self.assertEqual(messages(errors, "S-6"), [])
+        self.assertIn("draft until research S-1 is delivered", messages(warnings, "S-6"))
+        # A won't-have is out of the plan: the gate skips it, and it takes no milestone.
+        wont = copy.deepcopy(data)
+        item(wont, "S-6").update(priority="wont", milestone="M2")
+        errors, _ = backlog.validate(wont, require_ready=True)
+        self.assertEqual(messages(errors, "S-6"), ["a won't-have item takes no milestone"])
+        del item(wont, "S-6")["acceptance"]  # a won't-have draft needs no more grooming
+        errors, warnings = backlog.validate(wont, require_ready=True)
+        self.assertEqual(messages(errors + warnings, "S-6"), ["a won't-have item takes no milestone"])
+        # Ready work cannot start before a draft it depends on; story owners are checked too.
+        item(wont, "S-4").update(status="draft", owner="Engineering (lead to be named)")
+        errors, warnings = backlog.validate(wont)
+        self.assertIn("is ready but depends on draft S-4: it cannot start before them", messages(warnings, "S-5"))
+        errors, _ = backlog.validate(wont, require_ready=True)
+        self.assertIn("is ready but depends on draft S-4: it cannot start before them", messages(errors, "S-5"))
+        self.assertIn("owner 'Engineering (lead to be named)' is a placeholder: name the person doing it",
+                      messages(errors, "S-4"))
+        self.assertEqual(messages(errors, "S-1"), [])  # 'Finance systems' names who does it
         item(data, "S-6")["status"] = "ready"
         data["feedback"].append({"id": "FB-3", "feature": "F-2", "from": "x", "summary": "y", "disposition": "open"})
         data["items"] = [i for i in data["items"] if i["id"] != "S-6"]
@@ -666,6 +688,8 @@ class GitHubSync(unittest.TestCase):
         sync.apply(self.data, self.base, self.gh)
         self.sign_off("F-2", "tokafor")
         item(self.data, "F-3")["owner"] = "Data lead (to be named)"
+        item(self.data, "F-2")["notes"] = "Owner assumed: Tom Okafor (mission owner); confirm before sign-off."
+        item(self.data, "S-5")["depends_on"].append("S-6")  # ready work behind a draft
         sync.post_report(self.data, self.base, self.gh, "2027-03-10")
         sync.post_report(self.data, self.base, self.gh, "2027-03-11")
         reports = [c for c in self.fake.comments if sync.REPORT_MARKER in c["body"]]
@@ -687,6 +711,9 @@ class GitHubSync(unittest.TestCase):
         blocked = next(l for l in body.splitlines() if l.startswith("- **Blocked:**"))
         self.assertIn("(F-3) has no named owner", blocked)
         self.assertNotIn("(F-1) has no named owner", blocked)
+        self.assertIn("(F-2) has an assumed owner who has not agreed yet", blocked)
+        self.assertNotIn("(F-1) has an assumed owner", blocked)
+        self.assertRegex(blocked, r"S-5 waits on [^;]*\(S-6\)")
         before = len(self.data["feedback"])
         sync.pull(self.data, self.gh)
         self.assertEqual(len(self.data["feedback"]), before)  # the report is not feedback

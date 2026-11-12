@@ -147,12 +147,12 @@ anyone a question. The checked part of that is the Definition of Ready below; th
 | `so_that` | yes | The value, ideally tied to the goal's metric |
 | `work` | yes | `build` (software), `automate` (workflow or job automation), `report` (dashboard, report, metric), `process` (procedure, policy, role, or way-of-working change), `enable` (training, communication, change management), `content` (copy, creative, asset), `launch` (campaign setup and channel execution), or `research` (a time-boxed exploration that ends in a decision) |
 | `acceptance` | yes | One or more `{ "id", "given", "when", "then" }`; IDs are the story ID plus `.n`, such as `S-4.1`. These are the story's definition of done |
-| `priority` | yes | `must`, `should`, `could`, or `wont`, within the feature |
+| `priority` | yes | `must`, `should`, `could`, or `wont`, within the feature. A `wont` item records a decision not to do the work: it takes no `milestone`, gets none from its feature, and the ready gate skips it |
 | `size` | yes | `XS` (up to half a day), `S` (up to 2 days), `M` (up to 5 days), or `L` (up to 10 days, one iteration); never points. `XL` is only a draft flag meaning "too big, split me": an item cannot be ready at XL |
 | `status` | yes | `draft` or `ready`. Tracker workflow states (in progress, done) belong to the tracker |
 | `depends_on` | no | Story or bug IDs that must finish first |
 | `milestone` | no | Overrides the feature's milestone |
-| `owner` | no | Person, team, or `agent` |
+| `owner` | no | Person, team, or `agent`. A placeholder such as "lead (to be named)" fails `--require-ready` (a warning before) |
 | `delivery` | no | Added when the work is done; see [Delivery](#delivery) |
 | `trace` | yes | At least one entry, normally a PRD acceptance criterion |
 
@@ -198,11 +198,14 @@ the fix. Priority says how much the fix matters; urgency says how soon it must l
    Its `size` is the smallest size that holds the time box (a 3-day spike is `M`); a mismatch
    is a warning.
 6. Every `depends_on` ID is a story or bug in the file, is not the item itself, and forms no cycle.
+   A `ready` item that depends on a `draft` one gets a warning: it cannot start before it.
 
 `validate --require-ready` is the final grooming gate. Every warning about a story or bug becomes
-an error, and it also fails on any `draft` story or bug (except one that depends on a `research`
-story not yet delivered: that is held, with a warning), any parent without the children listed
-above, any feature without a named `owner`, any driver no goal serves, and any `open` feedback. It
+an error, and it also fails on any `draft` story or bug (except one whose `depends_on` chain
+reaches a `research` story not yet delivered: that is held, with a warning; and a `wont` item,
+which is skipped), any parent without the children listed above, any feature without a named
+`owner`, any story or bug whose `owner` is a placeholder, a `wont` item with a milestone, any
+driver no goal serves, and any `open` feedback. It
 does not look at sign-offs;
 `backlog.py status` does.
 

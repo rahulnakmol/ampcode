@@ -148,12 +148,14 @@ backlog traces point at real evidence.
    stories: `grooming` makes them executable.
 7. **Write `intake.md`** from [reference/intake-template.md](reference/intake-template.md):
    intent, placement table, candidates, decisions and assumptions, remaining questions with
-   owners, and the agenda and pick-up prompt for the next session.
+   owners, and the agenda and pick-up prompt for the next session. "Next" names what is still
+   to do: a note only drafted reads "send the drafted note to Sales", never "Sales told".
 8. **Review, then confirm.** Run the fresh-context check (below) and repair the files. Then show
    the owner the intent and placement table and ask them to confirm or correct it: this is the
    intake's last round and counts as one. Nothing is specced or groomed on an unconfirmed
-   intake. If the owner already corrected the intents and said to carry on, their reply is the
-   confirmation: record it as such in `intake.md` and do not stop again.
+   intake. If the owner already corrected the intents, their reply is the confirmation, with or
+   without "carry on": apply the corrections, record "confirmed with corrections (date)" in
+   `intake.md`, show the corrected rows at the top of your next message, and do not stop again.
 
 ## Write in plain English
 

@@ -31,14 +31,17 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
 1. **Start from the seeded file.** `specifying` leaves the initiative and goals in
    `backlog.json`. If it is missing, create them from the PRD first.
 2. **Features per goal.** For each goal, list the capabilities, process changes, or campaign
-   components that move its metric. Each feature gets a description, a benefit hypothesis tied
-   to the goal's metric, WSJF scores relative to the other features, a milestone, an `owner`
-   (one named person, not a team, and not an approver who will not do the work), and traces to
-   `R-`/`AC-` IDs. `--require-ready` fails on a feature with no owner or a placeholder ("lead
-   (to be named)", "name to confirm", "TBD"), so ask for owners in the same question round as
-   sizes and milestones. If the user leaves the choice to you, name the person whose role does
-   the work; when the evidence names nobody in that role, name the mission owner until someone
-   is. Write "Owner assumed: …; confirm before sign-off" in the feature's `notes`. A feature that moves no goal is out of scope or reveals a missing goal: ask.
+   components that move its metric. Each feature gets a description, a benefit hypothesis tied to
+   the goal's metric, WSJF scores relative to the other features, a milestone, an `owner` (one
+   named person, not a team, and not an approver who will not do the work), and traces to
+   `R-`/`AC-` IDs. `--require-ready` fails on a feature with no owner, or on a feature, story, or
+   bug owner that is a placeholder ("lead (to be named)", "name to confirm", "TBD"), so ask for
+   owners in the same question round as sizes and milestones. If the user leaves the choice to
+   you, name the person whose role does the work; when the evidence names nobody in that role,
+   name the mission owner until someone is, even when they are an approver. Write "Owner assumed:
+   …; confirm before sign-off" in the feature's `notes`: the status report lists it as blocked,
+   and gate 6 needs an owner who agreed. A feature that moves no goal is out of scope or reveals
+   a missing goal: ask.
    Dependencies and milestone dates decide the order first; the rank score (WSJF) only orders
    features that could go either way. If the two disagree, fix the scores.
 3. **Stories per feature.** Write each as one executable unit:
@@ -69,23 +72,32 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
    `trace` reports a criterion that only a feature lists. A story whose start depends on a
    condition nobody has measured yet ("only if the preview takes under 5 seconds") depends on a
    research story that measures it, and stays `draft` until it passes. The ready gate holds
-   such drafts (a warning, not an error) while their research story is undelivered.
+   such drafts (a warning, not an error) while their research story is undelivered, directly
+   or through the stories they depend on.
+   - **Decisions someone else makes.** A PRD open question that work depends on (who builds
+     it, which supplier, a board or regulator decision) is a `research` story too. Its owner is
+     the person who decides, its time box ends on the decision date, and the work that needs
+     the answer stays `draft` behind it. Never mark a story `ready` that assumes the answer.
+   - **Won't-have items** keep the decision visible but leave the plan: priority `wont`, no
+     milestone, and no grooming beyond the title and the reason in `notes`. The ready gate skips
+     them, and no milestone or status report counts them.
 6. **Bugs** go under the feature whose behaviour they break, with observed, expected, steps, a
    reproduction criterion, priority, and urgency.
 7. **Check each milestone fits.** Count the working days from today to its `due` date and add
    up each owner's story sizes in it at the top of each size: XS ½, S 2, M 5, L 10 days. A
-   research story is sized by its time box (a 3-day spike is M), and `validate` warns when it is
-   not. Use only this scale in every sum you show. When an owner's work does not fit, move stories to a later milestone or name
+   research story is labelled by its time box (a 3-day spike is M, and `validate` warns when it
+   is not), but counts at its time box in the sum: 3 days, not 5. Use only this scale in every
+   sum you show. When an owner's work does not fit, move stories to a later milestone or name
    the fallback in the feature's `notes`. Never leave a milestone that cannot be met.
    - **Sizes against the team's estimate.** When your total differs from the team's own
-     estimate by half or more, your sizes are not ready. Re-size with the team's numbers if you
-     have them: split stories until the total is within half of their estimate, and move what
+     estimate by half of their estimate or more, your sizes are not ready. Re-size with the
+     team's numbers if you have them: split stories until the total is within half of their estimate, and move what
      no longer fits. Otherwise keep the affected stories `draft` until the team re-sizes; the
      ready gate (gate 4) stays open and you say so.
    - **No team estimate yet.** Your sizes stand: keep the stories `ready` and say in each
      feature's `notes` that the sizes are yours. Plan a dated session where the team sizes them,
-     as the next action in the report. Gate 4 stays open until the team has sized them; then
-     the bullet above applies.
+     as the next action in the report. Gate 4 stays open until the team has sized them at that
+     session; then the bullet above applies.
    - **Outside approvals.** When someone outside the team approves work (a bank, a regulator, a
      data protection officer, a patient group), plan three dates: when it is submitted, when
      they decide, and one resubmission that still meets the deadline. Count their review days
@@ -111,10 +123,11 @@ reopens. A row marked `assumed` is confirmed with the owner before it changes th
 every ask that came from outside the team (a customer ticket, a stakeholder email), say who
 tells that person the outcome, through the channel they used, and by when. Draft the reply for
 the user to approve. It states only what the evidence confirms: a cause nobody has reproduced
-reads "we can see … and are reproducing it with your file", and a date the team has not
-confirmed reads "we are aiming for 30 April and will confirm after planning on 27 April". It
-says when the person hears next, such as when the fix ships or the date moves. Acceptance checks that test the fix use the requester's own example (their
-file, their case) when there is one.
+reads "we can see … and will reproduce it with your file", work nobody has started is never
+described as under way, and a date the team has not confirmed reads "we are aiming for 30 April
+and will confirm after planning on 27 April". It says when the person hears next, such as when
+the fix ships or the date moves. Acceptance checks that test the fix use the requester's own
+example (their file, their case) when there is one.
 
 ## Triage feedback
 
@@ -202,6 +215,8 @@ Ready: As a workspace admin I want to upload a CSV of up to 500 users and see in
 - `backlog.py validate --require-ready` reports 0 errors, and you ran it after the last edit.
 - Every part of each traced PRD criterion has a check that tests it.
 - Every reply to someone outside the team states only what the evidence confirms.
+- No `ready` story assumes the answer to an open question; each such question is a research
+  story owned by the person who decides.
 - `backlog.py tree` shows every goal with features and every feature with stories.
 - The fresh-context executability review found no unanswered question, or each is resolved.
 - No feedback is `open` at hand-over.

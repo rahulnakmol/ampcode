@@ -128,6 +128,22 @@ def named_owner(value):
     return _text(value) and not PLACEHOLDER_OWNER.search(value)
 
 
+def research_holds(item, seen):
+    """Undelivered research stories the item waits on, directly or through the stories it depends on."""
+    found, stack, visited = [], list(item.get("depends_on") or []), set()
+    while stack:
+        dep = stack.pop(0)
+        target = seen.get(dep) if isinstance(dep, str) else None
+        if not isinstance(target, dict) or dep in visited:
+            continue
+        visited.add(dep)
+        if target.get("work") == "research" and not target.get("delivery"):
+            found.append(dep)
+        if isinstance(target.get("depends_on"), list):
+            stack += target["depends_on"]
+    return found
+
+
 def _iso_date(value):
     try:
         date.fromisoformat(value)
@@ -217,6 +233,16 @@ def validate(data, require_ready=False, base=None):
             (err if require_ready else warn)(iid, "has no owner: name the one person accountable for it")
         elif kind == "feature" and not named_owner(item["owner"]):
             (err if require_ready else warn)(iid, f"owner '{item['owner']}' is a placeholder: name the one person accountable for it")
+        if kind in ("story", "bug") and _text(item.get("owner")) and not named_owner(item["owner"]):
+            (err if require_ready else warn)(iid, f"owner '{item['owner']}' is a placeholder: name the person doing it")
+        if kind in ("story", "bug") and item.get("priority") == "wont" and item.get("milestone"):
+            (err if require_ready else warn)(iid, "a won't-have item takes no milestone")
+        if (kind in ("story", "bug") and item.get("status") == "ready" and item.get("priority") != "wont"
+                and isinstance(item.get("depends_on"), list)):
+            drafts = [d for d in item["depends_on"] if isinstance(seen.get(d), dict)
+                      and seen[d].get("status") == "draft" and seen[d].get("priority") != "wont"]
+            if drafts:
+                warn(iid, f"is ready but depends on draft {', '.join(drafts)}: it cannot start before them")
     for iid in _cycle_members(deps):
         _dor(seen[iid], "depends_on forms a cycle", err, warn)
     for iid, item in seen.items():
@@ -268,18 +294,19 @@ def validate(data, require_ready=False, base=None):
                 err(fb.get("id", "feedback"), "duplicate feedback must name another existing FB- id")
 
     if require_ready:
-        waiting = {}  # draft work that waits on a research story not yet delivered: held, not failed
+        # Draft work that waits on a research story not yet delivered is held, not failed;
+        # a won't-have item is out of the plan, so the gate skips it.
+        waiting, skipped = {}, {iid for iid, i in seen.items() if i.get("priority") == "wont"}
         for iid, item in seen.items():
-            if item["type"] in ("story", "bug") and item.get("status") == "draft":
-                deps = item.get("depends_on") if isinstance(item.get("depends_on"), list) else []
-                research = [d for d in deps if isinstance(d, str) and isinstance(seen.get(d), dict)
-                            and seen[d].get("work") == "research" and not seen[d].get("delivery")]
+            if item["type"] in ("story", "bug") and item.get("status") == "draft" and iid not in skipped:
+                research = research_holds(item, seen) if isinstance(item.get("depends_on"), list) else []
                 if research:
                     waiting[iid] = research
                 else:
                     err(iid, "is still draft")
-        promoted = [(w, m) for w, m in warnings if _is_story_level(w, seen) and w not in waiting]
-        warnings = [(w, m) for w, m in warnings if not _is_story_level(w, seen) or w in waiting]
+        held = waiting.keys() | skipped
+        promoted = [(w, m) for w, m in warnings if _is_story_level(w, seen) and w not in held]
+        warnings = [(w, m) for w, m in warnings if not _is_story_level(w, seen) or w in held]
         errors.extend(promoted)
         warnings += [(iid, f"draft until research {', '.join(r)} is delivered") for iid, r in waiting.items()]
 
@@ -294,8 +321,12 @@ def _is_story_level(where, seen):
 
 
 def _dor(item, message, err, warn):
-    """Definition of Ready finding: an error when the item is ready, a warning while draft."""
-    (err if item.get("status") == "ready" else warn)(item["id"], message)
+    """Definition of Ready finding: an error when the item is ready, a warning while draft.
+    A won't-have draft is not groomed further, so it gets none."""
+    if item.get("status") == "ready":
+        err(item["id"], message)
+    elif item.get("priority") != "wont":
+        warn(item["id"], message)
 
 
 def _check_item(item, seen, milestones, err, warn):

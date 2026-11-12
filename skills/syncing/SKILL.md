@@ -140,11 +140,11 @@ feature issue (see `planning`, section 5).
 
 `report` prints the status comment: five plain points for people who will not open the backlog.
 They cover goals with their latest reading (one per line), the next milestone dates with delivery
-counts, what is blocked (features with no named owner, and drafts with the research they wait
-on), who has not signed what yet, and open feedback. A milestone whose date has passed shows how
-many items have a delivery record, not "overdue": work can be live before its delivery is
-recorded. The
-full chain from driver to delivery stays in `backlog.py trace` and the Excel export. With
+counts, what is blocked (features with no named owner or an assumed one, drafts with the
+research they wait on, and ready work behind a draft), who has not signed what yet, and open
+feedback. A milestone whose date has passed shows how many items have a delivery record, not
+"overdue": work can be live before its delivery is recorded. Won't-have items are left out of
+every count and of GitHub milestones. The full chain from driver to delivery stays in `backlog.py trace` and the Excel export. With
 `--post` (after the user approves the text) it creates the comment on each initiative issue, or
 updates the one it posted before, so stakeholders see what was agreed, delivered, and achieved
 without leaving GitHub.
