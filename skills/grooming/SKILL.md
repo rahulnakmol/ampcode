@@ -34,7 +34,10 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
    components that move its metric. Each feature gets a description, a benefit hypothesis tied
    to the goal's metric, WSJF scores relative to the other features, a milestone, an `owner`
    (one named person, not a team, and not an approver who will not do the work), and traces to
-   `R-`/`AC-` IDs. A feature that moves no goal is out of scope or reveals a missing goal: ask.
+   `R-`/`AC-` IDs. `--require-ready` fails on a feature with no owner, so ask for owners in
+   the same question round as sizes and milestones. If the user leaves the choice to you, name
+   the person whose role does the work and write "Owner assumed: …; confirm before sign-off" in
+   the feature's `notes`. A feature that moves no goal is out of scope or reveals a missing goal: ask.
    Dependencies and milestone dates decide the order first; the rank score (WSJF) only orders
    features that could go either way. If the two disagree, fix the scores.
 3. **Stories per feature.** Write each as one executable unit:
@@ -44,6 +47,12 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
    - `work` type, `priority` (MoSCoW: `must` only when the milestone fails without it, so not
      every story is a must), `size` XS (half a day) to L (one iteration);
    - `depends_on` for real ordering only; `trace` to the PRD criterion it satisfies.
+   - **Go-live and spend wait on finished gates.** A story that goes live, reaches customers,
+     or commits money `depends_on` every story that completes one of its preconditions (an
+     assessment, an approval, a contract, a sign-off). Those stories' criteria test the final
+     artefact ("the signed assessment has 0 open high findings"), not a draft or a review of
+     one. A go-live criterion names each precondition: "0 live proposals before S-13 and the
+     board approval are both done".
 4. **Split anything bigger than L.** Mark it `XL` and `draft`, then split by workflow step,
    business rule, data variation, entity or region, channel, or happy path versus exceptions.
    Each part must still deliver something checkable. Remove the XL item when its parts exist.
@@ -60,9 +69,19 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
 7. **Check each milestone fits.** Count the working days from today to its `due` date and add
    up each owner's story sizes in it (XS ½, S 2, M 5, L 10 days at most; a research story counts
    its time box). When an owner's work does not fit, move stories to a later milestone or name
-   the fallback in the feature's `notes`. When the total differs from the team's own estimate by
-   half or more, say so and have the team re-size before sign-off. Never leave a milestone that
-   cannot be met.
+   the fallback in the feature's `notes`. Never leave a milestone that cannot be met.
+   - **Sizes against the team's estimate.** When your total differs from the team's own
+     estimate by half or more, your sizes are not ready. Re-size with the team's numbers if you
+     have them: split stories until the total is within half of their estimate, and move what
+     no longer fits. Otherwise keep the affected stories `draft` until the team re-sizes; the
+     ready gate (gate 4) stays open and you say so.
+   - **Outside approvals.** When someone outside the team approves work (a bank, a regulator, a
+     data protection officer, a patient group), plan three dates: when it is submitted, when
+     they decide, and one resubmission that still meets the deadline. Count their review days
+     as working days and skip holidays. Write the criterion as their decision by a date ("the
+     bank decides by 7 October"), not as their approval, and say what slips or is cut if the
+     resubmission fails. What they approve is the final artefact people will see (the finished
+     video, the final text), not only a script or a draft.
 8. **Validate until clean**, mark stories `ready` as they pass, then run the gate:
    `validate --require-ready` with 0 errors.
 9. **Fresh-context executability review** (below), then hand over to `syncing`.

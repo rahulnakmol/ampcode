@@ -100,6 +100,7 @@
         "job_size": 8
       },
       "milestone": "M1",
+      "owner": "Nina Kowalski",
       "trace": [
         "R-1",
         "AC-1"
@@ -184,6 +185,7 @@
         "job_size": 5
       },
       "milestone": "M2",
+      "owner": "Ollie Grant",
       "trace": [
         "R-1",
         "AC-2"
@@ -287,6 +289,7 @@
         "job_size": 3
       },
       "milestone": "M2",
+      "owner": "Sam Iyer",
       "trace": [
         "R-2",
         "AC-3"

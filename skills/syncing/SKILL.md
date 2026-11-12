@@ -138,8 +138,10 @@ feature issue (see `planning`, section 5).
 
 ## Show stakeholders where things stand
 
-`report` prints the status comment: drivers, goals with their latest measurements, features with
-sign-off and delivery counts, stories and bugs, feedback with dispositions, and gaps. With
+`report` prints the status comment: five plain lines for people who will not open the backlog.
+They cover goals with their latest reading, the next milestone dates with delivery counts, what is
+blocked (and which research it waits on), who has not signed what yet, and open feedback. The
+full chain from driver to delivery stays in `backlog.py trace` and the Excel export. With
 `--post` (after the user approves the text) it creates the comment on each initiative issue, or
 updates the one it posted before, so stakeholders see what was agreed, delivered, and achieved
 without leaving GitHub.

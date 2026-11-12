@@ -59,6 +59,7 @@
       "benefit_hypothesis": "We believe bulk CSV import will let admins invite their whole team in one sitting; we will know when median days to 5 active users is 4 or fewer for workspaces created after Release 4.2.",
       "wsjf": { "business_value": 13, "time_criticality": 8, "risk_reduction": 3, "job_size": 5 },
       "milestone": "M1",
+      "owner": "Priya Nair",
       "trace": ["R-1", "AC-1", "AC-2"]
     },
     {
@@ -110,6 +111,7 @@
       "benefit_hypothesis": "We believe a guided checklist will answer the questions CSMs answer on onboarding calls; we will know when onboarding calls per new account fall below 0.5 within 6 weeks of Release 4.3.",
       "wsjf": { "business_value": 8, "time_criticality": 3, "risk_reduction": 5, "job_size": 8 },
       "milestone": "M2",
+      "owner": "Jonas Berg",
       "trace": ["R-2", "AC-3"]
     },
     {

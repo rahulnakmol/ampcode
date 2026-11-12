@@ -153,13 +153,17 @@ class Structure(unittest.TestCase):
         data["feedback"].append({"id": "FB-3", "feature": "F-2", "from": "x", "summary": "y", "disposition": "open"})
         data["items"] = [i for i in data["items"] if i["id"] != "S-6"]
         item(data, "I-1")["drivers"].append({"id": "D-3", "statement": "Unserved"})
+        del item(data, "F-1")["owner"]
         errors, _ = backlog.validate(data, require_ready=True)
+        self.assertIn("has no owner: name the one person accountable for it", messages(errors, "F-1"))
+        self.assertEqual(messages(errors, "F-2"), [])  # F-2 names its owner
         self.assertIn("feedback is still open", messages(errors, "FB-3"))
         self.assertIn("has no story yet", messages(errors, "F-3"))
         self.assertIn("driver D-3 is served by no goal", messages(errors, "I-1"))
         errors, warnings = backlog.validate(data)
         self.assertEqual(errors, [])
         self.assertIn("has no story yet", messages(warnings, "F-3"))
+        self.assertIn("has no owner: name the one person accountable for it", messages(warnings, "F-1"))
 
 
 class WorkedExample(unittest.TestCase):
@@ -641,12 +645,20 @@ class GitHubSync(unittest.TestCase):
 
     def test_status_report_is_one_comment_updated_in_place(self):
         sync.apply(self.data, self.base, self.gh)
+        self.sign_off("F-2", "tokafor")
         sync.post_report(self.data, self.base, self.gh, "2027-03-10")
         sync.post_report(self.data, self.base, self.gh, "2027-03-11")
         reports = [c for c in self.fake.comments if sync.REPORT_MARKER in c["body"]]
         self.assertEqual(len(reports), 1)
-        self.assertIn("updated 2027-03-11", reports[0]["body"])
-        self.assertIn("| FB-1 ", reports[0]["body"])
+        body = reports[0]["body"]
+        self.assertIn("updated 2027-03-11", body)
+        # Five plain lines for stakeholders, not the trace tables.
+        self.assertEqual(len([l for l in body.splitlines() if l.startswith("- **")]), 5)
+        self.assertNotIn("| ", body)
+        signed = next(l for l in body.splitlines() if l.startswith("- **Not yet signed by:**"))
+        self.assertIn("Priya Raman (Finance Operations lead) on I-1, F-1, F-2, F-3", signed)
+        self.assertIn("Tom Okafor (Group Controller) on I-1, F-1, F-3", signed)
+        self.assertIn("PI 27.1: pilot UK01 due 2027-02-26, overdue: 1 of", body)
         before = len(self.data["feedback"])
         sync.pull(self.data, self.gh)
         self.assertEqual(len(self.data["feedback"]), before)  # the report is not feedback

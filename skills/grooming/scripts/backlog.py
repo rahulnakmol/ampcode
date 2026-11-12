@@ -204,6 +204,8 @@ def validate(data, require_ready=False, base=None):
         child_kind = {"initiative": ("goal",), "goal": ("feature",), "feature": ("story",)}.get(kind)
         if child_kind and not any(k["type"] in child_kind for k in kids.get(iid, [])):
             (err if require_ready else warn)(iid, f"has no {child_kind[0]} yet")
+        if kind == "feature" and not _text(item.get("owner")):
+            (err if require_ready else warn)(iid, "has no owner: name the one person accountable for it")
     for iid in _cycle_members(deps):
         _dor(seen[iid], "depends_on forms a cycle", err, warn)
     for iid, item in seen.items():
