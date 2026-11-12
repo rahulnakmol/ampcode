@@ -111,6 +111,7 @@
         "job_size": 5
       },
       "milestone": "M1",
+      "owner": "Ravi Menon",
       "trace": [
         "R-2",
         "AC-3",
@@ -250,6 +251,7 @@
         "job_size": 3
       },
       "milestone": "M1",
+      "owner": "Tom Okafor",
       "trace": [
         "R-1",
         "AC-1",
@@ -332,6 +334,7 @@
         "job_size": 8
       },
       "milestone": "M2",
+      "owner": "Ravi Menon",
       "trace": [
         "R-3",
         "AC-5",

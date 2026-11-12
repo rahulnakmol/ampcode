@@ -35,6 +35,12 @@ and compares like with like: the same months last year, or a comparison group. W
 give the goal a leading measure with a checkpoint date before the target date. For
 a discovery, success is a decision backed by evidence, go or no-go, not a "go".*
 
+*Every guardrail and every checkpoint says what happens when it is missed: who decides, by
+when, and the default (pause, stop, cut, or carry on). "Complaints above 7.1 per 1,000 for 2
+weeks pause the pilot until Elena decides, within 5 business days" acts; "flag any value
+above 7.1" only reports. A guardrail whose harm shows up months later (fraud found after
+payment) also gets a measure that moves within weeks.*
+
 ## Users and stakeholders
 *Who uses the result, who is affected, who approves; from the ledger's stakeholder map.*
 
@@ -74,6 +80,14 @@ the person affected is told.*
 
 ## Rollout and milestones
 *Milestones (PIs, releases, campaign phases) with dates, and what each must contain.*
+
+*Go-live and spend gates: list everything that must be finished before work goes live, reaches
+customers, or commits money (an assessment, a contract, an approval, a sign-off). Each is an
+acceptance criterion on the finished item: "signed, with 0 open high findings", never "a draft
+exists" or "has been reviewed". When someone outside the team approves (a bank, a regulator, a
+patient group), give the submission date, their decision date, one resubmission that still
+meets the deadline, and what slips if it fails. They approve the final artefact people will
+see, not only a script or a draft.*
 
 ## Open questions
 - **Q-1** … ; answers: <who>, by <date>

@@ -449,13 +449,64 @@ def pull(data, gh, since=None):
 
 
 def report_comment(data, base, today):
-    """The status comment for stakeholders: the trace report, trimmed to fit a GitHub comment."""
-    text, _ = backlog.trace_report(data, base, today)
-    # Planner housekeeping, not something stakeholders can act on.
-    text = "\n".join(line for line in text.splitlines() if not line.startswith("Evidence not traced")) + "\n"
-    if len(text) > MAX_BODY:
-        head, _, rest = text.partition("## Stories and bugs")
-        text = head + "_Stories and bugs omitted for length; see the backlog export._\n\n" + rest[rest.find("## Feedback"):] if "## Feedback" in rest else head
+    """The status comment for stakeholders: five plain lines on goals, dates, blockers, sign-off,
+    and feedback. The full chain stays in `backlog.py trace` and the Excel export."""
+    seen = backlog.items_by_id(data)
+    ordered = sorted(seen.values(), key=lambda i: backlog.id_key(i["id"]))
+    named = lambda i: f"{i.get('title', '')} ({i['id']})"
+    work = [i for i in ordered if i.get("type") in ("story", "bug")]
+
+    goals = []
+    for g in (i for i in ordered if i.get("type") == "goal"):
+        latest = (g.get("measurements") or [{}])[-1]
+        now = f"{latest['value']} on {latest['at']}, {backlog.goal_state(g, today)}" if latest else "not measured yet"
+        goals.append(f"{named(g)}: target {g.get('target')} by {g.get('by')}; {now}")
+
+    dates = []
+    for m in sorted((m for m in data.get("milestones", []) if m.get("due")), key=lambda m: m["due"]):
+        mine = [i for i in work if (i.get("milestone") or seen.get(i.get("parent"), {}).get("milestone")) == m["id"]]
+        done = sum(1 for i in mine if backlog.delivery_state(i) == "delivered")
+        if mine and done < len(mine):
+            late = ", overdue" if m["due"] < today else ""
+            dates.append(f"{m['title']} due {m['due']}{late}: {done} of {len(mine)} stories and bugs delivered")
+
+    blocked, held = [], {}
+    for i in work:
+        state = backlog.delivery_state(i)
+        if state.startswith(("partial", "closed")):
+            blocked.append(f"{named(i)} is {state}")
+        elif i.get("status") == "draft":
+            research = [d for d in i.get("depends_on") or [] if d in seen
+                        and seen[d].get("work") == "research" and not seen[d].get("delivery")]
+            for d in research:
+                held.setdefault(d, []).append(i["id"])
+            if not research:
+                blocked.append(f"{named(i)} is not ready yet")
+    blocked += [f"{', '.join(ids)} {'waits' if len(ids) == 1 else 'wait'} on {named(seen[d])}" for d, ids in held.items()]
+
+    waiting = {}
+    for _, item, _, per in backlog.gates(data, base=base):
+        for handle, mine in per.items():
+            if mine != "current":
+                waiting.setdefault(handle, []).append(item["id"])
+    names = {a["github"]: a["name"] for a in data.get("approvers", []) if a.get("github")}
+    signoff = [f"{names.get(h, h)} on {', '.join(ids)}" for h, ids in waiting.items()]
+
+    feedback = [f"{fb.get('id')} on {fb.get('feature')} from {fb.get('from')}: {fb.get('summary', '')}"
+                for fb in data.get("feedback", []) if fb.get("disposition") == "open"]
+
+    def few(parts, empty, most=5):
+        more = f"; and {len(parts) - most} more" if len(parts) > most else ""
+        return "; ".join(parts[:most]) + more if parts else empty
+
+    lines = [
+        f"- **Goals:** {few(goals, 'none yet')}.",
+        f"- **Next dates:** {few(dates, 'nothing scheduled is still open', 3)}.",
+        f"- **Blocked:** {few(blocked, 'nothing')}.",
+        f"- **Not yet signed by:** {few(signoff, 'nobody: every approver has signed everything')}.",
+        f"- **Open feedback:** {few(feedback, 'none')}.",
+    ]
+    text = "\n".join(lines) + "\n"
     return f"{REPORT_MARKER}\n_Status from the planning backlog, updated {today}. Edits here are overwritten._\n\n{text}"
 
 
