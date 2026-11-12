@@ -240,3 +240,87 @@ most carried from rev3):
 
 Open, carried from rev3: sign-off by people outside GitHub still cannot be recorded, and
 fresh-context reviews still never ran in the simulation.
+
+## Round 5 (rev5)
+
+All five missions ran twice again on the skills as merged with the seven fixes from rev4 (dev at
+`013e456`), with the same personas, judges, and rubric. The stakeholder views now show the
+initiative issue's full PRD folded under its "In short", as GitHub first displays it.
+
+Reading ease was 71 to 81 at 7 to 14 words per sentence in all ten runs. `trace` gaps were only
+for sign-offs. `validate --require-ready` reported 0 errors in eight runs. Both s1 runs failed it
+for the right reason: the planner's sizes were less than half of the team's estimate (5a: 52
+days against about 300, 6 stories held; 5b: 154 against about 325, 19 held). No run held stories
+only because the team had no estimate, which three rev4 runs did.
+
+| Scenario | Run a, rev4 | Run b, rev4 | Run a | Run b | Hard-check fails, a / b | Main remaining findings |
+| --- | --- | --- | --- | --- | --- | --- |
+| s1 | 3.67 | 3.53 | 3.53 | 3.53 | H4 (sizes) / H4 (sizes) | The 66% December margin has no bridge through the ramps, waves, and annual renewals; the ramp is defined only for a fixed bill; the headline cost counts only the work Tom estimated |
+| s2 | 3.57 | 3.35 | 3.67 | 3.71 | none / none | The pilot's go bar implies about 9.8% trust-wide, not the 8% target; cancel then confirm can lose a slot already offered; patients without a smartphone are paused first when the team is busy |
+| s3 | 3.27 | 3.51 | 3.57 | 3.49 | none / none | Owners are placeholders on stories ("Engineering (lead to be named)") or a team; the bank's review calendar is still assumed; referral terms are not on the ads; money figures disagree across sections (5b) |
+| s4 | 3.71 | 3.63 | 3.78 | 3.71 | none / none | A 3-day spike is counted as 5 days; a won't-have story sits in Release 4.3 as `ready`; customer replies say "we are reproducing it with your file" when nobody has; every feature owner is the VP |
+| s5 | 3.39 | 3.47 | 3.53 | 3.49 | H8 from 5 / H8 from 5 | Who builds the assistant stays a PRD question while its build story is `ready`; the injury lock works only when someone sets the injury flag; no impact assessment for health data in calls |
+
+Average score per dimension over all 70 judgements, rev4 → rev5: plain English 3.89 → 3.84,
+value 3.74 → 3.80, lean 3.59 → 3.73, traceability 3.86 → 3.89, executability 3.16 → 3.40,
+robustness 3.30 → 3.41, approvability 3.04 → 3.14. All 70 judgements were "approve with
+changes"; rev4 had two rejects. No scenario passed: approvability stays near 3 because every
+plan still waits on named owners, a team sizing, and the fresh-context reviews.
+
+Runs a and b of the same scenario differ by 0.00 to 0.08 in mean score this round, against 0.08
+to 0.24 in rev4. Score changes between rounds stay within that noise, so hard checks and
+verdicts remain the signal: the rejects are gone, H6 fails are gone, and the one new hard-check
+pattern (s5 H8) appears in both runs from the same five panel judges.
+
+What the rev4 fixes did:
+
+| Fix after rev4 | Held in rev5? |
+| --- | --- |
+| With no team estimate, planner sizes stay `ready` and gate 4 stays open until a dated sizing session | Yes: no run held stories only for want of an estimate. The two s1 holds come from a real estimate |
+| Ready gate errors on placeholder feature owners | Yes for features: none of the ten runs has one. The gap moved to stories (5a s3 "Engineering (lead to be named)", "Growth analytics (name to confirm)") and to team owners ("Tom Becker's team", "SplitPay app team"), and every run falls back to the mission owner as an assumed owner. Judges still mark executability down for no named owner in all five scenarios |
+| Every part of a traced criterion has its own check | Yes: H6 failed in three rev4 runs (14 judgements) and in no rev5 run |
+| Replies to outside people state only what the evidence confirms and say when they hear next | Partly: dates now read "aiming for … will confirm after planning". But the skill's own example, "are reproducing it with your file", was copied into both s4 runs, and judges in both called it untrue, since nobody had started. Both s4 intakes also say "Sales told in writing" for a note that was only drafted |
+| The initiative issue shows "In short" and folds the full PRD | Yes: no judge complained that the issue embeds the PRD. Lean rose from 3.59 to 3.73. Judges now ask instead for the E-numbers, WSJF scores, and AC lists to come out of issue bodies |
+| Status comment: goals one per line, owner-less features blocked, past milestones read "was due" | Partly: goals and dates read well. "Blocked: nothing" still printed in 5b s3, because an assumed owner counts as named. "was due 2027-03-19: delivery recorded for 0 of 2" read to the s4 customer as "the importer never shipped" |
+| Research stories sized by their time box | Applied, but the bands round up: a 3-day spike must be M, which the fit check counts as 5 days. Judges in both s4 runs flagged the 3-day spike counted as 5 |
+
+Defects to fix next, with the fix each points to:
+
+| Defect | Seen in rev5 | Proposed fix |
+| --- | --- | --- |
+| An open decision stays a PRD question while work that depends on it is `ready` | s5 both runs (H8 from 5 judges each): who builds the assistant | Grooming: a decision someone outside the team must make (who builds, the board, the regulator) becomes a `research` story owned by the decider and time-boxed to the decision date, and the work that depends on it stays `draft` behind it. This also gives a board approval a proper hold, which s5 runners faked as research |
+| The research hold reads only direct dependencies | 5b s2 (S-22 waited on S-20 through S-21 and failed as "is still draft") | `validate --require-ready` holds a draft whose dependency chain reaches an undelivered research story |
+| A won't-have story is groomed, given a milestone, and counted in the release | s4 both runs, 5 judges | `wont` items carry no milestone, skip the ready gate, and are left out of milestone counts |
+| A `ready` story can depend on a `draft` one | 5b s1 (S-15, S-17, S-33 behind draft stories) | The status comment lists such stories as waiting on the draft; `validate` warns |
+| Story owners are not checked, and teams pass as owners | 5a s3, s1 and s5 both runs | Apply the placeholder check to story owners at the ready gate |
+| Assumed owners read as named in the status comment | 5b s3 ("Blocked: nothing") | List features whose `notes` mark the owner as assumed under "Blocked" until the owner agrees |
+| The fit check counts a research story at the top of its band | s4 both runs | Count research stories at their time box in milestone sums; keep the band only for the label |
+| The skill's reply example claims work in progress | s4 both runs | Change the example to "we can see … and will reproduce it with your file", and mark a drafted, unsent note as "drafted, not sent" in the intake |
+| The headline goal does not follow from the parts the plan delivers | s1 (margin bridge), s2 (9.8% against 8%), 5b s3 (127,000 unsourced banner activations), s5 (rollout feasibility) | Specifying: show how the goal adds up, with each part sourced or labelled, and the result the plan expects if every part is met. When that falls short of the target, say so in "In short" |
+| A severity-4 control depends on a field someone must remember to set | s5 both runs (injury flag), 5 judges | Specifying: a severity-4 control says what sets its trigger and what catches a miss |
+| The same number differs across files | 5b s3 (Rs 20 against 18 lakh), 5a s5 (two phase 1 end dates), s4 (S-6 1 or 2 days), 5b s1 (134 against 154 days) | Planning's final check: every number the PRD states reads the same in every other file |
+
+Skill instructions the runners found unclear or contradictory (most carried from rev4):
+
+- The mission-owner fallback for feature owners conflicts with "not an approver who will not do
+  the work" when the mission owner is also an approver (several runs).
+- Planning's gate 4 says the team total is "within half of yours"; grooming says it "differs
+  from the team's own estimate by half or more". The base of "half" differs. Planning says gate
+  4 stays open "until a dated sizing session"; grooming says "until the team has sized them".
+- "Mostly yes, with corrections" without "carry on" is not covered as an intake confirmation
+  (most runs), and nothing says whether the corrected intake is shown back.
+- `synthesizing` requires the fresh-context check before `specifying`; `planning` says a review
+  that cannot run leaves the gate pending, so carry on.
+- Nothing says what to do when the owner answers "use your judgement" on the PRD or a
+  severity-4 control.
+- The milestone fit check ignores dependency chains and same-day deadlines (s3, s5).
+- The vague-word check rejects "fast-track"; charter questions have no stated place in the
+  three-question limit; `validate` and `status` do not take `--today`.
+
+One run (5b s1) wrote a scratch file under `/tmp` that another run overwrote. It rebuilt its
+round record from its own folder, and no text from another scenario was found in its files.
+Later runs should keep scratch files inside their own folder.
+
+Open, carried from rev4: sign-off by people outside GitHub still cannot be recorded (5b s2
+recorded the patient group's approval as a dated decision outside GitHub), and fresh-context
+reviews still never ran in the simulation.
