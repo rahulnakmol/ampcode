@@ -168,3 +168,75 @@ Skill instructions the runners found unclear or contradictory (most reported by 
 
 Open, carried from rev2: sign-off by people outside GitHub still cannot be recorded, and
 fresh-context reviews still never ran in the simulation.
+
+## Round 4 (rev4)
+
+All five missions ran twice (runs a and b) on the skills as merged with the six fixes from rev3
+(dev at `6c890e5`), with the same personas, judges, and rubric. Two runs per scenario show how
+much a score moves between runs of unchanged skills. The stakeholder views use the named-section
+issue templates (#30) and the new five-line status comment.
+
+Reading ease was 69 to 79 at 7 to 13 words per sentence in all ten runs. `trace` gaps were only
+for sign-offs. `validate --require-ready` reported 0 errors in six runs. It failed in four, all
+because of the new sizing rule: 4b s1 held 11 stories (61 planner days against the team's
+estimate of about 325). Three runs had no team estimate at all and held stories `draft` anyway:
+4a s3 (5 stories), 4a s5 (16), and 4b s2 (all 26).
+
+| Scenario | rev3 | Run a | Run b | Hard-check fails, a / b | Main remaining findings |
+| --- | --- | --- | --- | --- | --- |
+| s1 | 3.49 | 3.67 | 3.53 | none / H4 (sizes) | The 66% margin goal ignores the plan's own 6-month ramp and annual renewals; pricing page and invoice disagree on whether paid accounts get the free minutes; usage page and alerts read daily data but promise near-real-time |
+| s2 | 3.63 | 3.57 | 3.35 | H6 from 2 / H4 (no estimate), H6 from 7 | The waiting-list offer promises "within 1 hour" from a nightly export; stop-texts by phone has no story; the monthly no-mobile check promised to patients has no story |
+| s3 | 3.39 | 3.27 | 3.51 | H4 and H5 from 7, bank rejects / none, no reject | Two thirds of the target rests on an unmeasured banner rate; the bank's review dates were never agreed with the bank; referral ads do not state the cap and terms |
+| s4 | 3.67 | 3.71 | 3.63 | H8 from 2 / none | Every feature owner is "lead, name to confirm"; customer replies promise a cause and a date the plan calls open; the status comment calls live work "overdue"; size-to-day sums disagree with the stated scale |
+| s5 | 3.33 | 3.39 | 3.47 | H3 and H4 from 7, H5 from 5, H2 from 2, Apple rejects / H6 from 7 | No story builds or buys the assistant the test runs; the bias test can fail without stopping anything; nothing checks "no training on customer data"; health data in calls has no impact assessment |
+
+Average score per dimension over all 70 judgements, rev3 → rev4: plain English 3.89 → 3.89,
+value 3.71 → 3.74, lean 3.71 → 3.59, traceability 3.69 → 3.86, executability 3.31 → 3.16,
+robustness 3.14 → 3.30, approvability 3.06 → 3.04. Two judgements were "reject" (4a s3 bank
+reviewer, 4a s5 Apple lens); the other 68 were "approve with changes". No scenario passed.
+
+Runs a and b of the same scenario differ by 0.08 to 0.24 in mean score, as much as any
+scenario moved between rounds. Score changes between rounds are therefore noise at this sample
+size. Hard checks and verdicts are the signal, and they also vary by run: s3 and s5 each had one
+clean run and one with several fails.
+
+What the rev3 fixes did:
+
+| Fix after rev3 | Held in rev4? |
+| --- | --- |
+| Ready gate errors on a feature with no `owner` | Every feature has an owner, but most are placeholders ("Team Atlas lead (name to confirm)", "(to be named)") or assumed, and the check accepts any text. Judges still mark executability down for no named owner in s1, s3, s4, and s5 |
+| Go-live and spend depend on finished gates | Yes for s5: the rev3 H8 fail from all 7 judges is gone in both runs. s3's bank reviewer did not reject in run b, but rejected in run a over unagreed review dates and undisclosed referral terms |
+| Guardrails and checkpoints state who acts and the default | Yes: pauses, holds, and spend stops appear in every run. Judges now criticise thresholds instead (set at the baseline so noise trips them, or watching only one direction) |
+| Sizes half or more off the team's estimate stay `draft` | Applied where an estimate existed (4b s1). With no estimate, runners split: 3 of the 8 such runs held stories `draft` and failed the ready gate, 5 kept them `ready` with gate 4 open |
+| Outside approvals get submission, decision, and resubmission dates | Yes in s2 and s3, but the dates are written as the outside party's commitments without asking them (s3 bank reviewer, both runs) |
+| Five-line status comment | The format holds. Its content misleads: a past milestone with unknown delivery shows as "overdue: 0 of 2" (s4), "Blocked: nothing" while owners are missing (4b s3), all goals on one line with "and 1 more" hiding a goal (s1) |
+
+Defects to fix next, with the fix each points to:
+
+| Defect | Seen in rev4 | Proposed fix |
+| --- | --- | --- |
+| No rule for sizing when the team has no estimate | 8 of 10 runs; runners split two ways | When no team estimate exists, planner sizes stay `ready`, are labelled as the planner's, and gate 4 stays open until a dated sizing session |
+| Placeholder owners pass the ready gate | s3, s4, s5 | `validate --require-ready` errors on owner text such as "to be named", "to confirm", "name needed", or "TBD" |
+| An acceptance criterion is traced to an item whose checks test only part of it | s2 (phone opt-out, letters for all), s5 (no training on customer data) | Grooming: every clause of a criterion, including each channel in "by phone or on the page", has a check that tests it |
+| Customer replies state as fact what the plan calls open | s4 both runs (rev3 too) | Replies to customers state only what the evidence confirms; an assumed date reads "aiming for … we confirm on …" |
+| The initiative issue embeds the whole PRD | s1, s2, s3, s5 lean notes | The initiative issue shows the PRD's "In short" and links to `prd.md` |
+| The status comment hides blockers and calls unknown delivery overdue | s1, s3, s4 | Report unknown delivery as "delivery not recorded"; list stories with no named owner as blocked; one goal per line |
+| Research story size disagrees with its time box; capacity sums use another scale | s4 both runs | `validate` warns when a research story's size does not match its time box; milestone fit uses the stated scale only |
+
+Skill instructions the runners found unclear or contradictory (most reported by several, and
+most carried from rev3):
+
+- `synthesizing` requires the fresh-context check before `specifying`, and asks the owner to
+  confirm after it; `planning` says a review that cannot run leaves the gate pending. With no
+  reviewer, the owner always confirms first.
+- Nothing says whether an owner's "use your judgement" confirms a PRD, a severity-4 control, or
+  a customer reply, or whether gates 2 and 3 apply to a grooming session that adds no goal.
+- With only approvers named, no feature owner satisfies both grooming ("name the person whose
+  role does the work") and the contract ("not an approver who will not do the work").
+- The vague-word check rejects "fast-track"; a strict "under Rs 250" has no allowed form.
+- Charter questions have no stated place in the three-questions-per-round limit.
+- The intake template names skills in text stakeholders read, which `planning` forbids.
+- `sync.py github report` needs `--repo` even when nothing is posted.
+
+Open, carried from rev3: sign-off by people outside GitHub still cannot be recorded, and
+fresh-context reviews still never ran in the simulation.
