@@ -27,7 +27,7 @@ with an agreed due time, or the consultant's next-working-day check when no agre
 Never relabel that check as a promised client response.
 
 Use [obligations.md](obligations.md) for the local response scan and retained action/receipt contracts.
-Live reminder qualification is still pending. Do not call a drafted message sent, an unassigned
+Bounded qualification observed two out-of-chat reminder wakes with later manual recovery, not continuous monitoring. Do not call a drafted message sent, an unassigned
 action owned, or a missed run on time. Inspect every open obligation since the last observed run.
 Do not hide an unresolved decision merely because its reminder was already sent.
 
@@ -73,6 +73,5 @@ person; preserve uncertainty when the API cannot establish the outcome. Local pe
 transactions use the normal record recovery path before further external work. A verified old
 effect remains historical when a source later changes; it does not authorize resending content.
 
-The full cloud round-trip, human-edit recovery and reminders outside active chat still need their
-authorized integration tests. New pages, test reminders and teamspace/access setup each require
+Qualification included a controlled Notion human-edit simulation and bounded reminder recovery; it does not validate a production engagement's integrations. Verify the actual configured destinations and recovery behavior through authorized integration tests before relying on them. New pages, test reminders and teamspace/access setup each require
 their own scope and destination approval; build permission is not production activation.

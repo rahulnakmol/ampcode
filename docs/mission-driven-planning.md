@@ -6,7 +6,10 @@ initiative (a product, an operations change or new way of working, or a marketin
 from raw notes to an agreed backlog of executable stories in the tracker your stakeholders use,
 and then keeps score until the goals are met.
 
-**Start here if you want something planned.** To build software from the result, see
+**Start here for a PRD and tracker-ready backlog.** For enterprise client workshops,
+functional specifications, operating models and pre-sales/RFP work, use
+[Blueprinting](blueprinting.md). Its client-authority and evidence rules are separate
+from tracker sign-offs; a handoff does not transfer approval automatically. To build software from the result, see
 [mission-driven development](mission-driven-development.md). For individual skills, see
 [Using the skills](using-skills.md).
 
@@ -107,7 +110,7 @@ python3 skills/syncing/scripts/sync.py excel skills/grooming/reference/examples/
 | Excel export | Built; tested by reading the workbook back |
 | Linear, Azure DevOps | Planned; mapping recorded in `skills/syncing/reference/trackers.md` |
 | Audio transcription | Not included: supply transcripts from your meeting tool |
-| Dedicated discovery workshops | Not yet: the roadmap is the Project's Roadmap view, or milestones and WSJF order without a Project |
+| Dedicated enterprise functional-discovery workshops | Use [Blueprinting](blueprinting.md); this planning workflow consumes evidence to produce a PRD and backlog |
 
 Gates are instructions the agent follows plus checks scripts enforce; no plugin blocks a step.
 Sign-off identity is the tracker's: anyone with a listed GitHub login can approve.

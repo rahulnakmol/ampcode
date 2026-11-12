@@ -9,6 +9,7 @@ This GitHub repository is the readable source of truth. Amp loads published copi
 - **[Using the skills](./docs/using-skills.md):** choose a skill, learn when to use it, copy a prompt, and understand what a good result looks like.
 - **[Mission-driven development](./docs/mission-driven-development.md):** take an idea or requirement through design, implementation, review and delivery; start or resume a mission.
 - **[Mission-driven planning](./docs/mission-driven-planning.md):** take a product, operations, or marketing initiative from workshop notes to a signed-off PRD and an executable backlog in GitHub or Excel, traced to delivered outcomes.
+- **[Start a Blueprinting engagement](./docs/blueprinting.md):** use the published functional-discovery skills, prepare the first workshop, select an engagement root and templates, and resume safely.
 - **[Advisory team](./docs/advisory-team.md):** use Archi, Darci and Opsci for architecture and operational advice.
 
 ## Layout
@@ -22,7 +23,11 @@ tests/                    Bun plugin tests and Python skill-script tests
 
 See [`plugins/README.md`](./plugins/README.md) and [`skills/README.md`](./skills/README.md) before adding an extension.
 
-## Blueprinting — under development
+## Blueprinting
+
+The six skills below are published to Rahul's Amp User Skills. Start with the
+[engagement guide](./docs/blueprinting.md) for copyable kickoff/resume prompts and
+the separate template prerequisite. Other users need their own authorized installation.
 
 [`skills/blueprinting/`](./skills/blueprinting/SKILL.md) is the enterprise functional-discovery
 capability for consultant workshops, operating models, kickoff, pre-sales and RFP work. Its first
@@ -33,7 +38,8 @@ content packets now support generic local Markdown, Word, PowerPoint, Excel and 
 Excel includes literal registers and bounded native estimate scenarios, not a business baseline.
 Registered file observation, explicit Start/Resume, staged template upgrades and derived indexes
 are implemented locally; see [the template contract](./skills/blueprinting/reference/templates.md).
-The separate `blueprinting-engagement-template` source is being prepared locally, not published.
+The separate `blueprinting-engagement-template` source is qualified locally but not published;
+template-backed Start requires an explicitly supplied compatible local copy.
 Native Obsidian 1.15.0 has bounded synthetic editing, filtering, navigation and save/reopen evidence.
 Selected local ZIP handoffs stage files for reported inspection and package their exact bytes;
 see [the export contract](./skills/blueprinting/reference/exports.md). Export is not delivery.
@@ -45,8 +51,8 @@ two independent reviews and owner acceptance of the demonstrated editable handof
 This is not production-client validation or Microsoft desktop certification. Notion qualification
 includes a controlled human-edit simulation; two reminder wakes and later manual recovery do not
 establish continuous monitoring. Google Slides/Docs are deferred. Revision freshness does not
-establish client approval. Nothing is
-installed or activated by this source addition; Personal publication needs separate approval.
+establish client approval. Loading a published skill does not activate integrations or grant
+permission to process client data; GitHub source alone does not install skills into Amp.
 
 | Blueprinting task | Skill |
 | --- | --- |
@@ -60,10 +66,10 @@ installed or activated by this source addition; Personal publication needs separ
 Domain entries load the host-selected coordinator and use its shared contracts and helpers;
 they do not duplicate state or create a subagent per skill. Standalone coordinator/helper use
 remains supported. Keep complete packages together when preparing an explicitly authorized
-Personal publication; do not copy helpers into domain packages. Installed-host qualification
-has bounded orb-only evidence; source routing is not evidence that these skills are active in Amp.
-The tested temporary installations were removed. Verify all helper/reference files and selected
-host paths after publication; lifecycle observations do not establish production outcomes.
+Personal publication; do not copy helpers into domain packages. Publication verification checked
+all 45 text files against integrated source, all five domain contracts and six native skill loads.
+Installed-host qualification remains bounded to the tested orb. Verify the selected package in
+your environment; lifecycle observations do not establish production outcomes.
 
 ## Meet the advisory team
 

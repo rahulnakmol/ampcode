@@ -20,4 +20,6 @@ Requirements:
 - Inline simple MCP configuration in frontmatter and always restrict it with `includeTools`.
 - Run `make check` before publication.
 
-To publish globally, copy the complete skill directory to the root of the Amp Personal Skills repository listed by `amp skills repositories`, then commit and push that repository.
+For user workflows, see [Using the skills](../docs/using-skills.md) and [Start a Blueprinting engagement](../docs/blueprinting.md).
+
+Publishing is separate from source integration and requires explicit approval of the destination. Discover the User/Workspace Skills repositories with `amp skills repositories`; preserve existing changes in the selected clone. Copy the complete skill directory, including text helpers, manifests and references, to its root, review the diff, then commit and push only with authorization. Verify the host-selected package after publication; a loaded SKILL.md alone does not prove its companion files arrived. Blueprinting's separate engagement template is not included in its six skill packages.

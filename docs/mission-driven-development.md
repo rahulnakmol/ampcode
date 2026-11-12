@@ -5,7 +5,10 @@ delivered software achieves it. It is useful for a substantial feature or use ca
 not a ceremony for every edit. Precision means explicit expectations, accountable
 ownership and reproducible evidence—not a guarantee of perfect software.
 
-**Start here if you want something built.** For individual skill selection, see
+**Start here if you want software built.** For enterprise functional discovery,
+operating models and client-approved business specifications, start with
+[Blueprinting](blueprinting.md). Its functional baseline is input to delivery, not
+automatic acknowledgment of a technical/UX design. For individual skill selection, see
 [Using the skills](using-skills.md). For tool schemas, storage and protection, see
 the [mission-control reference](mission-control.md).
 
