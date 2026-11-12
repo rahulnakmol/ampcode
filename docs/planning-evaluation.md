@@ -324,3 +324,86 @@ Later runs should keep scratch files inside their own folder.
 Open, carried from rev4: sign-off by people outside GitHub still cannot be recorded (5b s2
 recorded the patient group's approval as a dated decision outside GitHub), and fresh-context
 reviews still never ran in the simulation.
+
+## Round 6 (rev6)
+
+All five missions ran twice again on the skills as merged with the round 5 fixes (dev at
+`75afccd`), with the same personas, judges, and rubric. The runner brief now tells each run to
+keep scratch files inside its own folder. One run (6a s5) wrote a file under `/tmp` and deleted
+it at once; no other run wrote outside its folder. Two runs were cut off once by a connection
+error and resumed from their last reply (6b s3, 6a s4). Judge runs that failed were rerun from
+the same brief.
+
+Reading ease was 73 to 81 at 7.7 to 14.7 words per sentence in all ten runs. `trace` gaps were
+only for sign-offs. `validate --require-ready` reported 0 errors in nine runs. 6a s1 failed it
+for the right reason: the planner's sizes were 44 days against the team's estimate of about 310,
+so 6 stories stayed draft. 6b s1 passed by 2.5 days (165 against about 325), after sizing 15
+stories L; judges asked for those to be split. No run had a `ready` story behind a `draft` one.
+
+| Scenario | Run a, rev5 | Run b, rev5 | Run a | Run b | Hard-check fails, a / b | Main remaining findings |
+| --- | --- | --- | --- | --- | --- | --- |
+| s1 | 3.53 | 3.53 | 3.47 | 3.80 | H4 (sizes) / none | Go-live checks can only run after launch (6a); the invoice hold conflicts with the noon invoice deadline (6b); the 66% margin leaves out annual renewals; the ramp is undefined when usage varies; migrated accounts never set a budget; nothing covers runaway spend or failed payments |
+| s2 | 3.67 | 3.71 | 3.61 | 3.73 | H6 from 7 / none | AC-8 (new-date text within 2 working days for 95%) has no story that sends or measures it (6a); patients with a basic phone fall between texts and calls; an urgent patient's cancel by link gets no clinical check; quiet hours conflict with 5-minute texts (6b) |
+| s3 | 3.57 | 3.49 | 3.53 | 3.47 | none / none | Teasers go live on old copy with no bank decision on the final file; banners go to the bank before their copy is decided (6a); the bank's review dates are assumed, not agreed; the referral promise breaks at the cap; the Rs 250 rule does not define "spend to date"; one person holds 21.5 days of work in 13 (6b); "last year Kotak pulled a SplitPay ad" is not in the evidence (6b) |
+| s4 | 3.71 | 3.71 | 3.71 | 3.84 | none / none | "Book optional help" is still a required checklist step; the 2,000-row work has no customer; Release 4.3 capacity is counted from before the sizing session (6b); size labels do not match research time boxes; the customer is never told the decision or date |
+| s5 | 3.53 | 3.49 | 3.59 | 3.53 | H8 from 5 / none | Customer contact is not in the goal; an injury reported later is not re-routed; the bias test only checks the input list, and there is no impact assessment; reserve suggestions are never tested; the stop rules fire on noise; 7 ready phase 1 stories have no owner (6b) |
+
+Average score per dimension over all 70 judgements, rev5 → rev6: plain English 3.84 → 3.89,
+value 3.80 → 3.84, executability 3.40 → 3.53, lean 3.73 → 3.66, robustness 3.41 → 3.40,
+traceability 3.89 → 3.89, approvability 3.14 → 3.20. All 70 judgements were "approve with
+changes". No scenario passed: approvability stays near 3 because owners are assumed, the team
+has not sized the work, and the fresh-context reviews did not run.
+
+Runs a and b differ by 0.06 to 0.33 in mean score, against 0.00 to 0.08 in rev5. Most of the
+widest gap (s1) comes from run a holding stories for sizing, which judges mark down under
+executability. Run b is the first run in six rounds where every judge passed every hard check in
+all five scenarios. Run a still fails three: s1 H4 (a correct hold), s2 H6 (a regression), and s5
+H8 (the round 5 fix held in one run of two).
+
+What the round 5 fixes did:
+
+| Fix after rev5 | Held in rev6? |
+| --- | --- |
+| An outside decision becomes a `research` story owned by the decider, with dependent work kept `draft` | Partly: 6b s5 has no H8 fail, but 6a s5 still keeps the regulator's review time (Q-2) and the pilot region and phase 2 cost (Q-3) as PRD questions, and 5 panel judges fail it. Side effect: runners size decision stories L and hit the 10-day cap for a decision window (6a s2, 6a s5, 6b s2, 6b s5). Judges call them events, not work |
+| The research hold follows dependency chains | Yes: no hold was missed. 6b s3 holds 10 stories behind one reviewer decision through chains |
+| A `wont` item takes no milestone and skips the ready gate | Yes: no judge found a won't-have in a release. A won't-have research story still gets the time-box size warning (s4 both runs) |
+| A `ready` item behind a `draft` one warns, and errors at the gate | Yes: no run has one |
+| Story and bug owners get the placeholder check | Partly: no placeholder strings are left. But the check runs only when an owner is set: 6b s5 has 7 `ready` phase 1 stories with no owner, and other runs use teams ("Claims data team", "Engineering (Tom Becker)") |
+| Features with an assumed owner are listed under "Blocked" | Yes: every status comment lists them. Judges now read the list as "no one owns this" and still mark executability down |
+| Research counts at its time box in the fit check | Yes for the sums. The label still shows the band, so a 3-day spike reads `size:M` (s4 both runs, 6a s3, 6b s3) |
+| The reply example says "will reproduce" | Yes: no judge called a reply untrue. The s4 customer now asks for a send date and the decision |
+| Show how the goal adds up, and say when it falls short | Yes: shortfalls are stated in "In short" (6b s3 1,84,000 against 2 lakh; s5 "this plan does not yet cover" the roll-out). Judges now question the parts instead (s1 annual renewals) |
+| A severity-4 control says what triggers it and what catches a miss | Partly: the s5 injury lock now has a sampled miss check, but judges ask how sure the sample is and what happens to injuries reported later. The s2 urgent-patient cancel has no clinical check |
+| Every PRD number reads the same in every file | Mostly: 6b s5 gives two phase 1 end dates (23 July and 30 September) and a wrong contradiction count; s4 day counts differ from size labels |
+| Wording: gate 4 "half", fallback owner may be an approver, a reply with corrections confirms | Yes: no runner reported those three conflicts again |
+
+Defects to fix next, with the fix each points to:
+
+| Defect | Seen in rev6 | Proposed fix |
+| --- | --- | --- |
+| A decision story is sized as if waiting were work, and hits the L cap | 6a s2, 6a s5, 6b s2, 6b s5 | Grooming: size a decision story by the work of preparing the ask (usually XS or S) and put the decision date in its notes. Its dependants start after that date; the wait is not counted in the fit check |
+| An open question that blocks ready work stays in the PRD | 6a s5 (H8 from 5) | Planning's final check: every PRD open question names the decision story that holds the work behind it, or the work behind it is not `ready` |
+| One part of a criterion has no check | 6a s2 (H6 from 7): AC-8's 2-day new-date text | Each story check names the `AC-` it tests, such as "S-10.2 (AC-8)", and `trace` lists every criterion that no check names |
+| A `ready` story can have no owner, and teams pass as owners | 6b s5 (7 stories), team owners in s1, s3, s5 | `--require-ready` needs an owner on `ready` stories and bugs. A team passes only with a named contact, such as "Claims data team (lead: Ana Silva)" |
+| Research shows a size band instead of its time box | s4 both runs, 6a s3, 6b s3 | Research stories show "research, 3-day time box" in the stakeholder view and tree, not a size label |
+| A won't-have research story warns about its size | s4 both runs | `validate` skips the time-box size check for `wont` items |
+| The planner credits the owner or the evidence with things they never said | 6a s4 ("Approvers unchanged (owner)"), 6b s2 (booking team calls every such patient), 6b s3 (a pulled SplitPay ad) | Synthesizing and specifying: each decision cites the round and quote it came from, and each fact cites an evidence line that says it; anything else is a labelled assumption. Add it to planning's final check |
+| The default sign-off puts every feature on the CEO | 6a s3 (7 approvals for one person) | Charter default: approvers sign the PRD; each feature is signed by its owner and the one approver whose area it touches |
+| Gate 4 passes while most of the first milestone is held | 6a s1, 6a s2, 6b s3 (10 of 18 stories draft) | Gate 4 passes only when the first milestone's must-haves are `ready`; held later work is fine and is listed |
+
+Skill instructions the runners found unclear or contradictory:
+
+- `synthesizing` step 8 runs the fresh-context check before the owner confirms the intake, but
+  the round 1 reply already confirms it (most runs).
+- "Do not stop again" is read as covering the later stages too (several runs).
+- The mission-owner fallback conflicts with "never leave a milestone that cannot be met" when the
+  launch date is fixed (6b s3, 6a s3: 24.5 days of work in 14).
+- Limits can only be inclusive, so "under Rs 250" became "at most 249" (6b s3).
+- An outside approval with no time left to resubmit fits only the "say what slips" fallback
+  (6b s3).
+- Nothing says what to do when the owner answers "use your judgement" on a severity-4 control.
+- `validate`, `tree`, and `status` do not take `--today`; `report` needs `--repo` when there is
+  no repository (6a s4); the vague-word check still rejects "fast-track" (6a s5).
+
+Open, carried from rev5: sign-off by people outside GitHub still cannot be recorded (the s2
+patient group), and fresh-context reviews still never ran in the simulation.
