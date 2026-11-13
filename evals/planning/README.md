@@ -14,8 +14,7 @@ on demand, not in CI.
 | --- | --- |
 | `scenarios.json` | 5 missions (product, operations, marketing, grooming against an existing backlog, and a frontier AI change). Each has the owner's opening message, a hidden owner persona, an internal and an external stakeholder judge, and checks of its own. It also holds the panel of five frontier-company lenses |
 | `fixtures/<id>/inputs/` | The raw inputs each mission starts from: transcripts, minutes, emails, chats, drafts, and data. `s4` also has the `backlog.json` it grooms |
-| `rubric.md` | Hard checks H1–H8, seven 1–5 scores, the judge output, and the pass bar |
-| `rubric-v2.md` | The same rubric with a defined 4 for each score, named open items not counted as gaps, and the verdict tied to approvability. Proposed after the calibration in `docs/planning-evaluation.md` |
+| `rubric.md` | Hard checks H1–H8, seven scores from 1 to 5 with a defined 4, the judge output, and the pass bar. Open items a plan names, with who decides and by when, are not gaps; the verdict follows approvability. This is the rubric adopted after the calibration in `docs/planning-evaluation.md` |
 | `readability.py` | Reading ease (Flesch) and words per sentence for the prose people read |
 
 ## Method
@@ -27,7 +26,11 @@ on demand, not in CI.
    opening message. It stops whenever a skill says to ask the owner, at most 4 times. The
    orchestrator answers each round strictly from the hidden persona; anything the persona does
    not cover is answered "not sure, use your judgement and label it". Runners never write to
-   GitHub, so sign-off gates 3 and 5 are reported as not run.
+   GitHub, so sign-off gates 3 and 5 are reported as not run. Runners cannot start subagents, so
+   the orchestrator runs every fresh-context review a skill calls for: the runner writes the
+   review packet and stops; a fresh reviewer subagent gets only the files the skill's brief
+   names and that brief; the runner applies the findings as the skill says. Review stops do not
+   count toward the 4.
 3. **Check what scripts can check.** `backlog.py validate --require-ready` (H4), `trace` (H6),
    `readability.py` on `intake.md`, `prd.md`, and `stakeholder-view.md`. Build
    `stakeholder-view.md` from `sync.render` for every item plus `sync.report_comment`: exactly

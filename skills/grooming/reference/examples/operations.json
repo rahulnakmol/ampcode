@@ -168,7 +168,7 @@
           "id": "S-2.1",
           "given": "yesterday's UK01 bank file has arrived by 01:00",
           "when": "the 02:00 job runs",
-          "then": "each line matching exactly one open invoice is posted with the bank reference in the journal memo"
+          "then": "each line matching exactly one open invoice is posted with the bank reference in the journal memo (AC-3)"
         },
         {
           "id": "S-2.2",
@@ -186,7 +186,7 @@
           "id": "S-2.4",
           "given": "a line matches exactly one open invoice except for an FX rounding difference of at most 0.05 GBP",
           "when": "the job runs",
-          "then": "the line is posted and the difference is booked to the FX rounding account 7920"
+          "then": "the line is posted and the difference is booked to the FX rounding account 7920 (AC-3)"
         }
       ],
       "priority": "must",
@@ -216,7 +216,7 @@
           "id": "S-3.1",
           "given": "the nightly job has finished",
           "when": "it is 07:00 UK time",
-          "then": "the report is in the AP SharePoint folder with one row per unmatched line, its amount, value date, reference, and up to 3 candidate invoices"
+          "then": "the report is in the AP SharePoint folder with one row per unmatched line, its amount, value date, reference, and up to 3 candidate invoices (AC-4)"
         },
         {
           "id": "S-3.2",
@@ -273,7 +273,7 @@
           "id": "S-4.1",
           "given": "the current 74-task UK01 checklist",
           "when": "the calendar is published in the close workbook",
-          "then": "every task has exactly one named owner, a due day between D+1 and D+3, and its predecessor tasks, and tasks that move earlier are listed for review"
+          "then": "every task has exactly one named owner, a due day between D+1 and D+3, and its predecessor tasks, and tasks that move earlier are listed for review (AC-1)"
         },
         {
           "id": "S-4.2",
@@ -304,7 +304,7 @@
           "id": "S-5.1",
           "given": "the 8 people named as task owners in the calendar",
           "when": "the session runs before 2027-02-19",
-          "then": "all 8 attended or watched the recording and the attendance list is attached here"
+          "then": "all 8 attended or watched the recording and the attendance list is attached here (AC-2)"
         }
       ],
       "priority": "must",
@@ -355,7 +355,7 @@
           "id": "S-6.1",
           "given": "task status is updated in the close workbook",
           "when": "the dashboard refreshes at 08:00 and 14:00",
-          "then": "it shows done, late, and blocked task counts for each entity and close day, at most 15 minutes after each refresh"
+          "then": "it shows done, late, and blocked task counts for each entity and close day, at most 15 minutes after each refresh (AC-5)"
         }
       ],
       "priority": "should",
@@ -388,7 +388,7 @@
           "id": "B-1.1",
           "given": "a bank file whose lines were already posted",
           "when": "the same file is delivered and the job runs again",
-          "then": "0 new journal lines are posted and the run log lists each skipped line's bank reference"
+          "then": "0 new journal lines are posted and the run log lists each skipped line's bank reference (AC-3)"
         },
         {
           "id": "B-1.2",

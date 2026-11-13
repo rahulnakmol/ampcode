@@ -30,6 +30,9 @@ report, and stop at the first gate that needs their decision or a stakeholder's 
   `operations`, or `marketing`.
 - **Entry point:** which row of the table in section 2 applies.
 - **People:** the owner, and the approvers with their tracker handles (GitHub logins today).
+  By default every approver signs the PRD, and each feature is signed by its owner's approver:
+  the one whose area it touches, named in the feature's `notes`. No one is asked to sign
+  every item unless the charter says so.
 - **Tracker:** the GitHub repository (and Project, if any) stakeholders use, or Excel only.
 - **Mission success criteria:** which gates must pass and by when. The default is G1 to G6
   (section 4); a user may stop earlier, such as "PRD signed off and backlog ready, not yet
@@ -67,7 +70,7 @@ before asking anyone to sign off (G3, G5).
 | **G1 Evidence and intent** | Every input is a source; every evidence row cites its source and location; every contradiction is resolved, assumed, or owned; the owner confirmed the intake's intent and placement | `synthesizing` checklist and its fresh-context check |
 | **G2 PRD drafted** | `specifying`'s checklist passes, a fresh reader can explain the PRD back, and `backlog.py validate` passes on the initiative and goals | `specifying` |
 | **G3 PRD agreed** | `backlog.py status` shows the initiative `approved` (add `--all-approvers` when the charter needs every approver), not `unsynced changes` or `stale` | `syncing pull`, then `backlog.py status` |
-| **G4 Backlog ready** | `backlog.py validate --require-ready` reports 0 errors (it also checks each feature has a named `owner`, not a placeholder); the team has sized the stories at a dated session, and your total differs from theirs by less than half of their estimate (with no team estimate yet, the gate stays open until that session has happened); a fresh reader can execute the must-have stories without asking questions | `grooming` |
+| **G4 Backlog ready** | `backlog.py validate --require-ready` reports 0 errors (it also checks each feature has a named `owner`, not a placeholder); the team has sized the stories at a dated session, and your total differs from theirs by less than half of their estimate (with no team estimate yet, the gate stays open until that session has happened); a fresh reader can execute the must-have stories without asking questions; the first milestone's `must` stories are `ready` (held ones keep the gate open, and the report names what holds them) | `grooming` |
 | **G5 Backlog agreed** | `sync plan` prints `nothing to do`, and `backlog.py status` exits 0: every feature approved, no open feedback | `syncing`, `backlog.py status` |
 | **G6 Handed off** | Each feature `owner` is a named person who agreed to it, not an assumption; each ready story has an owner and a milestone, and its `work` type sets the delivery route: `delivering` for software work in any domain, the named team for the rest | the backlog and the charter |
 | **G7 Achieved** | Delivered items have delivery records; goals have measurements; `backlog.py trace` lists no gaps, or each remaining gap has an owner and date in the charter | `backlog.py trace` |
@@ -76,6 +79,9 @@ Fresh-context reviews follow the Elephant-Goldfish method used in `grilling` and
 you are the Elephant who holds the context; a Goldfish is a subagent that receives only the
 artifact and its sources, never your explanation or the verdict you hope for. Brief it as an
 adversary: find what is wrong, missing, untestable, or unsupported, with the exact location.
+Each skill's review brief also has it read the plan as every person it touches, and check each
+decision against the owner's own words. Repairs follow the same rules as the first draft: a
+reviewer's suggestion is your choice, labelled as an assumption, until the owner confirms it.
 Repair gaps in the artifact itself, then recheck with a new fresh reader. A self-review is not a
 Goldfish review; if no subagent is available, mark the gate pending.
 
@@ -157,4 +163,9 @@ its backlog is `grooming/reference/examples/operations.json`.
 - `backlog.py status` and `backlog.py trace` were run in this session, not quoted from earlier.
 - Every number the PRD states (dates, amounts, counts, sizes) reads the same in the README,
   intake, report, and backlog.
+- Every decision credited to someone (the owner, an approver, a customer) cites their words in
+  the question log or an evidence row, including changes made after a review. Replies to
+  outside people claim nothing that has not happened: "logged and will reproduce", not
+  "confirmed", until someone has.
+- Every PRD open question that work waits on names the story that holds that work.
 - Anything not done is listed with who must act next.

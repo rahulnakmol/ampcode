@@ -24,15 +24,21 @@ GitHub.
 
 ## Scores (1 to 5)
 
-| Dimension | 1 | 3 | 5 |
-| --- | --- | --- | --- |
-| Plain English | Jargon, long sentences; I would need a meeting to understand it | Mostly clear, some jargon or dense passages | I understood every line on first read; terms are explained |
-| Value | Activity, not outcomes; unclear why the business cares | Outcomes stated, links to drivers partial | Every item clearly moves a measured goal that serves a stated driver |
-| Executability | A team would need many meetings first | A few gaps | A team could start the first stories today |
-| Lean | Bloated, ceremonial, or padded | Some excess | Nothing to cut; the smallest plan that meets the goals |
-| Robustness | Happy path only | Main risks covered | Edge cases, failure modes, people at risk, and unknowns handled with checks |
-| Traceability and honesty | Claims without sources, or overclaims | Mostly sourced | Every decision has a source or owner; limits stated plainly |
-| Approvability | I would not sign | I would sign with changes | I would sign it today as written |
+| Dimension | 1 | 3 | 4 | 5 |
+| --- | --- | --- | --- | --- |
+| Plain English | Jargon, long sentences; I would need a meeting to understand it | Mostly clear, some jargon or dense passages | Clear on first read; the few terms or codes left are explained in the same document | I understood every line on first read; terms are explained |
+| Value | Activity, not outcomes; unclear why the business cares | Outcomes stated, links to drivers partial | Every goal serves a stated driver, and each feature names the goal metric it moves | Every item clearly moves a measured goal that serves a stated driver |
+| Executability | A team would need many meetings first | A few gaps | The first stories could start once the open items the plan itself lists (an owner to name, a sizing session) close on their stated dates; no gap the plan does not name | A team could start the first stories today |
+| Lean | Bloated, ceremonial, or padded | Some excess | Little to cut; any excess is small and slows nobody | Nothing to cut; the smallest plan that meets the goals |
+| Robustness | Happy path only | Main risks covered | Main risks, failure modes, and people at risk each have a check; what is left is minor or listed as open with a decider | Edge cases, failure modes, people at risk, and unknowns handled with checks |
+| Traceability and honesty | Claims without sources, or overclaims | Mostly sourced | Every decision has a source or is labelled an assumption with a decider; at most a minor slip | Every decision has a source or owner; limits stated plainly |
+| Approvability | I would not sign | I would sign once the plan's content changes | I would sign once the people named confirm the open items the plan itself lists; its content needs no change | I would sign it today as written |
+
+Score each dimension against these anchors, not against an imagined perfect plan. Open items the
+plan states plainly, with who decides and by when, are honesty, not a gap: mark down only gaps
+the plan does not name. The verdict follows approvability: 4 or 5 is "approve", 3 is "approve
+with changes", 1 or 2 is "reject". List top fixes only for real changes to the content; when you
+would change nothing, leave the list empty.
 
 ## Judge output
 
@@ -44,7 +50,7 @@ GitHub.
   "hard_notes": {"<ID>": "<one line, with the file and quote, for every fail>"},
   "scores": {"plain_english": 0, "value": 0, "executability": 0, "lean": 0, "robustness": 0, "traceability": 0, "approvability": 0},
   "verdict": "approve|approve with changes|reject",
-  "top_fixes": ["<at most 3 concrete fixes, each naming a file and what to change>"],
+  "top_fixes": ["<0 to 3 concrete fixes, each naming a file and what to change>"],
   "quote": "<one sentence the judge would say to the owner>"
 }
 ```

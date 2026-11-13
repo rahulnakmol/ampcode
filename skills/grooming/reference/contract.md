@@ -152,7 +152,7 @@ anyone a question. The checked part of that is the Definition of Ready below; th
 | `status` | yes | `draft` or `ready`. Tracker workflow states (in progress, done) belong to the tracker |
 | `depends_on` | no | Story or bug IDs that must finish first |
 | `milestone` | no | Overrides the feature's milestone |
-| `owner` | no | Person, team, or `agent`. A placeholder such as "lead (to be named)" fails `--require-ready` (a warning before) |
+| `owner` | for ready | Person, team with its contact ("Claims data team (lead: Ana Silva)"), or `agent`. `--require-ready` fails on a `ready` story with none. A placeholder such as "lead (to be named)" fails `--require-ready` (a warning before) |
 | `delivery` | no | Added when the work is done; see [Delivery](#delivery) |
 | `trace` | yes | At least one entry, normally a PRD acceptance criterion |
 
@@ -196,7 +196,8 @@ the fix. Priority says how much the fix matters; urgency says how soon it must l
 5. A `research` story's `i_want` or a `then` states a time box (a number followed by hour, day,
    week, sprint, or iteration) and a decision (decide, decision, recommend, choose, or select).
    Its `size` is the smallest size that holds the time box (a 3-day spike is `M`); a mismatch
-   is a warning.
+   is a warning, except on a `wont` item. `tree`, the tracker, and Excel show the time box
+   ("3-day time box") instead of the size.
 6. Every `depends_on` ID is a story or bug in the file, is not the item itself, and forms no cycle.
    A `ready` item that depends on a `draft` one gets a warning: it cannot start before it.
 
@@ -204,7 +205,7 @@ the fix. Priority says how much the fix matters; urgency says how soon it must l
 an error, and it also fails on any `draft` story or bug (except one whose `depends_on` chain
 reaches a `research` story not yet delivered: that is held, with a warning; and a `wont` item,
 which is skipped), any parent without the children listed above, any feature without a named
-`owner`, any story or bug whose `owner` is a placeholder, a `wont` item with a milestone, any
+`owner`, any `ready` story or bug with no `owner` or one that is a placeholder, a `wont` item with a milestone, any
 driver no goal serves, and any `open` feedback. It
 does not look at sign-offs;
 `backlog.py status` does.

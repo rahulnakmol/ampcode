@@ -110,6 +110,9 @@ class DefinitionOfReady(unittest.TestCase):
         self.assertIn("research time box '3-day' is size M, not S: size it by its time box", messages(warnings, "S-1"))
         errors, _ = backlog.validate(self.data, require_ready=True)
         self.assertIn("research time box '3-day' is size M, not S: size it by its time box", messages(errors, "S-1"))
+        self.assertEqual(backlog.size_text(s1), "3-day time box")  # what people see, not the band
+        s1["priority"] = "wont"  # a won't-have is not groomed further
+        self.assertEqual(messages(backlog.validate(self.data)[1], "S-1"), [])
 
     def test_draft_story_may_be_partial_but_schema_errors_still_fail(self):
         s6 = item(self.data, "S-6")
@@ -180,6 +183,9 @@ class Structure(unittest.TestCase):
         self.assertIn("owner 'Engineering (lead to be named)' is a placeholder: name the person doing it",
                       messages(errors, "S-4"))
         self.assertEqual(messages(errors, "S-1"), [])  # 'Finance systems' names who does it
+        del item(wont, "S-5")["owner"]  # ready work needs someone doing it
+        errors, _ = backlog.validate(wont, require_ready=True)
+        self.assertIn("has no owner: name the person doing it", messages(errors, "S-5"))
         item(data, "S-6")["status"] = "ready"
         data["feedback"].append({"id": "FB-3", "feature": "F-2", "from": "x", "summary": "y", "disposition": "open"})
         data["items"] = [i for i in data["items"] if i["id"] != "S-6"]
@@ -239,6 +245,8 @@ class Traceability(unittest.TestCase):
         item(data, "S-2")["delivery"] = {"at": "2027-02-20", "evidence": ["PR 88"],
                                           "criteria": {"S-2.1": "met", "S-2.2": "met", "S-2.3": "not met", "S-2.4": "met"}}
         item(data, "S-3")["trace"] = ["E4"]  # AC-4 is now listed on feature F-1 only
+        s6 = item(data, "S-6")["acceptance"][0]  # S-6 traces AC-5, but no check says it tests it
+        s6["then"] = s6["then"].replace(" (AC-5)", "")
         with tempfile.TemporaryDirectory() as tmp:
             Path(tmp, "prd.md").write_text("- **R-1** a\n- **R-2** b\n- **R-3** c\n- **R-9** d\n**AC-1** **AC-2** **AC-3** **AC-4** **AC-5**\n"
                                            "## Change log\n- removed R-7 and AC-8")
@@ -246,6 +254,7 @@ class Traceability(unittest.TestCase):
         self.assertIn("R-9 in prd.md is traced by no item", gaps)
         self.assertIn("S-2 partial: S-2.3 not met", gaps)
         self.assertIn("AC-4 in prd.md is traced only by a feature; no story or bug delivers it", gaps)
+        self.assertIn("AC-5 in prd.md is traced by a story, but no acceptance check names it", gaps)
         self.assertFalse([g for g in gaps if g.startswith("AC-3 ")])  # delivered by S-1, S-2, and B-1
         self.assertNotIn("R-1 in prd.md is traced by no item", gaps)
         self.assertFalse([g for g in gaps if "R-7" in g or "AC-8" in g])  # mentioned, not defined

@@ -103,7 +103,7 @@ def sections(data, item, base):
         stories = sorted((k for k in kids.get(item["id"], []) if k["type"] == "story"), key=by_id)
         values.update(description=item["description"], benefit_hypothesis=item["benefit_hypothesis"],
                       acceptance=_bullets(item.get("acceptance") or []),
-                      stories=_bullets(f"**{s['id']}** {s['title']} ({s.get('size')}, {s.get('priority')})" for s in stories))
+                      stories=_bullets(f"**{s['id']}** {s['title']} ({backlog.size_text(s)}, {s.get('priority')})" for s in stories))
     elif kind == "story":
         values.update(user_story=f"**{as_a(item.get('as_a'))}**, **I want** {item.get('i_want', '')}, **so that** {item.get('so_that', '')}.",
                       acceptance=_criteria(item))
@@ -148,6 +148,8 @@ def render(data, item, base):
 
     labels = ["backlog", f"type:{kind}"]
     for field in ("domain", "work", "priority", "size", "urgency", "status"):
+        if field == "size" and item.get("work") == "research":
+            continue  # research shows its time box in the body, not a size label
         if item.get(field):
             labels.append(f"{field}:{item[field]}")
     return title, body, labels, _milestone_title(data, item)
@@ -809,7 +811,7 @@ def excel_rows(data, base, today=None):
         rows.append([
             item["id"], kind, item.get("parent", ""), item["title"], statement,
             item.get("domain") or item.get("work") or "", item.get("priority", ""), item.get("urgency", ""),
-            item.get("size", ""), item.get("status", ""), backlog.wsjf_score(item) if kind == "feature" else "",
+            backlog.size_text(item) or "", item.get("status", ""), backlog.wsjf_score(item) if kind == "feature" else "",
             _milestone_title(data, item) or "", item.get("owner", ""), ", ".join(item.get("depends_on") or []),
             "\n".join(drivers), ", ".join(item.get("trace") or []), sign, delivery,
             ((item.get("external") or {}).get("github") or {}).get("url", ""),
