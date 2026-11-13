@@ -457,3 +457,100 @@ The way to 4 that follows: score with rubric v2, run the fresh-context reviews i
 the judges' lenses and apply their findings before the owner sees the plan, and fix the round 6
 defects by type. Measure on 2 runs of each scenario, and count a change only when it beats the
 0.1 judge noise.
+
+## Closing round (rev7)
+
+The closing round tested the way to 4 that calibration proposed. All five missions ran twice on
+the skills as merged in #40 (dev at `2007f37`), scored on rubric v2. For the first time, the
+fresh-context reviews ran inside the loop: when a skill called for one, the runner wrote the
+review packet and stopped, a fresh reviewer read only the files the brief names, and the runner
+applied its findings. Each review stage got one recheck at most, because the skills give no stop
+rule (below). The agreed stop rule was: done if every scenario averages 3.8 or more; otherwise
+write up the gap.
+
+The ten runs used 4 to 6 review stops and 2 to 4 owner stops each. Reading ease was 68 to 82 in
+every file checked. `validate --require-ready` reported 0 errors in all ten runs, and `trace`
+gaps were only for sign-offs. Some judge, reviewer, and runner runs were cut off by connection
+errors; judges and reviewers were rerun from the same brief, and runners resumed from their
+files.
+
+| Scenario | rev6 a / b, old rubric | rev6 b, v2 | rev7 a | rev7 b | Hard-check fails, a / b |
+| --- | --- | --- | --- | --- | --- |
+| s1 | 3.47 / 3.80 | 3.61 | 3.67 | 3.45 | none / none |
+| s2 | 3.61 / 3.73 | — | 3.47 | 3.69 | none / none |
+| s3 | 3.53 / 3.47 | — | 3.45 | 3.55 | none / none |
+| s4 | 3.71 / 3.84 | 3.76 | 3.55 | 3.53 | H8 / H5 |
+| s5 | 3.59 / 3.53 | — | 3.65 | 3.61 | none / none |
+
+**The stop rule failed: no scenario reached 3.8.** The mean of all 70 judgements is 3.56. Seven
+were "approve" and 63 "approve with changes". Approvability was 3 in 63 judgements and 4 in 7.
+
+Hard-check fails fell from three runs in rev6 to two, both in s4: 7a s4 changed two stories
+without tracing them to the new evidence (H8), and 7b s4 gave one story a check with no number
+(H5). Every other run passed all eight checks with every judge.
+
+On the same rubric, the in-loop reviews traded one kind of quality for another. For s1 and s4,
+the only scenarios with v2 scores for rev6, the average per dimension moved like this:
+
+| Dimension | rev6 b (14 judgements) | rev7 a and b (28) | Change |
+| --- | --- | --- | --- |
+| Executability | 3.64 | 3.86 | +0.22 |
+| Robustness | 3.57 | 3.79 | +0.22 |
+| Value | 3.86 | 3.86 | 0 |
+| Approvability | 3.21 | 3.14 | −0.07 |
+| Traceability | 3.93 | 3.71 | −0.22 |
+| Plain English | 3.79 | 3.25 | −0.54 |
+| Lean | 3.79 | 3.25 | −0.54 |
+
+Over all five scenarios: plain English 3.30, value 3.90, executability 3.83, lean 3.26,
+robustness 3.67, traceability 3.89, approvability 3.10.
+
+What the in-loop reviews did:
+
+- **They found what judges found in rounds 5 and 6, before the owner saw the plan.** Reviewers
+  raised unpaid accounts and runaway spend (s1), ramp arithmetic (s1), patients with a basic
+  phone and double-booked slots (s2), the referral promise at the cap and the AutoPay
+  settlement lag (s3), injuries reported later (s5), holidays, goals the plan cannot reach, and
+  decisions credited to owners who never made them. Runners fixed most of them, and judges no
+  longer raised them.
+- **Every repair added text.** PRDs grew by about 58% (mean 19.5 KB in rev6 to 30.7 KB) and the
+  stakeholder view by about 38% (36.8 KB to 50.8 KB). Runners put the review history into the
+  PRD change log and the README, and they added a story for each new approval, decision, or
+  reading. Judges in every scenario asked to cut those, to replace E-, AC-, and R- codes with
+  words, and to move approvals into a checklist. The owners in s1 and s3 had asked to "keep it
+  short".
+- **Every recheck found new gaps.** Rechecks returned 11 to 22 findings, most of them new rather
+  than leftovers from the first review, so the last repairs of every stage went unchecked. Some
+  of those repairs left stale text behind: s4 README lines that contradicted the backlog, and
+  sign-off changes made after the owner's last round that she never saw.
+- **Approvability did not move.** The persona answers most questions with "not sure, use your
+  judgement", so owners stay assumed, the team never sizes the work, and the owner never
+  confirms the planner's choices. Judges score that 3 however good the rest is. In this
+  simulation the cap on approvability is the owner's answers, not the skills.
+
+Defects to fix next, with the fix each points to:
+
+| Defect | Seen in rev7 | Proposed fix |
+| --- | --- | --- |
+| "Recheck with a new fresh reader after material edits" has no stop rule, and every recheck finds new gaps | All runs (capped by the simulation) | Planning: a recheck reads only the repaired items and the text around them, once. Anything it or later edits leave open goes on the open list with an owner; the gate is then `pending`, not repeated |
+| Repairs grow the stakeholder text, and review mechanics reach approvers | All runs: PRD change logs cite `review-3.md`, finding counts, "simulation budget" | Specifying and grooming: a repair replaces text rather than adds to it. The PRD change log says what changed for the reader, not which review asked for it. Review history stays in the README |
+| Approvals, decisions, and readings become stories | s2, s3, s5 most (a third of s2's stories) | Grooming: one decision story per decider and date, not per question. Approvals before go-live are a checklist in the milestone or feature notes. Goal readings belong to the goal, not a story |
+| Codes in what stakeholders read | All runs | Syncing: issue bodies say things in words; E-, R-, and AC- codes appear only in the trailing Sources line |
+| The mission owner becomes feature owner "even when an approver", which the contract forbids | s4 both, s5 both, s1 b | Grooming: name the mission owner as the contact for finding an owner, not as the owner; the feature stays blocked |
+| `validate` accepts a bare team owner, which the contract forbids | s4 both | `--require-ready`: a team owner needs a named contact, as the contract says |
+| `--require-ready` exits 0 while gate 4 is open (team not sized, first-milestone must-haves held) | s1 both, s3 b, s4 both | Planning's gate table: say plainly that the command is necessary but not sufficient, or make `validate --require-ready` report held first-milestone must-haves as errors |
+| Per-feature signers are written in notes, but `status` and `report` list every approver on every item | s1, s2, s3, s5 | Syncing: read the feature's signer from its notes, or drop the per-feature default |
+| A guardrail "at every reading" cannot be expressed; the contract judges only the latest reading | s5 both | Contract: allow a guardrail to fail on any reading, or have the PRD template say "latest" |
+| The initiative issue shows "In short" twice | s5 both, s1 a | Syncing: render "In short" once, above the folded PRD |
+| `--today` is accepted only by `trace` and `report` | s4 b | Accept `--today` on `validate`, `status`, and `tree`, or drop the instruction to pass it everywhere |
+
+Two harness defects affected this round. Reviewers were told not to read anything under a skills
+folder, but the grooming brief gives them the contract, which lives there; no reviewer checked a
+backlog against the contract. `evals/planning/README.md` now says reviewers get skill reference
+files the brief names. And one owner reply (7a s1, round 3) left out two persona facts, which
+were sent with the next message.
+
+Conclusion: in-loop reviews make the plans more executable and more robust, but on the current
+skills they cost more in length and plain English than they gain, and the simulated owner keeps
+approvability at 3. The next step is the first five fixes above, which target length and
+process stories, measured on s1 and s4 against these scores.
