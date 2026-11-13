@@ -29,8 +29,8 @@ on demand, not in CI.
    GitHub, so sign-off gates 3 and 5 are reported as not run. Runners cannot start subagents, so
    the orchestrator runs every fresh-context review a skill calls for: the runner writes the
    review packet and stops; a fresh reviewer subagent gets only the files the skill's brief
-   names and that brief; the runner applies the findings as the skill says. Review stops do not
-   count toward the 4.
+   names (including skill reference files such as the contract) and that brief; the runner
+   applies the findings as the skill says. Review stops do not count toward the 4.
 3. **Check what scripts can check.** `backlog.py validate --require-ready` (H4), `trace` (H6),
    `readability.py` on `intake.md`, `prd.md`, and `stakeholder-view.md`. Build
    `stakeholder-view.md` from `sync.render` for every item plus `sync.report_comment`: exactly
