@@ -15,6 +15,7 @@ on demand, not in CI.
 | `scenarios.json` | 5 missions (product, operations, marketing, grooming against an existing backlog, and a frontier AI change). Each has the owner's opening message, a hidden owner persona, an internal and an external stakeholder judge, and checks of its own. It also holds the panel of five frontier-company lenses |
 | `fixtures/<id>/inputs/` | The raw inputs each mission starts from: transcripts, minutes, emails, chats, drafts, and data. `s4` also has the `backlog.json` it grooms |
 | `rubric.md` | Hard checks H1–H8, seven 1–5 scores, the judge output, and the pass bar |
+| `rubric-v2.md` | The same rubric with a defined 4 for each score, named open items not counted as gaps, and the verdict tied to approvability. Proposed after the calibration in `docs/planning-evaluation.md` |
 | `readability.py` | Reading ease (Flesch) and words per sentence for the prose people read |
 
 ## Method

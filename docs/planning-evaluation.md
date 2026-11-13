@@ -407,3 +407,53 @@ Skill instructions the runners found unclear or contradictory:
 
 Open, carried from rev5: sign-off by people outside GitHub still cannot be recorded (the s2
 patient group), and fresh-context reviews still never ran in the simulation.
+
+## Calibration after round 6
+
+Six rounds moved the mean from 3.5 to 3.63, and never past 3.84 for one scenario. Before more
+fix rounds, we checked whether the bar of 4 was reachable at all. In 490 round 6 scores no judge
+gave a 5, so the scale works as 3 or 4. Approvability was 3 in 56 of 70 judgements, because the
+rubric calls "I would sign with changes" a 3 and every judge must list fixes.
+
+Three tests ran on s4 run b (3.84) and s1 run b (3.80), with the same judges and briefs:
+
+- **Judge noise:** the unchanged s4 plan was judged again on the same rubric.
+- **Ceiling:** a copy of the s4 plan was edited by hand to answer every fix and score note from
+  its 7 judges. Facts nobody gave, such as feature leads, stayed open with a decider and a date.
+- **Rubric v2** (`evals/planning/rubric-v2.md`): the same rubric with a 4 defined for each
+  dimension. Open items the plan names, with who decides and by when, are not counted as gaps.
+  The verdict follows approvability, and judges list fixes only for real content changes. The 1,
+  3, and 5 anchors and the hard checks are unchanged.
+
+| Plan | Rubric | Mean | Verdicts | Scores below 4 |
+| --- | --- | --- | --- | --- |
+| s4 run b, as produced | current | 3.84 | 7 with changes | 8 |
+| s4 run b, as produced, judged again | current | 3.71 | 7 with changes | 14 |
+| s4 run b, as produced | v2 | 3.76 | 2 approve, 5 with changes | 12 |
+| s4 run b, every judge fix applied | current | 3.69 | 5 with changes, 2 gave none | 15 |
+| s4 run b, every judge fix applied | v2 | 3.96 | 7 approve | 2 |
+| s1 run b, as produced | current | 3.80 | 7 with changes | 10 |
+| s1 run b, as produced | v2 | 3.61 | 1 approve, 6 with changes | 19 |
+
+What this shows:
+
+- **The current rubric cannot tell a better plan from a worse one.** The plan that answered every
+  comment scored 3.69 against 3.71 to 3.84 for the original, because each fresh set of judges
+  finds new things to fix. Iterating against it cannot converge on 4.
+- **Rubric v2 does not lower the bar.** It scores the round 6 plans lower or about the same (s4
+  3.76, s1 3.61), since judges still mark down gaps the plan does not name, such as s1's ramp
+  rule for changing usage. It scores the fixed plan 3.96 with every judge approving.
+- **One review round applied by hand is worth about 0.2.** The fixed plan is what the skills'
+  fresh-context review step would produce if it ran. The simulation never runs that step,
+  because runners cannot start subagents.
+- **Judge noise is about 0.1 on one scenario's mean,** the size of a whole fix round.
+- **Fixing by hand adds new errors.** v2 judges of the fixed plan still caught: a reply claiming
+  the bug was "confirmed" before anyone reproduced it; a customer file nobody said was attached;
+  a "CSV UTF-8" workaround that adds the byte order mark suspected of causing the bug; and a
+  condition put in the owner's voice that she never set. Planning's attribution check has to
+  cover review changes too.
+
+The way to 4 that follows: score with rubric v2, run the fresh-context reviews in the loop with
+the judges' lenses and apply their findings before the owner sees the plan, and fix the round 6
+defects by type. Measure on 2 runs of each scenario, and count a change only when it beats the
+0.1 judge noise.
