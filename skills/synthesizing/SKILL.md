@@ -153,9 +153,11 @@ backlog traces point at real evidence.
 8. **Review, then confirm.** Run the fresh-context check (below) and repair the files. Then show
    the owner the intent and placement table and ask them to confirm or correct it: this is the
    intake's last round and counts as one. Nothing is specced or groomed on an unconfirmed
-   intake. If the owner already corrected the intents, their reply is the confirmation, with or
-   without "carry on": apply the corrections, record "confirmed with corrections (date)" in
-   `intake.md`, show the corrected rows at the top of your next message, and do not stop again.
+   intake. If the owner already corrected the intents in an earlier round, their reply is the
+   confirmation, with or without "carry on": apply the corrections, record "confirmed with
+   corrections (date)" in `intake.md`, run the fresh-context check, and show the corrected rows
+   and anything the check changed at the top of your next message. Do not stop again for the
+   intake; later stages still ask their own questions.
 
 ## Write in plain English
 

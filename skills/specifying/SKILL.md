@@ -64,7 +64,13 @@ of fact traces to evidence (`E7`) or is labelled as a decision or assumption.
   review") also has an acceptance criterion that tests it, with a count that must be 0.
 - Each fact cites evidence or is labelled `Decision (who, when)` or `Assumption (revisit if …)`.
 - Risks name an owner and a mitigation; open questions name who answers, by when, and which
-  requirements wait on the answer (grooming makes each a research story).
+  requirements wait on the answer (grooming makes each a research story, and the backlog names
+  it next to the question once it exists).
+- Every `Decision` names whose words it came from: a round in the question log or an evidence
+  row. A choice you made is an `Assumption`, even when the owner said "use your judgement".
+  Facts say only what their evidence row says.
+- Acceptance criteria do not contradict each other: a hold, a pause, or a quiet hour is
+  written into the deadline it can delay ("by 12:00 on the 1st, except invoices on hold").
 - Sign-off names the approvers and their tracker handles.
 - "In short" opens the PRD and reads with no IDs; nothing explains the tools (backlog rules,
   rank score sums) to stakeholders.
@@ -83,7 +89,14 @@ it must check the seed). Ask it, neutrally, to:
    of scope;
 2. list every requirement it could not turn into a test without asking a question;
 3. list claims that are not backed by the cited evidence, and evidence rows that seem important
-   but are not used.
+   but are not used;
+4. read the PRD as each person it affects, inside and outside the business: what are they told,
+   and when; what happens when they cannot act on it (no smartphone, away, unpaid), or a step
+   fails; which promise breaks at a limit (a cap, a hold, a cut-off, a later report)?
+5. list criteria that contradict each other, numbers that differ between sections, and
+   anything it would cut.
+
+Give it `rounds.md` too, and ask which decisions are not backed by the owner's words there.
 
 Repair the PRD, not the reviewer's understanding. A substantive change goes back to the user;
 recheck with a new fresh reader after material edits. Record the review result in the PRD's

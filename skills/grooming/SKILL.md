@@ -40,8 +40,10 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
    you, name the person whose role does the work; when the evidence names nobody in that role,
    name the mission owner until someone is, even when they are an approver. Write "Owner assumed:
    …; confirm before sign-off" in the feature's `notes`: the status report lists it as blocked,
-   and gate 6 needs an owner who agreed. A feature that moves no goal is out of scope or reveals
-   a missing goal: ask.
+   and gate 6 needs an owner who agreed. A `ready` story or bug needs an owner too
+   (`--require-ready` fails without one). A team may own a story only with its contact, such as
+   "Claims data team (lead: Ana Silva)"; with no name yet, the `notes` say who names one and by
+   when. A feature that moves no goal is out of scope or reveals a missing goal: ask.
    Dependencies and milestone dates decide the order first; the rank score (WSJF) only orders
    features that could go either way. If the two disagree, fix the scores.
 3. **Stories per feature.** Write each as one executable unit:
@@ -55,7 +57,9 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
      criterion needs a check that tests it: "stop texts by phone or on the page" needs a phone
      check and a page check; "0 customer records are used for training" needs a check on that
      rule, not only on what the assistant may read. A part no check tests gets its own check or
-     story.
+     story. The check that tests a criterion names it at the end of its `then`: "… within 2
+     working days for 95% of patients (AC-8)". `trace` lists every criterion that a story
+     traces but no check names.
    - **Go-live and spend wait on finished gates.** A story that goes live, reaches customers,
      or commits money `depends_on` every story that completes one of its preconditions (an
      assessment, an approval, a contract, a sign-off). Those stories' criteria test the final
@@ -76,8 +80,11 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
    or through the stories they depend on.
    - **Decisions someone else makes.** A PRD open question that work depends on (who builds
      it, which supplier, a board or regulator decision) is a `research` story too. Its owner is
-     the person who decides, its time box ends on the decision date, and the work that needs
-     the answer stays `draft` behind it. Never mark a story `ready` that assumes the answer.
+     the person who decides. Waiting is not work: its time box is the work of preparing the ask,
+     usually 1 or 2 days ("a 2-day time box to prepare the board paper"), and its criterion is
+     the decision by its date ("the board decides by 30 September"). The fit check counts only
+     the time box; the work that needs the answer stays `draft` behind it and starts after the
+     decision date. Never mark a story `ready` that assumes the answer.
    - **Won't-have items** keep the decision visible but leave the plan: priority `wont`, no
      milestone, and no grooming beyond the title and the reason in `notes`. The ready gate skips
      them, and no milestone or status report counts them.
@@ -85,8 +92,9 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
    reproduction criterion, priority, and urgency.
 7. **Check each milestone fits.** Count the working days from today to its `due` date and add
    up each owner's story sizes in it at the top of each size: XS ½, S 2, M 5, L 10 days. A
-   research story is labelled by its time box (a 3-day spike is M, and `validate` warns when it
-   is not), but counts at its time box in the sum: 3 days, not 5. Use only this scale in every
+   research story's `size` is the band of its time box (a 3-day spike is M, and `validate` warns
+   when it is not), but people see the time box itself ("3-day time box" in `tree`, the tracker,
+   and Excel), and it counts at its time box in the sum: 3 days, not 5. Use only this scale in every
    sum you show. When an owner's work does not fit, move stories to a later milestone or name
    the fallback in the feature's `notes`. Never leave a milestone that cannot be met.
    - **Sizes against the team's estimate.** When your total differs from the team's own
@@ -154,11 +162,21 @@ remain.
 
 ## Fresh-context executability review
 
-Give a subagent only `backlog.json`, the PRD, and the contract (with no PRD, as for new asks
-against an existing backlog, give `intake.md` and `evidence.md` instead). Ask it, for every `must` story and
-every `critical` or `high` bug: how would you do this, and how would you prove it is done? List
-every question you would have to ask first. Also ask which PRD requirements, or parts of an
-acceptance criterion, no story's checks test.
+Give a subagent only `backlog.json`, the PRD, the contract, `rounds.md` (the owner's own
+answers), the drafted replies, and what stakeholders will see (`sync.py` renders it; with no
+PRD, as for new asks against an existing backlog, give `intake.md` and `evidence.md` instead).
+Ask it, as an adversary:
+
+1. For every `must` story and every `critical` or `high` bug: how would you do this, and how
+   would you prove it is done? List every question you would have to ask first.
+2. Which PRD requirements, or parts of an acceptance criterion, does no story's check test?
+3. Read the plan as each approver and each outside person it touches (a customer who asked, a
+   patient, a partner bank). What will they be told, and when? What happens to them when they
+   cannot act on it, or a step fails? Which promise breaks at a limit (a cap, a hold, a cut-off)?
+4. Which milestone cannot be met, counting each owner's days from the date the work can start?
+5. Which decision, fact, or reply is not backed by the owner's words in `rounds.md` or an
+   evidence row, and is not labelled an assumption? Which numbers differ between files?
+6. What would you cut, merge, or say once instead of several times?
 Each question is a gap: fix the story, then recheck with a new fresh reader. Record the result in
 the mission's README.
 

@@ -50,7 +50,7 @@ WSJF_KEYS = ("business_value", "time_criticality", "risk_reduction", "job_size")
 DISPOSITIONS = {"open", "accepted", "declined", "duplicate"}
 
 VAGUE = re.compile(
-    r"\b(fast|quick(ly)?|easy|easily|simple|intuitive|user-friendly|seamless(ly)?|robust|scalable|"
+    r"\b(fast(?!-track)|quick(ly)?|easy|easily|simple|intuitive|user-friendly|seamless(ly)?|robust|scalable|"
     r"efficient(ly)?|appropriate(ly)?|as needed|properly|optimi[sz]ed|improved|better|etc)\b",
     re.I,
 )
@@ -126,6 +126,15 @@ def _text(value):
 def named_owner(value):
     """True when an owner names someone, not a placeholder such as 'Data lead (to be named)'."""
     return _text(value) and not PLACEHOLDER_OWNER.search(value)
+
+
+def size_text(item):
+    """What people see as an item's size: a research story shows its time box, not a size band."""
+    if item.get("work") == "research":
+        box = TIME_BOX.search(item.get("i_want") or "")
+        if box:
+            return f"{box.group(0)} time box"
+    return item.get("size")
 
 
 def research_holds(item, seen):
@@ -233,6 +242,9 @@ def validate(data, require_ready=False, base=None):
             (err if require_ready else warn)(iid, "has no owner: name the one person accountable for it")
         elif kind == "feature" and not named_owner(item["owner"]):
             (err if require_ready else warn)(iid, f"owner '{item['owner']}' is a placeholder: name the one person accountable for it")
+        if (kind in ("story", "bug") and item.get("status") == "ready" and item.get("priority") != "wont"
+                and not _text(item.get("owner"))):
+            (err if require_ready else warn)(iid, "has no owner: name the person doing it")
         if kind in ("story", "bug") and _text(item.get("owner")) and not named_owner(item["owner"]):
             (err if require_ready else warn)(iid, f"owner '{item['owner']}' is a placeholder: name the person doing it")
         if kind in ("story", "bug") and item.get("priority") == "wont" and item.get("milestone"):
@@ -456,7 +468,7 @@ def _check_work_item(item, seen, err, warn):
         else:
             days = int(re.match(r"\d+", box.group(0)).group(0)) * DAYS_PER[box.group(2).lower()]
             fits = next((s for s, most in SIZE_DAYS if days <= most), "XL")
-            if item.get("size") in dict(SIZE_DAYS) and item["size"] != fits:
+            if item.get("size") in dict(SIZE_DAYS) and item["size"] != fits and item.get("priority") != "wont":
                 warn(iid, f"research time box '{box.group(0)}' is size {fits}, not {item['size']}: size it by its time box")
         if not DECISION.search(texts):
             _dor(item, "research story must state the decision it produces", err, warn)
@@ -647,12 +659,18 @@ def trace_report(data, base, today, tracker="github", require_all=False):
         prd = Path(base) / ini["prd"] if _text(ini.get("prd")) else None
         if prd and prd.exists():
             # A feature groups criteria; only a story or bug delivers one.
-            built = {t for i in seen.values() if i.get("type") in ("story", "bug") for t in i.get("trace") or []}
+            work = [i for i in seen.values() if i.get("type") in ("story", "bug")]
+            built = {t for i in work for t in i.get("trace") or []}
+            # A criterion is tested only when some acceptance check names it, such as "... (AC-8)".
+            named = {m for i in work for a in i.get("acceptance") or [] if isinstance(a, dict)
+                     for v in a.values() if isinstance(v, str) for m in re.findall(r"\bAC-\d+\b", v)}
             for ref in sorted(prd_ids(prd.read_text(encoding="utf-8")), key=id_key):
                 if ref not in traced:
                     gaps.append(f"{ref} in {ini['prd']} is traced by no item")
                 elif ref.startswith("AC-") and ref not in built:
                     gaps.append(f"{ref} in {ini['prd']} is traced only by a feature; no story or bug delivers it")
+                elif ref.startswith("AC-") and ref not in named:
+                    gaps.append(f"{ref} in {ini['prd']} is traced by a story, but no acceptance check names it")
 
     out += ["", "## Goals", "", "| Goal | Drivers | Baseline → target, by | Latest | Status |", "| --- | --- | --- | --- | --- |"]
     for g in goals:
@@ -742,7 +760,7 @@ def cmd_tree(args):
         elif kind == "feature":
             extra = f"WSJF {wsjf_score(item)} {item.get('milestone', '-')} sign-off: {approval_state(data, item, args.tracker, base)}"
         else:
-            extra = f"{item.get('status')} {item.get('size')} {item.get('priority')}"
+            extra = f"{item.get('status')} {size_text(item)} {item.get('priority')}"
             if kind == "bug":
                 extra += f" urgency:{item.get('urgency')}"
         print(f"{pad}{item['id']} {item.get('title', '')}  ({extra})")
