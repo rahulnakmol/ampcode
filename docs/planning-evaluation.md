@@ -712,3 +712,63 @@ Next fixes, added to the five above, in order of effect:
 | Repairs break date order | `backlog.py validate`: warn when an item depends on one with a later milestone or date |
 | One signer per feature is not machine-readable | Contract: an optional `approvers` field on a feature; `status` and the report use it |
 | Work behind an undecided gate is groomed in full | Grooming: until the gate decides, each feature behind it keeps one placeholder story |
+
+## Rev9: outside decisions and late dependencies, on s2 and s5
+
+Rev9 made the first two fixes from the rev8 table and reran s2 and s5, two runs each, with the
+same judges, personas, and rubric v2:
+
+1. **Outside decisions** (grooming, specifying). A decision that changes what gets built stays a
+   `research` story, owned by whoever prepares the options. An approval, a board go, or a
+   regulator's answer is a dated check on the story that waits for it. Preparing the ask is a
+   story. Nobody outside the team owns a story.
+2. **Late dependencies** (`backlog.py validate`, contract). A story or bug that depends on one
+   whose milestone, its own or its feature's, is due later gets a warning.
+
+| Scenario | rev8 a | rev8 b | rev9 a | rev9 b | rev8 both | rev9 both |
+| --- | --- | --- | --- | --- | --- | --- |
+| s2 | 3.41 | 3.65 | 3.45 | 3.47 | 3.53 | 3.46 |
+| s5 | 3.43 | 3.49 | 3.27 | 3.61 | 3.46 | 3.44 |
+
+Over 28 judgements the mean is 3.45, against 3.49 for rev8, which is inside judge noise. Lean
+rose on s5 (3.00 to 3.36) and fell on s2 (3.14 to 2.86). 9a s5 failed H3 and H7 with all 7
+judges: its feature notes say "Signed off by Elena Petrova" when nobody has signed, and one
+recommendation gives no reason.
+
+What held:
+
+- **Fix 1 cut the backlogs.** s2 fell from 38 and 28 stories to 24 and 26, and s5 from 39 and
+  44 to 25 and 34. Research stories fell from 7 and 8 to 4 and 3 (s2) and from 11 and 6 to 8
+  and 5 (s5). No backlog has a story owned by the board, the regulator, Mark Ellis, or the
+  patient group, and no reviewer raised the `research` clash again.
+- **Documents are smaller.** The s5 PRDs fell from 32.2 and 30.9 KB to 25.4 and 26.4 KB, and its
+  stakeholder views from 65.2 and 71.1 KB to 45.9 and 62.5 KB. s2's views fell by about 15%.
+- **The stop rule held in all four runs**, with 3 owner stops each.
+- **Every backlog passes the ready gate** with 0 errors. Every warning is a draft held behind a
+  research story.
+
+What did not hold:
+
+- **Fix 2 found nothing in the final backlogs.** On old outputs it flags 5 dependencies,
+  including the S-8 → S-20 case an 8a s3 recheck found. Most date breaks the reviewers found
+  sit in acceptance criteria ("by 30 July" against "by 13 August"), which a milestone check
+  cannot see.
+- **"Signed off by X" in feature notes** reads as a finished sign-off. It was flagged in every
+  rev8 and rev9 backlog review and is now a hard fail. This is the top fix.
+- **Open lists still reach approvers.** Judges in every run asked for one list of live
+  decisions instead of three open lists and a review history.
+- **The same domain gaps recur:** no opt-out or plain-text reply for basic phones (s2), urgent
+  appointments cancelled by a tap (s2), bias tested on agreement only (s5), and no DPIA for
+  health data in calls (s5).
+
+Still open, for later threads, in order of effect:
+
+| Defect | Proposed fix |
+| --- | --- |
+| "Signed off by X" reads as signed (H7) | Grooming and planning: the note says "Signs off: X (not yet signed)"; `validate` warns on "Signed off by" in notes |
+| Open lists and review history reach approvers | Planning: the README keeps one line per review and one list of live decisions, each with a person and a future date |
+| Dates in criteria break order | `validate`: compare dates in `then` text across `depends_on`, not only milestones |
+| One signer per feature is not machine-readable | Contract: an optional `approvers` field on a feature; `status` and the report use it |
+| Work behind an undecided gate is groomed in full | Grooming: until the gate decides, each feature behind it keeps one placeholder story |
+| The change log stays "first draft" after repairs | Specifying: each change after anyone else reads the PRD gets a dated line |
+| A changed item keeps its old trace (H8) | Grooming: a changed item gains the evidence or assumption that changed it |
