@@ -33,17 +33,20 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
 2. **Features per goal.** For each goal, list the capabilities, process changes, or campaign
    components that move its metric. Each feature gets a description, a benefit hypothesis tied to
    the goal's metric, WSJF scores relative to the other features, a milestone, an `owner` (one
-   named person, not a team, and not an approver who will not do the work), and traces to
+   named person, not a team), and traces to
    `R-`/`AC-` IDs. `--require-ready` fails on a feature with no owner, or on a feature, story, or
    bug owner that is a placeholder ("lead (to be named)", "name to confirm", "TBD"), so ask for
    owners in the same question round as sizes and milestones. If the user leaves the choice to
-   you, name the person whose role does the work; when the evidence names nobody in that role,
-   name the mission owner until someone is, even when they are an approver. Write "Owner assumed:
-   …; confirm before sign-off" in the feature's `notes`: the status report lists it as blocked,
-   and gate 6 needs an owner who agreed. A `ready` story or bug needs an owner too
+   you, name the person whose role does the work. When the evidence names nobody in that role,
+   the mission owner stands in, even when they are an approver. They answer for finding the
+   person, not for doing the work. Write it in the feature's `notes` as "Owner assumed: Maya
+   Chen, standing in for the metering lead until she names one by 17 February; confirm before
+   sign-off". The status report lists the feature as blocked, and gate 6 needs an owner who
+   agreed. A `ready` story or bug needs an owner too
    (`--require-ready` fails without one). A team may own a story only with its contact, such as
-   "Claims data team (lead: Ana Silva)"; with no name yet, the `notes` say who names one and by
-   when. A feature that moves no goal is out of scope or reveals a missing goal: ask.
+   "Claims data team (lead: Ana Silva)". With no name yet, the mission owner stands in as the
+   contact in the same field: "Team Atlas (contact: Dana Whitfield until she names the lead by
+   27 April)". A feature that moves no goal is out of scope or reveals a missing goal: ask.
    Dependencies and milestone dates decide the order first; the rank score (WSJF) only orders
    features that could go either way. If the two disagree, fix the scores.
 3. **Stories per feature.** Write each as one executable unit:
@@ -84,7 +87,15 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
      usually 1 or 2 days ("a 2-day time box to prepare the board paper"), and its criterion is
      the decision by its date ("the board decides by 30 September"). The fit check counts only
      the time box; the work that needs the answer stays `draft` behind it and starts after the
-     decision date. Never mark a story `ready` that assumes the answer.
+     decision date. Never mark a story `ready` that assumes the answer. Put every decision one
+     person owes by the same date in one story, with one check per decision, not one story per
+     question.
+   - **Not stories.** A meeting (the team's sizing session, presenting a paper, a review), a
+     reading of a goal's number (record it as the goal's `measurement`), and sign-off of the plan
+     itself (gates 3 and 5) are not work items. Write them as dated lines in the milestone's or
+     feature's `notes`, or as next actions in the report. Building what produces the number, such
+     as a report or a query, is a story. An outside approval that go-live waits on stays a
+     story, so the go-live story can depend on it.
    - **Won't-have items** keep the decision visible but leave the plan: priority `wont`, no
      milestone, and no grooming beyond the title and the reason in `notes`. The ready gate skips
      them, and no milestone or status report counts them.
@@ -95,8 +106,10 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
    research story's `size` is the band of its time box (a 3-day spike is M, and `validate` warns
    when it is not), but people see the time box itself ("3-day time box" in `tree`, the tracker,
    and Excel), and it counts at its time box in the sum: 3 days, not 5. Use only this scale in every
-   sum you show. When an owner's work does not fit, move stories to a later milestone or name
-   the fallback in the feature's `notes`. Never leave a milestone that cannot be met.
+   sum you show. Work owned by someone standing in for an unnamed role counts under that role
+   ("metering lead, not yet named: 25 days"), not under the person standing in. When an
+   owner's work does not fit, move stories to a later milestone or name the fallback in the
+   feature's `notes`. Never leave a milestone that cannot be met.
    - **Sizes against the team's estimate.** When your total differs from the team's own
      estimate by half of their estimate or more, your sizes are not ready. Re-size with the
      team's numbers if you have them: split stories until the total is within half of their estimate, and move what
@@ -177,8 +190,9 @@ Ask it, as an adversary:
 5. Which decision, fact, or reply is not backed by the owner's words in `rounds.md` or an
    evidence row, and is not labelled an assumption? Which numbers differ between files?
 6. What would you cut, merge, or say once instead of several times?
-Each question is a gap: fix the story, then recheck with a new fresh reader. Record the result in
-the mission's README.
+Each question is a gap: fix the story by replacing its text, then recheck once. The recheck
+reads only the repaired items (`planning`, section 3). Record the findings and the result in the
+mission's README, not in the backlog.
 
 ## Write in plain English
 
@@ -192,6 +206,10 @@ it.
   "stakeholders".
 - Say who does what: "the nightly job posts matches", not "matches are posted".
 - Keep IDs next to words, never alone: "the exception report (S-3)", not "S-3".
+- Evidence IDs (E7) go only in `trace`, which the tracker shows as the Sources line. Titles,
+  descriptions, notes, stories, and criteria say the fact in words: "Tom's estimate of a quarter
+  for five people", not "(E27)". `validate` flags evidence IDs in that text; on a `ready` story
+  it is an error.
 - An acceptance criterion reads as one plain sentence when Given, When, and Then are joined.
 
 

@@ -74,6 +74,6 @@ Finance systems builds and runs the automation.
 - **Q-1** Bank format and match keys: answered by the spike (story S-1), Lukas Brenner, by 2027-01-21.
 
 ## Change log
-- 2027-01-12: first draft from evidence; fresh-context review: 2 gaps (no AC for training; FX
-  rounding untreated), both fixed.
-- 2027-01-14: FX tolerance added to AC-3 after review comments; signed off by priya-r and tokafor.
+- 2027-01-12: first draft; training for the 8 task owners added (AC-2).
+- 2027-01-14: matching allows up to 0.05 GBP of FX rounding (AC-3); signed off by priya-r and
+  tokafor.

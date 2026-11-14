@@ -82,8 +82,22 @@ adversary: find what is wrong, missing, untestable, or unsupported, with the exa
 Each skill's review brief also has it read the plan as every person it touches, and check each
 decision against the owner's own words. Repairs follow the same rules as the first draft: a
 reviewer's suggestion is your choice, labelled as an assumption, until the owner confirms it.
-Repair gaps in the artifact itself, then recheck with a new fresh reader. A self-review is not a
-Goldfish review; if no subagent is available, mark the gate pending.
+Repair gaps in the artifact itself. A repair replaces the wrong text, or puts the missing rule
+where a reader looks for it. It does not add a note about the review, a second copy of the rule,
+or a new story for something a sentence settles. If a repair makes the artifact longer, cut
+something that says the same thing.
+
+Then recheck once, with a new fresh reader. The recheck gets the artifact, its sources, the
+earlier findings, and one line per finding saying what changed, but not your view of whether it
+worked. It checks only those findings and the text around each repair: is the gap closed, and did
+the repair break anything nearby? It does not review the whole artifact again. Whatever the
+recheck still finds, and anything you change after it, goes on the open list with an owner and
+a date. The gate is then `pending` until the owner sees that list. Do not start another review
+round. A self-review is not a Goldfish review; if no subagent is available, mark the gate
+pending.
+
+Review findings and their history stay in the mission README. Text that stakeholders read says
+what the plan is now, not which review changed it.
 
 Writes to a tracker and replies posted as the user need the user's explicit approval each time:
 show the `syncing` plan first.

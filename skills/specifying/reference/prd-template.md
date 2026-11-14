@@ -93,7 +93,7 @@ see, not only a script or a draft.*
 - **Q-1** … ; answers: <who>, by <date>
 
 ## Change log
-- <date>: <change>; fresh-context review: <result>
+- <date>: <what changed for the reader>
 ```
 
 ## Product section

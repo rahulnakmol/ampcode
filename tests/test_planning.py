@@ -58,6 +58,22 @@ class DefinitionOfReady(unittest.TestCase):
         self.assertEqual(messages(errors, "S-3"), [])
         self.assertIn("acceptance S-3.1 uses the vague word 'quickly'", messages(warnings, "S-3"))
 
+    def test_evidence_ids_belong_in_trace_not_in_text_people_read(self):
+        self.story["notes"] = "Agreed in the workshop (E4, E12)."
+        self.story["acceptance"][0]["then"] += " (AC-2)"  # a PRD criterion ID after its words is fine
+        errors, _ = backlog.validate(self.data)
+        self.assertEqual([m for m in messages(errors, "S-3") if "evidence IDs" in m],
+                         ["evidence IDs in text people read (E4, E12): say it in words and keep the IDs "
+                          "in 'trace', which the tracker shows as Sources"])
+        self.story["notes"] = "Agreed in the workshop; runs end to end (E2E) on 12 accounts."
+        errors, _ = backlog.validate(self.data)
+        self.assertFalse([m for m in messages(errors, "S-3") if "evidence IDs" in m])
+        feature = item(self.data, self.story["parent"])
+        feature["description"] += " (E7)"
+        errors, warnings = backlog.validate(self.data)
+        self.assertFalse([m for m in messages(errors, feature["id"]) if "evidence IDs" in m])
+        self.assertTrue([m for m in messages(warnings, feature["id"]) if "(E7)" in m])
+
     def test_a_criterion_id_is_not_a_number(self):
         for ac in self.story["acceptance"]:
             ac["then"] = "every line from S-2.1 is listed"

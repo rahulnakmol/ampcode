@@ -15,7 +15,7 @@
       "type": "initiative",
       "title": "New workspaces reach five active users without a CSM call",
       "domain": "product",
-      "problem": "Mid-market admins invite users one at a time; median time from signup to 5 active users is 10 days, 38% of trials never reach it, and CSMs spend about 2 hours per account walking admins through setup (E1, E4, E6).",
+      "problem": "Mid-market admins invite users one at a time; median time from signup to 5 active users is 10 days, 38% of trials never reach it, and CSMs spend about 2 hours per account walking admins through setup.",
       "drivers": [
         { "id": "D-1", "statement": "Revenue: trial-to-paid conversion in the mid-market segment is 14% against a 20% plan" },
         { "id": "D-2", "statement": "Cost: onboarding calls consume 1.5 CSM FTE that the plan assigns to expansion" }

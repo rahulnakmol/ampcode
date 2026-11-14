@@ -30,7 +30,7 @@
       "type": "initiative",
       "title": "Launch Close Assist to mid-market finance leaders",
       "domain": "marketing",
-      "problem": "Close Assist ships on 2027-03-03 with no pipeline: the mid-market finance audience does not know the product, and sales has 0 qualified opportunities for it (E2, E3).",
+      "problem": "Close Assist ships on 2027-03-03 with no pipeline: the mid-market finance audience does not know the product, and sales has 0 qualified opportunities for it.",
       "drivers": [
         {
           "id": "D-1",

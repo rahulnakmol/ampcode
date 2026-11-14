@@ -131,7 +131,7 @@ An outcome, not a task, with a number someone can check.
 | `wsjf` | yes | Checked: exactly `business_value`, `time_criticality`, `risk_reduction`, `job_size`, each 1, 2, 3, 5, 8, 13, or 20. Review: scored relative to the other features. Score = (value + time criticality + risk reduction) ÷ job size; `backlog.py tree` ranks by it |
 | `acceptance` | no | List of plain-language conditions for the whole feature |
 | `milestone` | no | A milestone `id`; stories and bugs inherit it unless they set their own |
-| `owner` | for ready | The one named person accountable for the feature. Checked: `--require-ready` fails without one, or on a placeholder such as "to be named", "name to confirm", or "TBD" (a warning before). Review: a person, not a team or role, and not an approver who will not do the work. An owner the planner chose for the user is written as an assumption in the feature's `notes` |
+| `owner` | for ready | The one named person accountable for the feature. Checked: `--require-ready` fails without one, or on a placeholder such as "to be named", "name to confirm", or "TBD" (a warning before). Review: a person, not a team or role. When nobody in the role is named, the mission owner may stand in, even as an approver, to find the person: the `notes` say "Owner assumed: …, standing in for <role> until <who> names one by <date>", and gate 6 stays open. An owner the planner chose for the user is written as an assumption in the feature's `notes` |
 | `trace` | yes | At least one entry |
 
 ## Story: the executable unit
@@ -152,7 +152,7 @@ anyone a question. The checked part of that is the Definition of Ready below; th
 | `status` | yes | `draft` or `ready`. Tracker workflow states (in progress, done) belong to the tracker |
 | `depends_on` | no | Story or bug IDs that must finish first |
 | `milestone` | no | Overrides the feature's milestone |
-| `owner` | for ready | Person, team with its contact ("Claims data team (lead: Ana Silva)"), or `agent`. `--require-ready` fails on a `ready` story with none. A placeholder such as "lead (to be named)" fails `--require-ready` (a warning before) |
+| `owner` | for ready | Person, team with its contact ("Claims data team (lead: Ana Silva)"), or `agent`. With no contact named yet, the mission owner stands in: "Team Atlas (contact: Dana Whitfield until she names the lead by 27 April)". `--require-ready` fails on a `ready` story with none. A placeholder such as "lead (to be named)" fails `--require-ready` (a warning before) |
 | `delivery` | no | Added when the work is done; see [Delivery](#delivery) |
 | `trace` | yes | At least one entry, normally a PRD acceptance criterion |
 
