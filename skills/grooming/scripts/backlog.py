@@ -341,6 +341,23 @@ def _dor(item, message, err, warn):
         warn(item["id"], message)
 
 
+EVIDENCE_ID = re.compile(r"\bE\d+\b")
+PROSE = ("title", "problem", "outcome", "description", "benefit_hypothesis", "i_want", "so_that", "notes",
+         "observed", "expected", "metric", "baseline", "target")
+
+
+def _evidence_ids_in_prose(item):
+    """Evidence IDs (E7) written in fields that the tracker shows as text, in order of first use."""
+    texts = [item.get(f) for f in PROSE]
+    texts += [d.get("statement") for d in item.get("drivers") or [] if isinstance(d, dict)]
+    for ac in item.get("acceptance") or []:
+        texts += [ac.get(p) for p in ("given", "when", "then")] if isinstance(ac, dict) else [ac]
+    steps = item.get("steps")
+    texts += steps if isinstance(steps, list) else [steps]
+    found = [m for t in texts if isinstance(t, str) for m in EVIDENCE_ID.findall(t)]
+    return list(dict.fromkeys(found))
+
+
 def _check_item(item, seen, milestones, err, warn):
     iid, kind = item["id"], item["type"]
     allowed = COMMON | REQUIRED[kind] | OPTIONAL[kind]
@@ -366,6 +383,14 @@ def _check_item(item, seen, milestones, err, warn):
         err(iid, f"milestone '{item['milestone']}' is not defined")
     if "trace" in item and not (isinstance(item["trace"], list) and all(_text(t) for t in item["trace"])):
         err(iid, "'trace' must be a list of strings")
+    cited = _evidence_ids_in_prose(item)
+    if cited:
+        message = (f"evidence IDs in text people read ({', '.join(cited)}): say it in words and keep "
+                   "the IDs in 'trace', which the tracker shows as Sources")
+        if kind in ("story", "bug"):
+            _dor(item, message, err, warn)
+        else:
+            warn(iid, message)
 
     work_item = kind in ("story", "bug")
     if work_item and not (isinstance(item.get("status"), str) and item["status"] in ENUMS["status"]):

@@ -30,7 +30,7 @@
       "type": "initiative",
       "title": "Close the books in three business days",
       "domain": "operations",
-      "problem": "Month-end close takes 7 business days. Accounts payable clerks spend about 3 of them matching bank lines to invoices by hand in spreadsheets, and the controller cannot see which close tasks are late until day 5 (E2, E5, E9).",
+      "problem": "Month-end close takes 7 business days. Accounts payable clerks spend about 3 of them matching bank lines to invoices by hand in spreadsheets, and the controller cannot see which close tasks are late until day 5.",
       "drivers": [
         {
           "id": "D-1",

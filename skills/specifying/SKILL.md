@@ -98,9 +98,11 @@ it must check the seed). Ask it, neutrally, to:
 
 Give it `rounds.md` too, and ask which decisions are not backed by the owner's words there.
 
-Repair the PRD, not the reviewer's understanding. A substantive change goes back to the user;
-recheck with a new fresh reader after material edits. Record the review result in the PRD's
-change log.
+Repair the PRD, not the reviewer's understanding. A substantive change goes back to the user.
+Repairs replace text rather than add it, and the recheck reads only the repaired items, once
+(`planning`, section 3). The PRD's change log says what changed for the reader ("budgets are
+now required at signup"). It never names reviews, findings, or files. The review history goes in
+the mission README.
 
 ## Write in plain English
 
@@ -114,6 +116,9 @@ it.
   "stakeholders".
 - Say who does what: "the nightly job posts matches", not "matches are posted".
 - Keep IDs next to words, never alone: "the exception report (S-3)", not "S-3".
+- Evidence IDs (E7) sit at the end of the sentence they support, never in place of words. In the
+  `backlog.json` seed, the initiative's `problem`, `outcome`, and driver statements, and the
+  goals, carry none: their `trace` holds them.
 
 
 ## Adapt it

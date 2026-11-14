@@ -554,3 +554,90 @@ Conclusion: in-loop reviews make the plans more executable and more robust, but 
 skills they cost more in length and plain English than they gain, and the simulated owner keeps
 approvability at 3. The next step is the first five fixes above, which target length and
 process stories, measured on s1 and s4 against these scores.
+
+## Rev8: five fixes on s1 and s4
+
+Rev8 tested the first five fixes from the rev7 table, on s1 and s4, two runs each, with the same
+judges, personas, and rubric v2. The fixes:
+
+1. **Recheck stop rule** (planning). A repair replaces text. The recheck runs once, by a new
+   reader, on the repaired items only. What it leaves open goes on the open list with an owner and
+   a date, and the gate is `pending`.
+2. **Change log for the reader** (specifying, PRD template). It says what changed, never which
+   review asked for it.
+3. **Fewer process stories** (grooming). One decision story per decider and date. Meetings, goal
+   readings, and plan sign-off become dated notes or measurements.
+4. **Owner fallback** (grooming, contract). The mission owner may stand in, even as an approver,
+   to find the owner. The fit check counts that work under the unnamed role.
+5. **Evidence IDs only in `trace`** (backlog.py, grooming, specifying). A new check flags E-codes
+   in text people read.
+
+Runners got no hint about review budgets, so the skills' own stop rule decided when reviews
+ended. Each run used 2 to 4 owner stops.
+
+| Scenario | rev7 a | rev7 b | rev8 a | rev8 b | Hard-check fails, rev8 a / b |
+| --- | --- | --- | --- | --- | --- |
+| s1 | 3.67 | 3.45 | 3.39 | 3.80 | H1, H4 / none |
+| s4 | 3.55 | 3.53 | 3.65 | 3.65 | H8 / none |
+
+Over the 28 judgements, the mean rose from 3.55 to 3.62, which is inside judge noise (about
+0.1). Six were "approve", against four in rev7. 8b s1 scored 3.80, the best s1 run so far; four
+of its five panel judges approved it.
+
+| Dimension | rev6 b | rev7 | rev8 | rev8 − rev7 |
+| --- | --- | --- | --- | --- |
+| Plain English | 3.79 | 3.25 | 3.46 | +0.21 |
+| Lean | 3.79 | 3.25 | 3.43 | +0.18 |
+| Value | 3.86 | 3.86 | 3.96 | +0.10 |
+| Executability | 3.64 | 3.86 | 3.96 | +0.10 |
+| Approvability | 3.21 | 3.14 | 3.21 | +0.07 |
+| Traceability | 3.93 | 3.71 | 3.68 | −0.03 |
+| Robustness | 3.57 | 3.79 | 3.64 | −0.15 |
+
+What held:
+
+- **The stop rule held at every stage.** All four runs reviewed each stage once, rechecked it
+  once with the earlier findings and one line per repair, and then moved on. No run asked for a
+  third review of a stage. The review count did not fall (six for s1, four for s4, as in rev7).
+  What changed is that repairs stopped adding text.
+- **Documents are shorter.** The s1 PRDs fell from 26.2 and 31.0 KB to 15.9 and 19.1 KB, about
+  38% less. The stakeholder views for s1 fell from 69.7 and 63.6 KB to 49.1 and 62.2 KB, and for
+  s4 from about 25 KB to about 23 KB. Every file passed the readability check.
+- **Reviews left the PRD.** The rev8 PRDs never mention a review, against 3 and 8 mentions in
+  rev7.
+- **No E-codes in prose.** The new check finds 0 in all rev8 backlogs, against 3 to 20 per run
+  when run on rev7's.
+- **The owner fallback was used as written** for features in both s4 runs and in 8b s1.
+
+What did not hold, or broke:
+
+- **Review history moved to the README.** Runners put the open lists and repair notes there, and
+  judges read the README. Mentions of review history, bookkeeping, or open lists rose from at most
+  4 per run in rev7 to 28 in 8a s1 and 16 in 8a s4. Judges asked for one short list of decisions,
+  each with a person and a date.
+- **The change log over-corrected.** Both s1 PRDs say only "first draft", although reviews
+  rewrote them. Four judges flagged it in 8a s1.
+- **The owner fallback was missing for team contacts.** The grooming skill let a story owner
+  be a bare team while its notes promised a contact. The contract asks for the contact in the
+  owner field. The 8b s4 recheck caught this, and both skills now say the mission owner stands in
+  as the team's contact in the owner field.
+- **8a s1 failed H1 and H4.** Its report says gate 1 passed while its README says gate 1 is
+  pending, which is H1. The planner's sizes for the billing core were 97 days against the team's
+  325, so grooming kept 13 stories as drafts. That left 16 `--require-ready` errors, which is H4.
+  The skill says this is right when sizes are off by half or more. But its wording, "split stories
+  until the total is within half", made the other runner pad stories to reach 172 days.
+- **8a s4 still fails H8.** It edited two existing stories without adding new evidence to their
+  `trace`, as rev7a s4 did.
+- **Robustness fell 0.15.** Shorter PRDs left more money and edge cases open: under-billing, a
+  free account that upgrades mid-month, rounding each build to a whole minute, and where ramp
+  discounts sit in the revenue report.
+
+Next fixes, in order of effect:
+
+| Defect | Proposed fix |
+| --- | --- |
+| Review history in the README reaches approvers | Planning: the README keeps one line per review. The open list holds only decisions and actions, each with a person and a date |
+| A changed item keeps its old trace (H8, twice) | Grooming: an item you change gains, in `trace`, the evidence or assumption that changed it |
+| Gate states disagree between files (H1) | Planning: the report's gate table is the one place a gate state is written; the README links to it |
+| "Split stories until the total is within half" invites padding | Grooming: re-size with the team, or keep the stories `draft`; never add stories to reach a total |
+| The change log says "first draft" after repairs | Specifying: once anyone other than the planner has read the PRD, each change gets a dated line saying what changed for the reader |

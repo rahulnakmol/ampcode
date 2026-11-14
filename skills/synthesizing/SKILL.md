@@ -219,4 +219,5 @@ three candidate features, routed to `specifying`. See
   adversary to (1) verify 5 random rows plus every `driver` and `metric` row against the cited
   location, (2) name important points in the sources missing from the ledger or the intake, and
   (3) say what it would put on the next session's agenda and anything it cannot place without
-  asking. Fix the files, not the reviewer's understanding.
+  asking. Fix the files, not the reviewer's understanding, and recheck only the repaired items,
+  once (`planning`, section 3).
