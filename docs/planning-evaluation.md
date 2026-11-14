@@ -641,3 +641,74 @@ Next fixes, in order of effect:
 | Gate states disagree between files (H1) | Planning: the report's gate table is the one place a gate state is written; the README links to it |
 | "Split stories until the total is within half" invites padding | Grooming: re-size with the team, or keep the stories `draft`; never add stories to reach a total |
 | The change log says "first draft" after repairs | Specifying: once anyone other than the planner has read the PRD, each change gets a dated line saying what changed for the reader |
+
+## Rev8 on all five scenarios
+
+Rev8 then ran s2, s3, and s5, two runs each, on the same frozen rev8 skills as s1 and s4, so all
+ten runs compare. They do not include the two wording tweaks that merged after the s1 and s4
+runs (the team-contact stand-in and the `backlog.json` seed note). Judges, personas, and rubric
+v2 are unchanged.
+
+| Scenario | rev7 a | rev7 b | rev8 a | rev8 b | rev7 both | rev8 both |
+| --- | --- | --- | --- | --- | --- | --- |
+| s1 | 3.67 | 3.45 | 3.39 | 3.80 | 3.56 | 3.59 |
+| s2 | 3.47 | 3.69 | 3.41 | 3.65 | 3.58 | 3.53 |
+| s3 | 3.45 | 3.55 | 3.47 | 3.65 | 3.50 | 3.56 |
+| s4 | 3.55 | 3.53 | 3.65 | 3.65 | 3.54 | 3.65 |
+| s5 | 3.65 | 3.61 | 3.43 | 3.49 | 3.63 | 3.46 |
+
+Over 70 judgements the mean is 3.56, the same as rev7. Eight were "approve", against seven.
+Only s5 moved by more than judge noise, and it fell 0.17. s2, s3, and s5 had no hard-check fails
+in either revision. The rev8 fails are the s1 and s4 ones above.
+
+| Dimension | rev7 | rev8 | rev8 − rev7 |
+| --- | --- | --- | --- |
+| Plain English | 3.30 | 3.47 | +0.17 |
+| Approvability | 3.10 | 3.11 | +0.01 |
+| Value | 3.90 | 3.89 | −0.01 |
+| Traceability | 3.89 | 3.86 | −0.03 |
+| Lean | 3.26 | 3.21 | −0.05 |
+| Executability | 3.83 | 3.77 | −0.06 |
+| Robustness | 3.67 | 3.60 | −0.07 |
+
+What held:
+
+- **The stop rule held in all ten runs.** Each of the new six ran a review and one recheck at
+  the evidence, PRD, and backlog stages, then stopped. Each used 3 owner stops.
+- **PRDs are shorter.** s2 fell from 43.8 and 35.1 KB to 30.7 and 30.0 KB, s3 from 19.1 and
+  21.8 KB to 17.2 and 16.6 KB, and s5 from 34.9 and 34.0 KB to 32.2 and 30.9 KB. Stakeholder
+  views stayed about the same size. Every file passed the readability check.
+- **No E-codes in prose.** All ten rev8 backlogs have 0, against 1 to 36 per run in rev7.
+- **Every backlog passes the ready gate.** `validate --require-ready` reports 0 errors in all
+  six new runs. Every warning is a draft held behind a research story.
+
+What did not hold, or broke:
+
+- **Outside decisions are still stories.** Fix 3 cut process stories in s3 (from 8 and 7 to 3
+  and 5), but not in s2 (11 and 6 to 7 and 8) or s5 (10 and 7 to 7 and 15). Grooming types a
+  decision someone else owes as `research`, owned by the decider, while the contract defines
+  `research` as an exploration. All six runners reported the clash, and backlog reviewers flagged
+  it in every scenario. Lean judges in all three asked to turn these stories into dated checks
+  or milestones.
+- **Each recheck found new breaks in the repairs.** Most were date order: a story waits on one
+  due later, or go-live waits on a weekly report that only exists once the pilot is live. The
+  stop rule keeps these on the open list, but nobody rereads the edits made after the recheck.
+- **Approvers are told two things.** Feature notes name one signer per feature. The contract
+  lets any listed approver pass a gate, and the status comment lists every approver as unsigned
+  on every feature. The CEO judge in 8a s3 could not tell whether she owed one signature or
+  seven, and s5 judges flagged the same split.
+- **s5 fell on lean (3.57 to 3.00) and executability (3.93 to 3.50).** 8a s5 split one marking
+  task into four identical stories and had no story that builds the assistant. 8b s5 groomed 34
+  phase 2 stories in full before the board decision, although its own README said they wait.
+- **Robustness gaps are domain gaps.** s2 offers no way to stop texts (raised in both runs),
+  s3b's banner can go live before the product, and s5 tests for bias only once, before the
+  pilot.
+
+Next fixes, added to the five above, in order of effect:
+
+| Defect | Proposed fix |
+| --- | --- |
+| Outside decisions typed as `research` stories | Grooming and contract: a decision someone else owes is a dated check on the story that waits for it, owned by whoever prepares the ask |
+| Repairs break date order | `backlog.py validate`: warn when an item depends on one with a later milestone or date |
+| One signer per feature is not machine-readable | Contract: an optional `approvers` field on a feature; `status` and the report use it |
+| Work behind an undecided gate is groomed in full | Grooming: until the gate decides, each feature behind it keeps one placeholder story |
