@@ -65,10 +65,10 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
      traces but no check names.
    - **Go-live and spend wait on finished gates.** A story that goes live, reaches customers,
      or commits money `depends_on` every story that completes one of its preconditions (an
-     assessment, an approval, a contract, a sign-off). Those stories' criteria test the final
-     artefact ("the signed assessment has 0 open high findings"), not a draft or a review of
-     one. A go-live criterion names each precondition: "0 live proposals before S-13 and the
-     board approval are both done".
+     assessment, a contract, the submission for an approval). Those stories' criteria test the
+     final artefact ("the signed assessment has 0 open high findings"), not a draft or a review
+     of one. A go-live criterion names each precondition, and each outside decision with its
+     date: "0 live proposals before S-13 is done and the board's go, due 30 September".
 4. **Split anything bigger than L.** Mark it `XL` and `draft`, then split by workflow step,
    business rule, data variation, entity or region, channel, or happy path versus exceptions.
    Each part must still deliver something checkable. Remove the XL item when its parts exist.
@@ -81,21 +81,25 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
    research story that measures it, and stays `draft` until it passes. The ready gate holds
    such drafts (a warning, not an error) while their research story is undelivered, directly
    or through the stories they depend on.
-   - **Decisions someone else makes.** A PRD open question that work depends on (who builds
-     it, which supplier, a board or regulator decision) is a `research` story too. Its owner is
-     the person who decides. Waiting is not work: its time box is the work of preparing the ask,
-     usually 1 or 2 days ("a 2-day time box to prepare the board paper"), and its criterion is
-     the decision by its date ("the board decides by 30 September"). The fit check counts only
-     the time box; the work that needs the answer stays `draft` behind it and starts after the
-     decision date. Never mark a story `ready` that assumes the answer. Put every decision one
-     person owes by the same date in one story, with one check per decision, not one story per
-     question.
+   - **Decisions someone else makes.** Ask what the decision changes.
+     - **What gets built** (who builds it, which supplier, which option): a `research` story
+       owned by whoever prepares the options. Its time box is that preparation, usually 1 or 2
+       days, and its criterion names who decides and by when ("Elena chooses the supplier by
+       2 July"). The work that needs the answer stays `draft` behind it and starts after the
+       decision date. Never mark a story `ready` that assumes the answer. Put every decision one
+       person owes by the same date in one story, with one check per decision.
+     - **Only whether work may go live, spend, or start** (an approval, a board go, a
+       regulator's answer): no story of its own. It is a dated check on the story that waits
+       for it ("0 texts go before Mark Ellis's recorded yes, due 8 June"), so that story can be
+       `ready`. Preparing the ask (the board paper, the submission) is a story owned by the
+       person who prepares it, with the date it is sent, and the waiting story `depends_on` it.
+       Someone outside the team never owns a story.
    - **Not stories.** A meeting (the team's sizing session, presenting a paper, a review), a
      reading of a goal's number (record it as the goal's `measurement`), and sign-off of the plan
      itself (gates 3 and 5) are not work items. Write them as dated lines in the milestone's or
      feature's `notes`, or as next actions in the report. Building what produces the number, such
-     as a report or a query, is a story. An outside approval that go-live waits on stays a
-     story, so the go-live story can depend on it.
+     as a report or a query, is a story. So is preparing an outside approval; the approval
+     itself is a dated check on the story that waits for it.
    - **Won't-have items** keep the decision visible but leave the plan: priority `wont`, no
      milestone, and no grooming beyond the title and the reason in `notes`. The ready gate skips
      them, and no milestone or status report counts them.
@@ -122,10 +126,11 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
    - **Outside approvals.** When someone outside the team approves work (a bank, a regulator, a
      data protection officer, a patient group), plan three dates: when it is submitted, when
      they decide, and one resubmission that still meets the deadline. Count their review days
-     as working days and skip holidays. Write the criterion as their decision by a date ("the
-     bank decides by 7 October"), not as their approval, and say what slips or is cut if the
-     resubmission fails. What they approve is the final artefact people will see (the finished
-     video, the final text), not only a script or a draft.
+     as working days and skip holidays. The submission story's checks hold the dates the team
+     controls: sent, and resent after a no. The story that waits holds their decision as a
+     dated check ("Given the bank's decision, due 7 October"), not as their approval. Say what
+     slips or is cut if the resubmission fails. What they approve is the final artefact people
+     will see (the finished video, the final text), not only a script or a draft.
 8. **Validate until clean**, mark stories `ready` as they pass, then run the gate:
    `validate --require-ready` with 0 errors.
 9. **Fresh-context executability review** (below), then hand over to `syncing`.
@@ -251,8 +256,10 @@ Ready: As a workspace admin I want to upload a CSV of up to 500 users and see in
 - `backlog.py validate --require-ready` reports 0 errors, and you ran it after the last edit.
 - Every part of each traced PRD criterion has a check that tests it.
 - Every reply to someone outside the team states only what the evidence confirms.
-- No `ready` story assumes the answer to an open question; each such question is a research
-  story owned by the person who decides.
+- No `ready` story assumes the answer to an open question. A question that changes what gets
+  built is a research story owned by whoever prepares the options; an approval is a dated check
+  on the story that waits for it. Nobody outside the team owns a story.
+- No story depends on one in a later milestone (`validate` warns).
 - `backlog.py tree` shows every goal with features and every feature with stories.
 - The fresh-context executability review found no unanswered question, or each is resolved.
 - No feedback is `open` at hand-over.

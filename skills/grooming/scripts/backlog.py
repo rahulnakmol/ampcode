@@ -255,6 +255,14 @@ def validate(data, require_ready=False, base=None):
                       and seen[d].get("status") == "draft" and seen[d].get("priority") != "wont"]
             if drafts:
                 warn(iid, f"is ready but depends on draft {', '.join(drafts)}: it cannot start before them")
+        mine = _milestone(item, seen, milestones)
+        if kind in ("story", "bug") and mine and isinstance(item.get("depends_on"), list):
+            theirs = {d: _milestone(seen[d], seen, milestones) for d in item["depends_on"] if isinstance(seen.get(d), dict)}
+            late = [f"{d} ({m}, due {milestones[m]['due']})" for d, m in theirs.items()
+                    if m and milestones[m]["due"] > milestones[mine]["due"]]
+            if late:
+                warn(iid, f"depends on {', '.join(late)}, due after its own milestone {mine} "
+                          f"({milestones[mine]['due']}): it cannot finish in time")
     for iid in _cycle_members(deps):
         _dor(seen[iid], "depends_on forms a cycle", err, warn)
     for iid, item in seen.items():
@@ -325,6 +333,15 @@ def validate(data, require_ready=False, base=None):
     if base is not None:
         _check_trace_sources(data, seen, Path(base), warn)
     return errors, warnings
+
+
+def _milestone(item, seen, milestones):
+    """The ID of a story's or bug's milestone, its own or its feature's, when that milestone has
+    a due date; None for a won't-have item, which takes none."""
+    if item.get("priority") == "wont":
+        return None
+    m = item.get("milestone") or (seen.get(item.get("parent")) or {}).get("milestone")
+    return m if isinstance(m, str) and m in milestones and _iso_date(milestones[m].get("due")) else None
 
 
 def _is_story_level(where, seen):

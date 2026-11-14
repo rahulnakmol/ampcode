@@ -199,7 +199,9 @@ the fix. Priority says how much the fix matters; urgency says how soon it must l
    is a warning, except on a `wont` item. `tree`, the tracker, and Excel show the time box
    ("3-day time box") instead of the size.
 6. Every `depends_on` ID is a story or bug in the file, is not the item itself, and forms no cycle.
-   A `ready` item that depends on a `draft` one gets a warning: it cannot start before it.
+   A `ready` item that depends on a `draft` one gets a warning: it cannot start before it. An
+   item that depends on one whose milestone is due after its own milestone gets a warning: it
+   cannot finish in time.
 
 `validate --require-ready` is the final grooming gate. Every warning about a story or bug becomes
 an error, and it also fails on any `draft` story or bug (except one whose `depends_on` chain
