@@ -64,8 +64,8 @@ of fact traces to evidence (`E7`) or is labelled as a decision or assumption.
   review") also has an acceptance criterion that tests it, with a count that must be 0.
 - Each fact cites evidence or is labelled `Decision (who, when)` or `Assumption (revisit if …)`.
 - Risks name an owner and a mitigation; open questions name who answers, by when, and which
-  requirements wait on the answer (grooming makes each a research story, and the backlog names
-  it next to the question once it exists).
+  requirements wait on the answer (grooming makes each a research story or a dated check on
+  the work that waits, and the backlog names it next to the question once it exists).
 - Every `Decision` names whose words it came from: a round in the question log or an evidence
   row. A choice you made is an `Assumption`, even when the owner said "use your judgement".
   Facts say only what their evidence row says.

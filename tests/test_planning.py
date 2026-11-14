@@ -110,6 +110,20 @@ class DefinitionOfReady(unittest.TestCase):
             self.assertIn("depends_on forms a cycle", messages(errors, iid))
         self.assertEqual(messages(errors, "S-4"), [])
 
+    def test_dependency_due_in_a_later_milestone_is_reported(self):
+        data = example()  # M1 is due 2027-02-26, M2 2027-05-28
+        late = "depends on S-6 (M2, due 2027-05-28), due after its own milestone M1 (2027-02-26): it cannot finish in time"
+        item(data, "S-4")["depends_on"] = ["S-6"]
+        item(data, "S-6")["milestone"] = "M2"
+        _, warnings = backlog.validate(data)
+        self.assertIn(late, messages(warnings, "S-4"))
+        errors, _ = backlog.validate(data, require_ready=True)
+        self.assertIn(late, messages(errors, "S-4"))
+        # The other way round is the normal order: later work waits on earlier work.
+        item(data, "S-4")["depends_on"], item(data, "S-6")["depends_on"] = [], ["S-4"]
+        errors, warnings = backlog.validate(data)
+        self.assertFalse([m for m in messages(errors + warnings) if "cannot finish in time" in m])
+
     def test_research_story_needs_time_box_and_decision(self):
         s1 = item(self.data, "S-1")
         s1["i_want"] = "a spike on bank formats"
