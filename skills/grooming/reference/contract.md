@@ -92,7 +92,7 @@ on a story or bug is a Definition of Ready finding (below). `status` itself is a
 | `parent` | all but initiatives | An initiative for a goal, a goal for a feature, a feature for a story or bug |
 | `title` | yes | Checked: at most 120 characters. Review: names the result, not the activity ("Bank lines reconcile nightly", not "Work on bank feeds") |
 | `trace` | see each type | A list of strings: evidence IDs from `synthesizing` (`E7`) or PRD IDs from `specifying` (`R-3`, `AC-2`). When `evidence.md` or the PRD sits beside the file, `validate` warns about IDs missing from them. A PRD defines an ID by writing it in bold (`**R-3 …**`, `**AC-2**`); plain mentions, such as in a change log, are references |
-| `notes` | no | Free text copied to the tracker |
+| `notes` | no | Free text copied to the tracker. Checked: "Signed off by" is a warning, because it reads as a finished sign-off; a feature's notes say who signs and when it is due ("Signs off: Elena Petrova, due 30 May"), and `status` shows who has signed |
 | `external`, `approvals` | written by `syncing` only | See [Sync fields](#sync-fields) |
 
 ## Initiative

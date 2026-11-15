@@ -31,16 +31,17 @@ report, and stop at the first gate that needs their decision or a stakeholder's 
 - **Entry point:** which row of the table in section 2 applies.
 - **People:** the owner, and the approvers with their tracker handles (GitHub logins today).
   By default every approver signs the PRD, and each feature is signed by its owner's approver:
-  the one whose area it touches, named in the feature's `notes`. No one is asked to sign
-  every item unless the charter says so.
+  the one whose area it touches. The feature's `notes` name them with the date it is due, as
+  "Signs off: Elena Petrova, due 30 May". No file says anyone has signed: `backlog.py status`
+  and the tracker show that. No one is asked to sign every item unless the charter says so.
 - **Tracker:** the GitHub repository (and Project, if any) stakeholders use, or Excel only.
 - **Mission success criteria:** which gates must pass and by when. The default is G1 to G6
   (section 4); a user may stop earlier, such as "PRD signed off and backlog ready, not yet
   synced", and the charter says so.
 - **Folder:** `planning/<tracker-project>/` in the planning repository, holding `inputs/`,
-  `evidence.md`, one PRD per initiative, and one `backlog.json` for everything synced to that
-  tracker project. A second initiative for the same repository joins that file with new IDs,
-  because trackers key on item IDs.
+  `evidence.md`, one PRD per initiative, `reviews/`, and one `backlog.json` for everything
+  synced to that tracker project. A second initiative for the same repository joins that file
+  with new IDs, because trackers key on item IDs.
 
 ## 2. Pick the entry point
 
@@ -91,13 +92,23 @@ Then recheck once, with a new fresh reader. The recheck gets the artifact, its s
 earlier findings, and one line per finding saying what changed, but not your view of whether it
 worked. It checks only those findings and the text around each repair: is the gap closed, and did
 the repair break anything nearby? It does not review the whole artifact again. Whatever the
-recheck still finds, and anything you change after it, goes on the open list with an owner and
-a date. The gate is then `pending` until the owner sees that list. Do not start another review
-round. A self-review is not a Goldfish review; if no subagent is available, mark the gate
-pending.
+recheck still finds that a person must decide or do goes on the open list. Anything you change
+after the recheck is one item for the owner to read, not one per edit. The gate is then
+`pending` until the owner sees that list. Do not start another review round. A self-review is
+not a Goldfish review; if no subagent is available, mark the gate pending.
 
-Review findings and their history stay in the mission README. Text that stakeholders read says
-what the plan is now, not which review changed it.
+Keep each review's findings, repairs, and recheck in its own file under `reviews/`. The mission
+README holds two short sections for the whole mission, not one per stage or review:
+
+- **Reviews:** one line per review: date, stage, and what came of it, such as "PRD review, 12
+  May: 9 findings, 8 repaired, 1 open".
+- **Open list:** every live decision and action from every stage, each with one person and a
+  calendar date after today. Never a round ("round 3"), an undated meeting, or "at sign-off".
+  An item leaves the list when it is settled, and its answer goes into the file it changes.
+  Before each report, drop settled items and re-date any whose date has passed.
+
+Text that stakeholders read, the README included, says what the plan is now, not which review
+changed it.
 
 Writes to a tracker and replies posted as the user need the user's explicit approval each time:
 show the `syncing` plan first.
@@ -182,4 +193,6 @@ its backlog is `grooming/reference/examples/operations.json`.
   outside people claim nothing that has not happened: "logged and will reproduce", not
   "confirmed", until someone has.
 - Every PRD open question that work waits on names the story that holds that work.
-- Anything not done is listed with who must act next.
+- Anything not done is on the README's one open list, with one person and a date after today.
+  The README's review history is one line per review.
+- No file says anyone signed off; feature notes say who signs and by when.

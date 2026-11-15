@@ -74,6 +74,16 @@ class DefinitionOfReady(unittest.TestCase):
         self.assertFalse([m for m in messages(errors, feature["id"]) if "evidence IDs" in m])
         self.assertTrue([m for m in messages(warnings, feature["id"]) if "(E7)" in m])
 
+    def test_notes_never_say_a_sign_off_happened(self):
+        feature = item(self.data, self.story["parent"])
+        for notes, flagged in (("Signs off: Priya Raman, due 2027-01-29. Sign-off by Tom is not needed.", False),
+                               ("Signed off by Priya Raman.", True),
+                               ("Owner assumed. signed-off  by priya-r", True)):
+            feature["notes"] = notes
+            errors, warnings = backlog.validate(self.data, require_ready=True)
+            self.assertEqual(bool([m for m in messages(warnings, feature["id"]) if "Signed off by" in m]), flagged, notes)
+            self.assertFalse([m for m in messages(errors, feature["id"]) if "Signed off by" in m])
+
     def test_a_criterion_id_is_not_a_number(self):
         for ac in self.story["acceptance"]:
             ac["then"] = "every line from S-2.1 is listed"

@@ -101,8 +101,8 @@ Give it `rounds.md` too, and ask which decisions are not backed by the owner's w
 Repair the PRD, not the reviewer's understanding. A substantive change goes back to the user.
 Repairs replace text rather than add it, and the recheck reads only the repaired items, once
 (`planning`, section 3). The PRD's change log says what changed for the reader ("budgets are
-now required at signup"). It never names reviews, findings, or files. The review history goes in
-the mission README.
+now required at signup"). It never names reviews, findings, or files. The review gets one line
+in the mission README, and what stays open joins its one open list (`planning`, section 3).
 
 ## Write in plain English
 

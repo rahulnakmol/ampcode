@@ -46,7 +46,10 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
    (`--require-ready` fails without one). A team may own a story only with its contact, such as
    "Claims data team (lead: Ana Silva)". With no name yet, the mission owner stands in as the
    contact in the same field: "Team Atlas (contact: Dana Whitfield until she names the lead by
-   27 April)". A feature that moves no goal is out of scope or reveals a missing goal: ask.
+   27 April)". The feature's `notes` also name who signs it off and when it is due: "Signs off:
+   Elena Petrova, due 30 May". Never write that someone has signed; `status` and the tracker
+   show that, and `validate` warns on "Signed off by" in notes. A feature that moves no goal is
+   out of scope or reveals a missing goal: ask.
    Dependencies and milestone dates decide the order first; the rank score (WSJF) only orders
    features that could go either way. If the two disagree, fix the scores.
 3. **Stories per feature.** Write each as one executable unit:
@@ -196,8 +199,9 @@ Ask it, as an adversary:
    evidence row, and is not labelled an assumption? Which numbers differ between files?
 6. What would you cut, merge, or say once instead of several times?
 Each question is a gap: fix the story by replacing its text, then recheck once. The recheck
-reads only the repaired items (`planning`, section 3). Record the findings and the result in the
-mission's README, not in the backlog.
+reads only the repaired items (`planning`, section 3). Keep the findings in the review's own file,
+not in the backlog. The README gets one line for the review, and what stays open joins its one
+open list.
 
 ## Write in plain English
 
