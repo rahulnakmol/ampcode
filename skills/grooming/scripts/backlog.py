@@ -358,6 +358,7 @@ def _dor(item, message, err, warn):
         warn(item["id"], message)
 
 
+SIGNED_OFF = re.compile(r"\bsigned[\s-]*off\s+by\b", re.I)
 EVIDENCE_ID = re.compile(r"\bE\d+\b")
 PROSE = ("title", "problem", "outcome", "description", "benefit_hypothesis", "i_want", "so_that", "notes",
          "observed", "expected", "metric", "baseline", "target")
@@ -408,6 +409,9 @@ def _check_item(item, seen, milestones, err, warn):
             _dor(item, message, err, warn)
         else:
             warn(iid, message)
+    if isinstance(item.get("notes"), str) and SIGNED_OFF.search(item["notes"]):
+        warn(iid, "notes say 'Signed off by', which reads as a finished sign-off: name who signs and when it "
+                  "is due, as in 'Signs off: Elena Petrova, due 30 May'; `status` shows who has signed")
 
     work_item = kind in ("story", "bug")
     if work_item and not (isinstance(item.get("status"), str) and item["status"] in ENUMS["status"]):

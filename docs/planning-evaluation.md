@@ -772,3 +772,97 @@ Still open, for later threads, in order of effect:
 | Work behind an undecided gate is groomed in full | Grooming: until the gate decides, each feature behind it keeps one placeholder story |
 | The change log stays "first draft" after repairs | Specifying: each change after anyone else reads the PRD gets a dated line |
 | A changed item keeps its old trace (H8) | Grooming: a changed item gains the evidence or assumption that changed it |
+
+## Rev10: sign-off wording and one open list, on s2 and s5
+
+Rev10 made the top two fixes from the rev9 table and reran s2 and s5, two runs each, with the
+same harness, judges, personas, and rubric v2. Owner replies reused rev9's wording.
+
+1. **Sign-off wording** (planning, grooming, contract, `backlog.py validate`). A feature's notes
+   name who signs and when it is due: "Signs off: Elena Petrova, due 30 May". No file says
+   anyone has signed; `status` and the tracker show that. `validate` warns on "Signed off by" in
+   notes. The note gives a due date rather than "(not yet signed)", because notes are part of
+   what the signer approves: editing them after she signs would reopen her sign-off.
+2. **One open list** (planning, grooming, specifying). Each review's findings stay in its own
+   file under `reviews/`. The README keeps one line per review and one open list for the whole
+   mission. Each item names one person and a date after today, never a round.
+
+| Scenario | rev9 a | rev9 b | rev10 a | rev10 b | rev9 both | rev10 both |
+| --- | --- | --- | --- | --- | --- | --- |
+| s2 | 3.45 | 3.47 | 3.47 | 3.71 | 3.46 | 3.59 |
+| s5 | 3.27 | 3.61 | 3.51 | 3.59 | 3.44 | 3.55 |
+
+Over 28 judgements the mean is 3.57, against 3.45 for rev9. That is 0.12, just past judge noise
+(about 0.1). s5 has no hard-check fails, against H3 and H7 with all 7 judges in 9a s5. Lean rose
+on both scenarios: s2 from 2.86 to 3.36, s5 from 3.36 to 3.71. All 28 verdicts are "approve
+with changes", and approvability is 3 in every one.
+
+| Dimension | rev10 |
+| --- | --- |
+| Value | 3.89 |
+| Traceability | 3.89 |
+| Executability | 3.64 |
+| Robustness | 3.64 |
+| Lean | 3.54 |
+| Plain English | 3.39 |
+| Approvability | 3.00 |
+
+What the README and the notes look like now (runs 9a s2, 9a s5, 9b s2, 9b s5 against the same
+for rev10):
+
+| Measure | rev9 | rev10 |
+| --- | --- | --- |
+| README size | 13.2, 13.2, 11.4, 13.3 KB | 3.6, 3.6, 5.7, 3.9 KB |
+| Open-list sections in the README | 1, 3, 3, 3 | 1, 1, 1, 1 |
+| "review", "recheck", or "finding" in the README | 52, 45, 49, 55 | 12, 19, 12, 15 |
+| Feature notes saying "Signed off by" | 0, 7, 0, 0 | 0, 0, 0, 0 |
+| Feature notes saying "Signs off: …, due …" | 0 | 8, 11, 7, 11 (every feature) |
+
+What held:
+
+- **Nobody read a sign-off that did not happen.** No reviewer or judge flagged the sign-off
+  wording, which every rev8 and rev9 backlog review had flagged.
+- **One open list reached approvers.** Every README has one list, and every item has one person
+  and a date after the run's today. No item is due on a round. No judge asked for one list of
+  decisions or mentioned a review history; in rev9, judges in every run did. Review findings
+  moved to `reviews/`, which approvers do not read.
+- **The stop rule held in all four runs**, with 3 owner stops and 6 review stops each.
+- **Every backlog passes the ready gate** with 0 errors. Every warning is a draft held behind a
+  research story. Every file passed the readability check.
+
+What did not hold:
+
+- **Approvers still want content changes.** Approvability stayed at 3 in all 28 judgements.
+  Judges asked for plan changes, not for confirmations.
+- **s2 fails H5 with all 14 judges.** Both runs added a goal for refilled slots whose baseline is
+  "unknown", read only once offers start ("measured from July 2027"). rev9 s2 and s5 also had
+  unknown baselines, and judges passed them. The fixes did not touch goals.
+- **The status comment still contradicts one signer per feature.** All four runners, and most
+  backlog reviewers, flagged that it lists every approver as unsigned on every feature, while the
+  notes name one signer. This is now the most-flagged defect.
+- **The open list is copied into other files.** The 10b s5 Linear judge found it again in the
+  intake's "Still open", the PRD's open questions, and the report. The 10a s2 clinical lead found
+  decisions handed to him that are on no list.
+- **Backlogs grew in s2.** s2 rose from 24 and 26 stories to 31 and 30; s5 went from 25 and 34
+  to 30 and 30. Panel judges asked to cut errand stories (an email to the patient group, a
+  question sent to the data protection officer) that the open list already tracks.
+- **The same domain gaps recur:** no reply-by-text for patients with basic phones (s2, both runs),
+  no data protection impact assessment for health data in calls (10b s5), customers not told an
+  assistant helped (s5), and no risk row for the 5-week pilot build (10a s5).
+- **Runners found two more gaps.** No skill says whether an owner's "use your judgement" counts
+  as confirming the PRD (all four runners). `validate` counts a criterion ID such as "(AC-8)" as
+  the quantity in a `then`, so a criterion with no number passes the per-criterion check.
+
+Still open, for later threads, in order of effect:
+
+| Defect | Proposed fix |
+| --- | --- |
+| One signer per feature is not machine-readable | Contract: an optional `approvers` field on a feature; `status` and the report use it |
+| A goal's baseline is read after the change starts (H5) | Grooming and `validate`: an `unknown` baseline names a story that reads it before the change starts |
+| The open list is copied into the intake, PRD, and report | Planning: other files point to the README's open list instead of copying it |
+| "Use your judgement" has no path to confirmation | Planning: the labelled assumptions are one open-list item for the owner; the gate stays `pending` until then |
+| Dates in criteria break order | `validate`: compare dates in `then` text across `depends_on`, not only milestones |
+| Work behind an undecided gate is groomed in full | Grooming: until the gate decides, each feature behind it keeps one placeholder story |
+| The change log stays "first draft" after repairs | Specifying: each change after anyone else reads the PRD gets a dated line |
+| A changed item keeps its old trace (H8) | Grooming: a changed item gains the evidence or assumption that changed it |
+| A criterion ID counts as a quantity | `backlog.py`: ignore `AC-` and `R-` IDs when checking each `then` for a quantity |
