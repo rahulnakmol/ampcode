@@ -311,6 +311,10 @@ test('new designs need a valid brief and link, stored exactly as { markdown, url
 		expect(status.design.bundle.brief).toEqual({ url: BRIEF_URL, characters: BRIEF.length + 2, sha256: createHash('sha256').update(markdown).digest('hex') })
 		const hook = await h.hooks['agent.start']({ thread: { id: 'T-test' } })
 		expect(hook.message.content).not.toContain('## You are deciding')
+		const preview = JSON.parse(await h.call('mission_migrate', { adopt: false, repository: 'acme/app' }))
+		h.answer(APPROVED)
+		await h.call('mission_migrate', { adopt: true, repository: 'acme/app', expectedDigest: preview.sourceDigest })
+		expect(await h.call('mission_status')).not.toContain('## You are deciding')
 	} finally { rmSync(h.root, { recursive: true, force: true }) }
 })
 

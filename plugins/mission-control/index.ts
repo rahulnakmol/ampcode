@@ -55,7 +55,9 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		return next
 	}
 	const status = (s: RecordState) => JSON.stringify(isV2(s) ? {
-		...s, ...(s.legacy ? { legacy: compact(s.legacy) } : {}), designDigest: intentDigest(s.manifest), evidenceClass: 'reported', blockers: blockersV2(s),
+		...s, ...(s.legacy ? { legacy: compact(s.legacy) } : {}),
+		events: s.events.map(e => e.action.type === 'import-v1' ? { ...e, action: { ...e.action, record: compact(e.action.record) } } : e),
+		designDigest: intentDigest(s.manifest), evidenceClass: 'reported', blockers: blockersV2(s),
 		current: s.units.map(u => {
 			const a = u.attempts.at(-1)
 			return { unitId: u.id, attemptId: a?.id, fingerprint: a && !a.stale ? fingerprintV2(s, u.id, a.id) : null, evidenceDigest: a && !a.stale ? evidenceDigestV2(s, u.id, a.id) : null }

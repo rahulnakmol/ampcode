@@ -6,7 +6,7 @@
 Exits 0 and prints "pass" when the brief follows every rule. Otherwise exits 1 and prints each
 broken rule as "<rule>: <what to fix>". Standard library only. The rules are in
 ../reference/template.md. mission-control's lib/brief.ts applies the same rules, except reading
-ease, before it shows a design dialog; tests/fixtures/brief-cases.json keeps the two in step.
+ease, when a design is recorded; tests/fixtures/brief-cases.json keeps the two in step.
 Whitespace means space, tab and newline only, so both implementations count the same words.
 """
 
@@ -34,28 +34,37 @@ LIMITS = {"decision": 30, "yes": 40, "no": 40}
 LIST_LIMITS = {"risks": 30, "excluded": 20}
 KEYS = ("decision", "yes", "no", "risks", "excluded", "picture")
 PICTURE = re.compile(r"^https://(ampcode\.com|github\.com)(/[\x21-\x7e]*)?$", re.ASCII)
-# Control and format characters (zero-width, bidirectional, tag characters) are invisible or reorder text.
-CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029]")
-# Raw HTML (tags, comments, <!DOCTYPE, <![CDATA[, <?...?>) and Markdown link reference definitions
-# all render as hidden text.
+# Control and format characters (zero-width, bidirectional, tag characters) and the other default
+# ignorable characters (variation selectors, fillers) are invisible or reorder text.
+CONTROL = re.compile(
+    "[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029\u034f\u115f\u1160\u17b4\u17b5\u180b-\u180f\u2065\u3164"
+    "\ufe00-\ufe0f\uffa0\ufff0-\ufff8\U0001bca0-\U0001bca3\U0001d173-\U0001d17a\U000e0000-\U000e0fff]"
+)
+# Raw HTML (tags, comments, <!DOCTYPE, <![CDATA[, <?...?>), HTML character references and Markdown
+# link reference definitions all render as hidden text; GitHub decodes a reference before math, so it
+# can also become an invisible character or a math command.
 # A reference definition hides text even inside a list item or block quote, with an escaped ],
 # or with a label that continues on the next line after a backslash.
-HIDDEN = re.compile(r"<(?:[!?]|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:", re.M)
+HIDDEN = re.compile(r"<(?:[!?]|[A-Za-z/])|&(?:#[0-9]+|#[xX][0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:", re.M)
 # Markdown that renders some of its text invisibly. Links and fences are allowlisted: a link is
 # [text](destination) with text and a plain destination (no spaces, parentheses, backslashes or
 # quotes) closed at once, so it has no title; a fence line holds only the fence. Images, empty link
-# text, GitHub math commands and table rows wider than their header are rejected.
+# text, GitHub math holding a TeX special character (a command, a % comment or an error) and table
+# rows wider than their header are rejected.
 IMAGE = re.compile(r"!\[")
 INLINE_LINK = re.compile(r"\]\((?!<?[^\s()<>\\\"']+>?\))")
 EMPTY_LINK = re.compile(r"\[[ \t*_~]*\]\(")
 FENCE_LABEL = re.compile(r"^[ \t>*+\-0-9.)]*(?:`{3,}(?!`)|~{3,}(?!~))[ \t]*\S", re.M)
-MATH = re.compile(r"\$[^$]*\\[A-Za-z]")
+# GitHub inline math is $...$ on one line with no space before the closing $; display math is $$...$$.
+MATH = re.compile(r"\$(?![ \t\n])[^$\n]*[\\%&#{}^_~][^$\n]*(?<![ \t\n])\$|\$\$[^$]*[\\%&#{}^_~][^$]*\$\$")
 TABLE_DELIMITER = re.compile(r"^\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$")
 CONTAINER = re.compile(r"^[ \t>]*")
-MARKER = re.compile(r"^(?:[-*+]|[0-9]+[.)])[ \t]+")
+# Quote and list markers before a table line, repeated for nested lists and quotes.
+PREFIX = re.compile(r"^(?:[ \t>]*(?:[-*+]|[0-9]+[.)])[ \t]+)*[ \t>]*")
 # YAML would read these in a front-matter value as a comment, anchor, alias, tag or block, and
-# GitHub's front-matter table would hide words.
-YAML_SPECIAL = re.compile(r"^[&*!|>{\[%@`]|[ \t]#")
+# GitHub's front-matter table would hide words. A backslash can be a double-quoted escape for an
+# invisible character.
+YAML_SPECIAL = re.compile(r"^[&*!|>{\[%@`]|[ \t]#|\\")
 MAX_CHARS = 20_000
 MAX_SUMMARY_WORDS = 150
 MAX_SENTENCE_WORDS = 25
@@ -106,7 +115,7 @@ def front_matter(text):
             if key is None or not isinstance(data[key], list):
                 raise Problem(f"front-matter: list item outside a list: {trim(line)}")
             if YAML_SPECIAL.search(trim(item.group(1))):
-                raise Problem(f"front-matter: a '{key}' item starts with a YAML symbol or has ' #'; write plain text")
+                raise Problem(f"front-matter: a '{key}' item starts with a YAML symbol or has ' #' or a backslash; write plain text")
             data[key].append(unquote(item.group(1)))
             continue
         pair = re.match(r"^([a-z]+):(.*)$", line)
@@ -114,7 +123,7 @@ def front_matter(text):
             raise Problem(f"front-matter: cannot read this line: {trim(line)}")
         key, value = pair.group(1), trim(pair.group(2))
         if YAML_SPECIAL.search(value):
-            raise Problem(f"front-matter: '{key}' starts with a YAML symbol or has ' #'; write plain text")
+            raise Problem(f"front-matter: '{key}' starts with a YAML symbol or has ' #' or a backslash; write plain text")
         if key not in KEYS:
             raise Problem(f"front-matter: unknown key '{key}'; allowed: {', '.join(KEYS)}")
         if key in data:
@@ -214,7 +223,7 @@ WORD = re.compile(r"[A-Za-z][A-Za-z'-]*|[0-9][0-9,.%]*")
 
 
 def cells(line):
-    s = trim(CONTAINER.sub("", line))
+    s = trim(PREFIX.sub("", line))
     s = s[1:] if s.startswith("|") else s
     s = s[:-1] if s.endswith("|") and not s.endswith("\\|") else s
     return len(re.split(r"(?<!\\)\|", s))
@@ -231,10 +240,10 @@ def hidden_markdown(text):
     if FENCE_LABEL.search(text):
         return "a code fence with a label"
     if MATH.search(text):
-        return "a math command"
+        return "math with a TeX special character"
     lines = text.split("\n")
     for i in range(1, len(lines)):
-        header = MARKER.sub("", CONTAINER.sub("", lines[i - 1]))
+        header = PREFIX.sub("", lines[i - 1])
         delimiter = CONTAINER.sub("", lines[i])
         if ("|" in header or "|" in delimiter) and TABLE_DELIMITER.match(delimiter) and "-" in delimiter:
             width = cells(header)
@@ -281,10 +290,10 @@ def check(text):
         prose, record, sections = split_body(body)
         check_consistency(data, sections)
         if HIDDEN.search(front + prose + record):
-            raise Problem("html: raw HTML, HTML comments and link reference definitions are not allowed, except the technical record block itself")
+            raise Problem("html: raw HTML, HTML comments, character references such as &amp; and link reference definitions are not allowed, except the technical record block itself")
         found = hidden_markdown(front + prose + record)
         if found:
-            raise Problem(f"markdown: {found} can hide words; use no images, link titles, labelled code fences or table rows wider than their header")
+            raise Problem(f"markdown: {found} can hide words; use plain links with text, unlabelled code fences, no images, no math with \\ % & # {{ }} ^ _ ~, and no table rows wider than their header")
     except Problem as problem:
         return [str(problem)]
     problems = []

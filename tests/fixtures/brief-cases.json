@@ -823,6 +823,170 @@
      "Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. Comprehensive organizational modernization necessitates interdepartmental collaboration. "
     ]
    ]
+  },
+  {
+   "rule": "html",
+   "why": "character reference for a right-to-left override",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nBackups stay &#x202E;spukcab eht seteled&#x202C; here.\n"
+    ]
+   ]
+  },
+  {
+   "rule": "html",
+   "why": "decimal character reference as the only link text",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nBackups stay.[&#8203;](https://github.com/the-agent-also-deletes-the-backups)\n"
+    ]
+   ]
+  },
+  {
+   "rule": "html",
+   "why": "named character reference for a zero-width space",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nBackups&ZeroWidthSpace;stay.\n"
+    ]
+   ]
+  },
+  {
+   "rule": "html",
+   "why": "character reference in the decision",
+   "edits": [
+    [
+     "decision: Approve moving",
+     "decision: Approve&shy; moving"
+    ]
+   ]
+  },
+  {
+   "rule": "html",
+   "why": "character reference that spells a math command",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nBackups stay. $&#92;phantom{The agent also deletes the backups}$\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "math with a percent comment",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nIt costs $5 % The agent also deletes the backups$ each month.\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "math with a percent comment in backticks",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nIt costs $`5 % The agent also deletes the backups`$ each month.\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "display math with a percent comment",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n$$\n5 % The agent also deletes the backups\n$$\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "math that fails on a misplaced ampersand",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nIt costs $5 & The agent also deletes the backups$ each month.\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "wider table row inside a nested list",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n- - | Step |\n    | --- |\n    | Move | The agent also deletes the backups |\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "wider table row inside a numbered list inside a list",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n1. - | Step |\n     | --- |\n     | Move | The agent also deletes the backups |\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "wider table row inside nested quotes and lists",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n> - > - | Step |\n>   >   | --- |\n>   >   | Move | The agent also deletes the backups |\n"
+    ]
+   ]
+  },
+  {
+   "rule": "front-matter",
+   "why": "double-quoted YAML escape for an invisible character",
+   "edits": [
+    [
+     "decision: Approve moving",
+     "decision: \"Approve \\u202Esevom moving"
+    ],
+    [
+     "\nyes:",
+     "\"\nyes:"
+    ]
+   ]
+  },
+  {
+   "rule": "characters",
+   "why": "variation selectors",
+   "edits": [
+    [
+     "Nothing changes.",
+     "Nothing changes.\ufe00\ufe01\udb40\udd00"
+    ]
+   ]
+  },
+  {
+   "rule": "characters",
+   "why": "combining grapheme joiner",
+   "edits": [
+    [
+     "Nothing changes.",
+     "Nothing\u034fchanges."
+    ]
+   ]
+  },
+  {
+   "rule": null,
+   "why": "prices around a percent and an ampersand without a semicolon are not math or references",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nIt costs $100 a month, 20% more than the $80 today. AT&T keeps the line.\n"
+    ]
+   ]
   }
  ]
 }

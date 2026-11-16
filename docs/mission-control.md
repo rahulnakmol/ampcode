@@ -301,8 +301,10 @@ decision brief written with the `briefing-decisions` skill, and `url` is the doc
 where the owner reads it (an `https` link on `ampcode.com` or `github.com`, such as an
 Amp document published from that text). The plugin rejects a design without a valid
 brief or link, with an error that names the broken rule (front matter, headings, consistency,
-characters, raw HTML or other hidden text, Markdown that hides words (images, link titles,
-labelled code fences, table rows wider than their header), banned codes, sentence length, url; reading ease is
+characters, raw HTML, character references or other hidden text, Markdown that hides words
+(images, empty link text, link titles or unusual destinations, labelled code fences, math with
+a TeX special character, table rows wider than their header), banned codes, sentence length,
+url; reading ease is
 checked by `brief_check.py` only). Both are stored in the design, so the design digest and the
 approval cover the exact text and link. The plugin cannot prove that the linked page shows the
 stored text; publish the page from the checked text. `mission_status` shows the brief only as
@@ -322,7 +324,7 @@ in a read-only **Details** box, which shows plain text with line breaks and no M
 - **Merge:** title "Merge into dev", with the pull request number and risk level.
   Step 1: open the pull request. Step 2: the owner field. Details: the decision,
   try-it, each criterion with its result, customer value, the pull request URL, head
-  and base. `mission_present` shows the same details as a notification, for
+  and base, and the merge preference. `mission_present` shows the same details as a notification, for
   information only.
 - **Refusal:** any word other than APPROVE, or closing the dialog, refuses approval.
 - **Older missions** designed before decision briefs keep their digests; the message

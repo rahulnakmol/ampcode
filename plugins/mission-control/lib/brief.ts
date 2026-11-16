@@ -23,28 +23,34 @@ const KEYS = ['decision', 'yes', 'no', 'risks', 'excluded', 'picture']
 const LIMITS: Record<string, number> = { decision: 30, yes: 40, no: 40 }
 const LIST_LIMITS: Record<string, number> = { risks: 30, excluded: 20 }
 export const LINK = /^https:\/\/(ampcode\.com|github\.com)(\/[\x21-\x7e]*)?$/
-// Control and format characters (zero-width, bidirectional, tag characters) are invisible or reorder text.
-const CONTROL = /[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029]|\p{Cf}/u
-// Raw HTML (tags, comments, <!DOCTYPE, <![CDATA[, <?...?>) and Markdown link reference definitions
-// all render as hidden text.
+// Control and format characters (zero-width, bidirectional, tag characters) and the other default
+// ignorable characters (variation selectors, fillers) are invisible or reorder text.
+const CONTROL = /[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029\u034f\u115f\u1160\u17b4\u17b5\u180b-\u180f\u2065\u3164\ufe00-\ufe0f\uffa0\ufff0-\ufff8\u{1bca0}-\u{1bca3}\u{1d173}-\u{1d17a}\u{e0000}-\u{e0fff}]|\p{Cf}/u
+// Raw HTML (tags, comments, <!DOCTYPE, <![CDATA[, <?...?>), HTML character references and Markdown
+// link reference definitions all render as hidden text; GitHub decodes a reference before math, so it
+// can also become an invisible character or a math command.
 // A reference definition hides text even inside a list item or block quote, with an escaped ],
 // or with a label that continues on the next line after a backslash.
-const HIDDEN = /<(?:[!?]|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:/m
+const HIDDEN = /<(?:[!?]|[A-Za-z/])|&(?:#[0-9]+|#[xX][0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:/m
 // Markdown that renders some of its text invisibly. Links and fences are allowlisted: a link is
 // [text](destination) with text and a plain destination (no spaces, parentheses, backslashes or
 // quotes) closed at once, so it has no title; a fence line holds only the fence. Images, empty link
-// text, GitHub math commands and table rows wider than their header are rejected.
+// text, GitHub math holding a TeX special character (a command, a % comment or an error) and table
+// rows wider than their header are rejected.
 const IMAGE = /!\[/
 const INLINE_LINK = /\]\((?!<?[^\s()<>\\"']+>?\))/
 const EMPTY_LINK = /\[[ \t*_~]*\]\(/
 const FENCE_LABEL = /^[ \t>*+\-0-9.)]*(?:`{3,}(?!`)|~{3,}(?!~))[ \t]*\S/m
-const MATH = /\$[^$]*\\[A-Za-z]/
+// GitHub inline math is $...$ on one line with no space before the closing $; display math is $$...$$.
+const MATH = /\$(?![ \t\n])[^$\n]*[\\%&#{}^_~][^$\n]*(?<![ \t\n])\$|\$\$[^$]*[\\%&#{}^_~][^$]*\$\$/
 const TABLE_DELIMITER = /^\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/
 const CONTAINER = /^[ \t>]*/
-const MARKER = /^(?:[-*+]|[0-9]+[.)])[ \t]+/
+// Quote and list markers before a table line, repeated for nested lists and quotes.
+const PREFIX = /^(?:[ \t>]*(?:[-*+]|[0-9]+[.)])[ \t]+)*[ \t>]*/
 // YAML would read these in a front-matter value as a comment, anchor, alias, tag or block, and
-// GitHub's front-matter table would hide words.
-const YAML_SPECIAL = /^[&*!|>{[%@`]|[ \t]#/
+// GitHub's front-matter table would hide words. A backslash can be a double-quoted escape for an
+// invisible character.
+const YAML_SPECIAL = /^[&*!|>{[%@`]|[ \t]#|\\/
 const LIST_ITEM = /^[ \t]*(?:[-*+]|[0-9]+\.)[ \t]+(.*)$/
 const HEADING = /^## (.+?)[ \t]*$/
 const WORD = /[A-Za-z][A-Za-z'-]*|[0-9][0-9,.%]*/g
@@ -68,7 +74,7 @@ const unquote = (value: string) => {
 	return v.length >= 2 && v[0] === v.at(-1) && `"'`.includes(v[0]) ? v.slice(1, -1) : v
 }
 function cells(line: string) {
-	let s = trim(line.replace(CONTAINER, ''))
+	let s = trim(line.replace(PREFIX, ''))
 	if (s.startsWith('|')) s = s.slice(1)
 	if (s.endsWith('|') && !s.endsWith('\\|')) s = s.slice(0, -1)
 	return s.split(/(?<!\\)\|/).length
@@ -79,10 +85,10 @@ function hiddenMarkdown(text: string) {
 	if (EMPTY_LINK.test(text)) return 'a link with no text'
 	if (INLINE_LINK.test(text)) return 'a link with a title or an unusual destination'
 	if (FENCE_LABEL.test(text)) return 'a code fence with a label'
-	if (MATH.test(text)) return 'a math command'
+	if (MATH.test(text)) return 'math with a TeX special character'
 	const lines = text.split('\n')
 	for (let i = 1; i < lines.length; i++) {
-		const header = lines[i - 1].replace(CONTAINER, '').replace(MARKER, ''), delimiter = lines[i].replace(CONTAINER, '')
+		const header = lines[i - 1].replace(PREFIX, ''), delimiter = lines[i].replace(CONTAINER, '')
 		if (!(header.includes('|') || delimiter.includes('|')) || !TABLE_DELIMITER.test(delimiter) || !delimiter.includes('-')) continue
 		const width = cells(header)
 		for (const row of lines.slice(i + 1)) {
@@ -106,7 +112,7 @@ function frontMatter(markdown: string) {
 		const item = /^[ \t]+-[ \t]+(.*)$/.exec(line)
 		if (item) {
 			if (!key || !Array.isArray(data[key])) throw new BriefError('front-matter', `list item outside a list: ${trim(line)}`)
-			if (YAML_SPECIAL.test(trim(item[1]))) throw new BriefError('front-matter', `a '${key}' item starts with a YAML symbol or has ' #'; write plain text`)
+			if (YAML_SPECIAL.test(trim(item[1]))) throw new BriefError('front-matter', `a '${key}' item starts with a YAML symbol or has ' #' or a backslash; write plain text`)
 			;(data[key] as string[]).push(unquote(item[1]))
 			continue
 		}
@@ -114,7 +120,7 @@ function frontMatter(markdown: string) {
 		if (!pair) throw new BriefError('front-matter', `cannot read this line: ${trim(line)}`)
 		key = pair[1]
 		const value = trim(pair[2])
-		if (YAML_SPECIAL.test(value)) throw new BriefError('front-matter', `'${pair[1]}' starts with a YAML symbol or has ' #'; write plain text`)
+		if (YAML_SPECIAL.test(value)) throw new BriefError('front-matter', `'${pair[1]}' starts with a YAML symbol or has ' #' or a backslash; write plain text`)
 		if (!KEYS.includes(key)) throw new BriefError('front-matter', `unknown key '${key}'; allowed: ${KEYS.join(', ')}`)
 		if (key in data) throw new BriefError('front-matter', `'${key}' appears twice`)
 		data[key] = value ? unquote(value) : []
@@ -188,9 +194,9 @@ export function validateBrief(markdown: unknown): BriefData {
 		const listed = new Set(sections[heading].map(l => LIST_ITEM.exec(l)?.[1]).filter((v): v is string => v !== undefined).map(collapse))
 		for (const item of data[key]) if (!listed.has(collapse(item))) throw new BriefError('consistency', `'${item}' from '${key}' must be a list item under '## ${heading}'`)
 	}
-	if (HIDDEN.test(front + prose + record)) throw new BriefError('html', 'raw HTML, HTML comments and link reference definitions are not allowed, except the technical record block itself')
+	if (HIDDEN.test(front + prose + record)) throw new BriefError('html', 'raw HTML, HTML comments, character references such as &amp; and link reference definitions are not allowed, except the technical record block itself')
 	const hiding = hiddenMarkdown(front + prose + record)
-	if (hiding) throw new BriefError('markdown', `${hiding} can hide words; use no images, link titles, labelled code fences or table rows wider than their header`)
+	if (hiding) throw new BriefError('markdown', `${hiding} can hide words; use plain links with text, unlabelled code fences, no images, no math with \\ % & # { } ^ _ ~, and no table rows wider than their header`)
 	for (const [part, where] of [[front, 'front matter'], [prose, 'prose']]) {
 		const names = banned(part)
 		if (names.length) throw new BriefError('banned', `${names[0]} pattern in the ${where}; move codes to the technical record`)
