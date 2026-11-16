@@ -24,8 +24,10 @@ const LIMITS: Record<string, number> = { decision: 30, yes: 40, no: 40 }
 const LIST_LIMITS: Record<string, number> = { risks: 30, excluded: 20 }
 export const LINK = /^https:\/\/(ampcode\.com|github\.com)(\/[\x21-\x7e]*)?$/
 // Control and format characters (zero-width, bidirectional, tag characters) and the other default
-// ignorable characters (variation selectors, fillers) are invisible or reorder text.
-const CONTROL = /[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029\u034f\u115f\u1160\u17b4\u17b5\u180b-\u180f\u2065\u3164\ufe00-\ufe0f\uffa0\ufff0-\ufff8\u{1bca0}-\u{1bca3}\u{1d173}-\u{1d17a}\u{e0000}-\u{e0fff}]|\p{Cf}/u
+// ignorable characters (variation selectors, fillers) are invisible or reorder text. Right-to-left
+// letters, punctuation and digits (the blocks that hold every Bidi_Class R, AL and AN character)
+// reorder the text around them, even text that looks like plain ASCII.
+const CONTROL = /[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029\u034f\u115f\u1160\u17b4\u17b5\u180b-\u180f\u2065\u3164\ufe00-\ufe0f\uffa0\ufff0-\ufff8\u{1bca0}-\u{1bca3}\u{1d173}-\u{1d17a}\u{e0000}-\u{e0fff}\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff\u{10800}-\u{10fff}\u{1e800}-\u{1efff}]|\p{Cf}/u
 // Raw HTML (tags, comments, <!DOCTYPE, <![CDATA[, <?...?>), HTML character references and Markdown
 // link reference definitions all render as hidden text; GitHub decodes a reference before math, so it
 // can also become an invisible character or a math command.
@@ -40,9 +42,10 @@ const HIDDEN = /<(?:[!?]|[A-Za-z/])|&(?:#[0-9]+|#[xX][0-9A-Fa-f]+|[A-Za-z][A-Za-
 const IMAGE = /!\[/
 const INLINE_LINK = /\]\((?!<?[^\s()<>\\"']+>?\))/
 const EMPTY_LINK = /\[[ \t*_~]*\]\(/
-const FENCE_LABEL = /^[ \t>*+\-0-9.)]*(?:`{3,}(?!`)|~{3,}(?!~))[ \t]*\S/m
-// GitHub inline math is $...$ on one line with no space before the closing $; display math is $$...$$.
-const MATH = /\$(?![ \t\n])[^$\n]*[\\%&#{}^_~][^$\n]*(?<![ \t\n])\$|\$\$[^$]*[\\%&#{}^_~][^$]*\$\$/
+const FENCE_LABEL = /^[ \t>*+\-0-9.)]*(?:`{3,}(?!`)|~{3,}(?!~))[ \t]*[^ \t\n]/m
+// GitHub inline math is $...$ within one paragraph, with no space after the opening $ or before the
+// closing $, and no digit after it. $$ (display math) and $` (backtick math) are rejected outright.
+const MATH = /\$(?![ \t\n])(?:[^$\n]|\n(?![ \t>]*\n))*[\\%&#{}^_~](?:[^$\n]|\n(?![ \t>]*\n))*(?<![ \t\n])\$(?![0-9])|\$\$|\$`/
 const TABLE_DELIMITER = /^\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/
 const CONTAINER = /^[ \t>]*/
 // Quote and list markers before a table line, repeated for nested lists and quotes.
@@ -167,7 +170,7 @@ export function validateBrief(markdown: unknown): BriefData {
 	if (typeof markdown !== 'string') throw new BriefError('front-matter', 'bundle.brief.markdown must be the brief text')
 	const length = [...markdown].length
 	if (length > 20_000) throw new BriefError('length', `${length} characters; limit 20000`)
-	if (CONTROL.test(markdown)) throw new BriefError('characters', 'use plain newlines (no carriage returns, line separators or control characters)')
+	if (CONTROL.test(markdown)) throw new BriefError('characters', 'use plain newlines and left-to-right text (no carriage returns, line separators, control characters, invisible characters such as zero-width marks or emoji variation selectors, or right-to-left letters)')
 	const { data: raw, front, body } = frontMatter(markdown)
 	const data = checkFrontMatter(raw)
 	const count = words(summaryLines(data).join('\n'))
@@ -196,7 +199,7 @@ export function validateBrief(markdown: unknown): BriefData {
 	}
 	if (HIDDEN.test(front + prose + record)) throw new BriefError('html', 'raw HTML, HTML comments, character references such as &amp; and link reference definitions are not allowed, except the technical record block itself')
 	const hiding = hiddenMarkdown(front + prose + record)
-	if (hiding) throw new BriefError('markdown', `${hiding} can hide words; use plain links with text, unlabelled code fences, no images, no math with \\ % & # { } ^ _ ~, and no table rows wider than their header`)
+	if (hiding) throw new BriefError('markdown', `${hiding} can hide words; use plain links with text, unlabelled code fences, no images, no $$, no $\` and no $ math with \\ % & # { } ^ _ ~, and no table rows wider than their header`)
 	for (const [part, where] of [[front, 'front matter'], [prose, 'prose']]) {
 		const names = banned(part)
 		if (names.length) throw new BriefError('banned', `${names[0]} pattern in the ${where}; move codes to the technical record`)

@@ -35,10 +35,13 @@ LIST_LIMITS = {"risks": 30, "excluded": 20}
 KEYS = ("decision", "yes", "no", "risks", "excluded", "picture")
 PICTURE = re.compile(r"^https://(ampcode\.com|github\.com)(/[\x21-\x7e]*)?$", re.ASCII)
 # Control and format characters (zero-width, bidirectional, tag characters) and the other default
-# ignorable characters (variation selectors, fillers) are invisible or reorder text.
+# ignorable characters (variation selectors, fillers) are invisible or reorder text. Right-to-left
+# letters, punctuation and digits (the blocks that hold every Bidi_Class R, AL and AN character)
+# reorder the text around them, even text that looks like plain ASCII.
 CONTROL = re.compile(
     "[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029\u034f\u115f\u1160\u17b4\u17b5\u180b-\u180f\u2065\u3164"
-    "\ufe00-\ufe0f\uffa0\ufff0-\ufff8\U0001bca0-\U0001bca3\U0001d173-\U0001d17a\U000e0000-\U000e0fff]"
+    "\ufe00-\ufe0f\uffa0\ufff0-\ufff8\U0001bca0-\U0001bca3\U0001d173-\U0001d17a\U000e0000-\U000e0fff"
+    "\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff\U00010800-\U00010fff\U0001e800-\U0001efff]"
 )
 # Raw HTML (tags, comments, <!DOCTYPE, <![CDATA[, <?...?>), HTML character references and Markdown
 # link reference definitions all render as hidden text; GitHub decodes a reference before math, so it
@@ -54,9 +57,13 @@ HIDDEN = re.compile(r"<(?:[!?]|[A-Za-z/])|&(?:#[0-9]+|#[xX][0-9A-Fa-f]+|[A-Za-z]
 IMAGE = re.compile(r"!\[")
 INLINE_LINK = re.compile(r"\]\((?!<?[^\s()<>\\\"']+>?\))")
 EMPTY_LINK = re.compile(r"\[[ \t*_~]*\]\(")
-FENCE_LABEL = re.compile(r"^[ \t>*+\-0-9.)]*(?:`{3,}(?!`)|~{3,}(?!~))[ \t]*\S", re.M)
-# GitHub inline math is $...$ on one line with no space before the closing $; display math is $$...$$.
-MATH = re.compile(r"\$(?![ \t\n])[^$\n]*[\\%&#{}^_~][^$\n]*(?<![ \t\n])\$|\$\$[^$]*[\\%&#{}^_~][^$]*\$\$")
+FENCE_LABEL = re.compile(r"^[ \t>*+\-0-9.)]*(?:`{3,}(?!`)|~{3,}(?!~))[ \t]*[^ \t\n]", re.M)
+# GitHub inline math is $...$ within one paragraph, with no space after the opening $ or before the
+# closing $, and no digit after it. $$ (display math) and $` (backtick math) are rejected outright.
+MATH = re.compile(
+    r"\$(?![ \t\n])(?:[^$\n]|\n(?![ \t>]*\n))*[\\%&#{}^_~](?:[^$\n]|\n(?![ \t>]*\n))*(?<![ \t\n])\$(?![0-9])"
+    r"|\$\$|\$`"
+)
 TABLE_DELIMITER = re.compile(r"^\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$")
 CONTAINER = re.compile(r"^[ \t>]*")
 # Quote and list markers before a table line, repeated for nested lists and quotes.
@@ -82,12 +89,15 @@ class Problem(Exception):
     pass
 
 
+TOKEN = re.compile(r"[^ \t\n]+")
+
+
 def words(text):
-    return len(re.findall(r"[^ \t\n]+", text))
+    return len(TOKEN.findall(text))
 
 
 def collapse(text):
-    return " ".join(re.findall(r"[^ \t\n]+", text))
+    return " ".join(TOKEN.findall(text))
 
 
 def trim(text):
@@ -281,7 +291,7 @@ def check(text):
     if len(text) > MAX_CHARS:
         return [f"length: {len(text)} characters; limit {MAX_CHARS}"]
     if CONTROL.search(text) or any(unicodedata.category(c) == "Cf" for c in text):
-        return ["characters: use plain newlines (no carriage returns, line separators or control characters)"]
+        return ["characters: use plain newlines and left-to-right text (no carriage returns, line separators, control characters, invisible characters such as zero-width marks or emoji variation selectors, or right-to-left letters)"]
     try:
         data, front, body = front_matter(text)
         check_front_matter(data)
@@ -293,7 +303,7 @@ def check(text):
             raise Problem("html: raw HTML, HTML comments, character references such as &amp; and link reference definitions are not allowed, except the technical record block itself")
         found = hidden_markdown(front + prose + record)
         if found:
-            raise Problem(f"markdown: {found} can hide words; use plain links with text, unlabelled code fences, no images, no math with \\ % & # {{ }} ^ _ ~, and no table rows wider than their header")
+            raise Problem(f"markdown: {found} can hide words; use plain links with text, unlabelled code fences, no images, no $$, no $` and no $ math with \\ % & # {{ }} ^ _ ~, and no table rows wider than their header")
     except Problem as problem:
         return [str(problem)]
     problems = []

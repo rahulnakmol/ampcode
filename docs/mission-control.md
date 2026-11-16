@@ -300,13 +300,13 @@ contents. A v1 design needs `bundle.brief = { markdown, url }`: `markdown` is a
 decision brief written with the `briefing-decisions` skill, and `url` is the document
 where the owner reads it (an `https` link on `ampcode.com` or `github.com`, such as an
 Amp document published from that text). The plugin rejects a design without a valid
-brief or link, with an error that names the broken rule (front matter, headings, consistency,
-characters, raw HTML, character references or other hidden text, Markdown that hides words
-(images, empty link text, link titles or unusual destinations, labelled code fences, math with
-a TeX special character, table rows wider than their header), banned codes, sentence length,
-url; reading ease is
-checked by `brief_check.py` only). Both are stored in the design, so the design digest and the
-approval cover the exact text and link. The plugin cannot prove that the linked page shows the
+brief or link, with an error that names the broken rule (front matter, summary, headings,
+technical record, consistency, length, characters, raw HTML, character references or other
+hidden text, Markdown that hides words (images, empty link text, link titles or unusual
+destinations, labelled code fences, `$$` or `` $` `` math, `$` math with a TeX special
+character, table rows wider than their header), banned codes, sentence length, url; reading
+ease is checked by `brief_check.py` only). Both are stored in the design, so the design digest
+and the approval cover the exact text and link. The plugin cannot prove that the linked page shows the
 stored text; publish the page from the checked text. `mission_status` shows the brief only as
 its link, length and SHA-256.
 

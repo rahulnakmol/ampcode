@@ -987,6 +987,86 @@
      "## How to undo it\n\nIt costs $100 a month, 20% more than the $80 today. AT&T keeps the line.\n"
     ]
    ]
+  },
+  {
+   "rule": "markdown",
+   "why": "backtick math across a line break",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nCost: $`\\phantom{The agent also deletes the backups\nnow.}25`$ per month.\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "display math holding a dollar sign",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n$$\n\\phantom{The agent also deletes the backups.} \\text{Cost } \\\\$25\n$$\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "inline math across a soft line break",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nIt costs $5\n% The agent also deletes the backups$ each month.\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "fence label after a no-break space",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n```\u00a0The agent also deletes the backups\nBackups stay.\n```\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "tilde fence label after an ideographic space",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n~~~\u3000The agent also deletes the backups\nBackups stay.\n~~~\n"
+    ]
+   ]
+  },
+  {
+   "rule": "characters",
+   "why": "right-to-left punctuation that reorders numbers",
+   "edits": [
+    [
+     "Nothing changes.",
+     "Nothing changes. Daily limit \u05c3 10 / 1000 \u05c3 messages."
+    ]
+   ]
+  },
+  {
+   "rule": "characters",
+   "why": "right-to-left letter in the decision",
+   "edits": [
+    [
+     "decision: Approve moving",
+     "decision: Approve \u05d0 moving"
+    ]
+   ]
+  },
+  {
+   "rule": null,
+   "why": "prices with a percent and a closing dollar before a digit are not math",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nPlan costs $25 a month, 10% off the list price ($30). The price is $25, 10% off; was US$30.\n"
+    ]
+   ]
   }
  ]
 }
