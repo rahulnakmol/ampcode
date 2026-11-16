@@ -49,8 +49,9 @@ execution to an authorized agent with the right environment; never invent execut
    comprehension evidence; repair gaps in the package rather than coaching a reviewer privately.
    Write the design brief with `briefing-decisions`, run its `scripts/brief_check.py` until it
    passes, and run a `goldfishing` novice-reader review of it; repair the brief, not the reviewer.
-   With the plugin, pass the brief as `bundle.brief = { markdown }` in the design action: the
-   dialog shows it and the approval binds its exact text. Present both technical and applicable UX
+   Publish the checked text as the document the owner reads (on Amp, a document artifact). With
+   the plugin, pass `bundle.brief = { markdown, url }` in the design action: the dialog links the
+   document and the approval binds the text and the link. Present both technical and applicable UX
    design, acceptance criteria, risks, and verification to the mission initiator. Obtain acknowledgment of this exact design package **before whiteboard
    defense or build**. A generic earlier request to build is not acknowledgment of an unseen design.
    In version one the initiator must be the Amp thread owner, or the owner must explicitly adopt

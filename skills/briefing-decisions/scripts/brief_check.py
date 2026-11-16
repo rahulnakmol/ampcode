@@ -35,8 +35,9 @@ KEYS = ("decision", "yes", "no", "risks", "excluded", "picture")
 PICTURE = re.compile(r"^https://(ampcode\.com|github\.com)(/[^ \t\n]*)?$", re.ASCII)
 CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f\x85\u2028\u2029\ufeff]")
 # Raw HTML, HTML comments and Markdown link reference definitions all render as hidden text.
-# A reference definition hides text even inside a list item or block quote, or with an escaped ].
-HIDDEN = re.compile(r"<(?:!--|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\.|[^\\\]])*\]:", re.M)
+# A reference definition hides text even inside a list item or block quote, with an escaped ],
+# or with a label that continues on the next line after a backslash.
+HIDDEN = re.compile(r"<(?:!--|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:", re.M)
 MAX_CHARS = 20_000
 MAX_SUMMARY_WORDS = 150
 MAX_SENTENCE_WORDS = 25
@@ -121,7 +122,7 @@ def check_front_matter(data):
 
 
 def summary(data):
-    """The collapsed summary mission-control shows. Keep in step with lib/brief.ts."""
+    """The labelled summary of the front matter. Keep in step with lib/brief.ts."""
     lines = [
         f"You are deciding: {data['decision']}",
         f"If you say yes: {data['yes']}",
@@ -221,7 +222,7 @@ def check(text):
         data, front, body = front_matter(text)
         check_front_matter(data)
         if words(summary(data)) > MAX_SUMMARY_WORDS:
-            raise Problem(f"summary: the collapsed summary has {words(summary(data))} words; limit {MAX_SUMMARY_WORDS}")
+            raise Problem(f"summary: the summary has {words(summary(data))} words; limit {MAX_SUMMARY_WORDS}")
         prose, record, sections = split_body(body)
         check_consistency(data, sections)
         if HIDDEN.search(front + prose + record):

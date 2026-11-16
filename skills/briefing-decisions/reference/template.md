@@ -7,8 +7,8 @@ below passes the checker; a test keeps it that way.
 
 | Rule | What passes |
 | --- | --- |
-| front-matter | Only these keys: `decision` (at most 30 words), `yes` and `no` (at most 40 words each), `risks` (1 to 6 unique items, at most 30 words each), `excluded` (1 to 6 items, at most 20 words each), optional `picture` (an `https` URL on `ampcode.com` or `github.com`). Each value is one line |
-| summary | The collapsed summary (the four labelled lines below) is at most 150 words |
+| front-matter | Only these keys: `decision` (at most 30 words), `yes` and `no` (at most 40 words each), `risks` (1 to 6 unique items, at most 30 words each), `excluded` (1 to 6 items, at most 20 words each), optional `picture` (an `https` URL on `ampcode.com` or `github.com`; for the document, not shown in the dialog). Each value is one line |
+| summary | The summary (the four labelled lines below) is at most 150 words |
 | headings | Exactly the ten `##` headings of the skeleton, in order. `###` subheadings are fine |
 | technical-record | One `<details><summary>Technical record</summary>` block ends the file |
 | consistency | Each `risks` item is, word for word, a list item under `## Risks you accept`; each `excluded` item under `## Not included` |
@@ -19,7 +19,7 @@ below passes the checker; a test keeps it that way.
 | reading-ease | Flesch reading ease of the prose is at least 50 |
 | banned | No hashes, thread or task IDs, JSON, provider/model slugs, or lines that start with a bare code such as `H04:` in the front matter or prose. Put them in the technical record |
 
-The collapsed summary that mission-control shows first:
+The summary at the top of the brief (the checker counts these words):
 
 ```text
 You are deciding: <decision>

@@ -24,11 +24,11 @@ function packet(s: RecordState) {
 	].join('\n\n')
 	return rawDetails(s)
 }
-// The full brief is in the record and the dialog; status (sent on every agent turn) carries only its size and hash.
+// The full brief is in the record; status (sent on every agent turn) carries only its link, size and hash.
 function compact(s: Mission) {
 	const brief = s.design?.bundle.brief
 	if (!brief) return s
-	return { ...s, design: { ...s.design!, bundle: { ...s.design!.bundle, brief: { characters: [...brief.markdown].length, sha256: createHash('sha256').update(brief.markdown).digest('hex') } } } }
+	return { ...s, design: { ...s.design!, bundle: { ...s.design!.bundle, brief: { url: brief.url, characters: [...brief.markdown].length, sha256: createHash('sha256').update(brief.markdown).digest('hex') } } } }
 }
 
 export default function (amp: PluginAPI, github = new GitHub()) {
@@ -65,7 +65,7 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		const d = typeof dialog === 'string' ? { title: 'Mission owner acknowledgment', message: dialog } : dialog
 		const result = await ctx.ui.confirm(confirmOptions(d))
 		ctx.signal.throwIfAborted()
-		const refused = refusal(result, d.risks ?? [])
+		const refused = refusal(result)
 		if (refused) throw new Error(refused)
 	}
 	function tool(name: string, description: string, properties: Record<string, any>, execute: (input: any, ctx: PluginToolContext) => Promise<string>, required = Object.keys(properties)) {
@@ -89,7 +89,7 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 	}, [])
 	tool('mission_status', 'Reload mission checkpoints and blockers. A merge request is not a completed mission.', {}, async (_input, ctx) => status(required(ctx.thread.id)))
 	const publicActions = ['design', 'defense', 'build', 'candidate', 'review', 'evidence', 'report', 'finding', 'post-report', 'disposition', 'post-delivery', 'closure-report', 'pause', 'resume']
-	tool('mission_update', 'V1: design {bundle:{spec,plan,technical,ux,brief:{markdown}},criteria}, where brief is the decision brief written with briefing-decisions and checked by brief_check.py; defense {digest,record}; build; candidate {candidate}; review {gate,fingerprint,passed,reviewer,record}; evidence {fingerprint,results,tryIt,value}; pause {reason}; resume. V2: design {manifest}; build {unitId}; candidate {unitId,attemptId,candidate,manifest}; report {unitId,attemptId,fingerprint,evidence:{id,criterionIds,outcome,record}}; review adds unitId,attemptId,evidenceDigest,findingIds. finding {unitId,attemptId,fingerprint,finding:{id,criterionIds,severity,confidence,location,record,owner}}. post-report {evidence:{id,baseline,designDigest,policyDigest,unitIds,results:[{criterionId,outcome,record}],record}}. post-delivery {unitId,package} / closure-report {package}: package replaces post-report id with evidenceIds and findings. disposition {disposition:{findingId,outcome:fixed|rejected|deferred,evidenceIds,owner,reviewer,record,correctiveUnitId?}}. V2 results/dispositions are reported only; references must resolve. No internal approval/import/execution/integration actions.', { action: { type: 'object', properties: { type: { type: 'string', enum: publicActions } }, required: ['type'], additionalProperties: true } }, async (input, ctx) => {
+	tool('mission_update', 'V1: design {bundle:{spec,plan,technical,ux,brief:{markdown,url}},criteria}, where markdown is the decision brief written with briefing-decisions and checked by brief_check.py, and url is the https ampcode.com or github.com document where the owner reads it, published from that text; defense {digest,record}; build; candidate {candidate}; review {gate,fingerprint,passed,reviewer,record}; evidence {fingerprint,results,tryIt,value}; pause {reason}; resume. V2: design {manifest}; build {unitId}; candidate {unitId,attemptId,candidate,manifest}; report {unitId,attemptId,fingerprint,evidence:{id,criterionIds,outcome,record}}; review adds unitId,attemptId,evidenceDigest,findingIds. finding {unitId,attemptId,fingerprint,finding:{id,criterionIds,severity,confidence,location,record,owner}}. post-report {evidence:{id,baseline,designDigest,policyDigest,unitIds,results:[{criterionId,outcome,record}],record}}. post-delivery {unitId,package} / closure-report {package}: package replaces post-report id with evidenceIds and findings. disposition {disposition:{findingId,outcome:fixed|rejected|deferred,evidenceIds,owner,reviewer,record,correctiveUnitId?}}. V2 results/dispositions are reported only; references must resolve. No internal approval/import/execution/integration actions.', { action: { type: 'object', properties: { type: { type: 'string', enum: publicActions } }, required: ['type'], additionalProperties: true } }, async (input, ctx) => {
 		ctx.signal.throwIfAborted()
 		if (!publicActions.includes(input.action?.type)) throw new Error('Internal approval and integration actions cannot be supplied by agents')
 		const s = required(ctx.thread.id)
@@ -126,7 +126,8 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		if (isV2(s)) { await ctx.ui.notify(packet(s) + '\n\n' + status(s)); return status(s) }
 		if (!s.evidence) throw new Error('Acceptance evidence required')
 		const merge = mergeDialog(s)
-		await ctx.ui.notify([merge.title, merge.collapsedMessage, merge.message].filter(Boolean).join('\n\n'))
+		// Information only; the merge dialog is the approval view.
+		await ctx.ui.notify([merge.title, merge.message, merge.details].filter(Boolean).join('\n\n'))
 		ctx.signal.throwIfAborted()
 		return status(write(s, { type: 'presented', fingerprint: fingerprint(s) }))
 	})

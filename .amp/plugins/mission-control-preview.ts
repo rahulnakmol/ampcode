@@ -11,7 +11,7 @@ export default function (amp: PluginAPI) {
 		const s = record as unknown as Mission
 		for (const [stage, dialog] of [['Design', designDialog(s)], ['Merge', mergeDialog(s)]] as const) {
 			const result = await ctx.ui.confirm(confirmOptions({ ...dialog, title: `Preview. ${dialog.title}` }))
-			const refused = refusal(result, dialog.risks ?? [])
+			const refused = refusal(result)
 			await ctx.ui.notify(`${stage} preview: ${refused ?? 'this answer would approve.'} Nothing was recorded.`)
 		}
 	})

@@ -22,18 +22,21 @@ const DETAILS_CLOSE = '</details>'
 const KEYS = ['decision', 'yes', 'no', 'risks', 'excluded', 'picture']
 const LIMITS: Record<string, number> = { decision: 30, yes: 40, no: 40 }
 const LIST_LIMITS: Record<string, number> = { risks: 30, excluded: 20 }
-const PICTURE = /^https:\/\/(ampcode\.com|github\.com)(\/[^ \t\n]*)?$/
+export const LINK = /^https:\/\/(ampcode\.com|github\.com)(\/[^ \t\n]*)?$/
 const CONTROL = /[\x00-\x08\x0b-\x1f\x7f\x85\u2028\u2029\ufeff]/
 // Raw HTML, HTML comments and Markdown link reference definitions all render as hidden text.
-// A reference definition hides text even inside a list item or block quote, or with an escaped ].
-const HIDDEN = /<(?:!--|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\.|[^\\\]])*\]:/m
+// A reference definition hides text even inside a list item or block quote, with an escaped ],
+// or with a label that continues on the next line after a backslash.
+const HIDDEN = /<(?:!--|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:/m
 const LIST_ITEM = /^[ \t]*(?:[-*+]|[0-9]+\.)[ \t]+(.*)$/
 const HEADING = /^## (.+?)[ \t]*$/
 const WORD = /[A-Za-z][A-Za-z'-]*|[0-9][0-9,.%]*/g
 
 export type BriefData = { decision: string; yes: string; no: string; risks: string[]; excluded: string[]; picture?: string }
-export type Brief = { markdown: string }
-export type Dialog = { title: string; message: string; collapsedMessage?: string; expandButtonText?: string; risks?: string[]; after?: any[] }
+export type Brief = { markdown: string; url: string }
+// title and message are Markdown in Amp, so they hold only fixed text. Agent and record text goes
+// in details, a read-only field: "line breaks are kept and Markdown is not rendered".
+export type Dialog = { title: string; message: string; link?: { name: string; label: string; value: string }; details?: string }
 
 class BriefError extends Error {
 	constructor(rule: string, detail: string) { super(`Decision brief rejected (${rule}): ${detail}. See the briefing-decisions skill.`) }
@@ -87,11 +90,11 @@ function checkFrontMatter(data: Record<string, string | string[]>): BriefData {
 		if (new Set(items.map(collapse)).size !== items.length) throw new BriefError('front-matter', `'${key}' items must be unique`)
 		for (const i of items) if (words(i) < 1 || words(i) > limit) throw new BriefError('front-matter', `each '${key}' item needs 1 to ${limit} words: ${i}`)
 	}
-	if ('picture' in data && !(typeof data.picture === 'string' && PICTURE.test(data.picture))) throw new BriefError('front-matter', "'picture' must be an https URL on ampcode.com or github.com")
+	if ('picture' in data && !(typeof data.picture === 'string' && LINK.test(data.picture))) throw new BriefError('front-matter', "'picture' must be an https URL on ampcode.com or github.com")
 	return data as BriefData
 }
 
-/** The collapsed summary, as plain lines; brief_check.py counts the same words. */
+/** The labelled summary of the front matter; brief_check.py counts the same words. */
 export function summaryLines(d: BriefData) {
 	return [`You are deciding: ${d.decision}`, `If you say yes: ${d.yes}`, `If you say no: ${d.no}`, 'Risks you accept:', ...d.risks.map((r, i) => `${i + 1}. ${r}`)]
 }
@@ -118,7 +121,7 @@ export function validateBrief(markdown: unknown): BriefData {
 	const { data: raw, front, body } = frontMatter(markdown)
 	const data = checkFrontMatter(raw)
 	const count = words(summaryLines(data).join('\n'))
-	if (count > 150) throw new BriefError('summary', `the collapsed summary has ${count} words; limit 150`)
+	if (count > 150) throw new BriefError('summary', `the summary has ${count} words; limit 150`)
 	const start = body.indexOf(DETAILS_OPEN)
 	if (start < 0) throw new BriefError('technical-record', `end the brief with a ${DETAILS_OPEN} block`)
 	const end = body.replace(/[ \t\n]+$/, '')
@@ -152,10 +155,8 @@ export function validateBrief(markdown: unknown): BriefData {
 }
 
 const briefOf = (s: Mission) => s.design?.bundle.brief
-// Text the agent or the record supplies is shown literally: '<' cannot open hidden HTML and '['
-// cannot start a hidden link reference definition. Inside code spans the escapes show as typed.
-const plain = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\[/g, '\\[')
-const numbered = (items: string[]) => items.map((item, i) => `${i + 1}. ${plain(item)}`).join('\n')
+const numbered = (items: string[]) => items.map((item, i) => `${i + 1}. ${item}`).join('\n')
+const NOTE = 'Only the thread owner can approve. The owner field restricts this dialog to the owner; APPROVE is not a password.'
 
 /** Today's raw v1 details, kept for records designed before decision briefs. */
 export function rawDetails(s: Mission) {
@@ -169,78 +170,65 @@ export function rawDetails(s: Mission) {
 		'Approvals and evidence are local workflow gates, not a hostile-shell security boundary. Required CI and protected dev must also permit integration.',
 	].filter(Boolean).join('\n\n')
 }
-const LEGACY = 'This mission was designed before decision briefs. The details below are the raw design record.'
-const legacy = (s: Mission) => `${LEGACY}\n\n${plain(rawDetails(s))}`
+const LEGACY = 'This mission was designed before decision briefs. The raw design record is in Details.'
 
 export function designDialog(s: Mission): Dialog {
 	const brief = briefOf(s)
-	if (!brief) return { title: 'Approve the design', message: legacy(s), risks: [], after: [] }
+	if (!brief) return { title: 'Approve the design', message: LEGACY, details: rawDetails(s) }
 	// Stored briefs were validated when the design was recorded; they are not revalidated here.
-	const parsed = frontMatter(brief.markdown)
-	const data = parsed.data as BriefData, body = parsed.body
+	const decision = frontMatter(brief.markdown).data.decision as string
 	const b = s.design!.bundle
 	return {
-		title: `Approve the design: ${data.decision}`,
-		collapsedMessage: summaryMarkdown(data),
-		expandButtonText: 'Read the brief',
-		// The summary leads the expanded view too: clients without a collapsed state show only this.
-		message: [
-			summaryMarkdown(data),
-			body.trim(),
-			`## What you approve as done\n\n${numbered(s.design!.criteria)}`,
-			`## Technical record\n\n**Requirements:** ${plain(s.requirements)}\n\n**Spec:** ${plain(b.spec)}\n\n**Plan:** ${plain(b.plan)}\n\n**Technical design:** ${plain(b.technical)}\n\n**UX design:** ${plain(b.ux)}`,
+		title: 'Approve the design',
+		message: 'Open the brief, then type APPROVE. You approve the brief as it reads now. If the stored brief text or its link changes, this approval no longer counts. Edits to the page after you approve do not cancel it.',
+		link: { name: 'brief', label: 'Open the brief you are approving', value: brief.url },
+		details: [
+			`You are deciding: ${decision}`, `Brief: ${brief.url}`,
+			`What you approve as done:\n${numbered(s.design!.criteria)}`,
+			`Technical record\n\nRequirements: ${s.requirements}\n\nSpec: ${b.spec}\n\nPlan: ${b.plan}\n\nTechnical design: ${b.technical}\n\nUX design: ${b.ux}`,
 		].join('\n\n'),
-		risks: data.risks,
-		after: data.picture ? [{ type: 'link', name: 'picture', label: 'Open the picture (illustration, not part of what you approve)', value: data.picture }] : [],
 	}
-}
-
-export function summaryMarkdown(d: BriefData) {
-	return [`**You are deciding:** ${plain(d.decision)}`, `**If you say yes:** ${plain(d.yes)}`, `**If you say no:** ${plain(d.no)}`, `**Risks you accept:**\n\n${numbered(d.risks)}`].join('\n\n')
 }
 
 export function mergeDialog(s: Mission): Dialog {
 	const brief = briefOf(s)
 	const c = s.candidate!
 	const url = `https://github.com/${c.repo}/pull/${c.pr}`
-	const link = [{ type: 'link', name: 'pull-request', label: 'Open the pull request', value: url }]
-	if (!brief) return { title: 'Merge into dev', message: legacy(s), risks: [], after: link }
+	const link = { name: 'pull-request', label: 'Open the pull request', value: url }
+	if (!brief) return { title: 'Merge into dev', message: LEGACY, link, details: rawDetails(s) }
 	const decision = frontMatter(brief.markdown).data.decision as string
 	return {
-		title: `Merge into dev: ${decision}`,
-		collapsedMessage: `**Pull request:** number ${c.pr} in ${c.repo}\n\n**Risk level:** ${c.risk}\n\n**Try it:** ${plain(s.evidence?.tryIt ?? 'Not supplied yet')}`,
-		expandButtonText: 'Read the evidence',
-		message: [
-			'## What was approved as done, and the result',
-			s.design!.criteria.map((criterion, i) => `${i + 1}. ${plain(criterion)}\n\n   Result: ${plain(s.evidence?.results[i] ?? 'Not checked yet')}`).join('\n\n'),
-			`**Customer value:** ${plain(s.evidence?.value ?? 'Not established yet')}`,
-			`**Pull request:** ${url}\n\n**Head:** ${c.head}\n\n**Base:** ${c.base}`,
+		title: 'Merge into dev',
+		// The number and risk are validated values, not free text.
+		message: `Open the pull request, then type APPROVE to merge it into dev. Pull request number ${c.pr}, risk level ${c.risk}.`,
+		link,
+		details: [
+			`You are deciding: ${decision}`, `Try it: ${s.evidence?.tryIt ?? 'Not supplied yet'}`,
+			`What was approved as done, and the result:\n${s.design!.criteria.map((criterion, i) => `${i + 1}. ${criterion}\n   Result: ${s.evidence?.results[i] ?? 'Not checked yet'}`).join('\n')}`,
+			`Customer value: ${s.evidence?.value ?? 'Not established yet'}`,
+			`Pull request: ${url}\nHead: ${c.head}\nBase: ${c.base}`,
 			'Approvals are local workflow gates. Required checks and the protected dev branch must also allow the merge.',
 		].join('\n\n'),
-		risks: [],
-		after: link,
 	}
 }
 
-/** Every approval dialog: owner-only (the secret field), human-only, and the turn ends on decline. */
+/** Every approval dialog: owner-only (the secret field), human-only, and the turn ends on decline.
+ * A link before the owner field shows as numbered steps; details come last and never block. */
 export function confirmOptions(d: Dialog) {
 	return {
-		title: d.title, message: d.message + '\n\nOnly the thread owner can approve. The masked field restricts this dialog to the owner; APPROVE is not a password.',
-		...(d.expandButtonText ? { expandButtonText: d.expandButtonText, collapsedMessage: d.collapsedMessage } : {}),
+		title: d.title, message: `${d.message}\n\n${NOTE}`,
 		requireHuman: true, endTurnOnDecline: true,
 		fields: [
-			...(d.risks ?? []).map((risk, i) => ({ type: 'checkbox' as const, name: `risk-${i + 1}`, label: risk, value: 'false' })),
+			...(d.link ? [{ type: 'link' as const, ...d.link }] : []),
 			{ name: 'acknowledgment', label: 'Type APPROVE to confirm you are the mission owner (owner-only check, not a password)', value: '', secret: true },
-			...(d.after ?? []),
+			...(d.details ? [{ name: 'details', label: 'Details', value: d.details, readOnly: true, multiline: true, optional: true }] : []),
 		],
 	}
 }
 
-/** Why an answer does not approve, or undefined when it does. Only 'true' counts as a tick. */
-export function refusal(result: Record<string, string> | undefined, risks: string[]): string | undefined {
+/** Why an answer does not approve, or undefined when it does. */
+export function refusal(result: Record<string, string> | undefined): string | undefined {
 	if (!result) return 'Not approved. The dialog was closed without approval; the mission remains blocked.'
-	const unticked = risks.filter((_, i) => result[`risk-${i + 1}`] !== 'true')
-	if (unticked.length) return `Not approved. These risks were not ticked: ${unticked.join('; ')}. If you ticked them, your Amp app may not show tick boxes; approve from the Amp web app.`
 	if (result.acknowledgment !== 'APPROVE') return 'Not approved. Type APPROVE in the owner field.'
 	return undefined
 }

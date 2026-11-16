@@ -12,8 +12,8 @@ plain English. Everything only a specialist needs goes into a technical record a
 ## When to use it
 
 Use it for every human gate: design approval, merge, release, budget, vendor choice, roadmap or
-plan sign-off. `delivering` uses it for the mission-control design dialog, which shows the brief
-and binds the approval to its exact text. Do not use it for status updates that ask no decision.
+plan sign-off. `delivering` uses it for mission-control design approval: the owner reads the brief as a
+document, and the approval binds its exact text and link. Do not use it for status updates that ask no decision.
 
 ## Write the brief
 
@@ -30,7 +30,7 @@ and binds the approval to its exact text. Do not use it for status updates that 
 4. Put codes, hashes, file paths, thread or task IDs, JSON and model names in provider/slug form
    only in the technical record. The checker rejects them elsewhere.
 5. Fill the front matter last. `risks` and `excluded` must match their sections word for word,
-   because mission-control shows one tick box per risk.
+   so the summary never says less than the body.
 6. Add a picture only when it saves words: see [reference/visuals.md](reference/visuals.md).
 
 ## Check it
@@ -48,8 +48,9 @@ included. Repair every wrong or missing answer in the brief and check it again.
 
 ## Hand it over
 
-- **Amp:** publish the brief as a document artifact, or pass it to mission-control as
-  `bundle.brief = { markdown }` in the design action (see `delivering`).
+- **Amp:** publish the checked text as a document artifact. With mission-control, pass
+  `bundle.brief = { markdown, url }` in the design action, where `url` is that document
+  (see `delivering`). Publish from the checked text: the dialog cannot prove the page matches.
 - **Other hosts:** give the Markdown file to the approver. An HTML picture opens in a browser.
 - Record the approval with the brief's revision. Approval in chat is not approval of the brief
   unless the approver names it.

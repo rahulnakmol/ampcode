@@ -7,7 +7,7 @@ import { createMission, advance, blockers, fingerprint, saveMission, loadMission
 import { loadRecord, saveRecord } from '../plugins/mission-control/lib/mission'
 import { previewMigration, migrateMission } from '../plugins/mission-control/lib/migration'
 import { parseManifest, intentDigest } from '../plugins/mission-control/lib/contracts'
-import { BANNED, banned, designDialog, mergeDialog, summaryMarkdown, validateBrief } from '../plugins/mission-control/lib/brief'
+import { BANNED, banned, confirmOptions, designDialog, mergeDialog, rawDetails, validateBrief, type Dialog } from '../plugins/mission-control/lib/brief'
 import { createMissionV2, advanceV2, blockersV2, fingerprintV2, parseMissionV2 } from '../plugins/mission-control/lib/mission-v2'
 
 const manifest = {
@@ -42,7 +42,7 @@ describe('v2 manifest contracts', () => {
 	})
 })
 
-const brief = { markdown: readFileSync(join(import.meta.dir, '../evals/briefing-decisions/brief.md'), 'utf8') }
+const brief = { markdown: readFileSync(join(import.meta.dir, '../evals/briefing-decisions/brief.md'), 'utf8'), url: 'https://github.com/rahulnakmol/ampcode/blob/34b8d0e8af6d53aaa60d33f7066983ac21e4fd0f/evals/briefing-decisions/brief.md' }
 const bundle = { spec: 'Export exact rows; reject changed source.', plan: 'Add failure harness, then repair.', technical: 'Checkpoint byte offsets.', ux: 'CLI errors preserve prior files.', brief }
 const candidate = { repo: 'acme/app', pr: 7, head: 'a'.repeat(40), base: 'b'.repeat(40), risk: 'low' as const }
 function v2Built(two = false) {
@@ -452,38 +452,54 @@ describe('decision briefs', () => {
 			else expect([c.why, (() => { try { run(); return 'accepted' } catch (e: any) { return e.message } })()]).toEqual([c.why, expect.stringContaining(`(${c.rule})`)])
 		}
 	})
-	test('dialogs show supplied text literally, so it cannot hide HTML', () => {
-		const hidden = (name: string) => `${name} & <!-- hidden ${name} -->\n\n[${name}]: /u "hidden ${name}"`
-		let s = advance(createMission('T-test', hidden('requirement')), { type: 'design', bundle: { ...bundle, spec: hidden('spec'), plan: hidden('plan'), technical: hidden('technical'), ux: hidden('ux') }, criteria: ['Rows <span hidden>and deletes backups</span>'] })
-		const d = designDialog(s)
-		expect(d.message).not.toMatch(/<!--|<span/)
-		for (const name of ['requirement', 'spec', 'plan', 'technical', 'ux']) expect(d.message).toContain(`${name} &amp; &lt;!-- hidden ${name} -->\n\n\\[${name}]: /u "hidden ${name}"`)
-		expect(d.message).not.toMatch(/^[ \t>*+\-0-9.)]*\[[^\]]*\]:/m)
-		expect(d.message).toContain('1. Rows &lt;span hidden>and deletes backups&lt;/span>')
-		expect(d.message.startsWith('**You are deciding:**')).toBe(true)
+	test('agent text never reaches dialog Markdown; the read-only details hold it unchanged', () => {
+		// Round-2 hiding payloads: a backslash before a link, a fence info string, a wide table row,
+		// a reference definition and an HTML comment. Each hides its words when rendered as Markdown.
+		const hostile = (name: string) => `${name} \\[ok](/u "hidden ${name}")\n\`\`\`hidden-${name} more\n\`\`\`\na | b\n--|--\nc | d | hidden ${name}\n\n[${name}]: /u "hidden ${name}"\n<!-- hidden ${name} -->\n    indented ${name}`
+		const decision = 'Approve [moving](https://github.com/a "hidden decision") the sales demo website from the office computer to a paid hosting service.'
+		const markdown = brief.markdown.replace(/^decision: .*$/m, `decision: ${decision}`)
+		let s = advance(createMission('T-test', hostile('requirement')), { type: 'design', bundle: { spec: hostile('spec'), plan: hostile('plan'), technical: hostile('technical'), ux: hostile('ux'), brief: { markdown, url: brief.url } }, criteria: [hostile('criterion')] })
+		const shown = (d: Dialog, values: string[]) => {
+			const o = confirmOptions(d)
+			expect(`${o.title}\n${o.message}`).not.toContain('hidden')
+			const details = o.fields.find((f: any) => f.name === 'details') as any
+			expect(details).toMatchObject({ readOnly: true, multiline: true, optional: true })
+			for (const v of values) expect(details.value).toContain(v)
+			return o
+		}
+		const design = shown(designDialog(s), [decision, brief.url, ...['requirement', 'spec', 'plan', 'technical', 'ux', 'criterion'].map(hostile)])
+		expect(design.title).toBe('Approve the design')
+		expect(design.fields.map((f: any) => [f.type ?? 'text', f.name])).toEqual([['link', 'brief'], ['text', 'acknowledgment'], ['text', 'details']])
+		expect(design.fields[0].value).toBe(brief.url)
 		s = advance(advance(advance(advance(s, { type: 'approve-design', digest: s.design!.digest }), { type: 'defense', digest: s.design!.digest, record: 'Defended.' }), { type: 'build' }), { type: 'candidate', candidate })
 		s = advance(s, { type: 'review', gate: 1, fingerprint: fingerprint(s), passed: true, reviewer: 'T-r', record: 'ok' })
-		s = advance(s, { type: 'evidence', fingerprint: fingerprint(s), results: ['Done <!-- and more -->'], tryIt: 'Try <b>it</b>', value: 'Value <i>x</i>' })
-		const m = mergeDialog(s)
-		expect(m.message + m.collapsedMessage).not.toMatch(/<!--|<b>|<i>/)
+		s = advance(s, { type: 'evidence', fingerprint: fingerprint(s), results: [hostile('result')], tryIt: hostile('try'), value: hostile('value') })
+		const merge = shown(mergeDialog(s), [decision, ...['criterion', 'result', 'try', 'value'].map(hostile)])
+		expect(merge.title).toBe('Merge into dev')
+		expect(merge.message).toContain('Pull request number 7, risk level low.')
+		expect(merge.fields.map((f: any) => [f.type ?? 'text', f.name])).toEqual([['link', 'pull-request'], ['text', 'acknowledgment'], ['text', 'details']])
 		const { brief: _, ...noBrief } = s.design!.bundle
 		const old = { ...s, design: { ...s.design!, bundle: noBrief } }
-		for (const dialog of [designDialog(old), mergeDialog(old)]) expect(dialog.message).not.toMatch(/<!--|<span|<b>/)
-		expect(summaryMarkdown({ decision: 'A <!-- d -->', yes: 'Y <i>', no: 'N <b>', risks: ['R <!-- r -->'], excluded: ['E'] })).not.toMatch(/<!--|<i>|<b>/)
+		// Legacy records show today's raw details, unchanged, in the read-only field.
+		shown(designDialog(old), [rawDetails(old)])
+		shown(mergeDialog(old), [rawDetails(old)])
 	})
 	test('the synthetic briefs pass', () => {
 		expect(validateBrief(brief.markdown).risks).toHaveLength(3)
 		const example = /## Filled example[\s\S]*?````markdown\n([\s\S]*?)````/.exec(read('skills/briefing-decisions/reference/template.md'))![1]
 		expect(validateBrief(example).decision).toContain('shared calendar')
 	})
-	test('the digest covers the brief text, so approving one brief does not approve another', () => {
+	test('the digest covers the brief text and its link, so approving one brief does not approve another', () => {
 		const one = advance(createMission('T-test', 'Outcome'), { type: 'design', bundle, criteria: ['Exact rows'] })
 		const approved = advance(one, { type: 'approve-design', digest: one.design!.digest })
-		const other = { ...bundle, brief: { markdown: brief.markdown.replace('ten minutes', 'twenty minutes') } }
+		const other = { ...bundle, brief: { ...brief, markdown: brief.markdown.replace('ten minutes', 'twenty minutes') } }
 		const two = advance(approved, { type: 'design', bundle: other, criteria: ['Exact rows'] })
 		expect(two.design!.digest).not.toBe(one.design!.digest)
 		expect(two.approvedDesign).toBeUndefined()
 		expect(blockers(two)).toContain('Owner design approval required')
 		expect(() => advance(two, { type: 'approve-design', digest: one.design!.digest })).toThrow('stale')
+		const moved = advance(approved, { type: 'design', bundle: { ...bundle, brief: { ...brief, url: 'https://ampcode.com/artifacts/another-page' } }, criteria: ['Exact rows'] })
+		expect(moved.design!.digest).not.toBe(one.design!.digest)
+		expect(moved.approvedDesign).toBeUndefined()
 	})
 })

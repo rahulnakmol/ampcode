@@ -3,6 +3,9 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { advance, createMission, fingerprint } from '../../plugins/mission-control/lib/mission'
 const markdown = readFileSync('evals/briefing-decisions/brief.md', 'utf8')
+// The document the owner reads: brief.md at a pushed commit. After editing brief.md, push it and
+// point this at the new commit, or the stored text and the linked page differ.
+const url = 'https://github.com/rahulnakmol/ampcode/blob/34b8d0e8af6d53aaa60d33f7066983ac21e4fd0f/evals/briefing-decisions/brief.md'
 let s = createMission('T-00000000-0000-0000-0000-000000000000', 'Keep the sales demo website available when the office computer is off, at a known monthly cost. Synthetic example; no real system.')
 s = advance(s, { type: 'design', criteria: [
 	'The new address opens the demo site from a phone and from a laptop outside the office.',
@@ -14,7 +17,7 @@ s = advance(s, { type: 'design', criteria: [
 	plan: 'Copy the site, test the new address, switch the redirect, tell the sales team, turn off the office server after a week.',
 	technical: 'Static files built by the existing script and uploaded to the host; HTTP 301 redirect on the old host for 30 days.',
 	ux: 'Sales staff get the new address by email and in the team chat; no other change for visitors.',
-	brief: { markdown },
+	brief: { markdown, url },
 } })
 s = advance(s, { type: 'approve-design', digest: s.design!.digest })
 s = advance(s, { type: 'defense', digest: s.design!.digest, record: 'Synthetic defense.' })

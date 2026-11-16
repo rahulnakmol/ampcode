@@ -4,7 +4,7 @@ import { createMission, advance } from '../plugins/mission-control/lib/mission'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const brief = { markdown: readFileSync(join(import.meta.dir, '../evals/briefing-decisions/brief.md'), 'utf8') }
+const brief = { markdown: readFileSync(join(import.meta.dir, '../evals/briefing-decisions/brief.md'), 'utf8'), url: 'https://ampcode.com/artifacts/demo-brief' }
 
 const head = 'a'.repeat(40), base = 'b'.repeat(40)
 function fixture() {

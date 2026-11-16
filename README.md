@@ -201,9 +201,10 @@ against source, and implementation readiness. Gate two and resume also check spe
 distinguishing defects from approved changes. These checks retain both build-review gates and
 never turn an exhausted review budget into risk acceptance. The reviews follow
 [`goldfishing`](./skills/goldfishing/SKILL.md). The owner signs off from a plain-English decision
-brief written with [`briefing-decisions`](./skills/briefing-decisions/SKILL.md): the plugin
-requires it in the design, shows it in the approval dialog with one tick box per risk, and binds
-the approval to its exact text.
+brief written with [`briefing-decisions`](./skills/briefing-decisions/SKILL.md) and published as a
+document. The plugin requires the brief text and its link in the design, and binds the approval to
+both. The approval dialog only confirms: open the brief, then type APPROVE; the criteria and design
+record sit in a read-only Details box.
 
 Communication supports standard/formal records and editorial explanations with descriptive
 headers, both guided by ASD-STE100 principles without an unvalidated compliance claim. ELI5 short

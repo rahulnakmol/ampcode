@@ -6,6 +6,8 @@ from mission-control's raw design dialog. Results: [results.md](results.md).
 ## Rerun
 
 1. Edit [brief.md](brief.md), then `python3 skills/briefing-decisions/scripts/brief_check.py evals/briefing-decisions/brief.md`.
+   Push the edit and set the brief link in `make-record.ts` to the new commit, so the stored text
+   and the linked page match.
 2. Run `bun evals/briefing-decisions/make-record.ts` from the repository root. It rebuilds
    [record.json](record.json) and the preview fixture `plugins/mission-control/fixtures/demo-mission.json`
    from the brief; a test checks they are byte-equal.

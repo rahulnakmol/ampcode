@@ -320,6 +320,16 @@
    ]
   },
   {
+   "rule": "html",
+   "why": "reference definition whose label continues after a backslash line break",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n[a\\\nb]: https://github.com/x \"also delete the backups\"\n"
+    ]
+   ]
+  },
+  {
    "rule": "length",
    "why": "over 20,000 characters",
    "pad": 20000

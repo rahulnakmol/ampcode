@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { canonical } from './contracts'
-import { validateBrief, type Brief } from './brief'
+import { LINK, validateBrief, type Brief } from './brief'
 import { parseMissionV2, type MissionV2 } from './mission-v2'
 
 export type Risk = 'low' | 'medium' | 'high' | 'unknown'
@@ -81,12 +81,13 @@ export function advance(previous: Mission, action: Action): Mission {
 		case 'design': {
 			const { spec, plan, technical, ux, brief } = action.bundle
 			for (const value of [spec, plan, technical, ux]) text(value)
-			if (!brief || typeof brief !== 'object' || Object.keys(brief).join() !== 'markdown') throw new Error('A decision brief is required: bundle.brief = { markdown } written with the briefing-decisions skill')
+			if (!brief || typeof brief !== 'object' || Object.keys(brief).sort().join() !== 'markdown,url') throw new Error('A decision brief is required: bundle.brief = { markdown, url }, written with the briefing-decisions skill and published as the document the owner reads')
 			validateBrief(brief.markdown)
+			if (typeof brief.url !== 'string' || !LINK.test(brief.url) || /[\x00-\x1f\x7f-\x9f]/.test(brief.url)) throw new Error('Decision brief rejected (url): bundle.brief.url must be an https URL on ampcode.com or github.com. See the briefing-decisions skill.')
 			if (!Array.isArray(action.criteria) || action.criteria.length === 0) throw new Error('Acceptance criteria required')
 			action.criteria.forEach(text)
 			if (new Set(action.criteria).size !== action.criteria.length) throw new Error('Acceptance criteria must be unique')
-			const bundle = { spec, plan, technical, ux, brief: { markdown: brief.markdown } }
+			const bundle = { spec, plan, technical, ux, brief: { markdown: brief.markdown, url: brief.url } }
 			s.design = { bundle, criteria: [...action.criteria], digest: digest([s.requirements, bundle, action.criteria]) }
 			delete s.approvedDesign; delete s.defense; delete s.candidate; invalidate(s)
 			s.phase = 'awaiting-design-approval'; break

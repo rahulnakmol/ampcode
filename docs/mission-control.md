@@ -209,8 +209,8 @@ Do not change shared infrastructure, access or credentials without specific appr
 ```
 
 Remove alternatives you do not authorize. A broad request does not fabricate the
-native exact-design or high-risk final-candidate receipt. In those dialogs tick
-each risk and type **APPROVE**, never a password or key.
+native exact-design or high-risk final-candidate receipt. In those dialogs open the
+linked brief or pull request and type **APPROVE**, never a password or key.
 
 ### What should happen after kickoff
 
@@ -296,30 +296,36 @@ repository-local exclude file, preserving existing rules, and stores records at
 | `mission_recover` | Owner-acknowledged recovery of a settled, unqueued attempt; revalidate before retry |
 
 Use actual text in the design bundle, not a mutable filename standing in for its
-contents. A v1 design needs `bundle.brief = { markdown }`: a decision brief written
-with the `briefing-decisions` skill. The plugin rejects a design without a valid
-brief, with an error that names the broken rule (front matter, headings, consistency,
-characters, raw HTML or other hidden text, banned codes, sentence length; reading ease is checked by
-`brief_check.py` only). Text from the record (requirements, criteria, design and
-evidence) is shown literally, so it cannot carry hidden HTML or reference lines;
-inside code spans the escapes for `&`, `<` and `[` show as typed. The brief is stored in the design, so the design digest and the
-approval cover its exact text. `mission_status` shows the brief only as its length
-and SHA-256.
+contents. A v1 design needs `bundle.brief = { markdown, url }`: `markdown` is a
+decision brief written with the `briefing-decisions` skill, and `url` is the document
+where the owner reads it (an `https` link on `ampcode.com` or `github.com`, such as an
+Amp document published from that text). The plugin rejects a design without a valid
+brief or link, with an error that names the broken rule (front matter, headings, consistency,
+characters, raw HTML or other hidden text, banned codes, sentence length, url; reading ease is
+checked by `brief_check.py` only). Both are stored in the design, so the design digest and the
+approval cover the exact text and link. The plugin cannot prove that the linked page shows the
+stored text; publish the page from the checked text. `mission_status` shows the brief only as
+its link, length and SHA-256.
 
 ### What the approval dialogs show
 
-- **Design:** title "Approve the design: <decision>". Collapsed: the decision, what
-  happens on yes and on no, and the numbered risks. "Read the brief" expands the full
-  brief, the acceptance criteria word for word, and a technical record (requirements,
-  spec, plan, technical and UX design). One unticked box per risk, the owner field,
-  and, when the brief has a `picture`, a link to it last.
-- **Merge:** title "Merge into dev: <decision>". Collapsed: pull request number, risk
-  level and try-it. Expanded: each criterion with its result, customer value, the
-  pull request URL, head and base. The owner field, then a link to the pull request.
-- **Refusal:** an unticked risk refuses approval and names it; some Amp clients may
-  not show tick boxes, so approve from the Amp web app. A wrong word refuses too.
-- **Older missions** designed before decision briefs keep their digests and show the
-  raw design record after a plain sentence that says so.
+The owner reads and decides in the brief document; the dialog only confirms. Title
+and message are fixed text, because Amp renders the message as Markdown and could hide
+words in agent-written text. Everything from the record, the brief and the evidence is
+in a read-only **Details** box, which shows plain text with line breaks and no Markdown.
+
+- **Design:** title "Approve the design". Step 1: "Open the brief you are approving"
+  (the brief link). Step 2: the owner field. Details: the decision, the brief link,
+  the acceptance criteria word for word, and the technical record (requirements, spec,
+  plan, technical and UX design).
+- **Merge:** title "Merge into dev", with the pull request number and risk level.
+  Step 1: open the pull request. Step 2: the owner field. Details: the decision,
+  try-it, each criterion with its result, customer value, the pull request URL, head
+  and base. `mission_present` shows the same details as a notification, for
+  information only.
+- **Refusal:** any word other than APPROVE, or closing the dialog, refuses approval.
+- **Older missions** designed before decision briefs keep their digests; the message
+  says so and Details holds the raw design record.
 
 To see the dialogs without a mission, run the command **Mission control: Preview
 approval dialogs** from the preview-only project plugin

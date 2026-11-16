@@ -183,7 +183,8 @@ passes the checker but hides the real decision in the technical record.
 
 **Adapt it:** edit the constants at the top of `brief_check.py` and `banned.json`, then the copy in
 `plugins/mission-control/lib/brief.ts`; a test fails when the lists differ. Without Amp, give the
-approver the Markdown file and open any HTML picture in a browser.
+approver the Markdown file and open any HTML picture in a browser. On Amp, publish it as a
+document; mission-control links that document in its approval dialog.
 [Skill instructions](../skills/briefing-decisions/SKILL.md).
 
 ## Distill: turn video sources into an original argument

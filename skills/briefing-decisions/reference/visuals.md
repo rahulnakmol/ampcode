@@ -15,7 +15,7 @@ carries a fact the text does not state; the approval covers the text.
 
 | Host | How |
 | --- | --- |
-| Amp | Publish it as a visual artifact and put its `https://ampcode.com/...` URL in the brief's `picture` field. mission-control shows it as a link after the owner field, labelled as an illustration |
+| Amp | Publish it as a visual artifact and put its `https://ampcode.com/...` URL in the brief's `picture` field. Show or link it in the brief document; mission-control's dialog does not show it |
 | GitHub | Commit it and use its `https://github.com/...` URL |
 | Claude Code, VS Code, Copilot app | Save it next to the brief and open it in a browser or VS Code's built-in browser. Leave `picture` empty unless it has a `github.com` URL |
 
