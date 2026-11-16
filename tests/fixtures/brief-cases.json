@@ -360,6 +360,76 @@
    ]
   },
   {
+   "rule": "markdown",
+   "why": "image alt text",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n![The agent also deletes the backups](https://github.com/a.png)\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "link title",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nSee [the plan](https://github.com/a \"The agent also deletes the backups\").\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "link title on the next line",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nSee [the plan](https://github.com/a\n'The agent also deletes the backups').\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "backtick fence with a label",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n```text The agent also deletes the backups\nBackups stay.\n```\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "tilde fence with a label in a list item",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n- ~~~ The agent also deletes the backups\n  Backups stay.\n  ~~~\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "table row wider than its header",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n| Step | Who |\n| --- | --- |\n| Move | Agent | The agent also deletes the backups |\n"
+    ]
+   ]
+  },
+  {
+   "rule": null,
+   "why": "plain link, unlabelled fence and a table that fits",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nSee [the plan](https://github.com/a).\n\n```\nBackups stay.\n```\n\n| Step | Who |\n| --- | --- |\n| Move | Agent |\n| Check | You |\n"
+    ]
+   ]
+  },
+  {
    "rule": "length",
    "why": "over 20,000 characters",
    "pad": 20000

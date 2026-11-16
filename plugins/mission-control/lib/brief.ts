@@ -29,6 +29,12 @@ const CONTROL = /[\x00-\x08\x0b-\x1f\x7f\x85\u2028\u2029\ufeff]/
 // A reference definition hides text even inside a list item or block quote, with an escaped ],
 // or with a label that continues on the next line after a backslash.
 const HIDDEN = /<(?:[!?]|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:/m
+// Markdown that renders some of its text invisibly: images (alt text), link titles, a label after a
+// code fence's opening backticks, and table rows with more cells than the header.
+const IMAGE = /!\[/
+const LINK_TITLE = /\]\([ \t\n]*(?:<[^>\n]*>|[^ \t\n)]*)[ \t\n]+["'(]/
+const FENCE_LABEL = /^[ \t>*+\-0-9.)]*(?:`{3,}|~{3,})[ \t]*[^ \t\n`~]/m
+const TABLE_DELIMITER = /^[ \t]*\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/
 const LIST_ITEM = /^[ \t]*(?:[-*+]|[0-9]+\.)[ \t]+(.*)$/
 const HEADING = /^## (.+?)[ \t]*$/
 const WORD = /[A-Za-z][A-Za-z'-]*|[0-9][0-9,.%]*/g
@@ -50,6 +56,28 @@ const trim = (text: string) => text.replace(/^[ \t]+|[ \t]+$/g, '')
 const unquote = (value: string) => {
 	const v = trim(value)
 	return v.length >= 2 && v[0] === v.at(-1) && `"'`.includes(v[0]) ? v.slice(1, -1) : v
+}
+function cells(line: string) {
+	let s = trim(line)
+	if (s.startsWith('|')) s = s.slice(1)
+	if (s.endsWith('|') && !s.endsWith('\\|')) s = s.slice(0, -1)
+	return s.split(/(?<!\\)\|/).length
+}
+/** The first Markdown construct that hides words, or undefined. Keep in step with brief_check.py. */
+function hiddenMarkdown(text: string) {
+	if (IMAGE.test(text)) return 'an image'
+	if (LINK_TITLE.test(text)) return 'a link title'
+	if (FENCE_LABEL.test(text)) return 'a code fence with a label'
+	const lines = text.split('\n')
+	for (let i = 1; i < lines.length; i++) {
+		if (!lines[i - 1].includes('|') || !TABLE_DELIMITER.test(lines[i]) || !lines[i].includes('-')) continue
+		const width = cells(lines[i - 1])
+		for (const row of lines.slice(i + 1)) {
+			if (!trim(row)) break
+			if (cells(row) > width) return 'a table row wider than its header'
+		}
+	}
+	return undefined
 }
 export function banned(text: string): string[] {
 	return COMPILED.filter(p => p.re.test(text)).map(p => p.name)
@@ -146,6 +174,8 @@ export function validateBrief(markdown: unknown): BriefData {
 		for (const item of data[key]) if (!listed.has(collapse(item))) throw new BriefError('consistency', `'${item}' from '${key}' must be a list item under '## ${heading}'`)
 	}
 	if (HIDDEN.test(front + prose + record)) throw new BriefError('html', 'raw HTML, HTML comments and link reference definitions are not allowed, except the technical record block itself')
+	const hiding = hiddenMarkdown(front + prose + record)
+	if (hiding) throw new BriefError('markdown', `${hiding} can hide words; use no images, link titles, labelled code fences or table rows wider than their header`)
 	for (const [part, where] of [[front, 'front matter'], [prose, 'prose']]) {
 		const names = banned(part)
 		if (names.length) throw new BriefError('banned', `${names[0]} pattern in the ${where}; move codes to the technical record`)

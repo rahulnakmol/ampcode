@@ -301,7 +301,8 @@ decision brief written with the `briefing-decisions` skill, and `url` is the doc
 where the owner reads it (an `https` link on `ampcode.com` or `github.com`, such as an
 Amp document published from that text). The plugin rejects a design without a valid
 brief or link, with an error that names the broken rule (front matter, headings, consistency,
-characters, raw HTML or other hidden text, banned codes, sentence length, url; reading ease is
+characters, raw HTML or other hidden text, Markdown that hides words (images, link titles,
+labelled code fences, table rows wider than their header), banned codes, sentence length, url; reading ease is
 checked by `brief_check.py` only). Both are stored in the design, so the design digest and the
 approval cover the exact text and link. The plugin cannot prove that the linked page shows the
 stored text; publish the page from the checked text. `mission_status` shows the brief only as

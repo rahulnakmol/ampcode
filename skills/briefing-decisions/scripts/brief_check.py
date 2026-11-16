@@ -39,6 +39,12 @@ CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f\x85\u2028\u2029\ufeff]")
 # A reference definition hides text even inside a list item or block quote, with an escaped ],
 # or with a label that continues on the next line after a backslash.
 HIDDEN = re.compile(r"<(?:[!?]|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:", re.M)
+# Markdown that renders some of its text invisibly: images (alt text), link titles, a label after a
+# code fence's opening backticks, and table rows with more cells than the header.
+IMAGE = re.compile(r"!\[")
+LINK_TITLE = re.compile(r"\]\([ \t\n]*(?:<[^>\n]*>|[^ \t\n)]*)[ \t\n]+[\"'(]")
+FENCE_LABEL = re.compile(r"^[ \t>*+\-0-9.)]*(?:`{3,}|~{3,})[ \t]*[^ \t\n`~]", re.M)
+TABLE_DELIMITER = re.compile(r"^[ \t]*\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$")
 MAX_CHARS = 20_000
 MAX_SUMMARY_WORDS = 150
 MAX_SENTENCE_WORDS = 25
@@ -192,6 +198,33 @@ def readable_prose(text):
 WORD = re.compile(r"[A-Za-z][A-Za-z'-]*|[0-9][0-9,.%]*")
 
 
+def cells(line):
+    s = trim(line)
+    s = s[1:] if s.startswith("|") else s
+    s = s[:-1] if s.endswith("|") and not s.endswith("\\|") else s
+    return len(re.split(r"(?<!\\)\|", s))
+
+
+def hidden_markdown(text):
+    """Name the first Markdown construct that hides words, or None. Keep in step with lib/brief.ts."""
+    if IMAGE.search(text):
+        return "an image"
+    if LINK_TITLE.search(text):
+        return "a link title"
+    if FENCE_LABEL.search(text):
+        return "a code fence with a label"
+    lines = text.split("\n")
+    for i in range(1, len(lines)):
+        if "|" in lines[i - 1] and TABLE_DELIMITER.match(lines[i]) and "-" in lines[i]:
+            width = cells(lines[i - 1])
+            for row in lines[i + 1:]:
+                if not trim(row):
+                    break
+                if cells(row) > width:
+                    return "a table row wider than its header"
+    return None
+
+
 def sentences(prose):
     return [s for s in re.split(r"(?<=[.!?:])[ \t]+", readable_prose(prose)) if re.search(r"[A-Za-z]", s)]
 
@@ -228,6 +261,9 @@ def check(text):
         check_consistency(data, sections)
         if HIDDEN.search(front + prose + record):
             raise Problem("html: raw HTML, HTML comments and link reference definitions are not allowed, except the technical record block itself")
+        found = hidden_markdown(front + prose + record)
+        if found:
+            raise Problem(f"markdown: {found} can hide words; use no images, link titles, labelled code fences or table rows wider than their header")
     except Problem as problem:
         return [str(problem)]
     problems = []

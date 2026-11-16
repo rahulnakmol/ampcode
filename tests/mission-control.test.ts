@@ -456,12 +456,13 @@ describe('decision briefs', () => {
 		// Round-2 hiding payloads: a backslash before a link, a fence info string, a wide table row,
 		// a reference definition and an HTML comment. Each hides its words when rendered as Markdown.
 		const hostile = (name: string) => `${name} \\[ok](/u "hidden ${name}")\n\`\`\`hidden-${name} more\n\`\`\`\na | b\n--|--\nc | d | hidden ${name}\n\n[${name}]: /u "hidden ${name}"\n<!-- hidden ${name} -->\n    indented ${name}`
-		const decision = 'Approve [moving](https://github.com/a "hidden decision") the sales demo website from the office computer to a paid hosting service.'
+		// Markdown the brief rules allow; it must still never reach the title or message.
+		const decision = 'Approve *moving* the [sales demo](https://github.com/a) website from the office computer to a paid hosting service.'
 		const markdown = brief.markdown.replace(/^decision: .*$/m, `decision: ${decision}`)
 		let s = advance(createMission('T-test', hostile('requirement')), { type: 'design', bundle: { spec: hostile('spec'), plan: hostile('plan'), technical: hostile('technical'), ux: hostile('ux'), brief: { markdown, url: brief.url } }, criteria: [hostile('criterion')] })
 		const shown = (d: Dialog, values: string[]) => {
 			const o = confirmOptions(d)
-			expect(`${o.title}\n${o.message}`).not.toContain('hidden')
+			expect(`${o.title}\n${o.message}`).not.toMatch(/hidden|sales demo/)
 			const details = o.fields.find((f: any) => f.name === 'details') as any
 			expect(details).toMatchObject({ readOnly: true, multiline: true, optional: true })
 			for (const v of values) expect(details.value).toContain(v)

@@ -165,7 +165,8 @@ and run the isolation check once. [Skill instructions](../skills/goldfishing/SKI
 
 **What it is:** a fixed brief shape with ten headings, a front-matter summary and a closing
 technical record, plus `scripts/brief_check.py`, which rejects long sentences, hard text, missing
-sections and codes such as hashes or task IDs outside the technical record.
+sections, codes such as hashes or task IDs outside the technical record, and any HTML or Markdown
+that hides words when the brief is rendered.
 
 **Use when:** anyone must approve, sign off or choose: a design, merge, release, budget, vendor
 or roadmap. `delivering` uses it for every mission-control design approval.
