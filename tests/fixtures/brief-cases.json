@@ -250,6 +250,36 @@
    ]
   },
   {
+   "rule": "html",
+   "why": "comment in the decision",
+   "edits": [
+    [
+     "decision: Approve moving",
+     "decision: Approve <!-- and delete backups --> moving"
+    ]
+   ]
+  },
+  {
+   "rule": "html",
+   "why": "hidden span in yes",
+   "edits": [
+    [
+     "yes: The agent moves",
+     "yes: The agent <span hidden>deletes backups</span> moves"
+    ]
+   ]
+  },
+  {
+   "rule": "html",
+   "why": "link reference definition in the prose",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n[//]: # (The agent also deletes the backups.)\n"
+    ]
+   ]
+  },
+  {
    "rule": "length",
    "why": "over 20,000 characters",
    "pad": 20000
@@ -301,6 +331,36 @@
     [
      "Nothing changes.",
      "Nothing\u00a0changes."
+    ]
+   ]
+  },
+  {
+   "rule": "characters",
+   "why": "byte order mark",
+   "edits": [
+    [
+     "Nothing changes.",
+     "Nothing\ufeffchanges."
+    ]
+   ]
+  },
+  {
+   "rule": "consistency",
+   "why": "no-break space inside a front-matter risk is part of a word",
+   "edits": [
+    [
+     "  - The demo site is offline for up to one hour during the move.\n",
+     "  - The demo site is offline\u00a0for up to one hour during the move.\n"
+    ]
+   ]
+  },
+  {
+   "rule": "headings",
+   "why": "heading with a trailing no-break space",
+   "edits": [
+    [
+     "## What changes\n",
+     "## What changes\u00a0\n"
     ]
    ]
   },
@@ -365,6 +425,36 @@
     [
      "Nothing changes.",
      "Nothing changes and nothing moves and nothing moves and nothing moves and nothing moves and nothing moves and nothing moves and nothing moves and nothing moves today."
+    ]
+   ]
+  },
+  {
+   "rule": "sentence-length",
+   "why": "sentence of 26 words",
+   "edits": [
+    [
+     "Nothing changes.",
+     "One two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twentyone twentytwo twentythree twentyfour twentyfive twentysix."
+    ]
+   ]
+  },
+  {
+   "rule": null,
+   "why": "sentence of 25 words",
+   "edits": [
+    [
+     "Nothing changes.",
+     "One two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twentyone twentytwo twentythree twentyfour twentyfive."
+    ]
+   ]
+  },
+  {
+   "rule": null,
+   "why": "long text inside a code fence is not a sentence",
+   "edits": [
+    [
+     "Nothing changes.",
+     "Nothing changes.\n\n```\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n```\n"
     ]
    ]
   },

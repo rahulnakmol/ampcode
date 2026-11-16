@@ -12,7 +12,7 @@ below passes the checker; a test keeps it that way.
 | headings | Exactly the ten `##` headings of the skeleton, in order. `###` subheadings are fine |
 | technical-record | One `<details><summary>Technical record</summary>` block ends the file |
 | consistency | Each `risks` item is, word for word, a list item under `## Risks you accept`; each `excluded` item under `## Not included` |
-| html | No raw HTML or HTML comments anywhere, except the technical record's own `<details>` lines |
+| html | No raw HTML, HTML comments or link reference definitions (`[label]: ...` lines) anywhere, including the front matter, except the technical record's own `<details>` lines |
 | length | At most 20,000 characters |
 | characters | Plain newlines only: no carriage returns, line separators or other control characters |
 | sentence-length | No sentence before the technical record has more than 25 words |

@@ -299,7 +299,7 @@ Use actual text in the design bundle, not a mutable filename standing in for its
 contents. A v1 design needs `bundle.brief = { markdown }`: a decision brief written
 with the `briefing-decisions` skill. The plugin rejects a design without a valid
 brief, with an error that names the broken rule (front matter, headings, consistency,
-characters, raw HTML, banned codes, sentence length; reading ease is checked by
+characters, raw HTML or other hidden text, banned codes, sentence length; reading ease is checked by
 `brief_check.py` only). Text from the record (requirements, criteria, design and
 evidence) is shown literally, so it cannot carry hidden HTML. The brief is stored in the design, so the design digest and the
 approval cover its exact text. `mission_status` shows the brief only as its length

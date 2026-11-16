@@ -24,7 +24,8 @@ const LIMITS: Record<string, number> = { decision: 30, yes: 40, no: 40 }
 const LIST_LIMITS: Record<string, number> = { risks: 30, excluded: 20 }
 const PICTURE = /^https:\/\/(ampcode\.com|github\.com)(\/[^ \t\n]*)?$/
 const CONTROL = /[\x00-\x08\x0b-\x1f\x7f\x85\u2028\u2029\ufeff]/
-const HTML = /<(?:!--|[A-Za-z/])/
+// Raw HTML, HTML comments and Markdown link reference definitions all render as hidden text.
+const HIDDEN = /<(?:!--|[A-Za-z/])|^ {0,3}\[[^\]]*\]:/m
 const LIST_ITEM = /^[ \t]*(?:[-*+]|[0-9]+\.)[ \t]+(.*)$/
 const HEADING = /^## (.+?)[ \t]*$/
 const WORD = /[A-Za-z][A-Za-z'-]*|[0-9][0-9,.%]*/g
@@ -109,7 +110,7 @@ function sentences(prose: string) {
 /** Validate a decision brief and return its front matter. Throws a plain error naming the rule.
  * Same rules and order as brief_check.py, except reading ease, which stays in Python. */
 export function validateBrief(markdown: unknown): BriefData {
-	if (typeof markdown !== 'string' || !markdown.trim()) throw new BriefError('front-matter', 'bundle.brief.markdown must be the brief text')
+	if (typeof markdown !== 'string') throw new BriefError('front-matter', 'bundle.brief.markdown must be the brief text')
 	const length = [...markdown].length
 	if (length > 20_000) throw new BriefError('length', `${length} characters; limit 20000`)
 	if (CONTROL.test(markdown)) throw new BriefError('characters', 'use plain newlines (no carriage returns, line separators or control characters)')
@@ -139,7 +140,7 @@ export function validateBrief(markdown: unknown): BriefData {
 		const listed = new Set(sections[heading].map(l => LIST_ITEM.exec(l)?.[1]).filter((v): v is string => v !== undefined).map(collapse))
 		for (const item of data[key]) if (!listed.has(collapse(item))) throw new BriefError('consistency', `'${item}' from '${key}' must be a list item under '## ${heading}'`)
 	}
-	if (HTML.test(prose + record)) throw new BriefError('html', 'raw HTML and HTML comments are not allowed, except the technical record block itself')
+	if (HIDDEN.test(front + prose + record)) throw new BriefError('html', 'raw HTML, HTML comments and link reference definitions are not allowed, except the technical record block itself')
 	for (const [part, where] of [[front, 'front matter'], [prose, 'prose']]) {
 		const names = banned(part)
 		if (names.length) throw new BriefError('banned', `${names[0]} pattern in the ${where}; move codes to the technical record`)
@@ -193,7 +194,7 @@ export function designDialog(s: Mission): Dialog {
 }
 
 export function summaryMarkdown(d: BriefData) {
-	return [`**You are deciding:** ${d.decision}`, `**If you say yes:** ${d.yes}`, `**If you say no:** ${d.no}`, `**Risks you accept:**\n\n${numbered(d.risks)}`].join('\n\n')
+	return [`**You are deciding:** ${plain(d.decision)}`, `**If you say yes:** ${plain(d.yes)}`, `**If you say no:** ${plain(d.no)}`, `**Risks you accept:**\n\n${numbered(d.risks)}`].join('\n\n')
 }
 
 export function mergeDialog(s: Mission): Dialog {

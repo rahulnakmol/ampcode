@@ -81,11 +81,16 @@ class Briefs(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             bad = Path(tmp) / "bad.md"
             bad.write_text(replace("## How to undo it", "## Undo"))
+            crlf = Path(tmp) / "crlf.md"
+            crlf.write_bytes(GOOD.replace("\n", "\r\n").encode())
+            cr = subprocess.run([sys.executable, str(SCRIPT), str(crlf)], capture_output=True, text=True)
             ok = subprocess.run([sys.executable, str(SCRIPT), str(BRIEF)], capture_output=True, text=True)
             no = subprocess.run([sys.executable, str(SCRIPT), str(bad)], capture_output=True, text=True)
         self.assertEqual((ok.returncode, ok.stdout.strip()), (0, "pass"))
         self.assertEqual(no.returncode, 1)
         self.assertTrue(no.stdout.startswith("headings:"), no.stdout)
+        self.assertEqual(cr.returncode, 1)
+        self.assertTrue(cr.stdout.startswith("characters:"), cr.stdout)
 
 
 if __name__ == "__main__":

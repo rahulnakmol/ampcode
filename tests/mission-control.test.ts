@@ -7,7 +7,7 @@ import { createMission, advance, blockers, fingerprint, saveMission, loadMission
 import { loadRecord, saveRecord } from '../plugins/mission-control/lib/mission'
 import { previewMigration, migrateMission } from '../plugins/mission-control/lib/migration'
 import { parseManifest, intentDigest } from '../plugins/mission-control/lib/contracts'
-import { BANNED, banned, designDialog, mergeDialog, validateBrief } from '../plugins/mission-control/lib/brief'
+import { BANNED, banned, designDialog, mergeDialog, summaryMarkdown, validateBrief } from '../plugins/mission-control/lib/brief'
 import { createMissionV2, advanceV2, blockersV2, fingerprintV2, parseMissionV2 } from '../plugins/mission-control/lib/mission-v2'
 
 const manifest = {
@@ -453,16 +453,22 @@ describe('decision briefs', () => {
 		}
 	})
 	test('dialogs show supplied text literally, so it cannot hide HTML', () => {
-		let s = advance(createMission('T-test', 'Outcome <!-- hidden requirement -->'), { type: 'design', bundle: { ...bundle, ux: 'UX <!-- hidden ux -->' }, criteria: ['Rows <span hidden>and deletes backups</span>'] })
+		const hidden = (name: string) => `${name} & <!-- hidden ${name} -->`
+		let s = advance(createMission('T-test', hidden('requirement')), { type: 'design', bundle: { ...bundle, spec: hidden('spec'), plan: hidden('plan'), technical: hidden('technical'), ux: hidden('ux') }, criteria: ['Rows <span hidden>and deletes backups</span>'] })
 		const d = designDialog(s)
 		expect(d.message).not.toMatch(/<!--|<span/)
-		for (const text of ['Outcome &lt;!-- hidden requirement -->', 'UX &lt;!-- hidden ux -->', '1. Rows &lt;span hidden>and deletes backups&lt;/span>']) expect(d.message).toContain(text)
+		for (const name of ['requirement', 'spec', 'plan', 'technical', 'ux']) expect(d.message).toContain(`${name} &amp; &lt;!-- hidden ${name} -->`)
+		expect(d.message).toContain('1. Rows &lt;span hidden>and deletes backups&lt;/span>')
 		expect(d.message.startsWith('**You are deciding:**')).toBe(true)
 		s = advance(advance(advance(advance(s, { type: 'approve-design', digest: s.design!.digest }), { type: 'defense', digest: s.design!.digest, record: 'Defended.' }), { type: 'build' }), { type: 'candidate', candidate })
 		s = advance(s, { type: 'review', gate: 1, fingerprint: fingerprint(s), passed: true, reviewer: 'T-r', record: 'ok' })
-		s = advance(s, { type: 'evidence', fingerprint: fingerprint(s), results: ['Done <!-- and more -->'], tryIt: 'Try <b>it</b>', value: 'Value' })
+		s = advance(s, { type: 'evidence', fingerprint: fingerprint(s), results: ['Done <!-- and more -->'], tryIt: 'Try <b>it</b>', value: 'Value <i>x</i>' })
 		const m = mergeDialog(s)
-		expect(m.message + m.collapsedMessage).not.toMatch(/<!--|<b>/)
+		expect(m.message + m.collapsedMessage).not.toMatch(/<!--|<b>|<i>/)
+		const { brief: _, ...noBrief } = s.design!.bundle
+		const old = { ...s, design: { ...s.design!, bundle: noBrief } }
+		for (const dialog of [designDialog(old), mergeDialog(old)]) expect(dialog.message).not.toMatch(/<!--|<span|<b>/)
+		expect(summaryMarkdown({ decision: 'A <!-- d -->', yes: 'Y <i>', no: 'N <b>', risks: ['R <!-- r -->'], excluded: ['E'] })).not.toMatch(/<!--|<i>|<b>/)
 	})
 	test('the synthetic briefs pass', () => {
 		expect(validateBrief(brief.markdown).risks).toHaveLength(3)
