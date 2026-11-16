@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "thread": "T-test",
+  "requirements": "Resume exports",
+  "phase": "awaiting-design-approval",
+  "mode": "auto",
+  "generation": 0,
+  "riskFloor": "unknown",
+  "reviews": [],
+  "events": [
+    {
+      "sequence": 1,
+      "at": "2026-11-16T06:18:27.720Z",
+      "type": "start",
+      "fingerprint": "4fe29e8e7cf8b4fad3d74b152597a87a2ac1c901f8454488ae1f5427b148f9ca"
+    },
+    {
+      "sequence": 2,
+      "at": "2026-11-16T06:18:27.721Z",
+      "type": "design",
+      "fingerprint": "d9332b408052b50d967b4419bf831aabf49069fe2b73c1a60a1e0c418502ce3a"
+    }
+  ],
+  "design": {
+    "bundle": {
+      "spec": "Export rows exactly",
+      "plan": "Test, fix, review",
+      "technical": "Offsets",
+      "ux": "Actionable CLI errors"
+    },
+    "criteria": [
+      "Exact rows"
+    ],
+    "digest": "d6595585a42cf933d32d9b3f132b9a8b4f7c743e5e88e4bf17551c4302ff8267"
+  }
+}

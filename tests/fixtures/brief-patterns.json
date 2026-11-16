@@ -1,0 +1,30 @@
+{
+  "about": "Lines that must pass or fail the banned patterns in skills/briefing-decisions/scripts/banned.json. tests/test_briefing_decisions.py and tests/mission-control.test.ts both read this file, so the Python checker and the plugin agree.",
+  "pass": [
+    "1500000",
+    "20261116",
+    "defaced",
+    "T-shirt",
+    "Claude Code",
+    "GPT-4o",
+    "a sonnet",
+    "- **IPv6:** a network address",
+    "FY2026: plan",
+    "Q3: sales dip",
+    "FY26: budget is fixed",
+    "If you say \"yes\": we move.",
+    "the backup check (H04)"
+  ],
+  "fail": [
+    ["H04: backup", "bare-code"],
+    ["1. H04: backup", "bare-code"],
+    ["**H04:** backup", "bare-code"],
+    ["2. H04: backup", "bare-code"],
+    ["anthropic/claude-fable-5-2", "model-slug"],
+    ["{\"spec\": \"x\"}", "json"],
+    ["\"passed\": true", "json"],
+    ["Design 8745ad216de3 was approved", "hex"],
+    ["see T-01a1d081-12a6-75af", "thread-id"],
+    ["task TU-034yQcGK8cb5", "task-id"]
+  ]
+}

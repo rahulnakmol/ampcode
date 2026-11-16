@@ -7,6 +7,7 @@ import { createMission, advance, blockers, fingerprint, saveMission, loadMission
 import { loadRecord, saveRecord } from '../plugins/mission-control/lib/mission'
 import { previewMigration, migrateMission } from '../plugins/mission-control/lib/migration'
 import { parseManifest, intentDigest } from '../plugins/mission-control/lib/contracts'
+import { BANNED, banned, validateBrief } from '../plugins/mission-control/lib/brief'
 import { createMissionV2, advanceV2, blockersV2, fingerprintV2, parseMissionV2 } from '../plugins/mission-control/lib/mission-v2'
 
 const manifest = {
@@ -41,7 +42,8 @@ describe('v2 manifest contracts', () => {
 	})
 })
 
-const bundle = { spec: 'Export exact rows; reject changed source.', plan: 'Add failure harness, then repair.', technical: 'Checkpoint byte offsets.', ux: 'CLI errors preserve prior files.' }
+const brief = { markdown: readFileSync(join(import.meta.dir, '../evals/briefing-decisions/brief.md'), 'utf8') }
+const bundle = { spec: 'Export exact rows; reject changed source.', plan: 'Add failure harness, then repair.', technical: 'Checkpoint byte offsets.', ux: 'CLI errors preserve prior files.', brief }
 const candidate = { repo: 'acme/app', pr: 7, head: 'a'.repeat(40), base: 'b'.repeat(40), risk: 'low' as const }
 function v2Built(two = false) {
 	const m = structuredClone(manifest)
@@ -421,5 +423,30 @@ describe('mission public lifecycle', () => {
 			writeFileSync(path, '{broken')
 			expect(() => loadMission(path, 'T-test')).toThrow()
 		} finally { rmSync(dir, { recursive: true }) }
+	})
+})
+
+describe('decision briefs', () => {
+	const read = (path: string) => readFileSync(join(import.meta.dir, '..', path), 'utf8')
+	test('the plugin and brief_check.py share one banned list and agree on the shared lines', () => {
+		expect(BANNED).toEqual(JSON.parse(read('skills/briefing-decisions/scripts/banned.json')).patterns)
+		const lines = JSON.parse(read('tests/fixtures/brief-patterns.json'))
+		for (const line of lines.pass) expect([line, banned(line)]).toEqual([line, []])
+		for (const [line, rule] of lines.fail) expect(banned(line)).toContain(rule)
+	})
+	test('the synthetic briefs pass', () => {
+		expect(validateBrief(brief.markdown).risks).toHaveLength(3)
+		const example = /## Filled example[\s\S]*?````markdown\n([\s\S]*?)````/.exec(read('skills/briefing-decisions/reference/template.md'))![1]
+		expect(validateBrief(example).decision).toContain('shared calendar')
+	})
+	test('the digest covers the brief text, so approving one brief does not approve another', () => {
+		const one = advance(createMission('T-test', 'Outcome'), { type: 'design', bundle, criteria: ['Exact rows'] })
+		const approved = advance(one, { type: 'approve-design', digest: one.design!.digest })
+		const other = { ...bundle, brief: { markdown: brief.markdown.replace('ten minutes', 'twenty minutes') } }
+		const two = advance(approved, { type: 'design', bundle: other, criteria: ['Exact rows'] })
+		expect(two.design!.digest).not.toBe(one.design!.digest)
+		expect(two.approvedDesign).toBeUndefined()
+		expect(blockers(two)).toContain('Owner design approval required')
+		expect(() => advance(two, { type: 'approve-design', digest: one.design!.digest })).toThrow('stale')
 	})
 })

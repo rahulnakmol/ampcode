@@ -1,0 +1,11 @@
+{
+  "about": "Patterns a decision brief may not contain in its front matter or prose. ASCII only; apply each pattern with multi-line matching, so ^ starts a line. Every pattern is case-insensitive except bare-code. mission-control's lib/brief.ts keeps the same list; a test fails if they differ.",
+  "patterns": [
+    {"name": "hex", "pattern": "\\b(?=[0-9a-f]*[0-9])(?=[0-9a-f]*[a-f])[0-9a-f]{7,}\\b", "ignoreCase": true},
+    {"name": "thread-id", "pattern": "\\bT-[0-9a-f]{8}-", "ignoreCase": true},
+    {"name": "task-id", "pattern": "\\bTU-[A-Za-z0-9]{6,}", "ignoreCase": true},
+    {"name": "json", "pattern": "\"[A-Za-z_][A-Za-z0-9_]*\"\\s*:\\s*([\\[{\"0-9]|true|false|null)", "ignoreCase": true},
+    {"name": "model-slug", "pattern": "\\b(anthropic|openai|google|google-vertex|xai|meta|moonshotai|alibaba|deepseek|minimax|nvidia|zhipuai)/[a-z0-9._-]+", "ignoreCase": true},
+    {"name": "bare-code", "pattern": "^[ \\t]*(?:(?:[-*+]|[0-9]+\\.)[ \\t]+)?(?:\\*\\*)?(?!(?:Q[1-4]|H[12]|FY[0-9]{2,4}|V[0-9])(?:\\*\\*)?:)[A-Z]{1,3}-?[0-9]{1,4}(?:\\*\\*)?:", "ignoreCase": false}
+  ]
+}

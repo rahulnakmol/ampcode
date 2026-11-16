@@ -209,8 +209,8 @@ Do not change shared infrastructure, access or credentials without specific appr
 ```
 
 Remove alternatives you do not authorize. A broad request does not fabricate the
-native exact-design or high-risk final-candidate receipt. In those dialogs type
-**ACKNOWLEDGE**, never a password or key.
+native exact-design or high-risk final-candidate receipt. In those dialogs tick
+each risk and type **APPROVE**, never a password or key.
 
 ### What should happen after kickoff
 
@@ -296,7 +296,33 @@ repository-local exclude file, preserving existing rules, and stores records at
 | `mission_recover` | Owner-acknowledged recovery of a settled, unqueued attempt; revalidate before retry |
 
 Use actual text in the design bundle, not a mutable filename standing in for its
-contents. Criteria and result entries correspond by array position. Evidence
+contents. A v1 design needs `bundle.brief = { markdown }`: a decision brief written
+with the `briefing-decisions` skill. The plugin rejects a design without a valid
+brief, with an error that names the broken rule (front matter, headings, consistency,
+raw HTML, banned codes; reading ease and sentence length are checked by
+`brief_check.py`). The brief is stored in the design, so the design digest and the
+approval cover its exact text. `mission_status` shows the brief only as its length
+and SHA-256.
+
+### What the approval dialogs show
+
+- **Design:** title "Approve the design: <decision>". Collapsed: the decision, what
+  happens on yes and on no, and the numbered risks. "Read the brief" expands the full
+  brief, the acceptance criteria verbatim, and a technical record (requirements,
+  spec, plan, technical and UX design). One unticked box per risk, the owner field,
+  and, when the brief has a `picture`, a link to it last.
+- **Merge:** title "Merge into dev: <decision>". Collapsed: pull request number, risk
+  level and try-it. Expanded: each criterion with its result, customer value, the
+  pull request URL, head and base. The owner field, then a link to the pull request.
+- **Refusal:** an unticked risk refuses approval and names it; some Amp clients may
+  not show tick boxes, so approve from the Amp web app. A wrong word refuses too.
+- **Older missions** designed before decision briefs keep their digests and show the
+  raw design record under a plain heading.
+
+To see the dialogs without a mission, run the command **Mission control: Preview
+approval dialogs** from the preview-only project plugin
+[`.amp/plugins/mission-control-preview.ts`](../.amp/plugins/mission-control-preview.ts).
+It shows both dialogs for a synthetic mission and records nothing. Criteria and result entries correspond by array position. Evidence
 entries must contain implementation locations, observed outcomes, commands and
 artifact references, including limitations. The plugin checks lifecycle and
 completeness; it does not infer whether arbitrary prose is true. Publish the
@@ -305,7 +331,7 @@ evidence on the PR as well: `mission_present` displays it in Amp, not GitHub.
 The installed API cannot authenticate an arbitrary multiplayer mission initiator.
 Version one requires the initiator to be the thread owner, or the owner explicitly
 to adopt the mission. The confirmation has a masked `secret: true` text field
-because the API documents that field as owner-only. Type **ACKNOWLEDGE**, never a
+because the API documents that field as owner-only. Type **APPROVE**, never a
 password, key, or other secret. An ordinary `requireHuman` dialog is not owner-only.
 No responder ID is returned or invented. These local acknowledgments are useful
 workflow records, not externally verifiable authentication receipts.

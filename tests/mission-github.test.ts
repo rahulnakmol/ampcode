@@ -1,11 +1,15 @@
 import { expect, test } from 'bun:test'
 import { assertMergeReady, GitHub } from '../plugins/mission-control/lib/github'
 import { createMission, advance } from '../plugins/mission-control/lib/mission'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+const brief = { markdown: readFileSync(join(import.meta.dir, '../evals/briefing-decisions/brief.md'), 'utf8') }
 
 const head = 'a'.repeat(40), base = 'b'.repeat(40)
 function fixture() {
 	let mission = createMission('T-fixture', 'Export safely')
-	mission = advance(mission, { type: 'design', bundle: { spec: 'Exact rows', plan: 'Test then fix', technical: 'Offsets', ux: 'CLI recovery' }, criteria: ['Exact rows'] })
+	mission = advance(mission, { type: 'design', bundle: { spec: 'Exact rows', plan: 'Test then fix', technical: 'Offsets', ux: 'CLI recovery', brief }, criteria: ['Exact rows'] })
 	mission.candidate = { repo: 'acme/app', pr: 7, head, base, risk: 'low' }
 	const pr = { state: 'open', merged: false, isMergeQueueEnabled: false, isInMergeQueue: false, mergeQueueEntry: null, head: { sha: head }, base: { sha: base, ref: 'dev', repo: { full_name: 'acme/app' } } }
 	const protection = { enforce_admins: { enabled: true }, required_pull_request_reviews: { bypass_pull_request_allowances: { users: [], teams: [], apps: [] } }, required_status_checks: { strict: true, contexts: ['test'], checks: [{ context: 'test', app_id: 15368 }] } }

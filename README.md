@@ -145,7 +145,8 @@ Recommended invocation: Medium mode with Fast where supported (a user preference
 [`skills/grilling/`](./skills/grilling/SKILL.md) interviews you at the start of a task to turn a vague or partly detailed requirement, plan, or question into a confirmed, agent-ready brief. It sizes the request first (clear requests proceed without questions), looks up facts instead of asking, asks one to three high-impact questions per round with a recommended answer for each, runs an edge-case and pre-mortem pass using [`reference/edge-cases.md`](./skills/grilling/reference/edge-cases.md), and keeps grilling until a concreteness checklist passes. It ends with a confirmed brief covering the final shape, scope, requirements, edge cases, and verification, plus a step-by-step work plan and a ready-to-paste prompt for the agent that picks it up. It is model-invoked: it triggers at the start of most planning, design, build, or decision tasks and on phrases such as "grill me", "red-team this", "pre-mortem", "what could go wrong", "spec this out", or "write a PRD", and skips clear, small requests. Sources and design choices are in [`docs/grilling-research.md`](./docs/grilling-research.md). LLM-judged trigger and behavior evaluations live in [`evals/grilling/`](./evals/grilling/README.md), with results in [`docs/grilling-evaluation.md`](./docs/grilling-evaluation.md).
 
 For consequential handoffs, the Elephant-Goldfish adaptation separates the problem from the
-grading criteria and tests the brief with a fresh, read-only reader. Missing context is repaired
+grading criteria and tests the brief with a fresh, read-only reader through
+[`goldfishing`](./skills/goldfishing/SKILL.md). Missing context is repaired
 in the brief, not explained privately to the reviewer. Clear small edits skip this overhead.
 See the [paired scenario evaluation](./evals/egm/README.md) and
 [source rationale](./docs/delivering-research.md#elephant-goldfish-adaptation).
@@ -198,8 +199,11 @@ safe resumption; missing evidence, stale approvals, and ambiguous side effects d
 Before owner design acknowledgment, fresh-context reviewers check comprehension, design risks
 against source, and implementation readiness. Gate two and resume also check spec/code drift,
 distinguishing defects from approved changes. These checks retain both build-review gates and
-never turn an exhausted review budget into risk acceptance. The mission plugin's runtime schema
-is unchanged; these are skill instructions, not a new automatically enforced plugin gate.
+never turn an exhausted review budget into risk acceptance. The reviews follow
+[`goldfishing`](./skills/goldfishing/SKILL.md). The owner signs off from a plain-English decision
+brief written with [`briefing-decisions`](./skills/briefing-decisions/SKILL.md): the plugin
+requires it in the design, shows it in the approval dialog with one tick box per risk, and binds
+the approval to its exact text.
 
 Communication supports standard/formal records and editorial explanations with descriptive
 headers, both guided by ASD-STE100 principles without an unvalidated compliance claim. ELI5 short
@@ -243,6 +247,38 @@ Install/publish `grilling` alongside it for the expectation loop; if unavailable
 the dependency rather than silently installing it. Source integration does not publish skills to
 Amp Personal Skills or the coordinator to Amp Personal Plugins. Rolling, stable release, deployment, and Personal publication retain
 their separate gates.
+
+## Goldfishing
+
+[`skills/goldfishing/`](./skills/goldfishing/SKILL.md) is the one fresh-reader review protocol the
+other skills call. A reviewer with no access to the author's conversation reads only the artifact,
+its sources and the grading criteria. It covers four lenses (comprehension, critic, readiness,
+novice reader), Blocker/Major/Nit severity, how each finding is fixed, contested, escalated or
+declined, round limits, what happens when a reviewer fails, a codeword isolation check, and the
+review record. [`reference/hosts.md`](./skills/goldfishing/reference/hosts.md) shows how to start a
+fresh reviewer on Amp, Claude Code, VS Code with Copilot and the Copilot app (the last three from
+documentation, not tested). `grilling`, `planning` and `delivering` add their own questions; a
+test keeps the generic rules in this one skill.
+
+**Use it:** "Use goldfishing to review `docs/plan.md` with the critic lens against
+`src/billing/`." **Adapt it:** add questions and change the round cap in the calling skill; change
+the novice persona to match the real approver.
+
+## Briefing decisions
+
+[`skills/briefing-decisions/`](./skills/briefing-decisions/SKILL.md) writes a plain-English
+decision brief for any human sign-off: what you decide, what happens on yes and on no, what
+changes, what done looks like, what was and was not checked, the risks you accept, what is not
+included, how to undo it, and a glossary. Codes, hashes and IDs go into a closing technical
+record. `scripts/brief_check.py` (standard library) checks the structure, sentence length,
+reading ease and a list of banned codes. `mission-control` requires a brief in every new design
+and shows it in the approval dialog. On a synthetic case, a fresh non-technical reader answered
+all four sign-off questions from the brief and two of four from today's dialog text
+([results](./evals/briefing-decisions/results.md)).
+
+**Use it:** "Use briefing-decisions to write the sign-off brief for this vendor choice, for our
+finance director." **Adapt it:** headings, limits and banned codes are constants in the script
+and `banned.json`; mission-control's `lib/brief.ts` keeps a copy that a test compares.
 
 ## Planning
 
