@@ -60,4 +60,5 @@ included. Repair every wrong or missing answer in the brief and check it again.
   mission-control's `lib/brief.ts` keeps its own copy; change it too.
 - **Banned codes:** edit `scripts/banned.json`, then the copy in `lib/brief.ts`, then add a line to
   `tests/fixtures/brief-patterns.json`. A test fails if the two lists differ.
+- **Any rule:** add a case to `tests/fixtures/brief-cases.json`; both checkers must agree on it.
 - **Limits:** the word limits and the reading-ease minimum are constants at the top of the script.

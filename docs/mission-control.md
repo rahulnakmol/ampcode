@@ -299,8 +299,9 @@ Use actual text in the design bundle, not a mutable filename standing in for its
 contents. A v1 design needs `bundle.brief = { markdown }`: a decision brief written
 with the `briefing-decisions` skill. The plugin rejects a design without a valid
 brief, with an error that names the broken rule (front matter, headings, consistency,
-raw HTML, banned codes; reading ease and sentence length are checked by
-`brief_check.py`). The brief is stored in the design, so the design digest and the
+characters, raw HTML, banned codes, sentence length; reading ease is checked by
+`brief_check.py` only). Text from the record (requirements, criteria, design and
+evidence) is shown literally, so it cannot carry hidden HTML. The brief is stored in the design, so the design digest and the
 approval cover its exact text. `mission_status` shows the brief only as its length
 and SHA-256.
 
@@ -322,7 +323,9 @@ and SHA-256.
 To see the dialogs without a mission, run the command **Mission control: Preview
 approval dialogs** from the preview-only project plugin
 [`.amp/plugins/mission-control-preview.ts`](../.amp/plugins/mission-control-preview.ts).
-It shows both dialogs for a synthetic mission and records nothing. Criteria and result entries correspond by array position. Evidence
+It shows both dialogs for a synthetic mission and records nothing.
+
+Criteria and result entries correspond by array position. Evidence
 entries must contain implementation locations, observed outcomes, commands and
 artifact references, including limitations. The plugin checks lifecycle and
 completeness; it does not infer whether arbitrary prose is true. Publish the

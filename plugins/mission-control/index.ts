@@ -28,7 +28,7 @@ function packet(s: RecordState) {
 function compact(s: Mission) {
 	const brief = s.design?.bundle.brief
 	if (!brief) return s
-	return { ...s, design: { ...s.design!, bundle: { ...s.design!.bundle, brief: { characters: brief.markdown.length, sha256: createHash('sha256').update(brief.markdown).digest('hex') } } } }
+	return { ...s, design: { ...s.design!, bundle: { ...s.design!.bundle, brief: { characters: [...brief.markdown].length, sha256: createHash('sha256').update(brief.markdown).digest('hex') } } } }
 }
 
 export default function (amp: PluginAPI, github = new GitHub()) {

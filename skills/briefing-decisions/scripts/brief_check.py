@@ -5,15 +5,15 @@
 
 Exits 0 and prints "pass" when the brief follows every rule. Otherwise exits 1 and prints each
 broken rule as "<rule>: <what to fix>". Standard library only. The rules are in
-../reference/template.md; mission-control's lib/brief.ts applies the same ones (except reading
-ease and sentence length) before it shows a design dialog.
+../reference/template.md. mission-control's lib/brief.ts applies the same rules, except reading
+ease, before it shows a design dialog; tests/fixtures/brief-cases.json keeps the two in step.
+Whitespace means space, tab and newline only, so both implementations count the same words.
 """
 
 import json
 import re
 import sys
 from pathlib import Path
-from urllib.parse import urlparse
 
 HEADINGS = (
     "You are deciding",
@@ -28,10 +28,13 @@ HEADINGS = (
     "Words you may not know",
 )
 DETAILS_OPEN = "<details><summary>Technical record</summary>"
+DETAILS_CLOSE = "</details>"
 LIMITS = {"decision": 30, "yes": 40, "no": 40}
 LIST_LIMITS = {"risks": 30, "excluded": 20}
 KEYS = ("decision", "yes", "no", "risks", "excluded", "picture")
-PICTURE_HOSTS = ("ampcode.com", "github.com")
+PICTURE = re.compile(r"^https://(ampcode\.com|github\.com)(/[^ \t\n]*)?$", re.ASCII)
+CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f\x85\u2028\u2029\ufeff]")
+HTML = re.compile(r"<(?:!--|[A-Za-z/])")
 MAX_CHARS = 20_000
 MAX_SUMMARY_WORDS = 150
 MAX_SENTENCE_WORDS = 25
@@ -41,7 +44,8 @@ COMPILED = [
     (p["name"], re.compile(p["pattern"], re.M | re.ASCII | (re.I if p["ignoreCase"] else 0)))
     for p in BANNED
 ]
-LIST_ITEM = re.compile(r"^\s*(?:[-*+]|[0-9]+\.)\s+(.*)$")
+LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|[0-9]+\.)[ \t]+(.*)$")
+HEADING = re.compile(r"^## (.+?)[ \t]*$")
 
 
 class Problem(Exception):
@@ -49,15 +53,19 @@ class Problem(Exception):
 
 
 def words(text):
-    return len(text.split())
+    return len(re.findall(r"[^ \t\n]+", text))
 
 
 def collapse(text):
-    return " ".join(text.split())
+    return " ".join(re.findall(r"[^ \t\n]+", text))
+
+
+def trim(text):
+    return text.strip(" \t")
 
 
 def unquote(value):
-    value = value.strip()
+    value = trim(value)
     if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
         return value[1:-1]
     return value
@@ -69,31 +77,31 @@ def front_matter(text):
     if not match:
         raise Problem("front-matter: the file must start with front matter between two --- lines")
     data, key = {}, None
-    for line in match.group(1).splitlines():
-        if not line.strip():
+    for line in match.group(1).split("\n"):
+        if not trim(line):
             continue
-        item = re.match(r"^\s+-\s+(.*)$", line)
+        item = re.match(r"^[ \t]+-[ \t]+(.*)$", line)
         if item:
             if key is None or not isinstance(data[key], list):
-                raise Problem(f"front-matter: list item outside a list: {line.strip()}")
+                raise Problem(f"front-matter: list item outside a list: {trim(line)}")
             data[key].append(unquote(item.group(1)))
             continue
         pair = re.match(r"^([a-z]+):(.*)$", line)
         if not pair:
-            raise Problem(f"front-matter: cannot read this line: {line.strip()}")
-        key, value = pair.group(1), pair.group(2).strip()
+            raise Problem(f"front-matter: cannot read this line: {trim(line)}")
+        key, value = pair.group(1), trim(pair.group(2))
         if key not in KEYS:
             raise Problem(f"front-matter: unknown key '{key}'; allowed: {', '.join(KEYS)}")
         if key in data:
             raise Problem(f"front-matter: '{key}' appears twice")
         data[key] = unquote(value) if value else []
-    return data, text[match.end():]
+    return data, match.group(0), text[match.end():]
 
 
 def check_front_matter(data):
     for key, limit in LIMITS.items():
         value = data.get(key)
-        if not isinstance(value, str) or not value:
+        if not isinstance(value, str) or not words(value):
             raise Problem(f"front-matter: '{key}' is required and must be one line of text")
         if words(value) > limit:
             raise Problem(f"front-matter: '{key}' has {words(value)} words; limit {limit}")
@@ -104,12 +112,10 @@ def check_front_matter(data):
         if len({collapse(i) for i in items}) != len(items):
             raise Problem(f"front-matter: '{key}' items must be unique")
         for i in items:
-            if not i or words(i) > limit:
+            if not 1 <= words(i) <= limit:
                 raise Problem(f"front-matter: each '{key}' item needs 1 to {limit} words: {i}")
-    if "picture" in data:
-        url = urlparse(data["picture"]) if isinstance(data["picture"], str) else None
-        if not url or url.scheme != "https" or url.hostname not in PICTURE_HOSTS:
-            raise Problem("front-matter: 'picture' must be an https URL on ampcode.com or github.com")
+    if "picture" in data and not (isinstance(data["picture"], str) and PICTURE.match(data["picture"])):
+        raise Problem("front-matter: 'picture' must be an https URL on ampcode.com or github.com")
 
 
 def summary(data):
@@ -125,27 +131,29 @@ def summary(data):
 
 
 def split_body(body):
-    """Return (prose, sections) and check the headings and the closing technical record."""
+    """Return (prose, technical record, sections) after checking headings and the record block."""
     start = body.find(DETAILS_OPEN)
     if start < 0:
         raise Problem(f"technical-record: end the file with a {DETAILS_OPEN} block")
-    if body.rstrip().splitlines()[-1].strip() != "</details>" or body.count(DETAILS_OPEN) != 1:
+    end = body.rstrip(" \t\n")
+    if trim(end.split("\n")[-1]) != DETAILS_CLOSE or body.count(DETAILS_OPEN) != 1:
         raise Problem("technical-record: the one technical record block must close with </details> and end the file")
     prose = body[:start]
-    found = re.findall(r"^## (.+?)[ \t]*$", prose, re.M)
+    record = end[start + len(DETAILS_OPEN): end.rfind(DETAILS_CLOSE)]
+    found = [m.group(1) for line in prose.split("\n") if (m := HEADING.match(line))]
     if tuple(found) != HEADINGS:
         missing = [h for h in HEADINGS if h not in found]
         detail = f"missing '{missing[0]}'" if missing else "wrong order or an extra ## heading"
         raise Problem(f"headings: {detail}; use exactly: " + " / ".join(HEADINGS))
     sections, current = {}, None
-    for line in prose.splitlines():
-        heading = re.match(r"^## (.+?)[ \t]*$", line)
+    for line in prose.split("\n"):
+        heading = HEADING.match(line)
         if heading:
             current = heading.group(1)
             sections[current] = []
         elif current:
             sections[current].append(line)
-    return prose, sections
+    return prose, record, sections
 
 
 def check_consistency(data, sections):
@@ -156,30 +164,32 @@ def check_consistency(data, sections):
                 raise Problem(f"consistency: '{item}' from '{key}' must be a list item under '## {heading}'")
 
 
-def check_html(prose):
-    if re.search(r"<(?:!--|[A-Za-z/])", prose):
-        raise Problem("html: raw HTML and HTML comments are not allowed before the technical record")
-
-
 def banned(text):
     """Return the names of the banned patterns found in text, in banned.json order."""
     return [name for name, pattern in COMPILED if pattern.search(text)]
 
 
-# Reading ease, copied from evals/planning/readability.py so the skill stands alone.
+# Reading ease and sentences, adapted from evals/planning/readability.py so the skill stands
+# alone. Sentence length uses the same steps in lib/brief.ts; reading ease is Python only.
 def readable_prose(text):
     text = re.sub(r"```.*?```", " ", text, flags=re.S)
-    text = re.sub(r"<!--.*?-->", " ", text, flags=re.S)
     keep = []
-    for line in text.splitlines():
-        s = line.strip()
+    for line in text.split("\n"):
+        s = trim(line)
         if not s or s.startswith(("|", "#", "<")):
             continue
         s = re.sub(r"`[^`]*`", "X", s)
         s = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", s)
-        s = re.sub(r"[*_>]+", "", s).lstrip("-0123456789. ")
+        s = re.sub(r"^[-0-9. ]+", "", re.sub(r"[*_>]+", "", s))
         keep.append(s if s.endswith((".", "!", "?", ":")) else s + ".")
     return " ".join(keep)
+
+
+WORD = re.compile(r"[A-Za-z][A-Za-z'-]*|[0-9][0-9,.%]*")
+
+
+def sentences(prose):
+    return [s for s in re.split(r"(?<=[.!?:])[ \t]+", readable_prose(prose)) if re.search(r"[A-Za-z]", s)]
 
 
 def syllables(word):
@@ -188,13 +198,6 @@ def syllables(word):
         return 1
     word = re.sub(r"(?:[^laeiouy]es|ed|[^laeiouy]e)$", "", word)
     return max(1, len(re.findall(r"[aeiouy]{1,2}", word)))
-
-
-WORD = re.compile(r"[A-Za-z][A-Za-z'-]*|\d[\d,.%]*")
-
-
-def sentences(prose):
-    return [s for s in re.split(r"(?<=[.!?:])\s+", readable_prose(prose)) if re.search(r"[A-Za-z]", s)]
 
 
 def ease(prose):
@@ -208,20 +211,22 @@ def ease(prose):
 
 def check(text):
     """Return a list of broken rules; empty when the brief passes."""
-    problems = []
     if len(text) > MAX_CHARS:
-        problems.append(f"length: {len(text)} characters; limit {MAX_CHARS}")
+        return [f"length: {len(text)} characters; limit {MAX_CHARS}"]
+    if CONTROL.search(text):
+        return ["characters: use plain newlines (no carriage returns, line separators or control characters)"]
     try:
-        data, body = front_matter(text)
+        data, front, body = front_matter(text)
         check_front_matter(data)
         if words(summary(data)) > MAX_SUMMARY_WORDS:
             raise Problem(f"summary: the collapsed summary has {words(summary(data))} words; limit {MAX_SUMMARY_WORDS}")
-        prose, sections = split_body(body)
+        prose, record, sections = split_body(body)
         check_consistency(data, sections)
-        check_html(prose)
+        if HTML.search(prose + record):
+            raise Problem("html: raw HTML and HTML comments are not allowed, except the technical record block itself")
     except Problem as problem:
-        return problems + [str(problem)]
-    front = text[: len(text) - len(body)]
+        return [str(problem)]
+    problems = []
     for part, where in ((front, "front matter"), (prose, "prose")):
         for name in banned(part):
             problems.append(f"banned: {name} pattern in the {where}; move codes to the technical record")

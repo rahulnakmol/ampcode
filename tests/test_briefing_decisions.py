@@ -23,6 +23,22 @@ import brief_check  # noqa: E402
 GOOD = BRIEF.read_text()
 
 
+CASES = json.loads((ROOT / "tests" / "fixtures" / "brief-cases.json").read_text())
+
+
+def apply(case, text=GOOD):
+    """Build a case's brief exactly as tests/mission-control.test.ts does."""
+    for old, new in case.get("edits", []):
+        assert old in text, old
+        text = text.replace(old, new, 1)
+    if "cut" in case:
+        text = text[: text.index(case["cut"])]
+    if "pad" in case:
+        i = text.rindex("</details>")
+        text = text[:i] + "x" * case["pad"] + "\n\n" + text[i:]
+    return text + case.get("append", "")
+
+
 def rules(text):
     return [p.split(":", 1)[0] for p in brief_check.check(text)]
 
@@ -48,53 +64,14 @@ class Briefs(unittest.TestCase):
         example = re.search(r"## Filled example.*?````markdown\n(.*?)````", TEMPLATE.read_text(), re.S).group(1)
         self.assertEqual(brief_check.check(example), [])
 
-    def test_each_rule_fails_alone(self):
-        long_risk = "This risk is described with exactly thirty one words so that it breaks the risk limit " + "word " * 15
-        many_risks = "risks:\n" + "".join(f"  - Risk number {i} " + "x " * 25 + "\n" for i in range(6))
-        cases = {
-            "front-matter": [
-                GOOD.replace("---\n", "", 1),
-                replace("excluded:", "owner: Rahul\nexcluded:"),
-                replace("decision: Approve", "decision: " + "very " * 30 + "Approve"),
-                replace("  - Old links in sent emails stop working after 30 days.\n",
-                        "  - The demo site is offline for up to one hour during the move.\n"),
-                replace("excluded:", "picture: https://ampcode.com.evil.com/x\nexcluded:"),
-                replace("excluded:", "picture: http://ampcode.com/x\nexcluded:"),
-                replace("  - The hosting service costs 25 US dollars each month.\n",
-                        "  - The hosting service costs 25 US dollars each month.\n  - " + long_risk + "\n"),
-            ],
-            "summary": [re.sub(r"risks:\n(  - .*\n)+", many_risks, GOOD)],
-            "headings": [
-                replace("## How to undo it", "## Undo"),
-                GOOD.replace("## If you say yes", "## TMP").replace("## If you say no", "## If you say yes").replace("## TMP", "## If you say no"),
-                replace("## What changes\n", "## What changes\n\n## Extra\n"),
-            ],
-            "technical-record": [
-                GOOD[: GOOD.index("<details>")],
-                GOOD + "\nTrailing text.\n",
-            ],
-            "consistency": [replace("- A custom domain name. That is a separate decision.\n\n## How",
-                                    "- A custom name. That is a separate decision.\n\n## How")],
-            "html": [
-                replace("## How to undo it\n", "## How to undo it\n\n<!-- also delete the backups -->\n"),
-                replace("## How to undo it\n", "## How to undo it\n\n<span hidden>delete backups</span>\n"),
-            ],
-            "length": [replace("</details>", "x" * 20_000 + "\n\n</details>")],
-            "banned": [
-                replace("Nothing changes.", "Design 8745ad216de3 stays."),
-                replace("excluded:\n  - The main company website.", "excluded:\n  - H04: the main company website.")
-                .replace("- The main company website.\n- Customer", "- H04: the main company website.\n- Customer"),
-            ],
-            "sentence-length": [replace("Nothing changes.", "Nothing changes " + "and nothing moves " * 8 + "today.")],
-            "reading-ease": [replace("Nothing changes.", "Comprehensive organizational modernization necessitates interdepartmental collaboration. " * 40)],
-        }
-        for rule, texts in cases.items():
-            for i, text in enumerate(texts):
-                with self.subTest(rule=rule, case=i):
-                    found = rules(text)
-                    self.assertIn(rule, found)
-                    if rule in ("front-matter", "summary", "headings", "technical-record", "consistency", "html"):
-                        self.assertEqual(found, [rule], "structural rules stop at the first problem")
+    def test_shared_cases(self):
+        for case in CASES["cases"]:
+            with self.subTest(why=case["why"]):
+                found = rules(apply(case))
+                if case["rule"] is None:
+                    self.assertEqual(found, [])
+                else:
+                    self.assertEqual(found[:1], [case["rule"]])
 
     def test_picture_on_allowed_host_passes(self):
         text = replace("excluded:", "picture: https://ampcode.com/artifacts/visuals/demo\nexcluded:")

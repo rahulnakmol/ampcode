@@ -7,7 +7,7 @@ import { createMission, advance, blockers, fingerprint, saveMission, loadMission
 import { loadRecord, saveRecord } from '../plugins/mission-control/lib/mission'
 import { previewMigration, migrateMission } from '../plugins/mission-control/lib/migration'
 import { parseManifest, intentDigest } from '../plugins/mission-control/lib/contracts'
-import { BANNED, banned, validateBrief } from '../plugins/mission-control/lib/brief'
+import { BANNED, banned, designDialog, mergeDialog, validateBrief } from '../plugins/mission-control/lib/brief'
 import { createMissionV2, advanceV2, blockersV2, fingerprintV2, parseMissionV2 } from '../plugins/mission-control/lib/mission-v2'
 
 const manifest = {
@@ -433,6 +433,36 @@ describe('decision briefs', () => {
 		const lines = JSON.parse(read('tests/fixtures/brief-patterns.json'))
 		for (const line of lines.pass) expect([line, banned(line)]).toEqual([line, []])
 		for (const [line, rule] of lines.fail) expect(banned(line)).toContain(rule)
+	})
+	test('the plugin and brief_check.py reach the same verdict on every shared case', () => {
+		const { cases } = JSON.parse(read('tests/fixtures/brief-cases.json'))
+		const apply = (c: any) => {
+			let text = brief.markdown
+			for (const [old, next] of c.edits ?? []) {
+				expect(text).toContain(old)
+				text = text.replace(old, () => next)
+			}
+			if (c.cut) text = text.slice(0, text.indexOf(c.cut))
+			if (c.pad) { const i = text.lastIndexOf('</details>'); text = text.slice(0, i) + 'x'.repeat(c.pad) + '\n\n' + text.slice(i) }
+			return text + (c.append ?? '')
+		}
+		for (const c of cases) {
+			const run = () => validateBrief(apply(c))
+			if (c.rule === null || c.python_only) expect([c.why, run().decision.length > 0]).toEqual([c.why, true])
+			else expect([c.why, (() => { try { run(); return 'accepted' } catch (e: any) { return e.message } })()]).toEqual([c.why, expect.stringContaining(`(${c.rule})`)])
+		}
+	})
+	test('dialogs show supplied text literally, so it cannot hide HTML', () => {
+		let s = advance(createMission('T-test', 'Outcome <!-- hidden requirement -->'), { type: 'design', bundle: { ...bundle, ux: 'UX <!-- hidden ux -->' }, criteria: ['Rows <span hidden>and deletes backups</span>'] })
+		const d = designDialog(s)
+		expect(d.message).not.toMatch(/<!--|<span/)
+		for (const text of ['Outcome &lt;!-- hidden requirement -->', 'UX &lt;!-- hidden ux -->', '1. Rows &lt;span hidden>and deletes backups&lt;/span>']) expect(d.message).toContain(text)
+		expect(d.message.startsWith('**You are deciding:**')).toBe(true)
+		s = advance(advance(advance(advance(s, { type: 'approve-design', digest: s.design!.digest }), { type: 'defense', digest: s.design!.digest, record: 'Defended.' }), { type: 'build' }), { type: 'candidate', candidate })
+		s = advance(s, { type: 'review', gate: 1, fingerprint: fingerprint(s), passed: true, reviewer: 'T-r', record: 'ok' })
+		s = advance(s, { type: 'evidence', fingerprint: fingerprint(s), results: ['Done <!-- and more -->'], tryIt: 'Try <b>it</b>', value: 'Value' })
+		const m = mergeDialog(s)
+		expect(m.message + m.collapsedMessage).not.toMatch(/<!--|<b>/)
 	})
 	test('the synthetic briefs pass', () => {
 		expect(validateBrief(brief.markdown).risks).toHaveLength(3)
