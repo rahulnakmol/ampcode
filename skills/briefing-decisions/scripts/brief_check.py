@@ -34,10 +34,11 @@ LIST_LIMITS = {"risks": 30, "excluded": 20}
 KEYS = ("decision", "yes", "no", "risks", "excluded", "picture")
 PICTURE = re.compile(r"^https://(ampcode\.com|github\.com)(/[^ \t\n]*)?$", re.ASCII)
 CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f\x85\u2028\u2029\ufeff]")
-# Raw HTML, HTML comments and Markdown link reference definitions all render as hidden text.
+# Raw HTML (tags, comments, <!DOCTYPE, <![CDATA[, <?...?>) and Markdown link reference definitions
+# all render as hidden text.
 # A reference definition hides text even inside a list item or block quote, with an escaped ],
 # or with a label that continues on the next line after a backslash.
-HIDDEN = re.compile(r"<(?:!--|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:", re.M)
+HIDDEN = re.compile(r"<(?:[!?]|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:", re.M)
 MAX_CHARS = 20_000
 MAX_SUMMARY_WORDS = 150
 MAX_SENTENCE_WORDS = 25
@@ -247,7 +248,12 @@ def main(argv):
         print(__doc__.strip().splitlines()[2].strip(), file=sys.stderr)
         return 2
     # Bytes, not read_text: newline translation would hide carriage returns the plugin rejects.
-    problems = check(Path(argv[1]).read_bytes().decode("utf-8"))
+    try:
+        text = Path(argv[1]).read_bytes().decode("utf-8")
+    except UnicodeDecodeError:
+        print("characters: the file is not valid UTF-8")
+        return 1
+    problems = check(text)
     for problem in problems:
         print(problem)
     if not problems:

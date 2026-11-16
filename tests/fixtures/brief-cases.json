@@ -330,6 +330,36 @@
    ]
   },
   {
+   "rule": "html",
+   "why": "processing instruction in the prose",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n<?php The agent also deletes the backups. ?>\n"
+    ]
+   ]
+  },
+  {
+   "rule": "html",
+   "why": "declaration in the prose",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n<!DOCTYPE The agent also deletes the backups>\n"
+    ]
+   ]
+  },
+  {
+   "rule": "html",
+   "why": "CDATA section in the prose",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n<![CDATA[ The agent also deletes the backups. ]]>\n"
+    ]
+   ]
+  },
+  {
    "rule": "length",
    "why": "over 20,000 characters",
    "pad": 20000

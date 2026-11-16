@@ -58,10 +58,13 @@ class Descriptions(unittest.TestCase):
 
 class OneProtocol(unittest.TestCase):
     def test_generic_protocol_lives_only_in_goldfishing(self):
-        for path in sorted(SKILLS.rglob("*.md")):
+        for path in sorted(p for p in SKILLS.rglob("*") if p.is_file()):
             if path.is_relative_to(SKILLS / "goldfishing"):
                 continue
-            text = collapse(path.read_text())
+            try:
+                text = collapse(path.read_text())
+            except UnicodeDecodeError:
+                continue  # binary files hold no instructions
             for phrase in RESTATED:
                 with self.subTest(file=str(path.relative_to(ROOT)), phrase=phrase):
                     self.assertNotIn(phrase, text)

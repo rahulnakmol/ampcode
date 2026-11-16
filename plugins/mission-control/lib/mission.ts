@@ -83,7 +83,7 @@ export function advance(previous: Mission, action: Action): Mission {
 			for (const value of [spec, plan, technical, ux]) text(value)
 			if (!brief || typeof brief !== 'object' || Object.keys(brief).sort().join() !== 'markdown,url') throw new Error('A decision brief is required: bundle.brief = { markdown, url }, written with the briefing-decisions skill and published as the document the owner reads')
 			validateBrief(brief.markdown)
-			if (typeof brief.url !== 'string' || !LINK.test(brief.url) || /[\x00-\x1f\x7f-\x9f]/.test(brief.url)) throw new Error('Decision brief rejected (url): bundle.brief.url must be an https URL on ampcode.com or github.com. See the briefing-decisions skill.')
+			if (typeof brief.url !== 'string' || !LINK.test(brief.url) || /[\s\p{Cc}\p{Cf}]/u.test(brief.url)) throw new Error('Decision brief rejected (url): bundle.brief.url must be an https URL on ampcode.com or github.com. See the briefing-decisions skill.')
 			if (!Array.isArray(action.criteria) || action.criteria.length === 0) throw new Error('Acceptance criteria required')
 			action.criteria.forEach(text)
 			if (new Set(action.criteria).size !== action.criteria.length) throw new Error('Acceptance criteria must be unique')

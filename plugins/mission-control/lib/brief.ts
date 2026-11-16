@@ -12,7 +12,7 @@ export const BANNED = [
 	{ name: 'hex', pattern: '\\b(?=[0-9a-f]*[0-9])(?=[0-9a-f]*[a-f])[0-9a-f]{7,}\\b', ignoreCase: true },
 	{ name: 'thread-id', pattern: '\\bT-[0-9a-f]{8}-', ignoreCase: true },
 	{ name: 'task-id', pattern: '\\bTU-[A-Za-z0-9]{6,}', ignoreCase: true },
-	{ name: 'json', pattern: '"[A-Za-z_][A-Za-z0-9_]*"[ \\t]*:[ \\t]*([\\[{"0-9]|true|false|null)', ignoreCase: true },
+	{ name: 'json', pattern: '"[A-Za-z_][A-Za-z0-9_]*"[ \\t\\n]*:[ \\t\\n]*([\\[{"0-9]|true|false|null)', ignoreCase: true },
 	{ name: 'model-slug', pattern: '\\b(anthropic|openai|google|google-vertex|xai|meta|moonshotai|alibaba|deepseek|minimax|nvidia|zhipuai)/[a-z0-9._-]+', ignoreCase: true },
 	{ name: 'bare-code', pattern: '^[ \\t]*(?:(?:[-*+]|[0-9]+\\.)[ \\t]+)?(?:\\*\\*)?(?!(?:Q[1-4]|H[12]|FY[0-9]{2,4}|V[0-9])(?:\\*\\*)?:)[A-Z]{1,3}-?[0-9]{1,4}(?:\\*\\*)?:', ignoreCase: false },
 ]
@@ -24,10 +24,11 @@ const LIMITS: Record<string, number> = { decision: 30, yes: 40, no: 40 }
 const LIST_LIMITS: Record<string, number> = { risks: 30, excluded: 20 }
 export const LINK = /^https:\/\/(ampcode\.com|github\.com)(\/[^ \t\n]*)?$/
 const CONTROL = /[\x00-\x08\x0b-\x1f\x7f\x85\u2028\u2029\ufeff]/
-// Raw HTML, HTML comments and Markdown link reference definitions all render as hidden text.
+// Raw HTML (tags, comments, <!DOCTYPE, <![CDATA[, <?...?>) and Markdown link reference definitions
+// all render as hidden text.
 // A reference definition hides text even inside a list item or block quote, with an escaped ],
 // or with a label that continues on the next line after a backslash.
-const HIDDEN = /<(?:!--|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:/m
+const HIDDEN = /<(?:[!?]|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:/m
 const LIST_ITEM = /^[ \t]*(?:[-*+]|[0-9]+\.)[ \t]+(.*)$/
 const HEADING = /^## (.+?)[ \t]*$/
 const WORD = /[A-Za-z][A-Za-z'-]*|[0-9][0-9,.%]*/g

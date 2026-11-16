@@ -23,6 +23,7 @@
     ["anthropic/claude-fable-5-2", "model-slug"],
     ["{\"spec\": \"x\"}", "json"],
     ["\"passed\": true", "json"],
+    ["\"passed\":\ntrue", "json"],
     ["Design 8745ad216de3 was approved", "hex"],
     ["see T-01a1d081-12a6-75af", "thread-id"],
     ["task TU-034yQcGK8cb5", "task-id"]
