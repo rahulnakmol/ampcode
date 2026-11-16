@@ -122,6 +122,26 @@
    ]
   },
   {
+   "rule": "front-matter",
+   "why": "YAML comment in a front-matter value",
+   "edits": [
+    [
+     "\nyes: The agent moves",
+     "\nyes: The agent # also deletes the backups and moves"
+    ]
+   ]
+  },
+  {
+   "rule": "front-matter",
+   "why": "YAML anchor at the start of a list item",
+   "edits": [
+    [
+     "excluded:\n  - ",
+     "excluded:\n  - &x "
+    ]
+   ]
+  },
+  {
    "rule": null,
    "why": "picture on an allowed host",
    "edits": [
@@ -420,6 +440,126 @@
    ]
   },
   {
+   "rule": "markdown",
+   "why": "link title after a destination with balanced parentheses",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nSee [the plan](https://github.com/a(b) \"The agent also deletes the backups\").\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "link title after an escaped parenthesis",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nSee [the plan](https://github.com/a\\)b \"The agent also deletes the backups\").\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "link title on the next line inside a block quote",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n> See [the plan](https://github.com/a\n> \"The agent also deletes the backups\").\n"
+    ]
+   ]
+  },
+  {
+   "rule": "html",
+   "why": "link title in an angle-bracket destination (the angle bracket is raw HTML first)",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nSee [the plan](<https://github.com/a> \"The agent also deletes the backups\").\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "link with no text",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nBackups stay.[](https://github.com/the-agent-also-deletes-the-backups)\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "tilde fence whose label starts with a backtick",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n~~~ `The agent also deletes the backups`\nBackups stay.\n~~~\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "backtick fence whose label starts with a tilde",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n```~The agent also deletes the backups\nBackups stay.\n```\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "GitHub math that draws nothing",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nBackups stay. $\\phantom{The agent also deletes the backups}$\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "wider table row inside a block quote",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n> | Step | Who |\n> | --- | --- |\n> | Move | Agent | The agent also deletes the backups |\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "wider table row inside a list item",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n- | Step | Who |\n  | --- | --- |\n  | Move | Agent | The agent also deletes the backups |\n"
+    ]
+   ]
+  },
+  {
+   "rule": "markdown",
+   "why": "table whose header has no pipe",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nCost\n| --- |\n| 25 dollars | The agent also deletes the backups |\n"
+    ]
+   ]
+  },
+  {
+   "rule": null,
+   "why": "plain links, a closing fence of four backticks, dollar amounts and a fitting quoted table pass",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\nSee [the plan](https://github.com/a/b.md) and [the guide](docs/guide.md).\n\n````\nBackups stay.\n````\n\nIt costs $25 a month, or $300 a year.\n\n> | Step | Who |\n> | --- | --- |\n> | Move | Agent |\n"
+    ]
+   ]
+  },
+  {
    "rule": null,
    "why": "plain link, unlabelled fence and a table that fits",
    "edits": [
@@ -491,6 +631,36 @@
     [
      "Nothing changes.",
      "Nothing\ufeffchanges."
+    ]
+   ]
+  },
+  {
+   "rule": "characters",
+   "why": "invisible Unicode tag characters",
+   "edits": [
+    [
+     "Nothing changes.",
+     "Nothing changes.\udb40\udc64\udb40\udc65\udb40\udc6c\udb40\udc65\udb40\udc74\udb40\udc65"
+    ]
+   ]
+  },
+  {
+   "rule": "characters",
+   "why": "right-to-left override",
+   "edits": [
+    [
+     "Nothing changes.",
+     "Nothing \u202eschanges."
+    ]
+   ]
+  },
+  {
+   "rule": "characters",
+   "why": "zero-width space",
+   "edits": [
+    [
+     "Nothing changes.",
+     "Nothing\u200bchanges."
     ]
    ]
   },

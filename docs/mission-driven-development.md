@@ -113,7 +113,7 @@ not activated trusted enforcement or a replacement for CI.
 ## Your decisions and a good final handoff
 
 You decide the outcome, consequential tradeoffs, exact design, work budget and delivery
-boundary. Native dialogs link the brief or pull request and require **APPROVE**, never a secret. V1 high-risk candidates
+boundary. The design and merge dialogs link the brief or pull request; every approval dialog requires **APPROVE**, never a secret. V1 high-risk candidates
 and ask-before-merge mode require final acknowledgment; low/medium automatic integration
 still needs all required gates. Permission to build is not permission to release.
 

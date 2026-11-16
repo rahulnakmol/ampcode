@@ -335,7 +335,10 @@ test('merge dialog names the pull request and shows each result; a changed evide
 	const h = harness(undefined, { preflight: async () => {}, request: async () => {}, pull: async () => ({}) })
 	try {
 		const fp = await presented(h)
-		expect(h.notifications.at(-1)).toContain(`You are deciding: ${DECISION}`)
+		// The notification is information only: the details, with the merge preference, and no APPROVE instruction.
+		expect(h.notifications.at(-1)).toStartWith(`You are deciding: ${DECISION}`)
+		expect(h.notifications.at(-1)).toContain('Merge preference: auto; high risk always requires owner acknowledgment.')
+		expect(h.notifications.at(-1)).not.toContain('type APPROVE')
 		h.ctx.ui.confirm = async (dialog: any) => {
 			assertApprovalDialog(dialog)
 			h.dialogs.push(dialog)
@@ -396,7 +399,8 @@ test('the preview plugin shows both dialogs for the synthetic AC-5 mission and r
 	preview({ registerCommand: (id: string, options: any, handler: any) => commands.push({ id, options, handler }), registerTool: fail, on: fail } as any)
 	expect(commands.map(c => c.options.title)).toEqual(['Preview approval dialogs'])
 	await commands[0].handler({ ui: { confirm: async (d: any) => { assertApprovalDialog(d); dialogs.push(d); return APPROVED }, notify: async (m: string) => { notes.push(m) } } })
-	expect(dialogs.map(d => d.title)).toEqual(['Preview. Approve the design', 'Preview. Merge into dev'])
+	expect(dialogs.map(d => d.title)).toEqual(['Approve the design', 'Merge into dev'])
+	for (const d of dialogs) expect(d.message).toStartWith('Preview only: nothing is recorded or approved.')
 	expect(dialogs[0].fields[0]).toMatchObject({ type: 'link', name: 'brief', value: record.design!.bundle.brief!.url })
 	expect(notes).toEqual(['Design preview: this answer would approve. Nothing was recorded.', 'Merge preview: this answer would approve. Nothing was recorded.'])
 })

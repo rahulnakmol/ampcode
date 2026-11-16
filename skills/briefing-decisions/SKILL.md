@@ -1,6 +1,6 @@
 ---
 name: briefing-decisions
-description: "Writes a plain-English decision brief for any human sign-off: what the reader decides, what happens on yes and on no, what changes, what done looks like, what was and was not checked, the risks they accept, what is not included, how to undo it, and a glossary, with codes and hashes kept in a closing technical record. A standard-library checker enforces the structure, sentence length, reading ease and a list of banned codes. Use when a person must approve, sign off, acknowledge or choose: a design, a merge, a release, a budget, a roadmap, a vendor or a plan; when asked for a decision brief, an approval summary or an executive sign-off; or when a sign-off text is too technical for its reader."
+description: "Writes a plain-English decision brief for any human sign-off: what the reader decides, what happens on yes and on no, what changes, what done looks like, what was and was not checked, the risks they accept, what is not included, how to undo it, and a glossary, with codes and hashes kept in a closing technical record. A standard-library checker enforces the structure, sentence length, reading ease, banned codes, and no HTML or Markdown that hides words. Use when a person must approve, sign off, acknowledge or choose: a design, a merge, a release, a budget, a roadmap, a vendor or a plan; when asked for a decision brief, an approval summary or an executive sign-off; or when a sign-off text is too technical for its reader."
 ---
 
 # Briefing decisions

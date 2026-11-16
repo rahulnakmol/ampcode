@@ -7,15 +7,15 @@ below passes the checker; a test keeps it that way.
 
 | Rule | What passes |
 | --- | --- |
-| front-matter | Only these keys: `decision` (at most 30 words), `yes` and `no` (at most 40 words each), `risks` (1 to 6 unique items, at most 30 words each), `excluded` (1 to 6 items, at most 20 words each), optional `picture` (an `https` URL on `ampcode.com` or `github.com`; for the document, not shown in the dialog). Each value is one line |
+| front-matter | Only these keys: `decision` (at most 30 words), `yes` and `no` (at most 40 words each), `risks` (1 to 6 unique items, at most 30 words each), `excluded` (1 to 6 items, at most 20 words each), optional `picture` (an `https` URL on `ampcode.com` or `github.com`; for the document, not shown in the dialog). Each value is one line of plain text: no ` #` and no YAML symbol (`& * ! | > { [ % @` or a backtick) at the start |
 | summary | The summary (the four labelled lines below) is at most 150 words |
 | headings | Exactly the ten `##` headings of the skeleton, in order. `###` subheadings are fine |
 | technical-record | One `<details><summary>Technical record</summary>` block ends the file |
 | consistency | Each `risks` item is, word for word, a list item under `## Risks you accept`; each `excluded` item under `## Not included` |
 | html | No raw HTML, HTML comments or link reference definitions (`[label]: ...` lines) anywhere, including the front matter, except the technical record's own `<details>` lines |
-| markdown | No images, link titles, code fences with a label after the opening backticks, or table rows with more cells than the header: each renders some words invisibly |
+| markdown | Links are `[text](destination)` with text and a plain destination (no spaces, parentheses, backslashes or quotes), so no link titles. No images, code fences with a label after the opening backticks, math commands such as `$\phantom{...}$`, or table rows with more cells than the header: each renders some words invisibly |
 | length | At most 20,000 characters |
-| characters | Plain newlines only: no carriage returns, line separators or other control characters |
+| characters | Plain newlines only: no carriage returns, line separators, other control characters or invisible format characters (zero-width, bidirectional, tag characters) |
 | sentence-length | No sentence before the technical record has more than 25 words |
 | reading-ease | Flesch reading ease of the prose is at least 50 |
 | banned | No hashes, thread or task IDs, JSON, provider/model slugs, or lines that start with a bare code such as `H04:` in the front matter or prose. Put them in the technical record |

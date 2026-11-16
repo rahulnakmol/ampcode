@@ -13,6 +13,7 @@ Whitespace means space, tab and newline only, so both implementations count the 
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 HEADINGS = (
@@ -32,19 +33,29 @@ DETAILS_CLOSE = "</details>"
 LIMITS = {"decision": 30, "yes": 40, "no": 40}
 LIST_LIMITS = {"risks": 30, "excluded": 20}
 KEYS = ("decision", "yes", "no", "risks", "excluded", "picture")
-PICTURE = re.compile(r"^https://(ampcode\.com|github\.com)(/[^ \t\n]*)?$", re.ASCII)
-CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f\x85\u2028\u2029\ufeff]")
+PICTURE = re.compile(r"^https://(ampcode\.com|github\.com)(/[\x21-\x7e]*)?$", re.ASCII)
+# Control and format characters (zero-width, bidirectional, tag characters) are invisible or reorder text.
+CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029]")
 # Raw HTML (tags, comments, <!DOCTYPE, <![CDATA[, <?...?>) and Markdown link reference definitions
 # all render as hidden text.
 # A reference definition hides text even inside a list item or block quote, with an escaped ],
 # or with a label that continues on the next line after a backslash.
 HIDDEN = re.compile(r"<(?:[!?]|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:", re.M)
-# Markdown that renders some of its text invisibly: images (alt text), link titles, a label after a
-# code fence's opening backticks, and table rows with more cells than the header.
+# Markdown that renders some of its text invisibly. Links and fences are allowlisted: a link is
+# [text](destination) with text and a plain destination (no spaces, parentheses, backslashes or
+# quotes) closed at once, so it has no title; a fence line holds only the fence. Images, empty link
+# text, GitHub math commands and table rows wider than their header are rejected.
 IMAGE = re.compile(r"!\[")
-LINK_TITLE = re.compile(r"\]\([ \t\n]*(?:<[^>\n]*>|[^ \t\n)]*)[ \t\n]+[\"'(]")
-FENCE_LABEL = re.compile(r"^[ \t>*+\-0-9.)]*(?:`{3,}|~{3,})[ \t]*[^ \t\n`~]", re.M)
-TABLE_DELIMITER = re.compile(r"^[ \t]*\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$")
+INLINE_LINK = re.compile(r"\]\((?!<?[^\s()<>\\\"']+>?\))")
+EMPTY_LINK = re.compile(r"\[[ \t*_~]*\]\(")
+FENCE_LABEL = re.compile(r"^[ \t>*+\-0-9.)]*(?:`{3,}(?!`)|~{3,}(?!~))[ \t]*\S", re.M)
+MATH = re.compile(r"\$[^$]*\\[A-Za-z]")
+TABLE_DELIMITER = re.compile(r"^\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$")
+CONTAINER = re.compile(r"^[ \t>]*")
+MARKER = re.compile(r"^(?:[-*+]|[0-9]+[.)])[ \t]+")
+# YAML would read these in a front-matter value as a comment, anchor, alias, tag or block, and
+# GitHub's front-matter table would hide words.
+YAML_SPECIAL = re.compile(r"^[&*!|>{\[%@`]|[ \t]#")
 MAX_CHARS = 20_000
 MAX_SUMMARY_WORDS = 150
 MAX_SENTENCE_WORDS = 25
@@ -94,12 +105,16 @@ def front_matter(text):
         if item:
             if key is None or not isinstance(data[key], list):
                 raise Problem(f"front-matter: list item outside a list: {trim(line)}")
+            if YAML_SPECIAL.search(trim(item.group(1))):
+                raise Problem(f"front-matter: a '{key}' item starts with a YAML symbol or has ' #'; write plain text")
             data[key].append(unquote(item.group(1)))
             continue
         pair = re.match(r"^([a-z]+):(.*)$", line)
         if not pair:
             raise Problem(f"front-matter: cannot read this line: {trim(line)}")
         key, value = pair.group(1), trim(pair.group(2))
+        if YAML_SPECIAL.search(value):
+            raise Problem(f"front-matter: '{key}' starts with a YAML symbol or has ' #'; write plain text")
         if key not in KEYS:
             raise Problem(f"front-matter: unknown key '{key}'; allowed: {', '.join(KEYS)}")
         if key in data:
@@ -199,7 +214,7 @@ WORD = re.compile(r"[A-Za-z][A-Za-z'-]*|[0-9][0-9,.%]*")
 
 
 def cells(line):
-    s = trim(line)
+    s = trim(CONTAINER.sub("", line))
     s = s[1:] if s.startswith("|") else s
     s = s[:-1] if s.endswith("|") and not s.endswith("\\|") else s
     return len(re.split(r"(?<!\\)\|", s))
@@ -209,14 +224,20 @@ def hidden_markdown(text):
     """Name the first Markdown construct that hides words, or None. Keep in step with lib/brief.ts."""
     if IMAGE.search(text):
         return "an image"
-    if LINK_TITLE.search(text):
-        return "a link title"
+    if EMPTY_LINK.search(text):
+        return "a link with no text"
+    if INLINE_LINK.search(text):
+        return "a link with a title or an unusual destination"
     if FENCE_LABEL.search(text):
         return "a code fence with a label"
+    if MATH.search(text):
+        return "a math command"
     lines = text.split("\n")
     for i in range(1, len(lines)):
-        if "|" in lines[i - 1] and TABLE_DELIMITER.match(lines[i]) and "-" in lines[i]:
-            width = cells(lines[i - 1])
+        header = MARKER.sub("", CONTAINER.sub("", lines[i - 1]))
+        delimiter = CONTAINER.sub("", lines[i])
+        if ("|" in header or "|" in delimiter) and TABLE_DELIMITER.match(delimiter) and "-" in delimiter:
+            width = cells(header)
             for row in lines[i + 1:]:
                 if not trim(row):
                     break
@@ -250,7 +271,7 @@ def check(text):
     """Return a list of broken rules; empty when the brief passes."""
     if len(text) > MAX_CHARS:
         return [f"length: {len(text)} characters; limit {MAX_CHARS}"]
-    if CONTROL.search(text):
+    if CONTROL.search(text) or any(unicodedata.category(c) == "Cf" for c in text):
         return ["characters: use plain newlines (no carriage returns, line separators or control characters)"]
     try:
         data, front, body = front_matter(text)

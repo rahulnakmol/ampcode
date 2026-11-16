@@ -10,7 +10,8 @@ export default function (amp: PluginAPI) {
 	amp.registerCommand('preview-approval-dialogs', { title: 'Preview approval dialogs', category: 'Mission control', description: 'Show the design and merge dialogs for a synthetic mission. Nothing is recorded.' }, async ctx => {
 		const s = record as unknown as Mission
 		for (const [stage, dialog] of [['Design', designDialog(s)], ['Merge', mergeDialog(s)]] as const) {
-			const result = await ctx.ui.confirm(confirmOptions({ ...dialog, title: `Preview. ${dialog.title}` }))
+			// Real titles; the fixed preview note leads the message, so the dialog cannot be mistaken for a real approval.
+			const result = await ctx.ui.confirm(confirmOptions({ ...dialog, message: `Preview only: nothing is recorded or approved.\n\n${dialog.message}` }))
 			const refused = refusal(result)
 			await ctx.ui.notify(`${stage} preview: ${refused ?? 'this answer would approve.'} Nothing was recorded.`)
 		}

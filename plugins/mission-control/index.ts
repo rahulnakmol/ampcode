@@ -55,7 +55,7 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		return next
 	}
 	const status = (s: RecordState) => JSON.stringify(isV2(s) ? {
-		...s, designDigest: intentDigest(s.manifest), evidenceClass: 'reported', blockers: blockersV2(s),
+		...s, ...(s.legacy ? { legacy: compact(s.legacy) } : {}), designDigest: intentDigest(s.manifest), evidenceClass: 'reported', blockers: blockersV2(s),
 		current: s.units.map(u => {
 			const a = u.attempts.at(-1)
 			return { unitId: u.id, attemptId: a?.id, fingerprint: a && !a.stale ? fingerprintV2(s, u.id, a.id) : null, evidenceDigest: a && !a.stale ? evidenceDigestV2(s, u.id, a.id) : null }
@@ -127,7 +127,7 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		if (!s.evidence) throw new Error('Acceptance evidence required')
 		const merge = mergeDialog(s)
 		// Information only; the merge dialog is the approval view.
-		await ctx.ui.notify([merge.title, merge.message, merge.details].filter(Boolean).join('\n\n'))
+		await ctx.ui.notify(merge.details!)
 		ctx.signal.throwIfAborted()
 		return status(write(s, { type: 'presented', fingerprint: fingerprint(s) }))
 	})

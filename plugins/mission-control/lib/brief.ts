@@ -22,19 +22,29 @@ const DETAILS_CLOSE = '</details>'
 const KEYS = ['decision', 'yes', 'no', 'risks', 'excluded', 'picture']
 const LIMITS: Record<string, number> = { decision: 30, yes: 40, no: 40 }
 const LIST_LIMITS: Record<string, number> = { risks: 30, excluded: 20 }
-export const LINK = /^https:\/\/(ampcode\.com|github\.com)(\/[^ \t\n]*)?$/
-const CONTROL = /[\x00-\x08\x0b-\x1f\x7f\x85\u2028\u2029\ufeff]/
+export const LINK = /^https:\/\/(ampcode\.com|github\.com)(\/[\x21-\x7e]*)?$/
+// Control and format characters (zero-width, bidirectional, tag characters) are invisible or reorder text.
+const CONTROL = /[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029]|\p{Cf}/u
 // Raw HTML (tags, comments, <!DOCTYPE, <![CDATA[, <?...?>) and Markdown link reference definitions
 // all render as hidden text.
 // A reference definition hides text even inside a list item or block quote, with an escaped ],
 // or with a label that continues on the next line after a backslash.
 const HIDDEN = /<(?:[!?]|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:/m
-// Markdown that renders some of its text invisibly: images (alt text), link titles, a label after a
-// code fence's opening backticks, and table rows with more cells than the header.
+// Markdown that renders some of its text invisibly. Links and fences are allowlisted: a link is
+// [text](destination) with text and a plain destination (no spaces, parentheses, backslashes or
+// quotes) closed at once, so it has no title; a fence line holds only the fence. Images, empty link
+// text, GitHub math commands and table rows wider than their header are rejected.
 const IMAGE = /!\[/
-const LINK_TITLE = /\]\([ \t\n]*(?:<[^>\n]*>|[^ \t\n)]*)[ \t\n]+["'(]/
-const FENCE_LABEL = /^[ \t>*+\-0-9.)]*(?:`{3,}|~{3,})[ \t]*[^ \t\n`~]/m
-const TABLE_DELIMITER = /^[ \t]*\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/
+const INLINE_LINK = /\]\((?!<?[^\s()<>\\"']+>?\))/
+const EMPTY_LINK = /\[[ \t*_~]*\]\(/
+const FENCE_LABEL = /^[ \t>*+\-0-9.)]*(?:`{3,}(?!`)|~{3,}(?!~))[ \t]*\S/m
+const MATH = /\$[^$]*\\[A-Za-z]/
+const TABLE_DELIMITER = /^\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/
+const CONTAINER = /^[ \t>]*/
+const MARKER = /^(?:[-*+]|[0-9]+[.)])[ \t]+/
+// YAML would read these in a front-matter value as a comment, anchor, alias, tag or block, and
+// GitHub's front-matter table would hide words.
+const YAML_SPECIAL = /^[&*!|>{[%@`]|[ \t]#/
 const LIST_ITEM = /^[ \t]*(?:[-*+]|[0-9]+\.)[ \t]+(.*)$/
 const HEADING = /^## (.+?)[ \t]*$/
 const WORD = /[A-Za-z][A-Za-z'-]*|[0-9][0-9,.%]*/g
@@ -58,7 +68,7 @@ const unquote = (value: string) => {
 	return v.length >= 2 && v[0] === v.at(-1) && `"'`.includes(v[0]) ? v.slice(1, -1) : v
 }
 function cells(line: string) {
-	let s = trim(line)
+	let s = trim(line.replace(CONTAINER, ''))
 	if (s.startsWith('|')) s = s.slice(1)
 	if (s.endsWith('|') && !s.endsWith('\\|')) s = s.slice(0, -1)
 	return s.split(/(?<!\\)\|/).length
@@ -66,12 +76,15 @@ function cells(line: string) {
 /** The first Markdown construct that hides words, or undefined. Keep in step with brief_check.py. */
 function hiddenMarkdown(text: string) {
 	if (IMAGE.test(text)) return 'an image'
-	if (LINK_TITLE.test(text)) return 'a link title'
+	if (EMPTY_LINK.test(text)) return 'a link with no text'
+	if (INLINE_LINK.test(text)) return 'a link with a title or an unusual destination'
 	if (FENCE_LABEL.test(text)) return 'a code fence with a label'
+	if (MATH.test(text)) return 'a math command'
 	const lines = text.split('\n')
 	for (let i = 1; i < lines.length; i++) {
-		if (!lines[i - 1].includes('|') || !TABLE_DELIMITER.test(lines[i]) || !lines[i].includes('-')) continue
-		const width = cells(lines[i - 1])
+		const header = lines[i - 1].replace(CONTAINER, '').replace(MARKER, ''), delimiter = lines[i].replace(CONTAINER, '')
+		if (!(header.includes('|') || delimiter.includes('|')) || !TABLE_DELIMITER.test(delimiter) || !delimiter.includes('-')) continue
+		const width = cells(header)
 		for (const row of lines.slice(i + 1)) {
 			if (!trim(row)) break
 			if (cells(row) > width) return 'a table row wider than its header'
@@ -93,6 +106,7 @@ function frontMatter(markdown: string) {
 		const item = /^[ \t]+-[ \t]+(.*)$/.exec(line)
 		if (item) {
 			if (!key || !Array.isArray(data[key])) throw new BriefError('front-matter', `list item outside a list: ${trim(line)}`)
+			if (YAML_SPECIAL.test(trim(item[1]))) throw new BriefError('front-matter', `a '${key}' item starts with a YAML symbol or has ' #'; write plain text`)
 			;(data[key] as string[]).push(unquote(item[1]))
 			continue
 		}
@@ -100,6 +114,7 @@ function frontMatter(markdown: string) {
 		if (!pair) throw new BriefError('front-matter', `cannot read this line: ${trim(line)}`)
 		key = pair[1]
 		const value = trim(pair[2])
+		if (YAML_SPECIAL.test(value)) throw new BriefError('front-matter', `'${pair[1]}' starts with a YAML symbol or has ' #'; write plain text`)
 		if (!KEYS.includes(key)) throw new BriefError('front-matter', `unknown key '${key}'; allowed: ${KEYS.join(', ')}`)
 		if (key in data) throw new BriefError('front-matter', `'${key}' appears twice`)
 		data[key] = value ? unquote(value) : []
@@ -238,6 +253,7 @@ export function mergeDialog(s: Mission): Dialog {
 			`What was approved as done, and the result:\n${s.design!.criteria.map((criterion, i) => `${i + 1}. ${criterion}\n   Result: ${s.evidence?.results[i] ?? 'Not checked yet'}`).join('\n')}`,
 			`Customer value: ${s.evidence?.value ?? 'Not established yet'}`,
 			`Pull request: ${url}\nHead: ${c.head}\nBase: ${c.base}`,
+			`Merge preference: ${s.mode}; high risk always requires owner acknowledgment.`,
 			'Approvals are local workflow gates. Required checks and the protected dev branch must also allow the merge.',
 		].join('\n\n'),
 	}

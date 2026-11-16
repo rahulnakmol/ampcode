@@ -272,8 +272,8 @@ decision brief for any human sign-off: what you decide, what happens on yes and 
 changes, what done looks like, what was and was not checked, the risks you accept, what is not
 included, how to undo it, and a glossary. Codes, hashes and IDs go into a closing technical
 record. `scripts/brief_check.py` (standard library) checks the structure, sentence length,
-reading ease and a list of banned codes. `mission-control` requires a brief in every new design
-and shows it in the approval dialog. On a synthetic case, a fresh non-technical reader answered
+reading ease, banned codes, and HTML or Markdown that hides words. `mission-control` requires a
+brief and its document link in every new design and links it from the approval dialog. On a synthetic case, a fresh non-technical reader answered
 all four sign-off questions from the brief and two of four from today's dialog text
 ([results](./evals/briefing-decisions/results.md)).
 

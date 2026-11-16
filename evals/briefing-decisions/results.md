@@ -4,10 +4,10 @@ A synthetic mission (moving a sales demo website to paid hosting; no real system
 
 | File | What it is |
 | --- | --- |
-| [record.json](record.json) | The synthetic v1 mission record, with the brief in `design.bundle.brief`. The preview plugin's fixture is a byte copy |
+| [record.json](record.json) | The synthetic v1 mission record, with the brief and its link in `design.bundle.brief`. The preview plugin's fixture is a byte copy |
 | [answer-key.md](answer-key.md) | The four novice questions and their required points, written before any reader ran |
 | [todays-packet.md](todays-packet.md) | The design dialog text that `packet()` and `acknowledge()` at base commit `876b9e8` produce for this record as it stood at design approval (no brief, candidate or evidence; briefs did not exist then). The reader saw an earlier copy whose design hash line was computed with the brief included; the line now shows the hash base code produces. No other line changed |
-| [brief.md](brief.md) | The decision brief. `brief_check.py` exits 0; reading ease 82.2 |
+| [brief.md](brief.md) | The decision brief. `brief_check.py` exits 0; reading ease 82.2 by `evals/planning/readability.py` on the whole file (the checker scores the prose alone higher) |
 
 Method: each text went to its own fresh reader (an Amp subagent with no access to this
 conversation) with the persona "a finance director at a small company who does not write
