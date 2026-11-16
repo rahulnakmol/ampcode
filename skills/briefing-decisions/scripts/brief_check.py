@@ -35,7 +35,8 @@ KEYS = ("decision", "yes", "no", "risks", "excluded", "picture")
 PICTURE = re.compile(r"^https://(ampcode\.com|github\.com)(/[^ \t\n]*)?$", re.ASCII)
 CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f\x85\u2028\u2029\ufeff]")
 # Raw HTML, HTML comments and Markdown link reference definitions all render as hidden text.
-HIDDEN = re.compile(r"<(?:!--|[A-Za-z/])|^ {0,3}\[[^\]]*\]:", re.M)
+# A reference definition hides text even inside a list item or block quote, or with an escaped ].
+HIDDEN = re.compile(r"<(?:!--|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\.|[^\\\]])*\]:", re.M)
 MAX_CHARS = 20_000
 MAX_SUMMARY_WORDS = 150
 MAX_SENTENCE_WORDS = 25

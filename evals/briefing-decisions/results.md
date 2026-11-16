@@ -6,7 +6,7 @@ A synthetic mission (moving a sales demo website to paid hosting; no real system
 | --- | --- |
 | [record.json](record.json) | The synthetic v1 mission record, with the brief in `design.bundle.brief`. The preview plugin's fixture is a byte copy |
 | [answer-key.md](answer-key.md) | The four novice questions and their required points, written before any reader ran |
-| [todays-packet.md](todays-packet.md) | The design dialog text that `packet()` and `acknowledge()` at base commit `876b9e8` produce for this record as it stood at design approval (no brief, candidate or evidence; briefs did not exist then) |
+| [todays-packet.md](todays-packet.md) | The design dialog text that `packet()` and `acknowledge()` at base commit `876b9e8` produce for this record as it stood at design approval (no brief, candidate or evidence; briefs did not exist then). The reader saw an earlier copy whose design hash line was computed with the brief included; the line now shows the hash base code produces. No other line changed |
 | [brief.md](brief.md) | The decision brief. `brief_check.py` exits 0; reading ease 82.2 |
 
 Method: each text went to its own fresh reader (an Amp subagent with no access to this
@@ -45,19 +45,26 @@ who acts.
 Answers as returned:
 
 1. I'm approving a plan, before any work starts, to move the sales demo website from the office
-   computer to an outside hosting company. [...] The text says no customer data is involved and
-   that this is a made-up example, not a real system.
+   computer to an outside hosting company. Once it moves, the site stays up even when the office
+   computer is off. The old web address will send visitors to the new one for 30 days. Sales staff
+   will get the new address by email and in the team chat. After a week, the office computer that
+   runs the site gets turned off. The text says no customer data is involved and that this is a
+   made-up example, not a real system.
 2. I mostly cannot tell. The text lists no risks. It lists four things that should be true
-   afterwards, and all four say "Not yet verified" [...] Any of these could fail. The text also
-   calls the change "high risk" but never says why.
+   afterwards, and all four say "Not yet verified": the new address works from a phone and from a
+   laptop outside the office; the site stays up with the office computer off; the old address
+   forwards visitors for 30 days; the bill is 25 dollars a month. Any of these could fail. The
+   text also calls the change "high risk" but never says why.
 3. The expected bill is 25 US dollars a month, but that is also "Not yet verified." The text gives
    no one-off cost and no cost in staff time.
 4. Customer data is left out. Beyond that I cannot tell, because the text has no list of what's
-   out of scope.
+   out of scope. It also says the "try it" step and the "customer value" have not been supplied
+   yet.
 
-Did not understand: the long string after "Design", typing "ACKNOWLEDGE" in a "masked field",
-"Merge preference: auto", "CI", "protected dev", "local workflow gates", "hostile-shell security
-boundary", "HTTP 301" and "static files".
+Did not understand: the long string of letters and numbers after "Design," the line saying I
+should type "ACKNOWLEDGE" in a "masked field," and the jargon: "Merge preference: auto," "CI,"
+"protected dev," "local workflow gates" and "hostile-shell security boundary," plus "HTTP 301" and
+"static files" in the technical note.
 
 ## Judge
 

@@ -453,11 +453,12 @@ describe('decision briefs', () => {
 		}
 	})
 	test('dialogs show supplied text literally, so it cannot hide HTML', () => {
-		const hidden = (name: string) => `${name} & <!-- hidden ${name} -->`
+		const hidden = (name: string) => `${name} & <!-- hidden ${name} -->\n\n[${name}]: /u "hidden ${name}"`
 		let s = advance(createMission('T-test', hidden('requirement')), { type: 'design', bundle: { ...bundle, spec: hidden('spec'), plan: hidden('plan'), technical: hidden('technical'), ux: hidden('ux') }, criteria: ['Rows <span hidden>and deletes backups</span>'] })
 		const d = designDialog(s)
 		expect(d.message).not.toMatch(/<!--|<span/)
-		for (const name of ['requirement', 'spec', 'plan', 'technical', 'ux']) expect(d.message).toContain(`${name} &amp; &lt;!-- hidden ${name} -->`)
+		for (const name of ['requirement', 'spec', 'plan', 'technical', 'ux']) expect(d.message).toContain(`${name} &amp; &lt;!-- hidden ${name} -->\n\n\\[${name}]: /u "hidden ${name}"`)
+		expect(d.message).not.toMatch(/^[ \t>*+\-0-9.)]*\[[^\]]*\]:/m)
 		expect(d.message).toContain('1. Rows &lt;span hidden>and deletes backups&lt;/span>')
 		expect(d.message.startsWith('**You are deciding:**')).toBe(true)
 		s = advance(advance(advance(advance(s, { type: 'approve-design', digest: s.design!.digest }), { type: 'defense', digest: s.design!.digest, record: 'Defended.' }), { type: 'build' }), { type: 'candidate', candidate })

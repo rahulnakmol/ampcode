@@ -301,7 +301,8 @@ with the `briefing-decisions` skill. The plugin rejects a design without a valid
 brief, with an error that names the broken rule (front matter, headings, consistency,
 characters, raw HTML or other hidden text, banned codes, sentence length; reading ease is checked by
 `brief_check.py` only). Text from the record (requirements, criteria, design and
-evidence) is shown literally, so it cannot carry hidden HTML. The brief is stored in the design, so the design digest and the
+evidence) is shown literally, so it cannot carry hidden HTML or reference lines;
+inside code spans the escapes for `&`, `<` and `[` show as typed. The brief is stored in the design, so the design digest and the
 approval cover its exact text. `mission_status` shows the brief only as its length
 and SHA-256.
 
@@ -309,7 +310,7 @@ and SHA-256.
 
 - **Design:** title "Approve the design: <decision>". Collapsed: the decision, what
   happens on yes and on no, and the numbered risks. "Read the brief" expands the full
-  brief, the acceptance criteria verbatim, and a technical record (requirements,
+  brief, the acceptance criteria word for word, and a technical record (requirements,
   spec, plan, technical and UX design). One unticked box per risk, the owner field,
   and, when the brief has a `picture`, a link to it last.
 - **Merge:** title "Merge into dev: <decision>". Collapsed: pull request number, risk
@@ -318,7 +319,7 @@ and SHA-256.
 - **Refusal:** an unticked risk refuses approval and names it; some Amp clients may
   not show tick boxes, so approve from the Amp web app. A wrong word refuses too.
 - **Older missions** designed before decision briefs keep their digests and show the
-  raw design record under a plain heading.
+  raw design record after a plain sentence that says so.
 
 To see the dialogs without a mission, run the command **Mission control: Preview
 approval dialogs** from the preview-only project plugin

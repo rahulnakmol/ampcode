@@ -4,7 +4,7 @@ Acknowledge design before proceeding.
 
 Mission requirements: Keep the sales demo website available when the office computer is off, at a known monthly cost. Synthetic example; no real system.
 
-Design: cd3057df81bdc6885d23ef26f4d453194102acd8da1dfe6ee84c64632c34a6c1
+Design: a65ec13bf6a882bb990fa16d8fb43ddb1f5b61e5783e6624667e82edffcbf440
 
 {
   "spec": "Move the static demo site to managed hosting; keep a 30-day redirect from the old address; no customer data.",

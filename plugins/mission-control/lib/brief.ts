@@ -25,7 +25,8 @@ const LIST_LIMITS: Record<string, number> = { risks: 30, excluded: 20 }
 const PICTURE = /^https:\/\/(ampcode\.com|github\.com)(\/[^ \t\n]*)?$/
 const CONTROL = /[\x00-\x08\x0b-\x1f\x7f\x85\u2028\u2029\ufeff]/
 // Raw HTML, HTML comments and Markdown link reference definitions all render as hidden text.
-const HIDDEN = /<(?:!--|[A-Za-z/])|^ {0,3}\[[^\]]*\]:/m
+// A reference definition hides text even inside a list item or block quote, or with an escaped ].
+const HIDDEN = /<(?:!--|[A-Za-z/])|^[ \t>*+\-0-9.)]*\[(?:\\.|[^\\\]])*\]:/m
 const LIST_ITEM = /^[ \t]*(?:[-*+]|[0-9]+\.)[ \t]+(.*)$/
 const HEADING = /^## (.+?)[ \t]*$/
 const WORD = /[A-Za-z][A-Za-z'-]*|[0-9][0-9,.%]*/g
@@ -151,8 +152,9 @@ export function validateBrief(markdown: unknown): BriefData {
 }
 
 const briefOf = (s: Mission) => s.design?.bundle.brief
-// Text the agent or the record supplies is shown literally: '<' cannot open hidden HTML.
-const plain = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+// Text the agent or the record supplies is shown literally: '<' cannot open hidden HTML and '['
+// cannot start a hidden link reference definition. Inside code spans the escapes show as typed.
+const plain = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\[/g, '\\[')
 const numbered = (items: string[]) => items.map((item, i) => `${i + 1}. ${plain(item)}`).join('\n')
 
 /** Today's raw v1 details, kept for records designed before decision briefs. */

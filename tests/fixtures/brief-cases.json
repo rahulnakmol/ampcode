@@ -280,6 +280,46 @@
    ]
   },
   {
+   "rule": "html",
+   "why": "reference definition inside a list item",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n- [//]: # (The agent also deletes the backups.)\n"
+    ]
+   ]
+  },
+  {
+   "rule": "html",
+   "why": "reference definition inside a block quote",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n> [//]: # (The agent also deletes the backups.)\n"
+    ]
+   ]
+  },
+  {
+   "rule": "html",
+   "why": "reference definition with an escaped bracket",
+   "edits": [
+    [
+     "## How to undo it\n",
+     "## How to undo it\n\n[a\\]b]: # (The agent also deletes the backups.)\n"
+    ]
+   ]
+  },
+  {
+   "rule": "html",
+   "why": "reference definition as a list item in the record",
+   "edits": [
+    [
+     "- Redirect:",
+     "- [x]: /hidden\n- Redirect:"
+    ]
+   ]
+  },
+  {
    "rule": "length",
    "why": "over 20,000 characters",
    "pad": 20000
@@ -361,6 +401,21 @@
     [
      "## What changes\n",
      "## What changes\u00a0\n"
+    ]
+   ]
+  },
+  {
+   "rule": "technical-record",
+   "why": "no-break space after the closing tag",
+   "append": "\u00a0"
+  },
+  {
+   "rule": null,
+   "why": "a no-break space joins two words into one (30, not 31)",
+   "edits": [
+    [
+     "decision: Approve moving the sales demo website from the office computer to a paid hosting service.",
+     "decision: Approve moving the sales demo website from the office computer to a paid hosting service now, so that every sales call this week works for all of our customers this\u00a0month."
     ]
    ]
   },
@@ -455,6 +510,26 @@
     [
      "Nothing changes.",
      "Nothing changes.\n\n```\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n```\n"
+    ]
+   ]
+  },
+  {
+   "rule": null,
+   "why": "a link counts as its text",
+   "edits": [
+    [
+     "Nothing changes.",
+     "One two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twentyone twentytwo twentythree [see](https://github.com/a/b/c/d/e)."
+    ]
+   ]
+  },
+  {
+   "rule": null,
+   "why": "inline code counts as one word",
+   "edits": [
+    [
+     "Nothing changes.",
+     "One two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twentyone twentytwo twentythree `a b c d e`."
     ]
    ]
   },
