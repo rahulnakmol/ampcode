@@ -334,22 +334,17 @@ Before presenting it, review it yourself:
 
 ### Test consequential briefs with a fresh reader
 
-For Open or otherwise consequential handoffs, obtain a **Goldfish** comprehension check before
-calling the package ready for confirmation: a fresh, read-only context with no interview history.
-Give it the brief and an explicit reading list of relevant source/contract files at identified
-revisions, not your conversational explanation or desired verdict. Ask it to explain the customer
-outcome, current system, proposed change, constraints, acceptance checks and first safe step from
-those materials alone, and identify missing decisions or contradictions. Record what it actually
-read. Fresh means independent conversation context, not a different model or a security sandbox.
+For Open or otherwise consequential handoffs, run a fresh-reader review with the `goldfishing`
+skill (comprehension lens) before calling the package ready for confirmation. Give the reviewer
+the brief and a reading list of relevant source and contract files at identified revisions. Ask
+it to explain, from those materials alone, the customer outcome, current system, proposed change,
+constraints, acceptance checks and first safe step, and to name missing decisions or
+contradictions.
 
-Repair missing explanations in the brief, not in private answers to the reviewer. A substantive
-new choice returns to a grilling round; facts return to source inspection. Recheck the affected
-material with a fresh reader after changes. Keep a revision-bound result and unresolved findings
-with the brief. A reviewer cannot confirm on the user's behalf. For a clear small change, skip
-this review with a reason; do not manufacture a swarm or an extra interview. When independent
-review is required but unavailable or its budget is exhausted, mark the handoff pending, preserve
-the packet, and name the needed review/decision. Self-review is not a Goldfish pass, and a retry
-cap cannot accept unresolved risks. Follow the actual delegation tools' restrictions.
+Grilling's own repair rules: a substantive new choice returns to a grilling round; a factual gap
+returns to source inspection. Keep the review result and open findings with the brief. A reviewer
+cannot confirm on the user's behalf. For a clear small change, skip this review with a reason;
+do not add an extra interview.
 
 In a delivering mission, this brief check supplies the comprehension evidence for the subsequent
 design review when its scope and revision still match; do not repeat it for ceremony. A confirmed

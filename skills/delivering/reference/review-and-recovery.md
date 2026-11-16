@@ -1,48 +1,35 @@
 # Review, delegation, and recovery
 
-## Elephant-Goldfish design review
+## Fresh-context design review
 
-The integration owner is the context-rich **Elephant**: maintain the problem, acceptance rubric,
-decisions, alternatives, progress and evidence in a compact package. **Goldfish** reviewers are
-fresh contexts that test whether the package works without the author's conversation. This
-adapts [Dave Rensin's EGM method](https://research.google/pubs/elephants-goldfish-and-the-new-golden-age-of-software-engineering/),
-not its entire plugin or a guarantee of correctness. Inspect referenced source; documents can be
-stale. No repository-wide documentation rewrite or fixed-size swarm is required.
+The integration owner holds the problem, acceptance rubric, decisions, alternatives, progress and
+evidence in a compact package. Fresh reviewers test whether the package works without the
+author's conversation. Run them with the `goldfishing` skill, which owns what a reviewer gets and
+never gets, severity, finding outcomes, round limits, failed reviewers and the review record.
+Inspect referenced source; documents can be stale.
 
-Before owner acknowledgment of a consequential design, run these dependency-ordered lenses:
+Before owner acknowledgment of a consequential design, run these lenses in order, each in its own
+fresh context:
 
 1. **Purpose and comprehension:** can a fresh reader reconstruct the customer problem, current
    system, proposed behavior, non-goals and grading criteria from the packet alone? Reuse a
    grilling check only for unchanged scope and revision; a new technical design needs coverage.
 2. **Critic and source check:** challenge assumptions, alternatives, security, failure/recovery
    and compatibility against actual contracts. Verify claimed APIs, ownership and dependencies.
-   Report concrete counterexamples, not a demand to find faults or agree with the author.
 3. **Readiness and purpose recheck:** after repairs, can a fresh implementer identify affected
    files/contracts, ordered slices, testable invariants and the first safe check without inventing
    a consequential decision? Did the repairs preserve the intended customer benefit?
+4. **Novice reader of the decision brief:** before the design dialog, a non-technical persona
+   answers from the brief alone what is approved, what can go wrong, what it costs and what is
+   not included (see `briefing-decisions`).
 
-Use separate fresh contexts for comprehension, consequential critique and final readiness;
-parallelize only independent lenses on the same frozen revision. Do not carry an earlier
-reviewer's conversational coaching into a purported fresh pass. Group related lenses within a
-review where useful. Small low-risk work may use explicit self-review with a reason; it is not
-a Goldfish review. Budget required reviews before starting. If the tool cannot supply a fresh
-reviewer or the budget runs out, preserve the packet and mark required review blocked. Do not
-spawn nested agents or new threads contrary to the actual harness rules.
-
-Give each reviewer only a neutral assignment, the original requirements/acceptance IDs, the
-versioned design, explicit reading list and relevant source/evidence. Exclude interview history,
-the author's confidence, suggested verdicts and hidden facts that belong in the design. References
-may supply context, but must be accessible at identified revisions. Missing materials are a gap,
-not permission to guess. Read-only reviewers return findings; the owner edits the source of truth.
-
-Record reviewer identity, lens, packet revision, files actually read, finding/location, consequence,
-severity, uncertainty and disposition. Resolve factual disputes with source inspection or a
-bounded experiment. Resolve design choices with the authorized owner. Repair the packet itself,
-then recheck affected lenses; substantive changes invalidate affected passes. A re-audit/attempt
-cap stops work, never automatically accepts remaining findings. Retain dissent and unresolved
-blockers. A pass means ready to present for owner acknowledgment, not permission to implement,
-proof of runtime behavior or either of the two build-review gates. With mission-control, include
-the final package in the existing design action; do not invent a Goldfish tool or approval receipt.
+Give each reviewer the original requirements and acceptance IDs, the versioned design and brief,
+and an explicit reading list. Budget required reviews before starting. Resolve factual disputes
+with source inspection or a bounded experiment, and design choices with the authorized owner;
+substantive changes invalidate affected passes. A pass means ready to present for owner
+acknowledgment, not permission to implement, proof of runtime behavior or either of the two
+build-review gates. With mission-control, include the final package in the existing design
+action; do not invent a review tool or approval receipt.
 
 ## Review the candidate, not the implementer's confidence
 

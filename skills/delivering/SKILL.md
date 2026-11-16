@@ -44,8 +44,8 @@ execution to an authorized agent with the right environment; never invent execut
    system/technical approach, alternatives and reasons, then implementation slices with affected
    files/contracts, invariants, checks and approval boundaries. Keep routine coding choices with
    the implementer; settle choices that alter outcomes, compatibility or authority in the design.
-   Before requesting acknowledgment, run the risk-scaled Elephant-Goldfish design review in
-   [reference/review-and-recovery.md](reference/review-and-recovery.md). Reuse current grilling
+   Before requesting acknowledgment, run the risk-scaled fresh-context design review in
+   [reference/review-and-recovery.md](reference/review-and-recovery.md), using `goldfishing`. Reuse current grilling
    comprehension evidence; repair gaps in the package rather than coaching a reviewer privately.
    Present both technical and applicable UX design, acceptance criteria, risks, and verification
    to the mission initiator. Obtain acknowledgment of this exact design package **before whiteboard
