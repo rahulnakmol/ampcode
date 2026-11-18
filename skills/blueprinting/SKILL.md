@@ -78,8 +78,9 @@ transcripts remain provisional; material claims require source checks or clarifi
 When an engagement runs as a mission, write the `missioning` charter, gate ledger and decision
 trail in `mission.md`, a working note in the engagement repository outside intake and record
 folders; keep its briefs beside it. Retain its text as a `mission` record each time a human gate
-passes. Name client authorities as Approvers. A client baseline gate passes only when `baseline`
-reports `ready: true`; its Source is `written: <decision id>`. Publication keeps its own approval.
+passes. Name client authorities as Approvers. A client baseline gate passes only when `baseline
+<decision-id>` reports `ready: true`; its Evidence cites that output and its Source is
+`written: <decision id>`. Publication keeps its own approval.
 
 ## Apply the agreed consulting boundaries
 

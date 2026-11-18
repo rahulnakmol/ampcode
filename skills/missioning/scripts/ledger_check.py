@@ -29,9 +29,19 @@ KINDS = ("human", "agent")
 STATES = ("open", "pending", "passed", "failed", "waived")
 SOURCES = ("dialog", "question", "tracker", "written")
 EMPTY = ("", "-")
-NOT_AN_ANSWER = re.compile(r"\b(?:chat|looks good|lgtm|sounds good|fine by me)\b|👍", re.I)
-PLACEHOLDER = re.compile(r"\b(?:TBD|TODO|TBC)\b|^\?+$|<(?![a-z][a-z0-9+.-]*:)[^<>\n]+>", re.I)
-BRIEF_CHECK = Path(__file__).resolve().parents[2] / "briefing-decisions" / "scripts" / "brief_check.py"
+NOT_AN_ANSWER = re.compile(
+    r"\b(?:chat|conversation|slack|dm|looks good|lgtm|sounds good|fine by me)\b|👍", re.I)
+PLACEHOLDER = re.compile(r"\b(?:TBD|TODO|TBC)\b|^\?+$|<(?!https?://|mailto:)[^<>\n]+>")
+SEPARATOR = re.compile(r"^\|(?:\s*:?-{3,}:?\s*\|)+$")
+SKILLS = Path(__file__).resolve().parents[2]  # this skill's parent: sibling skills live here
+
+
+def brief_checker():
+    """briefing-decisions' checker beside this skill: 'briefing-decisions' or Amp's 'name@hash'."""
+    for folder in [SKILLS / "briefing-decisions", *sorted(SKILLS.glob("briefing-decisions@*"))]:
+        if (folder / "scripts" / "brief_check.py").is_file():
+            return folder / "scripts" / "brief_check.py"
+    return None
 
 
 def section(text, title):
@@ -58,7 +68,7 @@ def fields(lines):
 def table(lines):
     """Header cells and data rows of the first Markdown table in lines."""
     rows = [l.strip() for l in lines if l.strip().startswith("|")]
-    if len(rows) < 2:
+    if len(rows) < 2 or not SEPARATOR.match(rows[1]):
         return None, []
     cells = lambda row: [c.strip() for c in row.strip("|").split("|")]
     return cells(rows[0]), [cells(r) for r in rows[2:]]
@@ -68,9 +78,11 @@ WORD = r"[^\W\d_][\w.'’-]*"
 PERSON = re.compile(rf"(?:{WORD}(?: {WORD}){{0,4}}(?: \(@?[\w.-]+\))?|@[\w.-]+)")
 
 
-def people_ok(value):
-    """True for 'none' or comma-separated names, each optionally followed by '(handle)'."""
-    return value.strip().lower() == "none" or all(PERSON.fullmatch(e.strip()) for e in value.split(","))
+def people_ok(value, none_allowed):
+    """True for comma-separated names, each optionally followed by '(handle)', or 'none' if allowed."""
+    if value.strip().lower() == "none":
+        return none_allowed
+    return all(PERSON.fullmatch(e.strip()) for e in value.split(","))
 
 
 def identities(value):
@@ -87,15 +99,17 @@ def identities(value):
 
 
 def local(reference, base):
-    """The local path a reference names (text before any ' (url)'), if it exists."""
+    """The relative local path a reference names (text before any ' (url)'), if the file exists."""
     path = reference.split(" (", 1)[0].strip()
-    return base / path if path and not path.startswith("https://") and (base / path).is_file() else None
+    ok = path and not path.startswith(("https://", "/")) and (base / path).is_file()
+    return (base / path).resolve() if ok else None
 
 
 def check_brief(path):
-    if not BRIEF_CHECK.is_file():
+    checker = brief_checker()
+    if checker is None:
         return f"cannot check brief {path.name}: briefing-decisions is not installed beside missioning"
-    run = subprocess.run([sys.executable, str(BRIEF_CHECK), str(path)], capture_output=True, text=True)
+    run = subprocess.run([sys.executable, str(checker), str(path)], capture_output=True, text=True)
     return None if run.returncode == 0 else f"brief {path.name} fails brief_check.py: {run.stdout.strip().splitlines()[0]}"
 
 
@@ -109,7 +123,7 @@ def check(text, base):
             add("R1", f"charter needs exactly one '- **{name}:**' line (found {len(values)})")
         elif not values[0] or PLACEHOLDER.search(values[0]):
             add("R1", f"charter field {name} is empty or a placeholder")
-        elif name in ("Decision owner", "Approvers") and not people_ok(values[0]):
+        elif name in ("Decision owner", "Approvers") and not people_ok(values[0], name == "Approvers"):
             add("R1", f"{name} must be 'none' or comma-separated names, each with an optional '(handle)', not prose")
     get = lambda name: (charter.get(name) or [""])[0]
     host, playbook, budget = get("Host").lower(), get("Playbook"), get("Budget")
@@ -117,10 +131,12 @@ def check(text, base):
         add("R2", f"Host must be one of Amp, Claude Code, Copilot in VS Code, Copilot app, not '{get('Host')}'")
     if playbook and playbook not in PLAYBOOKS and not re.match(r"none: \S", playbook):
         add("R2", f"Playbook must be a playbook name or 'none: <reason>', not '{playbook}'")
-    if budget and not (re.search(r"\d", budget) or re.search(r"no limit on .+, decided by \S", budget, re.I)):
+    decided = re.search(r"no limit on .+, decided by \S", budget, re.I)
+    if budget and not decided and (not re.search(r"\d", budget) or re.search(r"\bunlimited\b|\bno limit\b", budget, re.I)):
         add("R3", "Budget must name a limit with a number, or say 'no limit on <what>, decided by <name>'")
 
-    deciders = identities(get("Decision owner")) | identities(get("Approvers"))
+    owner = identities(get("Decision owner"))
+    deciders = owner | identities(get("Approvers"))
     header, rows = table(section(text, "Gate ledger") or [])
     if header != list(LEDGER) or not rows:
         add("R4", "gate ledger needs a table with headers " + " | ".join(LEDGER) + " and at least one row")
@@ -141,25 +157,30 @@ def check(text, base):
             kind_of = kind_of.strip().lower()
             if source in EMPTY:
                 add("R6", f"gate '{gate}': Source must say where the decider answered")
-            elif kind_of not in SOURCES or NOT_AN_ANSWER.search(reference):
+            elif kind_of not in SOURCES or NOT_AN_ANSWER.search(re.sub(r"copilot chat", "", reference, flags=re.I)):
                 add("R7", f"gate '{gate}': source '{source}' is not an approval; approval is never inferred from chat")
             elif not reference.strip():
                 add("R6", f"gate '{gate}': Source needs a reference after '{kind_of}:'")
-            elif kind_of == "dialog" and host != "amp" and "amp" not in reference.lower():
+            elif kind_of == "dialog" and host != "amp" and not re.search(r"\bamp\b", reference, re.I):
                 add("R6", f"gate '{gate}': a dialog source must name Amp when the host is not Amp")
+            elif kind_of in ("question", "dialog") and any(n not in owner for n in names):
+                add("R6", f"gate '{gate}': only the Decision owner answers a {kind_of}; other approvers sign by tracker or written")
         if kind == "human" and state == "passed":
             path = local(brief, base)
-            if path is None:
+            if path is None or path.suffix != ".md":
                 add("R8", f"gate '{gate}': Brief must be a local Markdown file that exists")
             elif (problem := check_brief(path)):
                 add("R8", f"gate '{gate}': {problem}")
         if state == "passed":
             agent_ok = kind == "agent" and re.match(r"none needed: \S", review)
-            if not (agent_ok or review.startswith("https://") or local(review, base)):
+            record = local(review, base)
+            if record is not None and record == local(brief, base):
+                record = None
+            if not (agent_ok or re.match(r"https://\S+\.\S", review) or record):
                 add("R9", f"gate '{gate}': Review must be a record that exists (path or https URL)")
-            if kind == "agent" and evidence in EMPTY:
+            if kind == "agent" and (evidence in EMPTY or PLACEHOLDER.search(evidence)):
                 add("R10", f"gate '{gate}': a passed agent gate needs Evidence")
-        if state == "waived" and evidence in EMPTY:
+        if state == "waived" and (evidence in EMPTY or PLACEHOLDER.search(evidence)):
             add("R11", f"gate '{gate}': a waived gate needs the reason in Evidence")
 
     header, rows = table(section(text, "Decision trail") or [])

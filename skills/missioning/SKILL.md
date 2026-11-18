@@ -10,7 +10,8 @@ set points. This skill is the thin conductor: it decides what happens next and r
 skills do the work. It works the same on every host; [reference/hosts.md](reference/hosts.md)
 names each host's tools.
 
-It does not schedule work, start teams or swarms, or run parallel workers by default, and it
+It does not schedule work, start teams, swarms or the Copilot app's multi-agent Projects, or run
+parallel workers by default, and it
 never holds authority the owner did not grant. One integration owner stays accountable for the
 outcome. The rules here guide an agent; on hosts without an owner-only dialog they are not a
 security boundary.
@@ -31,8 +32,9 @@ facts first; ask only what you cannot find. The charter names:
   data, or the goal is unclear);
 - **Playbook** and **Host**.
 
-Until the owner acknowledges the charter, the agent only reads, researches, drafts, reviews and
-records, within the review rounds `goldfishing` allows for the risk. It takes no effects action.
+Until the owner acknowledges the charter, the agent only reads, researches, drafts, reviews,
+records and publishes the brief for the owner, within the review rounds `goldfishing` allows for
+the risk. It takes no effects action.
 
 ## 2. Agree how the work is graded, before the work
 
@@ -83,7 +85,7 @@ Charter and Criteria rows, and every outside send or publish it ends with is an 
 | Charter | Outcome, Definition of Done, authority, budget | Drafts the charter; finds facts first |
 | Criteria | Grading criteria and weights | Proposes them, with alternatives |
 | Design or plan | The exact package, read as a brief | Drafts, reviews, writes the brief, repairs |
-| Effects | Each outside write: send, sync, apply, release, publish, high-risk merge | Shows the exact plan, applies only that plan, reads the result back |
+| Effects | Each outside write the charter does not grant: send, apply, release, publish, high-risk merge | Shows the exact plan, applies only that plan, reads the result back |
 | Outcome | Acceptance against the Definition of Done | Evidence, trace, gaps, lessons |
 
 - **Approval is a recorded row.** A human gate passes only with a named decider who is the
@@ -91,8 +93,9 @@ Charter and Criteria rows, and every outside send or publish it ends with is an 
   brief and its review. An answer counts only when it answers the exact gate question, by
   choosing an offered option or naming the decision. "Looks good", an earlier conversation or
   silence is never an approval. Write the row only after that answer.
-- **Full-stop gates.** Every release, apply, publish, outside send and high-risk merge needs the
-  owner's approval of the exact plan, whatever the charter allows.
+- **Full-stop gates.** Every release, apply to a shared or production environment, publish,
+  outside send and high-risk merge needs the owner's approval of the exact plan, whatever the
+  charter allows. Routine writes the charter grants, such as tracker syncs, go in the trail.
 - **Decision trail.** Add one row per consequential decision: date, decision, why, evidence,
   decider. Never rewrite earlier rows.
 - **Check it.** Run `python3 scripts/ledger_check.py <mission.md>` after every ledger change and
@@ -110,7 +113,8 @@ Charter and Criteria rows, and every outside send or publish it ends with is an 
 
 A gate whose review could not run stays `pending`, never `passed`. A self-review is not a fresh
 review. Name the reviewed brief's sha256 in the review record. When the review budget ends before
-the last repair, the question says the asked revision is unreviewed and offers one more round.
+the last repair, the gate stays pending: ask whether to allow one more round, never to approve an
+unreviewed revision.
 
 ## 7. Spend the budget honestly
 

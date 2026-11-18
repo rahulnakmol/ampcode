@@ -36,8 +36,8 @@ execution to an authorized agent with the right environment; never invent execut
 3. Carry forward the final shape, problem and beneficiaries, scope/non-goals, decision provenance,
    numbered acceptance criteria, failure handling, verification, and dependency-ordered work plan.
    Identify the real delivery target, including any separate rollout approval and check. Start
-   from the `missioning` charter and gate ledger when one exists; otherwise write them with its
-   template as part of the design package. A brief marked pending or not concrete is not an
+   from the `missioning` charter and gate ledger when one exists; otherwise write them in the
+   mission record's first three sections as part of the design package. A brief marked pending or not concrete is not an
    approved mission. An explicit instruction to proceed
    with assumptions authorizes only those stated assumptions within the user's existing authority.
 4. Produce a concrete specification, dependency-ordered plan, and technical design. Use `crafting`
@@ -99,17 +99,14 @@ This entry gate never replaces the two build reviews, executed tests, or custome
 - Record scope, current state, owners, acceptance-to-evidence links, and the next safe action.
   Update on meaningful transitions and before handoff, not on every tool call. Exclude credentials,
   private payloads, and unnecessary raw logs. Record exact revisions and environments.
-- Establish authorized actions and the budget in the charter: which of tokens, time, spend,
-  attempts and review rounds are limited, the limits, and what happens near and at them. There is
-  no fixed default. If the charter sets none, propose one in the design package; the owner's
-  acknowledgment covers it. Until then, only read, research, draft, review and record, within the
-  review rounds `goldfishing` allows for the risk, with no effects action (publishing the brief
-  and mission-control records are allowed). Record delegated work and keep **Budget used**
-  current across threads and sessions. Use available usage telemetry; if unavailable, disclose
-  that exact accounting and enforcement are unavailable. Label estimates as estimates and
-  checkpoint conservatively near a limit. Surface a known or suspected breach. Do not claim
-  compliance from a word count or create threads to erase usage. A fresh context can resume from
-  a summary within the remaining budget; further work beyond it needs explicit approval.
+- Establish authorized actions and the charter's budget: which of tokens, time, spend, attempts
+  and review rounds are limited, and the limits. There is no fixed default; with none set, propose
+  one in the design package. Until the owner acknowledges it, only read, research, draft, review,
+  publish the brief and record, with no effects action. Keep **Budget used** current across
+  threads, delegated work included. Use usage telemetry; without it, say exact accounting and
+  enforcement are unavailable and label estimates. Checkpoint near a limit and surface a known or
+  suspected breach. Do not claim compliance from a word count or create threads to erase usage.
+  A fresh context resumes within the remaining budget; beyond it needs explicit approval.
   Never invent a monetary allowance or buy tools. Repeated failure without a new hypothesis calls
   for diagnosis or replanning, not an unlimited retry loop.
 - Follow repository isolation policy. Default to a dedicated branch/worktree from current

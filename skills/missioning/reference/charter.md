@@ -25,21 +25,23 @@ below are allowed and ignored by the checker.
   case-sensitive. A value continues on lines indented by two spaces. Extra fields are allowed.
   Required, each once: Outcome, Decision owner, Approvers, Success criteria, Definition of Done,
   Budget, Budget used, May do without asking, Always ask, Stop and ask when, Playbook, Host.
-- **Placeholder:** an empty value, TBD, TODO, TBC or `?` (any case), or `<text>` that is not an
-  autolink such as `<https://...>`.
+- **Placeholder:** an empty value, the upper-case words TBD, TODO or TBC, `?`, or `<text>` that
+  is not an `https://` or `mailto:` autolink.
 - **People:** Decision owner and Approvers are comma-separated names, each optionally followed by
   one `(handle)`; prose, roles and notes go elsewhere. `Elena Petrova (@elena-p)` gives two
   identities, the name and the handle. A Decider must equal one of them, ignoring case and a
-  leading `@`. Approvers is `none` when the Decision owner is the only approver. Name client
-  authorities and outside approvers as Approvers.
+  leading `@`. Approvers is `none` when the Decision owner is the only approver; the Decision
+  owner is never `none`. Name client authorities and outside approvers as Approvers.
 - **Gate ledger:** under `## Gate ledger`, a table with exactly these headers: Gate, Kind, State,
-  Evidence, Review, Brief, Decider, Source, Date. Kind is `human` or `agent`; State is `open`,
-  `pending`, `passed`, `failed` or `waived`, lower case. Empty cells hold `-`. The State column is
-  the gate's decision.
+  Evidence, Review, Brief, Decider, Source, Date, then a `| --- |` separator line. Kind is `human`
+  or `agent`; State is `open`, `pending`, `passed`, `failed` or `waived`, lower case. Empty cells
+  hold `-`. The State column is the gate's decision.
 - **Source:** `<kind>: <reference>`. Kinds: `dialog` (an Amp owner dialog such as mission-control;
   name Amp in the reference when the host is not Amp), `question` (the host's question tool),
   `tracker` (an approval in the tracker, such as GitHub `/approve`), `written` (a signed document,
-  email or a client decision record). Anything else, chat included, is not an approval.
+  email or a client decision record). Only the Decision owner answers a `dialog` or `question`:
+  the session belongs to them. Other approvers sign by `tracker` or `written`. Anything else, chat
+  included, is not an approval.
 - **Decision trail:** under `## Decision trail`, a table with headers Date, Decision, Why,
   Evidence, Decider. Add rows; never rewrite them (the checker cannot verify this). A conductor
   that already keeps decision provenance adds one row that links it.
@@ -50,15 +52,15 @@ below are allowed and ignored by the checker.
 | --- | --- |
 | R1 | Every required charter field appears once and is not a placeholder; Decision owner and Approvers follow People |
 | R2 | Host is Amp, Claude Code, Copilot in VS Code or Copilot app; Playbook is a playbook name or `none: <reason>` |
-| R3 | Budget names a limit with a number, or says `no limit on <what>, decided by <name>` |
-| R4 | The gate ledger table has the nine headers in order, nine cells per row and at least one row |
+| R3 | Budget names a limit with a number and does not say "unlimited", or says `no limit on <what>, decided by <name>` |
+| R4 | The gate ledger table has the nine headers in order, the separator line, nine cells per row and at least one row |
 | R5 | Kind and State take the values above |
-| R6 | A passed human gate, and any waived gate, has a Decider who is the Decision owner or an Approver, and a Source with a reference |
-| R7 | The Source kind is `dialog`, `question`, `tracker` or `written`, and the reference cites neither chat nor an acknowledgement such as "looks good" or "LGTM": approval is never inferred from chat |
-| R8 | A passed human gate's Brief is a local Markdown file that passes `briefing-decisions`' `brief_check.py`; a published URL may follow in parentheses |
-| R9 | A passed gate's Review is an existing file or an `https` URL (the first path in the cell is the review record); an agent gate may say `none needed: <reason>` |
-| R10 | A passed agent gate has Evidence |
-| R11 | A waived gate gives its reason in Evidence; it is never reported as passed |
+| R6 | A passed human gate, and any waived gate, has a Decider who is the Decision owner or an Approver, and a Source with a reference; a `dialog` or `question` Decider is the Decision owner |
+| R7 | The Source kind is `dialog`, `question`, `tracker` or `written`, and the reference cites neither chat, a conversation, Slack or a DM nor an acknowledgement such as "looks good" or "LGTM" (a fixed word list, "Copilot Chat" excepted): approval is never inferred from chat |
+| R8 | A passed human gate's Brief is a local `.md` file, relative to the mission file, that passes `briefing-decisions`' `brief_check.py`; a published URL may follow in parentheses |
+| R9 | A passed gate's Review is an existing file or an `https` URL (the first path in the cell is the review record, and it is not the brief); an agent gate may say `none needed: <reason>` |
+| R10 | A passed agent gate has Evidence that is not a placeholder |
+| R11 | A waived gate gives its reason in Evidence, not a placeholder; it is never reported as passed |
 | R12 | The decision trail table has its five headers, and every row names a Decider |
 
 ## Template
@@ -124,6 +126,7 @@ below are allowed and ignored by the checker.
 
 | Gate | Kind | State | Evidence | Review | Brief | Decider | Source | Date |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Charter | human | passed | charter above | reviews/charter-novice.md | briefs/charter.md | Elena Petrova | question: ask_user answer "Approve the charter" | 2026-02-27 |
 | Requirements and weights | human | passed | criteria.md | reviews/weights-novice.md | briefs/weights.md | Elena Petrova | question: ask_user answer "Approve the weights" | 2026-03-02 |
 | Evidence pack | agent | passed | scores.md, 3 products | none needed: checked at the shortlist gate | - | - | - | 2026-03-04 |
 | Shortlist | human | pending | scores.md | reviews/shortlist-novice.md | briefs/shortlist.md | - | - | - |

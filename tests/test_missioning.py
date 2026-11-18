@@ -95,6 +95,10 @@ class Rules(unittest.TestCase):
         self.assertRule(edit("- **Decision owner:** Rahul Nakmol", "- **Decision owner:** Rahul Nakmol (product owner)"), "R1")
         self.assertEqual(self.rules(edit("Priya Shah (@priya-s)", "Priya Shah (@priya-s), Tom O'Neil, @tokafor")), [])
         self.assertEqual(self.rules(edit("Priya Shah (@priya-s)", "none")), [])
+        self.assertIn("R1", self.rules(edit("- **Decision owner:** Rahul Nakmol", "- **Decision owner:** none")))
+        # "todo" in prose is not a placeholder; "<what: fill in>" is not an autolink.
+        self.assertEqual(self.rules(edit("draft reports.", "draft reports, update the todo list.")), [])
+        self.assertRule(edit("draft reports.", "<actions: list them>"), "R1")
         self.assertRule(edit("Priya Shah (@priya-s)", "none", edit(PASSED, PASSED.replace("Rahul Nakmol", "none"))), "R6")
         # An autolink is a value, not a placeholder; a two-line value is joined.
         self.assertEqual(self.rules(edit("before the March release.", "before the March release, see <https://example.com/plan>.")), [])
@@ -109,11 +113,15 @@ class Rules(unittest.TestCase):
         self.assertRule(edit("3 review rounds per gate; 2 working days.", "as needed"), "R3")
         self.assertRule(edit("3 review rounds per gate; 2 working days.", "no limit on tokens"), "R3")
         self.assertEqual(self.rules(edit("3 review rounds per gate; 2 working days.", "no limit on tokens, decided by Rahul Nakmol")), [])
+        self.assertRule(edit("3 review rounds per gate; 2 working days.", "unlimited (agreed 18 Nov)"), "R3")
 
     def test_r4_ledger_table(self):
         self.assertRule(edit("| Gate | Kind | State |", "| Gate | State | Kind |"), "R4")
         no_rows = re.sub(r"\| (Charter and|Threat|Scope|Report).*\n", "", GOOD)
         self.assertRule(no_rows, "R4")
+        # Without the separator line the first row would be read as one; it must fail, not hide.
+        chat_first = edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', "chat: said looks good"))
+        self.assertRule(chat_first.replace("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n", "", 1), "R4")
 
     def test_r5_kind_and_state(self):
         self.assertRule(edit("| human | passed |", "| human | approved |"), "R5")
@@ -123,8 +131,14 @@ class Rules(unittest.TestCase):
     def test_r6_decider_and_source(self):
         self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "Sam Lee")), "R6")
         self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "Rahul")), "R6")
-        self.assertEqual(self.rules(edit(PASSED, PASSED.replace("Rahul Nakmol", "@priya-s"))), [])
-        self.assertEqual(self.rules(edit(PASSED, PASSED.replace("Rahul Nakmol", "Rahul Nakmol, priya shah"))), [])
+        # Only the person in the session answers its question tool or dialog: that is the owner.
+        tracker = 'tracker: GitHub /approve on acme/payments#12'
+        self.assertEqual(self.rules(edit(PASSED, PASSED.replace("Rahul Nakmol", "@priya-s").replace('question: AskUserQuestion answer "Approve"', tracker))), [])
+        self.assertEqual(self.rules(edit(PASSED, PASSED.replace("Rahul Nakmol", "Rahul Nakmol, priya shah").replace('question: AskUserQuestion answer "Approve"', "written: signed memo 18 Nov"))), [])
+        self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "@priya-s")), "R6")
+        self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "Rahul Nakmol, priya shah")), "R6")
+        stamped = PASSED.replace('question: AskUserQuestion answer "Approve"', "dialog: owner stamped it")
+        self.assertRule(edit(PASSED, stamped), "R6")
         self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "-")), "R6")
         self.assertRule(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', "dialog: owner dialog")), "R6")
         self.assertEqual(self.rules(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', "dialog: Amp mission-control design approval"))), [])
@@ -141,11 +155,19 @@ class Rules(unittest.TestCase):
         self.assertRule(edit(PASSED, PASSED.replace('AskUserQuestion answer "Approve"', "owner said it in Chat")), "R7")
         self.assertRule(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', 'written: Slack message "Looks good"')), "R7")
         self.assertRule(edit(PASSED, PASSED.replace('AskUserQuestion answer "Approve"', "owner replied LGTM")), "R7")
+        self.assertRule(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', 'written: Slack DM "approved"')), "R7")
+        self.assertRule(edit(PASSED, PASSED.replace('AskUserQuestion answer "Approve"', "approved in conversation")), "R7")
+        # The host's name is not chat: Copilot Chat's question tool is a real source.
+        self.assertEqual(self.rules(edit(PASSED, PASSED.replace('AskUserQuestion answer "Approve"', 'ask_user in Copilot Chat, answer "A"'))), [])
 
     def test_r8_brief(self):
         self.assertRule(edit("briefs/charter.md", "briefs/missing.md"), "R8")
         self.assertRule(edit("briefs/charter.md", "https://ampcode.com/artifacts/brief"), "R8")
         self.assertEqual(self.rules(edit("briefs/charter.md", "briefs/charter.md (https://ampcode.com/artifacts/brief)")), [])
+        with tempfile.TemporaryDirectory() as tmp:
+            base = workspace(tmp)
+            shutil.copy(BRIEF, base / "briefs" / "charter.txt")
+            self.assertIn("R8", {p.split(":", 1)[0] for p in ledger_check.check(edit("briefs/charter.md", "briefs/charter.txt"), base)})
         with tempfile.TemporaryDirectory() as tmp:
             base = workspace(tmp)
             text = (base / "briefs" / "charter.md").read_text()
@@ -158,13 +180,17 @@ class Rules(unittest.TestCase):
         self.assertRule(edit(AGENT, AGENT.replace("none needed: no decision, checked by scope gate", "-")), "R9")
         self.assertEqual(self.rules(edit("reviews/charter-novice.md", "https://ampcode.com/artifacts/review")), [])
         self.assertRule(edit("reviews/charter-novice.md", "none needed: owner is sure"), "R9")
+        self.assertRule(edit("reviews/charter-novice.md", "https://"), "R9")
+        self.assertRule(edit("reviews/charter-novice.md", "briefs/charter.md"), "R9")
 
     def test_r10_agent_evidence(self):
         self.assertRule(edit(AGENT, AGENT.replace("threat-model.md, 14 threats", "-")), "R10")
+        self.assertRule(edit(AGENT, AGENT.replace("threat-model.md, 14 threats", "TBD")), "R10")
 
     def test_r11_waived_needs_reason(self):
         waived = PASSED.replace("| passed | charter above |", "| waived | - |")
         self.assertRule(edit(PASSED, waived), "R11")
+        self.assertRule(edit(PASSED, PASSED.replace("| passed | charter above |", "| waived | TODO |")), "R11")
 
     def test_r12_decision_trail(self):
         self.assertRule(edit("| charter | Rahul Nakmol |", "| charter |  |"), "R12")
@@ -197,6 +223,22 @@ class Files(unittest.TestCase):
         self.assertEqual((ok.returncode, ok.stdout.strip()), (0, "pass"))
         self.assertEqual(no.returncode, 1)
         self.assertTrue(no.stdout.startswith("R7:"), no.stdout)
+
+    def test_brief_checker_found_in_hashed_install_and_fails_closed_without_it(self):
+        # Amp installs Personal Skills as <name>@<hash> folders side by side.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(SKILL, root / "missioning@1a2b", ignore=shutil.ignore_patterns("__pycache__"))
+            (root / "run").mkdir()
+            base = workspace(root / "run")
+            (base / "mission.md").write_text(GOOD)
+            script = root / "missioning@1a2b" / "scripts" / "ledger_check.py"
+            run = lambda: subprocess.run([sys.executable, str(script), str(base / "mission.md")], capture_output=True, text=True)
+            missing = run()
+            shutil.copytree(ROOT / "skills" / "briefing-decisions", root / "briefing-decisions@3c4d", ignore=shutil.ignore_patterns("__pycache__"))
+            found = run()
+        self.assertEqual((missing.returncode, missing.stdout.split(":", 1)[0]), (1, "R8"))
+        self.assertEqual((found.returncode, found.stdout.strip()), (0, "pass"))
 
 
 MISSIONS = SKILL / "reference" / "missions"

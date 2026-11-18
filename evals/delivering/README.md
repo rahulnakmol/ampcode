@@ -29,6 +29,8 @@ Tabletop answers alone cannot establish these end-to-end behaviors or live skill
 editorial reporting after design drift, ELI5 under omission pressure, the operating rules/budgets,
 and a handoff with missing materials and an unsupported ASD compliance claim. Use the frozen
 `defense-rubric.md` with two separate judge contexts. Run the original three cases as regressions.
+The budgets case states its own 4,000/30,000-token limits in the prompt, as a charter would; the
+skill no longer sets a default, so the case stays valid unchanged.
 
 Give subjects prompt-only files plus the assigned skill version, never the assertions. Each
 subject writes only its simulated answer; it does not execute scenario actions. Give judges

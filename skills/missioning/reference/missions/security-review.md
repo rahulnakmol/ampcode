@@ -15,7 +15,8 @@ repository, service or change. Not for the review gates inside a delivery missio
   owner, or a backlog item. Label it "manual, no skill".
 - `scanning-vulnerabilities` (planned, wave 2). Fallback: run only scanners the rules of
   engagement allow; attach their output; triage reachability; state what was not scanned.
-- `reviewing-code` (planned, wave 1). Fallback: review the diff or code for correctness,
+- `reviewing-code` (planned, wave 1; Amp's official `reviewing-code` is another skill and may
+  serve as this fallback). Fallback: review the diff or code for correctness,
   security, data handling, concurrency and tests; check each finding against callers, guards,
   tests and the base revision; label pre-existing defects apart from regressions.
 - `grooming`: findings into the backlog as bugs.

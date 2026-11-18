@@ -15,7 +15,8 @@ a standalone review (`security-review`) or release-only work.
 - `architecting` (planned, wave 1). Fallback: write the technical design inside the delivering
   design package: contracts, decisions with alternatives (as short ADRs) and each non-functional
   requirement with a number and a test.
-- `reviewing-code` (planned, wave 1). Fallback: `delivering`'s own review gates one and two, with
+- `reviewing-code` (planned, wave 1; Amp's official `reviewing-code` is another skill and may
+  serve as this fallback). Fallback: `delivering`'s own review gates one and two, with
   fresh reviewers for consequential changes.
 - `threat-modelling` (planned, wave 1), when trust boundaries change. Fallback: list actors,
   trust boundaries and abuse cases in the design package, each with a mitigation or an owner.
