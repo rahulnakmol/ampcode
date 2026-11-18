@@ -1,7 +1,7 @@
 # Using the skills in Amp
 
 Choose a skill by the result you need. You can name it directly in a normal Amp
-message: **“Use grilling…”**, **“Use crafting…”**, **“Use delivering…”**,
+message: **“Use missioning…”**, **“Use grilling…”**, **“Use crafting…”**, **“Use delivering…”**,
 **“Use planning…”**, **“Use blueprinting…”**, or **“Distill this video…”**. The examples below are prompts to paste into chat, not
 terminal commands. Natural-language triggers help Amp select an installed skill;
 they are not exact-match keywords or a guarantee that a skill was loaded. Name
@@ -11,6 +11,7 @@ the skill explicitly when you want it, and ask Amp which skill it is using if un
 
 | What you need | Skill | Typical trigger words | What you receive |
 | --- | --- | --- | --- |
+| Start, run or close any kind of mission with one charter and sign-off log | **missioning** | start a mission, mission charter, mission budget, record or audit approvals, which playbook | Charter, gate ledger and decision trail checked by `ledger_check.py`; the playbook's steps in your todo list; a close-out audit |
 | Make an idea or requirement concrete | **grilling** | grill me, clarify requirements, pressure-test, pre-mortem, spec this out, write a PRD | Confirmed brief, acceptance criteria, risks, plan and handoff prompt |
 | Design how a person or agent experiences something | **crafting** | design, redesign, craft, prototype, mock up, polish, critique, accessibility audit, user flow | Journeys, states, design direction, mockups/specification and critique |
 | Deliver a substantial software outcome | **delivering** | use delivering, deliver this feature, execute this approved brief, resume this mission | Implemented and verified slices, two reviews, evidence and authorized integration |
@@ -188,6 +189,43 @@ approver the Markdown file and open any HTML picture in a browser. On Amp, publi
 document; mission-control links that document in its approval dialog.
 [Skill instructions](../skills/briefing-decisions/SKILL.md).
 
+## Missioning: one charter and sign-off log for any mission
+
+**What it is:** the thin conductor every mission starts from. One mission file holds the charter
+(outcome, decision owner, approvers, success criteria, Definition of Done, budget, and what the
+agent may do without asking, must always ask, and must stop for), the gate ledger and the
+decision trail. Eight playbooks (ERP and AI transformation, product delivery operations,
+software delivery, campaigns and research, UX and UI design, code and security review,
+infrastructure and DevSecOps, product and SaaS assessment) list the steps, human gates and
+Definition of Done; only the chosen one is loaded. `blueprinting`, `planning`, `delivering` and
+`crafting` stay the conductors their playbooks call. Skills planned for later waves are marked
+*planned* with a manual fallback.
+
+**Use when:** you start or resume a mission of any kind, want one place that shows who approved
+what and on which brief, need a budget for a mission, or work on Claude Code or Copilot where no
+owner dialog exists.
+
+```text
+Use missioning to run a product assessment of three expense tools for finance,
+on the Copilot app. Elena Petrova decides; Tom Okafor approves. Budget: five
+working days, no paid trials. Agree the weights with Elena before any scoring.
+```
+
+**A good result looks like:** a charter with every field, agreed before the work; the playbook's
+steps in the todo list with `skip: <reason>` where a step is not done; questions only about
+preferences, gate and budget calls (each with a recommended answer) or facts only you hold; a checked brief and a fresh novice-reader review
+before every sign-off; each approval a ledger row naming an approver and where they answered;
+`ledger_check.py` printing `pass`; a close-out that lists what needs your attention. **Not
+good:** "looks good" in chat recorded as approval, a planned skill reported as run, a deleted
+todo step, or a budget breach found only at the end.
+
+**Adapt it:** add a playbook with the same six headings and add its name to `PLAYBOOKS` in
+`scripts/ledger_check.py`; change charter fields in the checker's `FIELDS` and
+`reference/charter.md` together; add a host column to `reference/hosts.md` and label it "not
+tested" until you run it. The checker proves the record is complete, not that a person answered:
+on Amp, `mission-control`'s owner dialog remains the stronger record for delivery missions.
+[Skill instructions](../skills/missioning/SKILL.md).
+
 ## Distill: turn video sources into an original argument
 
 **Use when:** one or more public YouTube videos are research inputs for an article,
@@ -287,6 +325,8 @@ preview/confirmation boundary, domain choices, resume prompt and current limits.
   its article does not itself approve a design or start a software mission.
 - **“The backlog is agreed; build the software stories.”** Hand ready stories to
   delivering; the backlog's acceptance criteria become its expectations.
+- **“Run a security review / product assessment / infrastructure change.”** Start with
+  missioning; its playbook names the steps, the sign-offs and what is not built yet.
 - **“Fix this typo.”** Use a normal Amp request. A mission is disproportionate.
 
 Skills must be installed to be loaded. Ask Amp to check availability and reload existing

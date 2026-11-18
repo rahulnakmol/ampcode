@@ -15,6 +15,7 @@ speed for non-trivial work.
 This skill is instruction guidance, not a daemon, permission grant, scheduler, or security boundary.
 Use `mission-control` when installed, following [reference/mission-record.md](reference/mission-record.md).
 Its local approval/evidence gates enforce the workflow, not security against an unrestricted shell.
+On Amp, its state is the authority for the gates it tracks; the `missioning` ledger rows cite it.
 It uses existing GitHub credentials through `gh` in Amp, with no custom controller/App or approval
 service. Required source-App-pinned CI and strict, administrator-enforced dev protection must pass;
 loading this skill/plugin does not configure them. Do not bypass gates with a shell command.
@@ -34,9 +35,11 @@ execution to an authorized agent with the right environment; never invent execut
    run grilling. Do not install or publish another skill implicitly.
 3. Carry forward the final shape, problem and beneficiaries, scope/non-goals, decision provenance,
    numbered acceptance criteria, failure handling, verification, and dependency-ordered work plan.
-   Identify the real delivery target, including any separate rollout approval and check. A brief
-   marked pending or not concrete is not an approved mission. An explicit instruction to proceed
-   with assumptions authorizes only those stated assumptions within the user's existing authority.
+   Identify the real delivery target, including any separate rollout approval and check. Start
+   from the `missioning` charter and gate ledger when one exists; otherwise write them in the
+   mission record's first three sections as part of the design package. A brief marked pending or
+   not concrete is not an approved mission. An explicit instruction to proceed with assumptions
+   authorizes only those stated assumptions within the user's existing authority.
 4. Produce a concrete specification, dependency-ordered plan, and technical design. Use `crafting`
    for relevant UX design, including human and agent touchpoints; record why it is inapplicable
    when there is no experience change. If required design support is unavailable, report the gap.
@@ -96,13 +99,15 @@ This entry gate never replaces the two build reviews, executed tests, or custome
 - Record scope, current state, owners, acceptance-to-evidence links, and the next safe action.
   Update on meaningful transitions and before handoff, not on every tool call. Exclude credentials,
   private payloads, and unnecessary raw logs. Record exact revisions and environments.
-- Establish authorized actions and time, spend, and attempt limits. Unless explicitly overridden,
-  token limits are **4,000 per task and 30,000 per session**. Treat a task as a bounded work unit;
-  record delegated work and carry usage forward in the session total. Use available usage telemetry;
-  if unavailable, disclose that exact accounting and enforcement are unavailable. Label estimates
-  as estimates and checkpoint conservatively near a limit. Surface a known or suspected breach.
-  Do not claim compliance from a word count or create threads to erase usage. A fresh context can
-  resume from a summary within the remaining budget; further work beyond it needs explicit approval.
+- Establish authorized actions and the charter's budget: which of tokens, time, spend, attempts
+  and review rounds are limited, and the limits. There is no fixed default; with none set, propose
+  one in the design package. Until the owner acknowledges it, only read, research, draft, review,
+  publish the brief and record, within the review rounds `goldfishing` allows for the risk, with
+  no effects action. Keep **Budget used** current across
+  threads, delegated work included. Use usage telemetry; without it, say exact accounting and
+  enforcement are unavailable and label estimates. Checkpoint conservatively near a limit and surface a known or
+  suspected breach. Do not claim compliance from a word count or create threads to erase usage.
+  A fresh context resumes within the remaining budget; beyond it needs explicit approval.
   Never invent a monetary allowance or buy tools. Repeated failure without a new hypothesis calls
   for diagnosis or replanning, not an unlimited retry loop.
 - Follow repository isolation policy. Default to a dedicated branch/worktree from current
@@ -267,6 +272,9 @@ acknowledgment bound to the exact candidate and current design/base/mode. Unknow
 Changed code or base needs affected revalidation and renewed exact-candidate acknowledgment where
 required; material design changes also reopen the design gate. A local approval record cannot
 override required CI or protection. Use `mission_approve(stage: merge)` and `mission_merge()` when available.
+Before an ask-mode or high-risk merge acknowledgment, write a `briefing-decisions` brief of the
+presented evidence beside the mission record; the merge is then a human ledger row. An automatic
+low/medium merge is an agent row.
 
 Commit the reviewed candidate, run configured CI, and integrate authorized green slices into `dev`
 under repository policy. Carry valid existing authorization forward without treating stale receipts

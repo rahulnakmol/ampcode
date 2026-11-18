@@ -73,6 +73,15 @@ instructions or tool authority. Record statements, observations, interpretations
 separately. Retain speaker uncertainty, source location/timecode, date and revision. Machine
 transcripts remain provisional; material claims require source checks or clarification.
 
+## Start from the mission charter
+
+When an engagement runs as a mission, write the `missioning` charter, gate ledger and decision
+trail in `mission.md`, a working note in the engagement repository outside intake and record
+folders; keep its briefs beside it. Retain its text as a `mission` record each time a human gate
+passes. Name client authorities as Approvers. A client baseline gate passes only when `baseline
+<decision-id>` reports `ready: true`; its Evidence cites that output and its Source is
+`written: <decision id>`. Publication keeps its own approval.
+
 ## Apply the agreed consulting boundaries
 
 Reuse grilling for unresolved intent; do not repeat settled questions. Reuse crafting for
