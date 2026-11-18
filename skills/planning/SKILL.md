@@ -21,9 +21,12 @@ This skill is the conductor. Each stage is a separate skill that also works on i
 
 ## 1. Charter the mission
 
-Before any stage, agree a short charter with the user and write it at the top of the mission
-folder's `README.md`. Ask only for what you cannot find; recommend a default for each. If the user
-says to proceed without them, fill the charter with labelled assumptions, list them in every
+Before any stage, agree a short charter with the user. Write it with the `missioning` template
+in `mission.md` in the mission folder, with its gate ledger and decision trail, and link it from
+the first line of the folder's `README.md`. Its product-operations playbook maps gates 1 to 7 to
+ledger rows. The fields below fill or add to the template's (People gives the Decision owner and
+Approvers). Ask only for what you cannot find; recommend a default for each. If the user says to
+proceed without them, fill the charter with labelled assumptions, list them in every
 report, and stop at the first gate that needs their decision or a stakeholder's sign-off.
 
 - **Initiative:** one sentence naming the problem and who has it; `domain` is `product`,
@@ -32,7 +35,7 @@ report, and stop at the first gate that needs their decision or a stakeholder's 
 - **People:** the owner, and the approvers with their tracker handles (GitHub logins today).
   By default every approver signs the PRD, and each feature is signed by its owner's approver:
   the one whose area it touches. The feature's `notes` name them with the date it is due, as
-  "Signs off: Elena Petrova, due 30 May". No file says anyone has signed: `backlog.py status`
+  "Signs off: Elena Petrova, due 30 May". No file says a stakeholder has signed: `backlog.py status`
   and the tracker show that. No one is asked to sign every item unless the charter says so.
 - **Tracker:** the GitHub repository (and Project, if any) stakeholders use, or Excel only.
 - **Mission success criteria:** which gates must pass and by when. The default is G1 to G6
@@ -158,7 +161,7 @@ it.
 ## 6. Adapt it
 
 - **Fewer gates:** for a small change to an existing initiative, run only `grooming` and
-  `syncing`; record the waived gates in the charter.
+  `syncing`; record the waived gates as `waived` rows in `mission.md`.
 - **Different tracker:** Excel export works today; Linear and Azure DevOps need adapters in
   `syncing` (see its mapping notes). Until then, export to Excel or sync to GitHub.
 - **Different approval rule:** one listed approver passes a gate by default; when the charter
@@ -194,4 +197,4 @@ its backlog is `grooming/reference/examples/operations.json`.
 - Every PRD open question that work waits on names the story that holds that work.
 - Anything not done is on the README's one open list, with one person and a date after today.
   The README's review history is one line per review.
-- No file says anyone signed off; feature notes say who signs and by when.
+- No file says a stakeholder signed off; feature notes say who signs and by when.
