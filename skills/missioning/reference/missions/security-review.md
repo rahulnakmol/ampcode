@@ -38,14 +38,14 @@ repository, service or change. Not for the review gates inside a delivery missio
 ## Human gates
 
 - Scope and rules of engagement (what may be scanned or probed).
-- Accepted risks: each one accepted by its risk owner, by `question:` only when that is the
-  Decision owner, otherwise by `written:` or `tracker:`.
+- Accepted risks: each one accepted in writing by its risk owner, named as an Approver; by
+  `question:` only when that is the Decision owner, otherwise by `written:` or `tracker:`.
 - Report release.
 
 ## Definition of Done
 
 Every finding has evidence, severity, owner and disposition; the coverage statement names what
-was not examined; Critical and High findings are fixed and retested or accepted and recorded in the ledger.
+was not examined; Critical and High findings are fixed and retested or accepted in writing.
 
 ## Red flags
 

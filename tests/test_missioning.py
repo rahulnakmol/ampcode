@@ -130,9 +130,15 @@ class Rules(unittest.TestCase):
         # GitHub renders a line without outer pipes right after a table as a row; check it too.
         unpiped = "Report release | human | passed | x | - | - | Rahul Nakmol | chat: lgtm | 2026-11-20\n"
         self.assertIn("R7", self.rules(edit("| Report release | human | open | - | - | - | - | - | - |\n", "| Report release | human | open | - | - | - | - | - | - |\n" + unpiped)))
-        # A second ledger section is never read past: the file fails instead.
-        second = "\n## Gate ledger\n\n| Gate | Kind | State | Evidence | Review | Brief | Decider | Source | Date |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
+        # A second ledger is never skipped: the file fails, even when the first copy holds the
+        # bad row, and under a heading that only looks different.
+        chat_row = AGENT.replace("| agent | passed |", "| human | passed |").replace("none needed: no decision, checked by scope gate", "reviews/charter-novice.md").replace("| - | - | - |", "| briefs/charter.md | Rahul Nakmol | chat: looks good |")
+        second = "\n## Gate Ledger (continued)\n\n| Gate | Kind | State | Evidence | Review | Brief | Decider | Source | Date |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n" + AGENT + "\n"
         self.assertIn("R4", self.rules(GOOD + second))
+        self.assertIn("R4", self.rules(edit(AGENT, chat_row) + second))
+        # A row after a blank line in the ledger, or a second table there, fails rather than hides.
+        self.assertIn("R4", self.rules(edit(AGENT + "\n", AGENT + "\n\n" + chat_row + "\n")))
+        self.assertIn("R1", self.rules(GOOD + "\n## Charter\n\n- **Outcome:** another\n"))
         # Without the separator line the first row would be read as one; it must fail, not hide.
         chat_first = edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', "chat: said looks good"))
         self.assertRule(chat_first.replace("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n", "", 1), "R4")
@@ -145,12 +151,18 @@ class Rules(unittest.TestCase):
         as_agent = PASSED.replace("| human |", "| agent |").replace("reviews/charter-novice.md", "none needed: owner said looks good")
         self.assertRule(edit(PASSED, as_agent), "R5")
         self.assertRule(edit(PASSED, as_agent.replace("Charter and criteria", "Mission charter")), "R5")
+        # Only the mission's charter gate is human by rule; other gates may mention a charter.
+        self.assertEqual(self.rules(edit(AGENT, AGENT.replace("Threat model", "Initiative charter drafted"))), [])
 
     def test_r6_decider_and_source(self):
         self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "Sam Lee")), "R6")
         self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "Rahul")), "R6")
-        # A Decider copied as written in the charter, with its handle, is the same person.
-        self.assertEqual(self.rules(edit(PASSED, PASSED.replace("Rahul Nakmol", "Rahul Nakmol (@rahul-n)"))), [])
+        # A Decider copied as written in the charter, with its handle, is the same person; a name
+        # and another person's handle, or a note in parentheses, is not.
+        signed = PASSED.replace('question: AskUserQuestion answer "Approve"', "tracker: GitHub /approve on acme/payments#12")
+        self.assertEqual(self.rules(edit(PASSED, signed.replace("Rahul Nakmol", "Priya Shah (@priya-s)"))), [])
+        self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "Rahul Nakmol (@priya-s)")), "R6")
+        self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "Rahul Nakmol (for Priya Shah)")), "R6")
         # Only the person in the session answers its question tool or dialog: that is the owner.
         tracker = 'tracker: GitHub /approve on acme/payments#12'
         self.assertEqual(self.rules(edit(PASSED, PASSED.replace("Rahul Nakmol", "@priya-s").replace('question: AskUserQuestion answer "Approve"', tracker))), [])
@@ -184,6 +196,7 @@ class Rules(unittest.TestCase):
         # The host's name is not chat: Copilot Chat's question tool is a real source.
         self.assertEqual(self.rules(edit(PASSED, PASSED.replace('AskUserQuestion answer "Approve"', 'ask_user in Copilot Chat, answer "A"'))), [])
         self.assertRule(edit(PASSED, PASSED.replace('AskUserQuestion answer "Approve"', 'owner replied "yes" in Copilot Chat')), "R7")
+        self.assertRule(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', 'written: ask_user in Copilot Chat')), "R7")
 
     def test_r8_brief(self):
         self.assertRule(edit("briefs/charter.md", "briefs/missing.md"), "R8")
@@ -202,6 +215,21 @@ class Rules(unittest.TestCase):
             text = (base / "briefs" / "charter.md").read_text()
             (base / "briefs" / "charter.md").write_text(text.replace("## How to undo it", "## Undo"))
             self.assertEqual(sorted({p.split(":", 1)[0] for p in ledger_check.check(GOOD, base)}), ["R8"])
+
+    def test_r8_brief_checker_failure_is_reported(self):
+        # A brief checker that crashes with only stderr still gives an R8 line, not a traceback.
+        with tempfile.TemporaryDirectory() as tmp:
+            base = workspace(tmp)
+            crash = base / "crash.py"
+            crash.write_text("import sys\nsys.stderr.write('boom\\n')\nsys.exit(1)\n")
+            original = ledger_check.brief_checker
+            ledger_check.brief_checker = lambda: crash
+            try:
+                problems = ledger_check.check(GOOD, base)
+            finally:
+                ledger_check.brief_checker = original
+            self.assertEqual([p.split(":", 1)[0] for p in problems], ["R8"])
+            self.assertIn("boom", problems[0])
 
     def test_r9_review(self):
         self.assertRule(edit("reviews/charter-novice.md", "not run"), "R9")

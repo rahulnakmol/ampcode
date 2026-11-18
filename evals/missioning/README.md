@@ -42,7 +42,7 @@ Claude Code or the Copilot app.
 
 Rerun on 18 November 2026 after review gate 1, each from a fresh agent and graded by a separate
 fresh judge from the run's files. S2b started on `b16cf65`, with `841fac5` landing mid-run; S1b
-started on `841fac5`. Both prompts added an owner limit of one fresh review round per sign-off;
+started on the content of `841fac5`, just before it was committed. Both prompts added an owner limit of one fresh review round per sign-off;
 both owners later allowed extra rounds through the question tool.
 
 | Rule | S1b (security review, Claude Code) | S2b (product assessment, Copilot app) |
@@ -55,8 +55,9 @@ both owners later allowed extra rounds through the question tool.
 
 S1b's last rounds ran after the S2b fixes below reached SKILL.md; its judge found that none of
 them changed a verdict. Rule 3 is not fully met: S1b asked a fact question, and the fix allows
-such a question rather than removing it, so a rerun would ask it again. The deviation is reported
-with the delivery evidence instead of being hidden by a rerun.
+such a question rather than removing it, so a rerun would ask it again. The owner accepted this
+deviation from the approved criteria on 18 November 2026, and it is reported with the delivery
+evidence instead of being hidden by a rerun.
 
 ### First runs (S1 and S2)
 
@@ -92,6 +93,8 @@ unchanged as the record of that run.
   skill planned.
 - The owner's review limit and the rounds `goldfishing` allows have no stated precedence (S1b
   followed the owner's, which is right).
+- SKILL.md asks one to three questions at a time; `reference/hosts.md` says Claude Code's tool
+  takes one to four (S1b).
 
 ### Known limits
 

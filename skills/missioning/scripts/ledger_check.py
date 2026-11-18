@@ -50,6 +50,11 @@ def section(text, title):
     return found[0].splitlines() if len(found) == 1 else None
 
 
+def repeated(text, title):
+    """True when a heading that reads as '## <title>' appears more than once, at any case."""
+    return len(re.findall(rf"^#+ {re.escape(title)}\b", text, re.M | re.I)) > 1
+
+
 def fields(lines):
     """Charter fields as {name: [values]}; indented lines continue the previous value."""
     found, name = {}, None
@@ -71,11 +76,10 @@ def table(lines):
     start = next((i for i, l in enumerate(lines) if l.startswith("|")), None)
     if start is None:
         return None, []
-    rows = []
-    for line in lines[start:]:  # GitHub reads every line up to a blank one as a row, pipes or not
-        if not line:
-            break
-        rows.append(line)
+    end = next((i for i in range(start, len(lines)) if not lines[i]), len(lines))
+    rows = lines[start:end]  # every line up to a blank one is a row, outer pipes or not
+    if any("|" in line for line in lines[end:]):
+        return None, []  # a row or table after a blank line: fail rather than skip it
     cells = lambda row: [c.strip() for c in row.strip("|").split("|")]
     if len(rows) < 2 or not SEPARATOR.match(rows[1]) or len(cells(rows[1])) != len(cells(rows[0])):
         return None, []
@@ -93,17 +97,22 @@ def people_ok(value, none_allowed):
     return all(PERSON.fullmatch(e.strip()) for e in value.split(","))
 
 
-def identities(value):
-    """Names and handles in a comma-separated list: 'Elena Petrova (@elena-p)' gives two."""
-    out = set()
-    if value.strip().lower() == "none":
-        return out
+def people(value):
+    """One identity set per comma-separated entry: 'Elena Petrova (@elena-p)' gives {name, handle}."""
+    if value.strip().lower() in ("none", *EMPTY):
+        return []
+    out = []
     for entry in value.split(","):
-        for part in re.findall(r"\(([^)]*)\)", entry) + [re.sub(r"\([^)]*\)", "", entry)]:
-            part = part.strip().lstrip("@").strip().lower()
-            if part:
-                out.add(part)
+        parts = re.findall(r"\(([^)]*)\)", entry) + [re.sub(r"\([^)]*\)", "", entry)]
+        names = {p.strip().lstrip("@").strip().lower() for p in parts} - {""}
+        if names:
+            out.append(names)
     return out
+
+
+def is_one_of(person, group):
+    """True when every identity a Decider entry gives belongs to one person in group."""
+    return any(person <= member for member in group)
 
 
 def local(reference, base):
@@ -148,11 +157,18 @@ def check(text, base):
     if budget and not decided and (not re.search(r"\d", budget) or re.search(r"\bunlimited\b|\bno limit\b", budget, re.I)):
         add("R3", "Budget must name a limit with a number, or say 'no limit on <what>, decided by <name>'")
 
-    owner = identities(get("Decision owner"))
-    deciders = owner | identities(get("Approvers"))
+    owner = people(get("Decision owner"))
+    deciders = owner + people(get("Approvers"))
     header, rows = table(section(text, "Gate ledger") or [])
+    ledger_headers = sum(1 for line in text.splitlines()
+                         if [c.strip() for c in line.strip().strip("|").split("|")] == list(LEDGER))
+    if repeated(text, "Charter"):
+        add("R1", "the mission file has more than one Charter section")
+    if repeated(text, "Gate ledger") or ledger_headers != 1:
+        add("R4", "the mission file needs exactly one gate ledger table, under one '## Gate ledger'")
     if header != list(LEDGER) or not rows:
-        add("R4", "gate ledger needs a table with headers " + " | ".join(LEDGER) + " and at least one row")
+        add("R4", "gate ledger needs one table with headers " + " | ".join(LEDGER)
+            + " and at least one row, and no table rows after a blank line")
         rows = []
     for row in rows:
         if len(row) != len(LEDGER):
@@ -162,24 +178,24 @@ def check(text, base):
         if kind not in KINDS or state not in STATES:
             add("R5", f"gate '{gate}': Kind must be human or agent and State one of {', '.join(STATES)}")
             continue
-        if re.search(r"\bcharter\b", gate, re.I) and kind != "human":
+        if re.match(r"(?:mission )?charter\b", gate, re.I) and kind != "human":
             add("R5", f"gate '{gate}': the charter gate is always a human gate")
         if (kind == "human" and state == "passed") or state == "waived":
-            names = [n for n in (re.sub(r"\s*\([^)]*\)", "", x).strip().lstrip("@").lower()
-                                 for x in decider.split(",")) if n not in EMPTY]
-            if not names or any(n not in deciders for n in names):
+            names = people(decider)
+            if not names or not all(is_one_of(n, deciders) for n in names):
                 add("R6", f"gate '{gate}': Decider must name the Decision owner or an Approver")
             kind_of, _, reference = source.partition(":")
             kind_of = kind_of.strip().lower()
             if source in EMPTY:
                 add("R6", f"gate '{gate}': Source must say where the decider answered")
-            elif kind_of not in SOURCES or NOT_AN_ANSWER.search(re.sub(r"\bask_user in copilot chat\b", "", reference, flags=re.I)):
+            elif kind_of not in SOURCES or NOT_AN_ANSWER.search(
+                    re.sub(r"\bask_user in copilot chat\b", "", reference, flags=re.I) if kind_of == "question" else reference):
                 add("R7", f"gate '{gate}': source '{source}' is not an approval; approval is never inferred from chat")
             elif not reference.strip():
                 add("R6", f"gate '{gate}': Source needs a reference after '{kind_of}:'")
             elif kind_of == "dialog" and host != "amp" and not re.search(r"\bamp\b", reference, re.I):
                 add("R6", f"gate '{gate}': a dialog source must name Amp when the host is not Amp")
-            elif kind_of in ("question", "dialog") and any(n not in owner for n in names):
+            elif kind_of in ("question", "dialog") and not all(is_one_of(n, owner) for n in names):
                 add("R6", f"gate '{gate}': only the Decision owner answers a {kind_of}; other approvers sign by tracker or written")
         if kind == "human" and state == "passed":
             path = local(brief, base)

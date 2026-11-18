@@ -11,8 +11,8 @@ skills do the work. It works the same on every host; [reference/hosts.md](refere
 names each host's tools.
 
 It does not schedule work, start teams, swarms or the Copilot app's multi-agent Projects, or run
-parallel workers by default. It never holds authority the owner did not grant, and one owner
-stays accountable. On hosts without an owner-only dialog its rules are not a security boundary.
+parallel workers by default. It never holds authority the owner did not grant, and one integration
+owner stays accountable. On hosts without an owner-only dialog its rules are not a security boundary.
 
 ## 1. Write the charter
 
