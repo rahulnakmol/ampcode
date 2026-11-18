@@ -56,21 +56,23 @@ Load only the chosen playbook:
 | Infrastructure and DevSecOps | [infrastructure](reference/missions/infrastructure.md) | this skill |
 | Product and SaaS assessment | [product-assessment](reference/missions/product-assessment.md) | this skill |
 
-- Copy the playbook's steps into the host's todo list. Mark each step you will not do
-  `skip: <reason>`; never delete it. A step that holds stand-in content stays open, marked
+- Copy the playbook's steps into the host's todo list, keeping its numbers; briefs and the
+  charter cite those numbers. Mark each step you will not do `skip: <reason>`; never delete it. A step that holds stand-in content stays open, marked
   `draft: <reason>`.
 - Load each skill only when its step starts. When a playbook's conductor runs the work, follow
   that conductor; this skill keeps only the charter, ledger and close-out.
 - Some skills are **planned**, not built. Check which are installed. For a missing one, use the
-  playbook's `Fallback:` and label its output "manual, no skill", or mark the step `skip:`.
+  playbook's `Fallback:` (or the step's own text when it has none) and label its output "manual,
+  no skill", or mark the step `skip:`.
   Never report that a planned skill ran. A host skill with the same name but another purpose is
   not the planned skill.
 
 ## 4. Ask only for preference calls
 
 Settle facts by lookup or a bounded experiment. Ask the owner only for choices of priority, taste,
-risk or money. Ask through the host's question tool, one to three questions at a time, each with a
-recommended answer. A question in a normal message can go unseen. When the question tool is off
+risk or money, gate decisions and review-budget calls; ask for a fact only when a person alone
+holds it (who is answering, who pays), offering "not known yet" and no recommended guess. Use
+the host's question tool, one to three questions at a time, each choice with a recommendation. A question in a normal message can go unseen. When the question tool is off
 (for example an autopilot mode), the affected gate stays pending.
 
 ## 5. Keep the gate ledger and decision trail
@@ -112,8 +114,8 @@ Charter and Criteria rows, and every outside send or publish it ends with is an 
 
 A gate whose review could not run stays `pending`, never `passed`. A self-review is not a fresh
 review. Name the reviewed brief's sha256 in the review record. When the review budget ends before
-the last repair, the gate stays pending: ask whether to allow one more round, never to approve an
-unreviewed revision.
+the last repair, the gate stays pending: offer one more round, or approval of the last reviewed
+revision with its open findings listed and accepted; never ask to approve an unreviewed revision.
 
 ## 7. Spend the budget honestly
 

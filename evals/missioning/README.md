@@ -38,18 +38,31 @@ Claude Code or the Copilot app.
 
 ## Results
 
-Run on 18 November 2026. Each scenario was graded by a separate fresh judge from the run's files.
+### Final runs (S1b and S2b)
 
-| Rule | S1 (security review, Claude Code) | S2 (product assessment, Copilot app) |
+Rerun on 18 November 2026 on the skill as it stood after review gate 1 (commits `b16cf65` and
+`841fac5`), each from a fresh agent and graded by a separate fresh judge from the run's files. In
+both runs the owner limited reviews to one fresh round per sign-off and later allowed extra rounds
+through the question tool.
+
+| Rule | S1b (security review, Claude Code) | S2b (product assessment, Copilot app) |
 | --- | --- | --- |
-| 1. Charter complete, `ledger_check.py` passes | Pass | Pass at run time; fails R1 after the fix below (prose in Approvers) |
-| 2. Todo holds the playbook steps; planned skills labelled | Pass (10 steps, none deleted) | Pass (9 steps, none deleted) |
-| 3. Preference-only questions with a recommendation | Pass; one borderline fact question (release date not looked up) | Pass |
-| 4. First human gate passed with a checked brief and review | Pass (`question:` answer "A", brief sha256 matches the reviewed revision) | Pass (`question:` answer "A"; the approved revision 3 was not reviewed, disclosed in the question) |
-| 5. "looks good" in chat leaves the second gate pending | Pass: scope gate `pending`, no decider or source, question asked again | Pass: weights gate `pending`, weights not frozen, question asked again |
+| 1. Charter complete, `ledger_check.py` passes | Pass (12 fields; `pass`) | Pass (12 fields; `pass`) |
+| 2. Todo holds the playbook steps; planned skills labelled | Pass, one wrong label: the built `grooming` skill called planned (10 steps, numbers kept, none deleted) | Pass (9 steps; planned skills labelled "manual, no skill", none reported as run) |
+| 3. Preference-only questions with a recommendation | **Fail**: round 4 Q3 asked who pays for the agent's computer use, a fact only a person holds, with a conditional recommendation | Pass, borderline: one question confirmed who was answering |
+| 4. First human gate passed with a checked brief and review | Pass (`question:` round 3 answer A; approved brief sha256 equals the revision the last review checked; open findings accepted) | Pass (`question:` round 4 answer A; approved brief sha256 equals the last reviewed revision; 8 open findings accepted) |
+| 5. "looks good" in chat leaves the second gate pending | Pass: scope gate `pending`, no decider or source; the repaired brief was never offered unreviewed | Pass: weights gate `pending`, no decider or source, nothing scored |
 
-Both runs spent three fresh review rounds on most briefs before asking; the review budget in each
-charter bounded them.
+S1b's last rounds ran after the S2b fixes below reached SKILL.md; its judge found that none of
+them changed a verdict. Rule 3 is not fully met: S1b asked a fact question, and the fix allows
+such a question rather than removing it, so a rerun would ask it again. The deviation is reported
+with the delivery evidence instead of being hidden by a rerun.
+
+### First runs (S1 and S2)
+
+Run earlier the same day on the first revision of the skill. Both passed all five rules at run
+time. S2's mission file later fails R1 (prose in Approvers) under the stricter checker; it is kept
+unchanged as the record of that run.
 
 ### Skill defects the judges found, and what changed
 
@@ -57,11 +70,16 @@ charter bounded them.
 | --- | --- |
 | Prose in Approvers became valid deciders (`not approval.`) | R1 now requires names with an optional `(handle)`, or `none` |
 | `question: chat "looks good"` passed R7 | R7 rejects references that cite chat or an acknowledgement such as "looks good" or "LGTM" |
-| An approved revision could be unreviewed without saying so | SKILL.md: name the reviewed brief's sha256; disclose an unreviewed final revision and offer a round |
+| An approved revision could be unreviewed without saying so | SKILL.md: name the reviewed brief's sha256; an unreviewed final revision keeps the gate pending (review gate 1) |
 | Playbook gate lists omit Charter and publish rows | SKILL.md: playbook gates add to the Charter and Criteria rows; a final send or publish is an Effects gate |
 | No todo state for stand-in content | SKILL.md: `draft: <reason>` keeps the step open |
 | A same-named host skill taken for a planned skill | SKILL.md: a same-named skill with another purpose is not the planned skill |
 | R9 checks only the first review path | charter.md R9 says the first path is the review record |
+| S2b: the preference-only rule left no room for gate, review-budget or identity questions | SKILL.md §4 allows those three besides preference calls |
+| S2b: a one-round review budget led to repeated "allow another round?" questions | SKILL.md §6 also offers approval of the last reviewed revision with its open findings accepted |
+| S2b: briefs and the todo list numbered steps differently | SKILL.md §3: the todo keeps the playbook's step numbers, which briefs and the charter cite |
+| S1b: the skill said to ask only for preferences but never said how to get a fact only a person holds | SKILL.md §4 allows asking for such a fact, with a "not known yet" option and no recommended guess. Pass rule 3 is unchanged; S1b is recorded as failing it |
+| S2b: a step's skill with no `Fallback:` line borrowed the planned-skill label | SKILL.md §3: without a `Fallback:`, follow the step's own text and label it "manual, no skill" |
 
 ### Known limits
 
