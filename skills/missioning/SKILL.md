@@ -1,6 +1,6 @@
 ---
 name: missioning
-description: "Conducts a mission of any kind with one charter, one gate ledger and one decision trail: outcome, decision owner, approvers, success criteria, Definition of Done, budget and authority grants agreed first; playbook steps copied into the todo list; questions only for preference calls; a checked plain-English brief and a fresh-reader review before every human sign-off; approvals recorded as ledger rows, never inferred from chat; and a close-out audit. Ships eight playbooks (ERP and AI transformation, product delivery operations, AI-native software delivery, campaigns and research, UX and UI design, code and security review, infrastructure and DevSecOps, product and SaaS assessment) and a host guide for Amp, Claude Code, Copilot in VS Code and the Copilot app. Use when asked to start, run, resume or close a mission, write a mission charter, set a mission budget, record or audit approvals, or pick the playbook for a kind of work."
+description: "Conducts a mission of any kind with one charter, one gate ledger and one decision trail: outcome, decision owner, approvers, success criteria, Definition of Done, budget and authority grants agreed first; playbook steps copied into the todo list; questions only for preferences, gate and budget calls, or facts only a person holds; a checked plain-English brief and a fresh-reader review before every human sign-off; approvals recorded as ledger rows, never inferred from chat; and a close-out audit. Ships eight playbooks (ERP and AI transformation, product delivery operations, AI-native software delivery, campaigns and research, UX and UI design, code and security review, infrastructure and DevSecOps, product and SaaS assessment) and a host guide for Amp, Claude Code, Copilot in VS Code and the Copilot app. Use when asked to start, run, resume or close a mission, write a mission charter, set a mission budget, record or audit approvals, or pick the playbook for a kind of work."
 ---
 
 # Missioning
@@ -11,9 +11,8 @@ skills do the work. It works the same on every host; [reference/hosts.md](refere
 names each host's tools.
 
 It does not schedule work, start teams, swarms or the Copilot app's multi-agent Projects, or run
-parallel workers by default, and it never holds authority the owner did not grant. One integration owner stays accountable for the
-outcome. The rules here guide an agent; on hosts without an owner-only dialog they are not a
-security boundary.
+parallel workers by default. It never holds authority the owner did not grant, and one owner
+stays accountable. On hosts without an owner-only dialog its rules are not a security boundary.
 
 ## 1. Write the charter
 
@@ -56,24 +55,23 @@ Load only the chosen playbook:
 | Infrastructure and DevSecOps | [infrastructure](reference/missions/infrastructure.md) | this skill |
 | Product and SaaS assessment | [product-assessment](reference/missions/product-assessment.md) | this skill |
 
-- Copy the playbook's steps into the host's todo list, keeping its numbers; briefs and the
-  charter cite those numbers. Mark each step you will not do `skip: <reason>`; never delete it. A step that holds stand-in content stays open, marked
-  `draft: <reason>`.
+- Copy the playbook's steps into the todo list with their numbers, which briefs and the charter
+  cite. Mark a step you will not do `skip: <reason>`; never delete it. A step holding stand-in
+  content stays open, marked `draft: <reason>`.
 - Load each skill only when its step starts. When a playbook's conductor runs the work, follow
   that conductor; this skill keeps only the charter, ledger and close-out.
 - Some skills are **planned**, not built. Check which are installed. For a missing one, use the
-  playbook's `Fallback:` (or the step's own text when it has none) and label its output "manual,
-  no skill", or mark the step `skip:`.
-  Never report that a planned skill ran. A host skill with the same name but another purpose is
-  not the planned skill.
+  playbook's `Fallback:` (or the step's own text) and label its output "manual, no skill", or
+  mark the step `skip:`. Never report that a planned skill ran; a host skill with the same name
+  but another purpose is not the planned skill.
 
-## 4. Ask only for preference calls
+## 4. Ask only what you cannot find out
 
-Settle facts by lookup or a bounded experiment. Ask the owner only for choices of priority, taste,
-risk or money, gate decisions and review-budget calls; ask for a fact only when a person alone
-holds it (who is answering, who pays), offering "not known yet" and no recommended guess. Use
-the host's question tool, one to three questions at a time, each choice with a recommendation. A question in a normal message can go unseen. When the question tool is off
-(for example an autopilot mode), the affected gate stays pending.
+Settle facts by lookup or a bounded experiment. Ask the owner for choices of priority, taste, risk
+or money, gate decisions and review-budget calls, each with a recommendation; ask for a fact only
+when a person alone holds it (who pays), offering "not known yet" and no guess. Use the host's
+question tool, one to three questions at a time; a question in a normal message can go unseen.
+When the question tool is off (for example an autopilot mode), the affected gate stays pending.
 
 ## 5. Keep the gate ledger and decision trail
 
@@ -91,9 +89,9 @@ Charter and Criteria rows, and every outside send or publish it ends with is an 
 
 - **Approval is a recorded row.** A human gate passes only with a named decider who is the
   decision owner or an approver, a source (`dialog` or `question` for the decision owner only,
-  `tracker` or `written` for anyone), the brief and its review. An answer counts only when it answers the exact gate question, by
-  choosing an offered option or naming the decision. "Looks good", an earlier conversation or
-  silence is never an approval. Write the row only after that answer.
+  `tracker` or `written` for anyone), the brief and its review. An answer counts only when it
+  answers the exact gate question, by choosing an offered option or naming the decision. "Looks
+  good", an earlier conversation or silence is never an approval. Write the row after the answer.
 - **Full-stop gates.** Every release, apply to a shared or production environment, publish,
   outside send and high-risk merge needs the owner's approval of the exact plan, whatever the
   charter allows. Routine writes the charter grants, such as tracker syncs, go in the trail.
@@ -107,7 +105,8 @@ Charter and Criteria rows, and every outside send or publish it ends with is an 
 
 1. Write the brief with `briefing-decisions` and run its checker until it passes.
 2. Run a `goldfishing` novice-reader review of the brief with the decider's persona. Repair the
-   brief, not the reviewer. Run the review lenses the gate needs on the work itself.
+   brief, not the reviewer, into a new file: a reviewed revision stays unchanged. Run the review
+   lenses the gate needs on the work itself.
 3. Offer a review by another model provider only at high-risk gates; do not assume one.
 4. Ask the decision owner through the host's tool, and any other approver for a tracker approval
    or written record, with the brief's first lines and its link. Record the answer with the brief.
@@ -157,8 +156,8 @@ revision with its open findings listed and accepted; never ask to approve an unr
 
 - **New mission type:** copy a playbook, keep its six headings, add it to the table above and to
   `PLAYBOOKS` in the checker. Keep it near 60 lines.
-- **Charter fields:** change `FIELDS` in `scripts/ledger_check.py` and the template together.
-- **Gate kinds or sources:** change `SOURCES` and the grammar in `reference/charter.md` together.
+- **Charter fields, gate kinds or sources:** change `FIELDS` or `SOURCES` in
+  `scripts/ledger_check.py` and the grammar and template in `reference/charter.md` together.
 - **Another host:** add a column to `reference/hosts.md`; label it "not tested" until you run it.
 
 ## Check your work

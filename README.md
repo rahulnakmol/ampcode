@@ -289,7 +289,7 @@ from. One mission file holds a charter (outcome, decision owner, approvers, succ
 Definition of Done, budget and what the agent may do without asking), a gate ledger and a
 decision trail. The success criteria are agreed before the work. The chosen playbook's steps go
 into the host's todo list, with `skip: <reason>` for any step not done. The agent asks only for
-preference calls. Before every human gate it writes a `briefing-decisions` brief and runs a
+preferences, gate and budget calls, or facts only a person holds. Before every human gate it writes a `briefing-decisions` brief and runs a
 `goldfishing` novice-reader review. An approval counts only as a ledger row naming an approver,
 where they answered (`dialog`, `question`, `tracker` or `written`), the brief and its review;
 never chat. `scripts/ledger_check.py` (standard library) rejects a row without these. It cannot

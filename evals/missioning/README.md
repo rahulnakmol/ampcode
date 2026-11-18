@@ -40,10 +40,10 @@ Claude Code or the Copilot app.
 
 ### Final runs (S1b and S2b)
 
-Rerun on 18 November 2026 on the skill as it stood after review gate 1 (commits `b16cf65` and
-`841fac5`), each from a fresh agent and graded by a separate fresh judge from the run's files. In
-both runs the owner limited reviews to one fresh round per sign-off and later allowed extra rounds
-through the question tool.
+Rerun on 18 November 2026 after review gate 1, each from a fresh agent and graded by a separate
+fresh judge from the run's files. S2b started on `b16cf65`, with `841fac5` landing mid-run; S1b
+started on `841fac5`. Both prompts added an owner limit of one fresh review round per sign-off;
+both owners later allowed extra rounds through the question tool.
 
 | Rule | S1b (security review, Claude Code) | S2b (product assessment, Copilot app) |
 | --- | --- | --- |
@@ -75,11 +75,23 @@ unchanged as the record of that run.
 | No todo state for stand-in content | SKILL.md: `draft: <reason>` keeps the step open |
 | A same-named host skill taken for a planned skill | SKILL.md: a same-named skill with another purpose is not the planned skill |
 | R9 checks only the first review path | charter.md R9 says the first path is the review record |
-| S2b: the preference-only rule left no room for gate, review-budget or identity questions | SKILL.md §4 allows those three besides preference calls |
+| S2b: the preference-only rule left no room for gate, review-budget or identity questions | SKILL.md §4 allows gate and review-budget calls, and facts only a person holds |
 | S2b: a one-round review budget led to repeated "allow another round?" questions | SKILL.md §6 also offers approval of the last reviewed revision with its open findings accepted |
+| S1b: nothing kept the reviewed revision when the brief was repaired | SKILL.md §6: repair into a new file; a reviewed revision stays unchanged |
 | S2b: briefs and the todo list numbered steps differently | SKILL.md §3: the todo keeps the playbook's step numbers, which briefs and the charter cite |
 | S1b: the skill said to ask only for preferences but never said how to get a fact only a person holds | SKILL.md §4 allows asking for such a fact, with a "not known yet" option and no recommended guess. Pass rule 3 is unchanged; S1b is recorded as failing it |
 | S2b: a step's skill with no `Fallback:` line borrowed the planned-skill label | SKILL.md §3: without a `Fallback:`, follow the step's own text and label it "manual, no skill" |
+
+### Defects the judges found that are not changed
+
+- A brief cannot record the result of its own final review, so "checked" wording in it can be
+  stale at sign-off (S2b).
+- A "review round" is not defined against review lenses, and "high-risk gate" is not defined; under
+  a one-round limit S1b dropped the critic lens and the other-provider review (S1b).
+- `reference/hosts.md` has no row for listing installed skills; S1b called the built `grooming`
+  skill planned.
+- The owner's review limit and the rounds `goldfishing` allows have no stated precedence (S1b
+  followed the owner's, which is right).
 
 ### Known limits
 

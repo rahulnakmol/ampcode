@@ -50,13 +50,13 @@ below are allowed and ignored by the checker.
 
 | Rule | What passes |
 | --- | --- |
-| R1 | Every required charter field appears once and is not a placeholder; Decision owner (one person) and Approvers follow People |
+| R1 | One `## Charter` section; every required field appears once and is not a placeholder; Decision owner (one person) and Approvers follow People |
 | R2 | Host is Amp, Claude Code, Copilot in VS Code or Copilot app; Playbook is a playbook name or `none: <reason>` |
 | R3 | Budget names a limit with a number and does not say "unlimited", or says `no limit on <what>, decided by <name>` |
-| R4 | The gate ledger table has the nine headers in order, the separator line with one cell per header, nine cells per row and at least one row |
+| R4 | One `## Gate ledger` section; its table (every line up to a blank one, as GitHub reads it) has the nine headers in order, the separator line with one cell per header, nine cells per row and at least one row |
 | R5 | Kind and State take the values above; a gate named Charter is `human` |
 | R6 | A passed human gate, and any waived gate, has a Decider who is the Decision owner or an Approver, and a Source with a reference; a `dialog` or `question` Decider is the Decision owner |
-| R7 | The Source kind is `dialog`, `question`, `tracker` or `written`, and the reference cites neither chat, a conversation, Slack or a DM nor an acknowledgement such as "looks good" or "LGTM" (a fixed word list, "Copilot Chat" excepted): approval is never inferred from chat |
+| R7 | The Source kind is `dialog`, `question`, `tracker` or `written`, and the reference cites neither chat, a conversation, Slack or a DM nor an acknowledgement such as "looks good" or "LGTM" (a fixed word list; "ask_user in Copilot Chat" names the question tool and is excepted): approval is never inferred from chat |
 | R8 | A passed human gate's Brief is a local `.md` file, relative to the mission file, that passes `briefing-decisions`' `brief_check.py`; a published URL may follow in parentheses |
 | R9 | A passed gate's Review is an existing file or an `https` URL (the first path in the cell is the review record, and it is not the brief); an agent gate may say `none needed: <reason>` |
 | R10 | A passed agent gate has Evidence that is not a placeholder |

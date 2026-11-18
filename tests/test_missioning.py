@@ -119,6 +119,7 @@ class Rules(unittest.TestCase):
         self.assertRule(edit("3 review rounds per gate; 2 working days.", "no limit on tokens"), "R3")
         self.assertEqual(self.rules(edit("3 review rounds per gate; 2 working days.", "no limit on tokens, decided by Rahul Nakmol")), [])
         self.assertRule(edit("3 review rounds per gate; 2 working days.", "unlimited (agreed 18 Nov)"), "R3")
+        self.assertRule(edit("3 review rounds per gate; 2 working days.", "no limit on tokens; 3 review rounds"), "R3")
 
     def test_r4_ledger_table(self):
         self.assertRule(edit("| Gate | Kind | State |", "| Gate | State | Kind |"), "R4")
@@ -126,6 +127,12 @@ class Rules(unittest.TestCase):
         self.assertRule(no_rows, "R4")
         # A separator with fewer cells than the header is not a table on GitHub either.
         self.assertRule(edit("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n", "| --- | --- |\n"), "R4")
+        # GitHub renders a line without outer pipes right after a table as a row; check it too.
+        unpiped = "Report release | human | passed | x | - | - | Rahul Nakmol | chat: lgtm | 2026-11-20\n"
+        self.assertIn("R7", self.rules(edit("| Report release | human | open | - | - | - | - | - | - |\n", "| Report release | human | open | - | - | - | - | - | - |\n" + unpiped)))
+        # A second ledger section is never read past: the file fails instead.
+        second = "\n## Gate ledger\n\n| Gate | Kind | State | Evidence | Review | Brief | Decider | Source | Date |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
+        self.assertIn("R4", self.rules(GOOD + second))
         # Without the separator line the first row would be read as one; it must fail, not hide.
         chat_first = edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', "chat: said looks good"))
         self.assertRule(chat_first.replace("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n", "", 1), "R4")
@@ -137,10 +144,13 @@ class Rules(unittest.TestCase):
         # Recording the charter as an agent gate must not let a chat reply pass it.
         as_agent = PASSED.replace("| human |", "| agent |").replace("reviews/charter-novice.md", "none needed: owner said looks good")
         self.assertRule(edit(PASSED, as_agent), "R5")
+        self.assertRule(edit(PASSED, as_agent.replace("Charter and criteria", "Mission charter")), "R5")
 
     def test_r6_decider_and_source(self):
         self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "Sam Lee")), "R6")
         self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "Rahul")), "R6")
+        # A Decider copied as written in the charter, with its handle, is the same person.
+        self.assertEqual(self.rules(edit(PASSED, PASSED.replace("Rahul Nakmol", "Rahul Nakmol (@rahul-n)"))), [])
         # Only the person in the session answers its question tool or dialog: that is the owner.
         tracker = 'tracker: GitHub /approve on acme/payments#12'
         self.assertEqual(self.rules(edit(PASSED, PASSED.replace("Rahul Nakmol", "@priya-s").replace('question: AskUserQuestion answer "Approve"', tracker))), [])
@@ -173,6 +183,7 @@ class Rules(unittest.TestCase):
         self.assertRule(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', 'written: DM "ok"')), "R7")
         # The host's name is not chat: Copilot Chat's question tool is a real source.
         self.assertEqual(self.rules(edit(PASSED, PASSED.replace('AskUserQuestion answer "Approve"', 'ask_user in Copilot Chat, answer "A"'))), [])
+        self.assertRule(edit(PASSED, PASSED.replace('AskUserQuestion answer "Approve"', 'owner replied "yes" in Copilot Chat')), "R7")
 
     def test_r8_brief(self):
         self.assertRule(edit("briefs/charter.md", "briefs/missing.md"), "R8")
@@ -199,6 +210,7 @@ class Rules(unittest.TestCase):
         self.assertEqual(self.rules(edit("reviews/charter-novice.md", "https://ampcode.com/artifacts/review")), [])
         self.assertRule(edit("reviews/charter-novice.md", "none needed: owner is sure"), "R9")
         self.assertRule(edit("reviews/charter-novice.md", "https://"), "R9")
+        self.assertRule(edit("reviews/charter-novice.md", "http://example.com/review"), "R9")
         self.assertRule(edit("reviews/charter-novice.md", "briefs/charter.md"), "R9")
 
     def test_r10_agent_evidence(self):

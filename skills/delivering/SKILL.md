@@ -105,7 +105,7 @@ This entry gate never replaces the two build reviews, executed tests, or custome
   publish the brief and record, within the review rounds `goldfishing` allows for the risk, with
   no effects action. Keep **Budget used** current across
   threads, delegated work included. Use usage telemetry; without it, say exact accounting and
-  enforcement are unavailable and label estimates. Checkpoint near a limit and surface a known or
+  enforcement are unavailable and label estimates. Checkpoint conservatively near a limit and surface a known or
   suspected breach. Do not claim compliance from a word count or create threads to erase usage.
   A fresh context resumes within the remaining budget; beyond it needs explicit approval.
   Never invent a monetary allowance or buy tools. Repeated failure without a new hypothesis calls

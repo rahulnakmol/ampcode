@@ -213,7 +213,7 @@ working days, no paid trials. Agree the weights with Elena before any scoring.
 
 **A good result looks like:** a charter with every field, agreed before the work; the playbook's
 steps in the todo list with `skip: <reason>` where a step is not done; questions only about
-preferences, each with a recommended answer; a checked brief and a fresh novice-reader review
+preferences, gate and budget calls (each with a recommended answer) or facts only you hold; a checked brief and a fresh novice-reader review
 before every sign-off; each approval a ledger row naming an approver and where they answered;
 `ledger_check.py` printing `pass`; a close-out that lists what needs your attention. **Not
 good:** "looks good" in chat recorded as approval, a planned skill reported as run, a deleted

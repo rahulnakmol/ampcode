@@ -45,9 +45,9 @@ def brief_checker():
 
 
 def section(text, title):
-    """Return the lines under '## <title>' up to the next '## ' heading, or None."""
-    match = re.search(rf"^## {re.escape(title)}[ \t]*\n(.*?)(?=^## |\Z)", text, re.M | re.S)
-    return match.group(1).splitlines() if match else None
+    """Lines under the one '## <title>' up to the next '## ' heading; None if absent or repeated."""
+    found = re.findall(rf"^## {re.escape(title)}[ \t]*\n(.*?)(?=^## |\Z)", text, re.M | re.S)
+    return found[0].splitlines() if len(found) == 1 else None
 
 
 def fields(lines):
@@ -67,7 +67,15 @@ def fields(lines):
 
 def table(lines):
     """Header cells and data rows of the first Markdown table in lines."""
-    rows = [l.strip() for l in lines if l.strip().startswith("|")]
+    lines = [l.strip() for l in lines]
+    start = next((i for i, l in enumerate(lines) if l.startswith("|")), None)
+    if start is None:
+        return None, []
+    rows = []
+    for line in lines[start:]:  # GitHub reads every line up to a blank one as a row, pipes or not
+        if not line:
+            break
+        rows.append(line)
     cells = lambda row: [c.strip() for c in row.strip("|").split("|")]
     if len(rows) < 2 or not SEPARATOR.match(rows[1]) or len(cells(rows[1])) != len(cells(rows[0])):
         return None, []
@@ -110,7 +118,8 @@ def check_brief(path):
     if checker is None:
         return f"cannot check brief {path.name}: briefing-decisions is not installed beside missioning"
     run = subprocess.run([sys.executable, str(checker), str(path)], capture_output=True, text=True)
-    return None if run.returncode == 0 else f"brief {path.name} fails brief_check.py: {run.stdout.strip().splitlines()[0]}"
+    output = run.stdout.strip() or run.stderr.strip() or "no output"
+    return None if run.returncode == 0 else f"brief {path.name} fails brief_check.py: {output.splitlines()[0]}"
 
 
 def check(text, base):
@@ -123,6 +132,8 @@ def check(text, base):
             add("R1", f"charter needs exactly one '- **{name}:**' line (found {len(values)})")
         elif not values[0] or PLACEHOLDER.search(values[0]):
             add("R1", f"charter field {name} is empty or a placeholder")
+        elif name == "Decision owner" and values[0].strip().lower() == "none":
+            add("R1", "Decision owner names one person; it is never 'none'")
         elif name in ("Decision owner", "Approvers") and not people_ok(values[0], name == "Approvers"):
             add("R1", f"{name} must be 'none' or comma-separated names, each with an optional '(handle)', not prose")
         elif name == "Decision owner" and "," in values[0]:
@@ -151,17 +162,18 @@ def check(text, base):
         if kind not in KINDS or state not in STATES:
             add("R5", f"gate '{gate}': Kind must be human or agent and State one of {', '.join(STATES)}")
             continue
-        if re.match(r"charter\b", gate, re.I) and kind != "human":
+        if re.search(r"\bcharter\b", gate, re.I) and kind != "human":
             add("R5", f"gate '{gate}': the charter gate is always a human gate")
         if (kind == "human" and state == "passed") or state == "waived":
-            names = [n for n in (x.strip().lstrip("@").lower() for x in decider.split(",")) if n not in EMPTY]
+            names = [n for n in (re.sub(r"\s*\([^)]*\)", "", x).strip().lstrip("@").lower()
+                                 for x in decider.split(",")) if n not in EMPTY]
             if not names or any(n not in deciders for n in names):
                 add("R6", f"gate '{gate}': Decider must name the Decision owner or an Approver")
             kind_of, _, reference = source.partition(":")
             kind_of = kind_of.strip().lower()
             if source in EMPTY:
                 add("R6", f"gate '{gate}': Source must say where the decider answered")
-            elif kind_of not in SOURCES or NOT_AN_ANSWER.search(re.sub(r"copilot chat", "", reference, flags=re.I)):
+            elif kind_of not in SOURCES or NOT_AN_ANSWER.search(re.sub(r"\bask_user in copilot chat\b", "", reference, flags=re.I)):
                 add("R7", f"gate '{gate}': source '{source}' is not an approval; approval is never inferred from chat")
             elif not reference.strip():
                 add("R6", f"gate '{gate}': Source needs a reference after '{kind_of}:'")
