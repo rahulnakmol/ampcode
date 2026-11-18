@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "thread": "T-00000000-0000-0000-0000-000000000000",
+  "requirements": "Keep the sales demo website available when the office computer is off, at a known monthly cost. Synthetic example; no real system.",
+  "phase": "evidence",
+  "mode": "auto",
+  "generation": 0,
+  "riskFloor": "medium",
+  "reviews": [
+    {
+      "gate": 1,
+      "fingerprint": "0c6e2f8847f1c7848ce6bf56c5cb294a4540e740fa03715a5e5d86a6245555af",
+      "passed": true,
+      "reviewer": "synthetic reviewer",
+      "record": "Synthetic review."
+    },
+    {
+      "gate": 2,
+      "fingerprint": "0c6e2f8847f1c7848ce6bf56c5cb294a4540e740fa03715a5e5d86a6245555af",
+      "passed": true,
+      "reviewer": "synthetic reviewer",
+      "record": "Synthetic review."
+    }
+  ],
+  "events": [
+    {
+      "sequence": 1,
+      "at": "2026-11-16T00:00:00.000Z",
+      "type": "start",
+      "fingerprint": "4fe29e8e7cf8b4fad3d74b152597a87a2ac1c901f8454488ae1f5427b148f9ca"
+    },
+    {
+      "sequence": 2,
+      "at": "2026-11-16T00:00:00.000Z",
+      "type": "design",
+      "fingerprint": "b2b5ab2242773fb57a9c0ee12562a47a2613bd77530f9c222da0b16b52909d90"
+    },
+    {
+      "sequence": 3,
+      "at": "2026-11-16T00:00:00.000Z",
+      "type": "approve-design",
+      "fingerprint": "b2b5ab2242773fb57a9c0ee12562a47a2613bd77530f9c222da0b16b52909d90"
+    },
+    {
+      "sequence": 4,
+      "at": "2026-11-16T00:00:00.000Z",
+      "type": "defense",
+      "fingerprint": "b2b5ab2242773fb57a9c0ee12562a47a2613bd77530f9c222da0b16b52909d90"
+    },
+    {
+      "sequence": 5,
+      "at": "2026-11-16T00:00:00.000Z",
+      "type": "build",
+      "fingerprint": "b2b5ab2242773fb57a9c0ee12562a47a2613bd77530f9c222da0b16b52909d90"
+    },
+    {
+      "sequence": 6,
+      "at": "2026-11-16T00:00:00.000Z",
+      "type": "candidate",
+      "fingerprint": "0c6e2f8847f1c7848ce6bf56c5cb294a4540e740fa03715a5e5d86a6245555af"
+    },
+    {
+      "sequence": 7,
+      "at": "2026-11-16T00:00:00.000Z",
+      "type": "review",
+      "fingerprint": "0c6e2f8847f1c7848ce6bf56c5cb294a4540e740fa03715a5e5d86a6245555af"
+    },
+    {
+      "sequence": 8,
+      "at": "2026-11-16T00:00:00.000Z",
+      "type": "review",
+      "fingerprint": "0c6e2f8847f1c7848ce6bf56c5cb294a4540e740fa03715a5e5d86a6245555af"
+    },
+    {
+      "sequence": 9,
+      "at": "2026-11-16T00:00:00.000Z",
+      "type": "evidence",
+      "fingerprint": "0c6e2f8847f1c7848ce6bf56c5cb294a4540e740fa03715a5e5d86a6245555af"
+    }
+  ],
+  "design": {
+    "bundle": {
+      "spec": "Move the static demo site to managed hosting; keep a 30-day redirect from the old address; no customer data.",
+      "plan": "Copy the site, test the new address, switch the redirect, tell the sales team, turn off the office server after a week.",
+      "technical": "Static files built by the existing script and uploaded to the host; HTTP 301 redirect on the old host for 30 days.",
+      "ux": "Sales staff get the new address by email and in the team chat; no other change for visitors.",
+      "brief": {
+        "markdown": "---\ndecision: Approve moving the sales demo website from the office computer to a paid hosting service.\nyes: The agent moves the demo site this week. Sales staff use a new web address from Monday.\nno: The demo site stays on the office computer. It stops working when that computer is off.\nrisks:\n  - The demo site is offline for up to one hour during the move.\n  - Old links in sent emails stop working after 30 days.\n  - The hosting service costs 25 US dollars each month.\nexcluded:\n  - The main company website.\n  - Customer data. The demo site uses invented data only.\n  - A custom domain name. That is a separate decision.\n---\n\n## You are deciding\n\nApprove moving the sales demo website to a paid hosting service. Today the site runs on one computer in the office. When someone turns that computer off, the demo stops working. Last month this happened during two customer calls.\n\n## If you say yes\n\n- The agent copies the demo site to the hosting service this week.\n- The agent tests the new address and sends it to the sales team.\n- From Monday, sales staff use the new address.\n\n**What it costs you:** 25 US dollars each month, paid by card. Your time: this approval and five minutes to try the new address.\n\n## If you say no\n\nNothing changes. The demo site stays on the office computer. It still stops when that computer is off or restarts.\n\n## What changes\n\n1. The demo site runs on the hosting service, not on the office computer.\n2. The site has a new web address.\n3. The old address sends visitors to the new one for 30 days. After that, the old address stops.\n4. The office computer no longer needs to stay on at night.\n\n## What done looks like\n\n1. The new address opens the demo site from a phone and from a laptop outside the office.\n2. The site stays up when the office computer is off.\n3. The old address sends visitors to the new one.\n4. The monthly bill shows 25 US dollars.\n\n## What we checked and what we did not\n\n**Checked:** the hosting service runs this kind of site. A test copy worked for one day. The site holds no customer data.\n\n**Not checked:** how fast the site is for visitors in Asia. We will check this after the move.\n\n## Risks you accept\n\n- The demo site is offline for up to one hour during the move.\n- Old links in sent emails stop working after 30 days.\n- The hosting service costs 25 US dollars each month.\n\n## Not included\n\n- The main company website.\n- Customer data. The demo site uses invented data only.\n- A custom domain name. That is a separate decision.\n\n## How to undo it\n\nThe agent turns the office computer back on and points the old address back to it. This takes about ten minutes. Then cancel the hosting plan. You pay for the current month only.\n\n## Words you may not know\n\n- **Hosting service:** a company that runs websites on its own computers, all day and night.\n- **Web address:** the text you type in a browser to open a site.\n- **Custom domain name:** a web address with the company's own name in it, such as a shop name.\n- **The agent:** the AI assistant that does the work. A person checks the result.\n\n<details><summary>Technical record</summary>\n\n- Mission: demo-hosting (synthetic example; no real system).\n- Current host: office workstation, static site served on port 8080.\n- Target: managed static hosting, plan \"Starter\", 25 USD per month.\n- Redirect: HTTP 301 from the old address for 30 days.\n- Acceptance IDs: DH-1 to DH-4 map to \"What done looks like\" items 1 to 4.\n\n</details>\n",
+        "url": "https://github.com/rahulnakmol/ampcode/blob/34b8d0e8af6d53aaa60d33f7066983ac21e4fd0f/evals/briefing-decisions/brief.md"
+      }
+    },
+    "criteria": [
+      "The new address opens the demo site from a phone and from a laptop outside the office.",
+      "The site stays up when the office computer is off.",
+      "The old address sends visitors to the new one for 30 days.",
+      "The monthly bill shows 25 US dollars."
+    ],
+    "digest": "f36c7a6322b099787b06179162adaaaaba4d1c24cafd62be35fa55f22a991770"
+  },
+  "approvedDesign": "f36c7a6322b099787b06179162adaaaaba4d1c24cafd62be35fa55f22a991770",
+  "defense": "Synthetic defense.",
+  "candidate": {
+    "repo": "acme/demo-site",
+    "pr": 12,
+    "head": "1111111111111111111111111111111111111111",
+    "base": "2222222222222222222222222222222222222222",
+    "risk": "medium"
+  },
+  "evidence": {
+    "results": [
+      "Opened from a phone on mobile data and from a home laptop.",
+      "Office computer turned off for one hour; the site stayed up.",
+      "The old address returned a permanent redirect to the new one.",
+      "The first invoice shows 25 US dollars."
+    ],
+    "tryIt": "Open the new address on your phone.",
+    "value": "Sales calls no longer fail when the office computer is off.",
+    "fingerprint": "0c6e2f8847f1c7848ce6bf56c5cb294a4540e740fa03715a5e5d86a6245555af"
+  }
+}

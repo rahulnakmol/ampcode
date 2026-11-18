@@ -14,6 +14,8 @@ the skill explicitly when you want it, and ask Amp which skill it is using if un
 | Make an idea or requirement concrete | **grilling** | grill me, clarify requirements, pressure-test, pre-mortem, spec this out, write a PRD | Confirmed brief, acceptance criteria, risks, plan and handoff prompt |
 | Design how a person or agent experiences something | **crafting** | design, redesign, craft, prototype, mock up, polish, critique, accessibility audit, user flow | Journeys, states, design direction, mockups/specification and critique |
 | Deliver a substantial software outcome | **delivering** | use delivering, deliver this feature, execute this approved brief, resume this mission | Implemented and verified slices, two reviews, evidence and authorized integration |
+| Review a document with fresh eyes | **goldfishing** | fresh-eyes review, Goldfish review, can a newcomer follow this, novice-reader test | Findings with location, severity and smallest fix; a review record |
+| Write a sign-off a non-technical approver understands | **briefing-decisions** | decision brief, approval summary, sign-off text, executive sign-off | A checked plain-English brief with risks, exclusions, undo steps and a technical record |
 | Turn public YouTube research into an original article | **distill** | distill this video, distill these videos, write a whitepaper from these videos | Original evidence-backed article, research brief and supported offline package |
 | Plan an initiative from workshop inputs to an agreed backlog | **planning** | plan this initiative, run a planning mission, from workshop notes to backlog | Charter, gated stages, signed-off PRD, ready backlog in GitHub or Excel, traceability |
 | Turn notes, transcripts, minutes and drafts into evidence and a confirmed intent | **synthesizing** | synthesize these notes, what are they really asking for, prepare the kickoff or grooming session | `evidence.md` with cited evidence; `intake.md` with the intent, where each ask goes in the backlog, and the next session's agenda |
@@ -131,6 +133,60 @@ to code. Do not use a full mission for a typo, standalone review or release-only
 **Next:** follow the [Mission-driven development guide](mission-driven-development.md)
 for the four stages, owner decisions and kickoff variations.
 [Skill instructions](../skills/delivering/SKILL.md).
+
+## Goldfishing: review with fresh eyes
+
+**What it is:** the shared fresh-reader review. The reviewer gets the artifact, its sources and
+the grading criteria, never your conversation or the verdict you hope for. Other skills call it;
+you can call it directly.
+
+**Use when:** a plan, spec, brief, design or handoff must work without its author: before a
+sign-off, before handing work to another agent, or to test whether a non-technical approver
+understands it.
+
+```text
+Use goldfishing to review docs/designs/export.md at its current commit.
+Lenses: comprehension, then critic against src/export/. Report each finding with
+location, severity and the smallest fix, and list the files the reviewer read.
+Do not edit anything.
+```
+
+**A good result looks like:** findings tied to exact lines, a paraphrase for the comprehension
+lens, concrete counterexamples for the critic lens, and an honest "not run" when a reviewer
+failed. **Not good:** a reviewer that was told the answer, a self-review called fresh, or a
+round cap treated as acceptance.
+
+**Adapt it:** add your own reviewer questions in the calling skill; change the novice persona to
+match your approver; set a different round cap in the calling skill and say why. On Claude Code,
+VS Code or the Copilot app, follow [`reference/hosts.md`](../skills/goldfishing/reference/hosts.md)
+and run the isolation check once. [Skill instructions](../skills/goldfishing/SKILL.md).
+
+## Briefing decisions: sign-offs in plain English
+
+**What it is:** a fixed brief shape with ten headings, a front-matter summary and a closing
+technical record, plus `scripts/brief_check.py`, which rejects long sentences, hard text, missing
+sections, codes such as hashes or task IDs outside the technical record, and any HTML or Markdown
+that hides words when the brief is rendered.
+
+**Use when:** anyone must approve, sign off or choose: a design, merge, release, budget, vendor
+or roadmap. `delivering` uses it for every mission-control design approval.
+
+```text
+Use briefing-decisions to write the sign-off brief for moving our demo site to
+paid hosting. The approver is our finance director, who does not write software.
+Run brief_check.py until it passes, then a goldfishing novice-reader review.
+```
+
+**A good result looks like:** a reader answers what they approve, what can go wrong, what it
+costs and what is not included from the brief alone; every risk in the summary matches the risks
+section word for word; undo steps say who acts and how long it takes. **Not good:** a brief that
+passes the checker but hides the real decision in the technical record.
+
+**Adapt it:** edit the constants at the top of `brief_check.py` and `banned.json`, then the copy in
+`plugins/mission-control/lib/brief.ts`; a test fails when the lists differ. Without Amp, give the
+approver the Markdown file and open any HTML picture in a browser. On Amp, publish it as a
+document; mission-control links that document in its approval dialog.
+[Skill instructions](../skills/briefing-decisions/SKILL.md).
 
 ## Distill: turn video sources into an original argument
 

@@ -13,7 +13,7 @@ while IFS= read -r -d '' plugin; do
 	echo "Checking plugin: ${plugin#"$root"/}"
 	amp plugins exec "$plugin" session.start \
 		--data "{\"thread\":{\"id\":\"$thread_id\"}}"
-done < <(find "$root/plugins" -maxdepth 2 -type f \( -name '*.ts' -o -name '*.js' \) -print0)
+done < <(find "$root/plugins" "$root/.amp/plugins" -maxdepth 2 -type f \( -name '*.ts' -o -name '*.js' \) -print0)
 
 while IFS= read -r -d '' skill; do
 	directory=$(basename "$(dirname "$skill")")

@@ -1,20 +1,32 @@
 import { expect, test } from 'bun:test'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, readFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createHash } from 'node:crypto'
 import register from '../plugins/mission-control'
 import { GitHub } from '../plugins/mission-control/lib/github'
-import { createMission } from '../plugins/mission-control/lib/mission'
+import { createMission, digest, parseMission } from '../plugins/mission-control/lib/mission'
 import { previewMigration } from '../plugins/mission-control/lib/migration'
 import { intentDigest } from '../plugins/mission-control/lib/contracts'
+
+// Every approval dialog in every test: owner-only, human-only, turn ends on decline, word APPROVE.
+function assertApprovalDialog(dialog: any) {
+	expect(dialog.requireHuman).toBe(true)
+	expect(dialog.endTurnOnDecline).toBe(true)
+	const secret = dialog.fields.filter((f: any) => f.secret)
+	expect(secret).toEqual([expect.objectContaining({ name: 'acknowledgment', secret: true, value: '' })])
+	expect(secret[0].label).toContain('APPROVE')
+	expect(dialog.message).not.toContain('ACKNOWLEDGE')
+}
+const APPROVED = { acknowledgment: 'APPROVE' }
 
 function harness(root = mkdtempSync(join(tmpdir(), 'mission-plugin-')), github?: any) {
 	execFileSync('git', ['init', '-q', root])
 	const tools: Record<string, any> = {}, hooks: Record<string, any> = {}, dialogs: any[] = [], notifications: string[] = []
-	let answer: any = { acknowledgment: 'ACKNOWLEDGE' }
+	let answer: any = APPROVED
 	const ctx = { thread: { id: 'T-test' }, signal: new AbortController().signal, ui: {
-		confirm: async (dialog: any) => { dialogs.push(dialog); return answer },
+		confirm: async (dialog: any) => { assertApprovalDialog(dialog); dialogs.push(dialog); return answer },
 		notify: async (message: string) => { notifications.push(message) },
 	} }
 	const amp = { system: { workspaceRoot: root }, helpers: { filePathFromURI: (p: string) => p }, configuration: { get: async () => ({}) },
@@ -23,7 +35,9 @@ function harness(root = mkdtempSync(join(tmpdir(), 'mission-plugin-')), github?:
 	register(amp as any, github)
 	return { root, tools, hooks, dialogs, notifications, ctx, answer: (value: any) => { answer = value }, call: (name: string, input = {}) => tools[name](input, ctx) }
 }
-const bundle = { spec: 'Export rows exactly', plan: 'Test, fix, review', technical: 'Offsets', ux: 'Actionable CLI errors' }
+const BRIEF = readFileSync(join(import.meta.dir, '../evals/briefing-decisions/brief.md'), 'utf8')
+const BRIEF_URL = 'https://ampcode.com/artifacts/demo-brief'
+const bundle = { spec: 'Export rows exactly', plan: 'Test, fix, review', technical: 'Offsets', ux: 'Actionable CLI errors', brief: { markdown: BRIEF, url: BRIEF_URL } }
 const shadowManifest = previewMigration(createMission('T-fixture', 'Resume exports'), 'acme/app').manifest
 test('v2 opt-in uses native approvals but never invokes remote writes or continuation loops', async () => {
 	const h = harness(undefined, { preflight: async () => { throw new Error('unexpected remote mutation') }, request: async () => { throw new Error('unexpected remote mutation') } })
@@ -32,9 +46,9 @@ test('v2 opt-in uses native approvals but never invokes remote writes or continu
 		expect(start.schemaVersion).toBe(2)
 		expect(start.blockers).toContain('remote-verification-unqualified')
 		h.answer(undefined)
-		await expect(h.call('mission_approve', { stage: 'design' })).rejects.toThrow('acknowledgment')
+		await expect(h.call('mission_approve', { stage: 'design' })).rejects.toThrow('Not approved')
 		for (const type of ['approve-design', 'import-v1', 'observe-integration', 'merge-requested']) await expect(h.call('mission_update', { action: { type } })).rejects.toThrow('Internal')
-		h.answer({ acknowledgment: 'ACKNOWLEDGE' })
+		h.answer(APPROVED)
 		await h.call('mission_approve', { stage: 'design' })
 		await h.call('mission_update', { action: { type: 'defense', digest: intentDigest(shadowManifest), record: 'Recovery inputs and failure boundaries explained.' } })
 		await h.call('mission_update', { action: { type: 'build', unitId: 'U-1' } })
@@ -54,7 +68,7 @@ test('v2 stale native responses do not approve an amended manifest', async () =>
 			const changed = structuredClone(shadowManifest)
 			changed.criteria[0].outcome = 'Resume after clean shutdown only'
 			await h.call('mission_update', { action: { type: 'design', manifest: changed } })
-			return { acknowledgment: 'ACKNOWLEDGE' }
+			return APPROVED
 		}
 		await expect(h.call('mission_approve', { stage: 'design' })).rejects.toThrow('stale')
 		expect(JSON.parse(await h.call('mission_status')).approvedDesign).toBeUndefined()
@@ -89,9 +103,9 @@ test('native migration previews without writing, requires acknowledgment and pre
 		expect(preview.schemaVersion).toBe(2)
 		expect(await h.call('mission_status')).toBe(before)
 		h.answer(undefined)
-		await expect(h.call('mission_migrate', { adopt: true, repository: 'acme/app', expectedDigest: preview.sourceDigest })).rejects.toThrow('acknowledgment')
+		await expect(h.call('mission_migrate', { adopt: true, repository: 'acme/app', expectedDigest: preview.sourceDigest })).rejects.toThrow('Not approved')
 		expect(await h.call('mission_status')).toBe(before)
-		h.answer({ acknowledgment: 'ACKNOWLEDGE' })
+		h.answer(APPROVED)
 		const adopted = JSON.parse(await h.call('mission_migrate', { adopt: true, repository: 'acme/app', expectedDigest: preview.sourceDigest }))
 		expect(adopted.schemaVersion).toBe(2)
 		expect(adopted.approvedDesign).toBeUndefined()
@@ -111,8 +125,7 @@ test('registered tools persist an owner-approved mission across reload, without 
 	try {
 		await build(h)
 		expect(h.dialogs).toHaveLength(1)
-		expect(h.dialogs[0].fields[0]).toMatchObject({ secret: true, value: '' })
-		expect(h.dialogs[0].message).toContain(bundle.technical)
+		expect(h.dialogs[0].fields.at(-1).value).toContain(bundle.technical)
 		expect(h.notifications.join('\n')).toContain('ask-before-merge')
 		const again = harness(h.root)
 		const state = JSON.parse(await again.call('mission_status'))
@@ -130,11 +143,11 @@ test('forged, dismissed and stale approval cannot advance the build', async () =
 		await h.call('mission_update', { action: { type: 'design', bundle, criteria: ['Exact rows'] } })
 		await expect(h.call('mission_update', { action: { type: 'approve-design', digest: 'forged' } })).rejects.toThrow()
 		h.answer(undefined)
-		await expect(h.call('mission_approve', { stage: 'design' })).rejects.toThrow('acknowledgment')
+		await expect(h.call('mission_approve', { stage: 'design' })).rejects.toThrow('Not approved')
 		await expect(h.call('mission_update', { action: { type: 'build' } })).rejects.toThrow()
 		h.ctx.ui.confirm = async () => {
 			await h.call('mission_update', { action: { type: 'design', bundle: { ...bundle, ux: 'Changed interface' }, criteria: ['Exact rows'] } })
-			return { acknowledgment: 'ACKNOWLEDGE' }
+			return APPROVED
 		}
 		await expect(h.call('mission_approve', { stage: 'design' })).rejects.toThrow('stale')
 		expect(JSON.parse(await h.call('mission_status')).approvedDesign).toBeUndefined()
@@ -171,9 +184,9 @@ test.each([['low', 'auto'], ['medium', 'auto'], ['high', 'auto'], ['low', 'ask']
 			await expect(h.call('mission_merge')).rejects.toThrow('Owner merge acknowledgment required')
 			expect(effects).toEqual([])
 			h.answer(undefined)
-			await expect(h.call('mission_approve', { stage: 'merge' })).rejects.toThrow('acknowledgment')
+			await expect(h.call('mission_approve', { stage: 'merge' })).rejects.toThrow('Not approved')
 			await expect(h.call('mission_merge')).rejects.toThrow('Owner merge acknowledgment required')
-			h.answer({ acknowledgment: 'ACKNOWLEDGE' })
+			h.answer(APPROVED)
 			await h.call('mission_approve', { stage: 'merge' })
 		} else expect(h.dialogs).toHaveLength(1)
 		await h.call('mission_merge')
@@ -225,8 +238,8 @@ test('recovery requires owner acknowledgment and stable unqueued remote state', 
 		await expect(h.call('mission_recover')).rejects.toThrow('unqueued')
 		remote.isInMergeQueue = false
 		h.answer(undefined)
-		await expect(h.call('mission_recover')).rejects.toThrow('acknowledgment')
-		h.answer({ acknowledgment: 'ACKNOWLEDGE' })
+		await expect(h.call('mission_recover')).rejects.toThrow('Not approved')
+		h.answer(APPROVED)
 		const recovered = JSON.parse(await h.call('mission_recover'))
 		expect(recovered.phase).toBe('reviewing')
 		expect(recovered.reviews).toEqual([])
@@ -234,4 +247,164 @@ test('recovery requires owner acknowledgment and stable unqueued remote state', 
 		expect(recovered.fingerprint).not.toBe(s.fingerprint)
 		await expect(h.call('mission_merge')).rejects.toThrow('Review 1')
 	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+const DECISION = 'Approve moving the sales demo website from the office computer to a paid hosting service.'
+const head = 'a'.repeat(40), base = 'b'.repeat(40)
+async function designed(h: ReturnType<typeof harness>, b: any = bundle) {
+	await h.call('mission_start', { requirements: 'Resume exports' })
+	await h.call('mission_update', { action: { type: 'design', bundle: b, criteria: ['Exact rows', 'Old files are kept'] } })
+}
+async function presented(h: ReturnType<typeof harness>) {
+	await designed(h)
+	await h.call('mission_approve', { stage: 'design' })
+	const d = JSON.parse(await h.call('mission_status'))
+	await h.call('mission_update', { action: { type: 'defense', digest: d.design.digest, record: 'Defended.' } })
+	await h.call('mission_update', { action: { type: 'build' } })
+	await h.call('mission_update', { action: { type: 'candidate', candidate: { repo: 'acme/app', pr: 7, head, base, risk: 'high' } } })
+	const s = JSON.parse(await h.call('mission_status'))
+	for (const gate of [1, 2]) await h.call('mission_update', { action: { type: 'review', gate, fingerprint: s.fingerprint, passed: true, reviewer: 'T-review', record: 'No findings.' } })
+	await h.call('mission_update', { action: { type: 'evidence', fingerprint: s.fingerprint, results: ['Rows match the source file', 'Old files unchanged'], tryIt: 'Run export --resume', value: 'No duplicate rows' } })
+	await h.call('mission_present')
+	return s.fingerprint as string
+}
+
+test('design dialog: open the brief, then type APPROVE; the decision and record are in read-only details', async () => {
+	const h = harness()
+	try {
+		await designed(h)
+		await h.call('mission_approve', { stage: 'design' })
+		const d = h.dialogs[0]
+		expect(d.title).toBe('Approve the design')
+		expect(d.message).toStartWith('Open the brief, then type APPROVE.')
+		expect(d.collapsedMessage).toBeUndefined()
+		expect(d.expandButtonText).toBeUndefined()
+		expect(d.fields.map((f: any) => [f.type ?? 'text', f.name, f.type === 'link' ? f.value : ''])).toEqual([['link', 'brief', BRIEF_URL], ['text', 'acknowledgment', ''], ['text', 'details', '']])
+		const details = d.fields[2]
+		expect(details).toMatchObject({ readOnly: true, multiline: true, optional: true })
+		expect(details.value).toContain(`You are deciding: ${DECISION}`)
+		expect(details.value).toContain('What you approve as done:\n1. Exact rows\n2. Old files are kept')
+		for (const text of ['Resume exports', bundle.spec, bundle.plan, bundle.technical, bundle.ux, BRIEF_URL]) expect(details.value).toContain(text)
+		// The brief is read in its document, not in the dialog.
+		expect(JSON.stringify(d)).not.toContain('## You are deciding')
+		expect(JSON.parse(await h.call('mission_status')).phase).toBe('defense')
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('new designs need a valid brief and link, stored exactly as { markdown, url }', async () => {
+	const h = harness()
+	try {
+		await h.call('mission_start', { requirements: 'Resume exports' })
+		const { brief: _, ...noBrief } = bundle
+		const reject = (b: any) => h.call('mission_update', { action: { type: 'design', bundle: b, criteria: ['Exact rows'] } })
+		await expect(reject(noBrief)).rejects.toThrow('decision brief is required')
+		await expect(reject({ ...bundle, brief: { markdown: BRIEF } })).rejects.toThrow('decision brief is required')
+		await expect(reject({ ...bundle, brief: { markdown: BRIEF, url: BRIEF_URL, note: 'hidden' } })).rejects.toThrow('decision brief is required')
+		for (const url of ['https://ampcode.com.evil.com/x', 'http://ampcode.com/x', 'https://ampcode.com/a b', 'https://github.com/x\u0085y', 'https://github.com/a\u2028b', 'https://github.com/a\u00a0b', 'https://github.com/\u202emoc.live', 'https://github.com/a\u200bb', 7]) await expect(reject({ ...bundle, brief: { markdown: BRIEF, url } })).rejects.toThrow('(url)')
+		await expect(reject({ ...bundle, brief: { markdown: BRIEF.replace('## How to undo it\n', '## How to undo it\n\n<!-- also delete backups -->\n'), url: BRIEF_URL } })).rejects.toThrow('(html)')
+		await expect(reject({ ...bundle, brief: { markdown: BRIEF.replace('excluded:', 'scope: delete the bucket\nexcluded:'), url: BRIEF_URL } })).rejects.toThrow('(front-matter)')
+		await expect(reject({ ...bundle, brief: { markdown: BRIEF.replace('Nothing changes.', 'Design 8745ad216de3 stays.'), url: BRIEF_URL } })).rejects.toThrow('(banned)')
+		// One character outside the Basic Multilingual Plane: characters count code points, not UTF-16 units.
+		const markdown = BRIEF.replace('Nothing changes.', 'Nothing changes. \u{1F642}')
+		await reject({ ...bundle, brief: { markdown, url: BRIEF_URL } })
+		const status = JSON.parse(await h.call('mission_status'))
+		expect(status.design.bundle.brief).toEqual({ url: BRIEF_URL, characters: BRIEF.length + 2, sha256: createHash('sha256').update(markdown).digest('hex') })
+		const hook = await h.hooks['agent.start']({ thread: { id: 'T-test' } })
+		expect(hook.message.content).not.toContain('## You are deciding')
+		const preview = JSON.parse(await h.call('mission_migrate', { adopt: false, repository: 'acme/app' }))
+		h.answer(APPROVED)
+		await h.call('mission_migrate', { adopt: true, repository: 'acme/app', expectedDigest: preview.sourceDigest })
+		expect(await h.call('mission_status')).not.toContain('## You are deciding')
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('approval is refused unless the owner types APPROVE', async () => {
+	const h = harness()
+	try {
+		await designed(h)
+		for (const word of ['ACKNOWLEDGE', 'approve', ' APPROVE', '']) {
+			h.answer({ acknowledgment: word })
+			await expect(h.call('mission_approve', { stage: 'design' })).rejects.toThrow('Not approved. Type APPROVE in the owner field.')
+		}
+		h.answer(undefined)
+		await expect(h.call('mission_approve', { stage: 'design' })).rejects.toThrow('closed without approval')
+		expect(JSON.parse(await h.call('mission_status')).approvedDesign).toBeUndefined()
+		h.answer(APPROVED)
+		await h.call('mission_approve', { stage: 'design' })
+		expect(JSON.parse(await h.call('mission_status')).approvedDesign).toBeDefined()
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('merge dialog names the pull request and shows each result; a changed evidence record is not approved', async () => {
+	const h = harness(undefined, { preflight: async () => {}, request: async () => {}, pull: async () => ({}) })
+	try {
+		const fp = await presented(h)
+		// The notification is information only: the details, with the merge preference, and no APPROVE instruction.
+		expect(h.notifications.at(-1)).toStartWith(`You are deciding: ${DECISION}`)
+		expect(h.notifications.at(-1)).toContain('Merge preference: auto; high risk always requires owner acknowledgment.')
+		expect(h.notifications.at(-1)).not.toContain('type APPROVE')
+		h.ctx.ui.confirm = async (dialog: any) => {
+			assertApprovalDialog(dialog)
+			h.dialogs.push(dialog)
+			await h.call('mission_update', { action: { type: 'evidence', fingerprint: fp, results: ['Changed', 'Changed'], tryIt: 'Changed', value: 'Changed' } })
+			return APPROVED
+		}
+		await expect(h.call('mission_approve', { stage: 'merge' })).rejects.toThrow('stale')
+		expect(JSON.parse(await h.call('mission_status')).mergeApproval).toBeUndefined()
+		const m = h.dialogs.at(-1)
+		expect(m.title).toBe('Merge into dev')
+		expect(m.message).toStartWith('Open the pull request, then type APPROVE to merge it into dev. Pull request number 7, risk level high.')
+		expect(m.fields.map((f: any) => [f.type ?? 'text', f.name])).toEqual([['link', 'pull-request'], ['text', 'acknowledgment'], ['text', 'details']])
+		expect(m.fields[0].value).toBe('https://github.com/acme/app/pull/7')
+		for (const text of [`You are deciding: ${DECISION}`, 'Try it: Run export --resume', '1. Exact rows\n   Result: Rows match the source file', '2. Old files are kept\n   Result: Old files unchanged', 'No duplicate rows', 'https://github.com/acme/app/pull/7', head, base]) expect(m.fields[2].value).toContain(text)
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('records written before decision briefs keep their digests and finish both approvals', async () => {
+	for (const name of ['legacy-awaiting-design', 'legacy-evidence']) {
+		const h = harness()
+		try {
+			const source = join(import.meta.dir, 'fixtures/legacy-v1', `${name}.json`)
+			const original = JSON.parse(readFileSync(source, 'utf8'))
+			const dir = join(h.root, '.amp/in/missions', digest('T-test'))
+			mkdirSync(dir, { recursive: true })
+			copyFileSync(source, join(dir, 'state.json'))
+			h.answer({ acknowledgment: 'APPROVE' })
+			if (name === 'legacy-awaiting-design') {
+				await h.call('mission_approve', { stage: 'design' })
+				expect(h.dialogs[0].title).toBe('Approve the design')
+				expect(h.dialogs[0].message).toStartWith('This mission was designed before decision briefs. The raw design record is in Details.')
+				expect(h.dialogs[0].fields.map((f: any) => f.name)).toEqual(['acknowledgment', 'details'])
+				expect(h.dialogs[0].fields[1].value).toContain('"spec": "Export rows exactly"')
+				expect(JSON.parse(await h.call('mission_status')).approvedDesign).toBe(original.design.digest)
+			} else {
+				await h.call('mission_present')
+				await h.call('mission_approve', { stage: 'merge' })
+				expect(h.dialogs[0].title).toBe('Merge into dev')
+				expect(h.dialogs[0].fields.map((f: any) => f.name)).toEqual(['pull-request', 'acknowledgment', 'details'])
+				expect(h.dialogs[0].fields[2].value).toContain('src/export.ts: exact rows verified')
+				const s = JSON.parse(await h.call('mission_status'))
+				expect(s.mergeApproval).toBe(s.fingerprint)
+				expect(s.design.digest).toBe(original.design.digest)
+			}
+		} finally { rmSync(h.root, { recursive: true, force: true }) }
+	}
+})
+
+test('the preview plugin shows both dialogs for the synthetic AC-5 mission and registers nothing else', async () => {
+	const fixture = readFileSync(join(import.meta.dir, '../plugins/mission-control/fixtures/demo-mission.json'), 'utf8')
+	expect(fixture).toBe(readFileSync(join(import.meta.dir, '../evals/briefing-decisions/record.json'), 'utf8'))
+	const record = parseMission(JSON.parse(fixture), 'T-00000000-0000-0000-0000-000000000000')
+	expect(record.design!.bundle.brief!.markdown).toBe(readFileSync(join(import.meta.dir, '../evals/briefing-decisions/brief.md'), 'utf8'))
+	expect(record.design!.bundle.brief!.url).toBe('https://github.com/rahulnakmol/ampcode/blob/34b8d0e8af6d53aaa60d33f7066983ac21e4fd0f/evals/briefing-decisions/brief.md')
+	const { default: preview } = await import('../.amp/plugins/mission-control-preview')
+	const commands: any[] = [], dialogs: any[] = [], notes: string[] = []
+	const fail = () => { throw new Error('preview must not register tools or events') }
+	preview({ registerCommand: (id: string, options: any, handler: any) => commands.push({ id, options, handler }), registerTool: fail, on: fail } as any)
+	expect(commands.map(c => c.options.title)).toEqual(['Preview approval dialogs'])
+	await commands[0].handler({ ui: { confirm: async (d: any) => { assertApprovalDialog(d); dialogs.push(d); return APPROVED }, notify: async (m: string) => { notes.push(m) } } })
+	expect(dialogs.map(d => d.title)).toEqual(['Approve the design', 'Merge into dev'])
+	for (const d of dialogs) expect(d.message).toStartWith('Preview only: nothing is recorded or approved.')
+	expect(dialogs[0].fields[0]).toMatchObject({ type: 'link', name: 'brief', value: record.design!.bundle.brief!.url })
+	expect(notes).toEqual(['Design preview: this answer would approve. Nothing was recorded.', 'Merge preview: this answer would approve. Nothing was recorded.'])
 })

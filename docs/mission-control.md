@@ -209,8 +209,8 @@ Do not change shared infrastructure, access or credentials without specific appr
 ```
 
 Remove alternatives you do not authorize. A broad request does not fabricate the
-native exact-design or high-risk final-candidate receipt. In those dialogs type
-**ACKNOWLEDGE**, never a password or key.
+native exact-design or high-risk final-candidate receipt. In those dialogs open the
+linked brief or pull request and type **APPROVE**, never a password or key.
 
 ### What should happen after kickoff
 
@@ -296,7 +296,46 @@ repository-local exclude file, preserving existing rules, and stores records at
 | `mission_recover` | Owner-acknowledged recovery of a settled, unqueued attempt; revalidate before retry |
 
 Use actual text in the design bundle, not a mutable filename standing in for its
-contents. Criteria and result entries correspond by array position. Evidence
+contents. A v1 design needs `bundle.brief = { markdown, url }`: `markdown` is a
+decision brief written with the `briefing-decisions` skill, and `url` is the document
+where the owner reads it (an `https` link on `ampcode.com` or `github.com`, such as an
+Amp document published from that text). The plugin rejects a design without a valid
+brief or link, with an error that names the broken rule (front matter, summary, headings,
+technical record, consistency, length, characters, raw HTML, character references or other
+hidden text, Markdown that hides words (images, empty link text, link titles or unusual
+destinations, labelled code fences, `$$` or `` $` `` math, `$` math with a TeX special
+character, table rows wider than their header), banned codes, sentence length, url; reading
+ease is checked by `brief_check.py` only). Both are stored in the design, so the design digest
+and the approval cover the exact text and link. The plugin cannot prove that the linked page shows the
+stored text; publish the page from the checked text. `mission_status` shows the brief only as
+its link, length and SHA-256.
+
+### What the approval dialogs show
+
+The owner reads and decides in the brief document; the dialog only confirms. Title
+and message are fixed text, because Amp renders the message as Markdown and could hide
+words in agent-written text. Everything from the record, the brief and the evidence is
+in a read-only **Details** box, which shows plain text with line breaks and no Markdown.
+
+- **Design:** title "Approve the design". Step 1: "Open the brief you are approving"
+  (the brief link). Step 2: the owner field. Details: the decision, the brief link,
+  the acceptance criteria word for word, and the technical record (requirements, spec,
+  plan, technical and UX design).
+- **Merge:** title "Merge into dev", with the pull request number and risk level.
+  Step 1: open the pull request. Step 2: the owner field. Details: the decision,
+  try-it, each criterion with its result, customer value, the pull request URL, head
+  and base, and the merge preference. `mission_present` shows the same details as a notification, for
+  information only.
+- **Refusal:** any word other than APPROVE, or closing the dialog, refuses approval.
+- **Older missions** designed before decision briefs keep their digests; the message
+  says so and Details holds the raw design record.
+
+To see the dialogs without a mission, run the command **Mission control: Preview
+approval dialogs** from the preview-only project plugin
+[`.amp/plugins/mission-control-preview.ts`](../.amp/plugins/mission-control-preview.ts).
+It shows both dialogs for a synthetic mission and records nothing.
+
+Criteria and result entries correspond by array position. Evidence
 entries must contain implementation locations, observed outcomes, commands and
 artifact references, including limitations. The plugin checks lifecycle and
 completeness; it does not infer whether arbitrary prose is true. Publish the
@@ -305,7 +344,7 @@ evidence on the PR as well: `mission_present` displays it in Amp, not GitHub.
 The installed API cannot authenticate an arbitrary multiplayer mission initiator.
 Version one requires the initiator to be the thread owner, or the owner explicitly
 to adopt the mission. The confirmation has a masked `secret: true` text field
-because the API documents that field as owner-only. Type **ACKNOWLEDGE**, never a
+because the API documents that field as owner-only. Type **APPROVE**, never a
 password, key, or other secret. An ordinary `requireHuman` dialog is not owner-only.
 No responder ID is returned or invented. These local acknowledgments are useful
 workflow records, not externally verifiable authentication receipts.

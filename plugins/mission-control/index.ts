@@ -7,6 +7,8 @@ import { advanceV2, blockersV2, createMissionV2, fingerprintV2, evidenceDigestV2
 import { intentDigest } from './lib/contracts'
 import { migrateMission, previewMigration, sourceDigest } from './lib/migration'
 import { GitHub } from './lib/github'
+import { confirmOptions, designDialog, mergeDialog, rawDetails, refusal, type Dialog } from './lib/brief'
+import { createHash } from 'node:crypto'
 
 export const description = 'Coordinates owner-approved software missions, revision-bound evidence and protected dev integration using existing GitHub credentials.'
 
@@ -20,15 +22,13 @@ function packet(s: RecordState) {
 		`Affected units: ${s.units.map(u => u.id + ': ' + u.status).join(', ')}`,
 		'All submitted review/results remain reported, not authenticated execution. A design acknowledgment approves this exact local manifest, not remote authority or release.',
 	].join('\n\n')
-	const c = s.candidate
-	return [
-		`Mission requirements: ${s.requirements}`, `Design: ${s.design?.digest}`, JSON.stringify(s.design?.bundle, null, 2),
-		c ? `Candidate: https://github.com/${c.repo}/pull/${c.pr}\nHead: ${c.head}\nBase: ${c.base}\nRisk: ${c.risk}` : '',
-		...(s.design?.criteria ?? []).map((criterion, i) => `${i + 1}. ${criterion}\n${s.evidence?.results[i] ?? 'Not yet verified'}`),
-		`Try it: ${s.evidence?.tryIt ?? 'Not yet supplied'}`, `Customer value: ${s.evidence?.value ?? 'Not yet established'}`,
-		`Merge preference: ${s.mode}; high risk always requires owner acknowledgment.`,
-		'Approvals and evidence are local workflow gates, not a hostile-shell security boundary. Required CI and protected dev must also permit integration.',
-	].filter(Boolean).join('\n\n')
+	return rawDetails(s)
+}
+// The full brief is in the record; status (sent on every agent turn) carries only its link, size and hash.
+function compact(s: Mission) {
+	const brief = s.design?.bundle.brief
+	if (!brief) return s
+	return { ...s, design: { ...s.design!, bundle: { ...s.design!.bundle, brief: { url: brief.url, characters: [...brief.markdown].length, sha256: createHash('sha256').update(brief.markdown).digest('hex') } } } }
 }
 
 export default function (amp: PluginAPI, github = new GitHub()) {
@@ -55,20 +55,20 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		return next
 	}
 	const status = (s: RecordState) => JSON.stringify(isV2(s) ? {
-		...s, designDigest: intentDigest(s.manifest), evidenceClass: 'reported', blockers: blockersV2(s),
+		...s, ...(s.legacy ? { legacy: compact(s.legacy) } : {}),
+		events: s.events.map(e => e.action.type === 'import-v1' ? { ...e, action: { ...e.action, record: compact(e.action.record) } } : e),
+		designDigest: intentDigest(s.manifest), evidenceClass: 'reported', blockers: blockersV2(s),
 		current: s.units.map(u => {
 			const a = u.attempts.at(-1)
 			return { unitId: u.id, attemptId: a?.id, fingerprint: a && !a.stale ? fingerprintV2(s, u.id, a.id) : null, evidenceDigest: a && !a.stale ? evidenceDigestV2(s, u.id, a.id) : null }
 		}),
-	} : { ...s, fingerprint: fingerprint(s), blockers: blockers(s) }, null, 2)
-	const acknowledge = async (ctx: PluginToolContext, message: string) => {
-		const result = await ctx.ui.confirm({
-			title: 'Mission owner acknowledgment', message: message + '\n\nOnly the thread owner may approve/adopt this mission. Type ACKNOWLEDGE. This is not a password or credential; the masked field restricts the dialog to the owner.',
-			requireHuman: true, endTurnOnDecline: true,
-			fields: [{ name: 'acknowledgment', label: 'Type ACKNOWLEDGE (not a secret)', value: '', secret: true }],
-		})
+	} : { ...compact(s), fingerprint: fingerprint(s), blockers: blockers(s) }, null, 2)
+	const acknowledge = async (ctx: PluginToolContext, dialog: Dialog | string) => {
+		const d = typeof dialog === 'string' ? { title: 'Mission owner acknowledgment', message: dialog } : dialog
+		const result = await ctx.ui.confirm(confirmOptions(d))
 		ctx.signal.throwIfAborted()
-		if (result?.acknowledgment !== 'ACKNOWLEDGE') throw new Error('Owner acknowledgment absent; mission remains blocked')
+		const refused = refusal(result)
+		if (refused) throw new Error(refused)
 	}
 	function tool(name: string, description: string, properties: Record<string, any>, execute: (input: any, ctx: PluginToolContext) => Promise<string>, required = Object.keys(properties)) {
 		amp.registerTool({ name, description, inputSchema: { type: 'object', properties, required, additionalProperties: false }, execute })
@@ -91,7 +91,7 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 	}, [])
 	tool('mission_status', 'Reload mission checkpoints and blockers. A merge request is not a completed mission.', {}, async (_input, ctx) => status(required(ctx.thread.id)))
 	const publicActions = ['design', 'defense', 'build', 'candidate', 'review', 'evidence', 'report', 'finding', 'post-report', 'disposition', 'post-delivery', 'closure-report', 'pause', 'resume']
-	tool('mission_update', 'V1: design {bundle:{spec,plan,technical,ux},criteria}; defense {digest,record}; build; candidate {candidate}; review {gate,fingerprint,passed,reviewer,record}; evidence {fingerprint,results,tryIt,value}; pause {reason}; resume. V2: design {manifest}; build {unitId}; candidate {unitId,attemptId,candidate,manifest}; report {unitId,attemptId,fingerprint,evidence:{id,criterionIds,outcome,record}}; review adds unitId,attemptId,evidenceDigest,findingIds. finding {unitId,attemptId,fingerprint,finding:{id,criterionIds,severity,confidence,location,record,owner}}. post-report {evidence:{id,baseline,designDigest,policyDigest,unitIds,results:[{criterionId,outcome,record}],record}}. post-delivery {unitId,package} / closure-report {package}: package replaces post-report id with evidenceIds and findings. disposition {disposition:{findingId,outcome:fixed|rejected|deferred,evidenceIds,owner,reviewer,record,correctiveUnitId?}}. V2 results/dispositions are reported only; references must resolve. No internal approval/import/execution/integration actions.', { action: { type: 'object', properties: { type: { type: 'string', enum: publicActions } }, required: ['type'], additionalProperties: true } }, async (input, ctx) => {
+	tool('mission_update', 'V1: design {bundle:{spec,plan,technical,ux,brief:{markdown,url}},criteria}, where markdown is the decision brief written with briefing-decisions and checked by brief_check.py, and url is the https ampcode.com or github.com document where the owner reads it, published from that text; defense {digest,record}; build; candidate {candidate}; review {gate,fingerprint,passed,reviewer,record}; evidence {fingerprint,results,tryIt,value}; pause {reason}; resume. V2: design {manifest}; build {unitId}; candidate {unitId,attemptId,candidate,manifest}; report {unitId,attemptId,fingerprint,evidence:{id,criterionIds,outcome,record}}; review adds unitId,attemptId,evidenceDigest,findingIds. finding {unitId,attemptId,fingerprint,finding:{id,criterionIds,severity,confidence,location,record,owner}}. post-report {evidence:{id,baseline,designDigest,policyDigest,unitIds,results:[{criterionId,outcome,record}],record}}. post-delivery {unitId,package} / closure-report {package}: package replaces post-report id with evidenceIds and findings. disposition {disposition:{findingId,outcome:fixed|rejected|deferred,evidenceIds,owner,reviewer,record,correctiveUnitId?}}. V2 results/dispositions are reported only; references must resolve. No internal approval/import/execution/integration actions.', { action: { type: 'object', properties: { type: { type: 'string', enum: publicActions } }, required: ['type'], additionalProperties: true } }, async (input, ctx) => {
 		ctx.signal.throwIfAborted()
 		if (!publicActions.includes(input.action?.type)) throw new Error('Internal approval and integration actions cannot be supplied by agents')
 		const s = required(ctx.thread.id)
@@ -113,7 +113,7 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		}
 		if (input.stage === 'design' && !s.design) throw new Error('Design bundle required')
 		if (input.stage === 'merge' && s.presented !== fingerprint(s)) throw new Error('Present candidate evidence first')
-		await acknowledge(ctx, `Acknowledge ${input.stage} before proceeding.\n\n${packet(s)}`)
+		await acknowledge(ctx, input.stage === 'design' ? designDialog(s) : mergeDialog(s))
 		return status(write(s, input.stage === 'design' ? { type: 'approve-design', digest: s.design!.digest } : { type: 'approve-merge', fingerprint: fingerprint(s) }))
 	})
 	tool('mission_merge_mode', 'Owner-controlled override of default automatic low/medium integration. Changing mode invalidates presented evidence and merge acknowledgment, not code reviews. High risk still requires acknowledgment.', { mode: { type: 'string', enum: ['auto', 'ask'] } }, async (input, ctx) => {
@@ -127,7 +127,9 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		const s = required(ctx.thread.id)
 		if (isV2(s)) { await ctx.ui.notify(packet(s) + '\n\n' + status(s)); return status(s) }
 		if (!s.evidence) throw new Error('Acceptance evidence required')
-		await ctx.ui.notify(packet(s))
+		const merge = mergeDialog(s)
+		// Information only; the merge dialog is the approval view.
+		await ctx.ui.notify(merge.details!)
 		ctx.signal.throwIfAborted()
 		return status(write(s, { type: 'presented', fingerprint: fingerprint(s) }))
 	})

@@ -2,10 +2,12 @@ import { createHash, randomUUID } from 'node:crypto'
 import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { canonical } from './contracts'
+import { LINK, validateBrief, type Brief } from './brief'
 import { parseMissionV2, type MissionV2 } from './mission-v2'
 
 export type Risk = 'low' | 'medium' | 'high' | 'unknown'
-export type Bundle = { spec: string; plan: string; technical: string; ux: string }
+// brief is required for new designs; records designed before decision briefs have none.
+export type Bundle = { spec: string; plan: string; technical: string; ux: string; brief?: Brief }
 export type Candidate = { repo: string; pr: number; head: string; base: string; risk: Risk }
 export type Review = { gate: number; fingerprint: string; passed: boolean; reviewer: string; record: string }
 export type Mission = {
@@ -77,12 +79,15 @@ export function advance(previous: Mission, action: Action): Mission {
 	if (s.paused && !['merged', 'recover', 'pause', 'resume'].includes(action.type)) throw new Error('Mission paused; resume explicitly before further work')
 	switch (action.type) {
 		case 'design': {
-			const { spec, plan, technical, ux } = action.bundle
+			const { spec, plan, technical, ux, brief } = action.bundle
 			for (const value of [spec, plan, technical, ux]) text(value)
+			if (!brief || typeof brief !== 'object' || Object.keys(brief).sort().join() !== 'markdown,url') throw new Error('A decision brief is required: bundle.brief = { markdown, url }, written with the briefing-decisions skill and published as the document the owner reads')
+			validateBrief(brief.markdown)
+			if (typeof brief.url !== 'string' || !LINK.test(brief.url) || /[\s\p{Cc}\p{Cf}]/u.test(brief.url)) throw new Error('Decision brief rejected (url): bundle.brief.url must be an https URL on ampcode.com or github.com. See the briefing-decisions skill.')
 			if (!Array.isArray(action.criteria) || action.criteria.length === 0) throw new Error('Acceptance criteria required')
 			action.criteria.forEach(text)
 			if (new Set(action.criteria).size !== action.criteria.length) throw new Error('Acceptance criteria must be unique')
-			const bundle = { spec, plan, technical, ux }
+			const bundle = { spec, plan, technical, ux, brief: { markdown: brief.markdown, url: brief.url } }
 			s.design = { bundle, criteria: [...action.criteria], digest: digest([s.requirements, bundle, action.criteria]) }
 			delete s.approvedDesign; delete s.defense; delete s.candidate; invalidate(s)
 			s.phase = 'awaiting-design-approval'; break

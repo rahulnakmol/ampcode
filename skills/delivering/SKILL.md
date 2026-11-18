@@ -44,11 +44,15 @@ execution to an authorized agent with the right environment; never invent execut
    system/technical approach, alternatives and reasons, then implementation slices with affected
    files/contracts, invariants, checks and approval boundaries. Keep routine coding choices with
    the implementer; settle choices that alter outcomes, compatibility or authority in the design.
-   Before requesting acknowledgment, run the risk-scaled Elephant-Goldfish design review in
-   [reference/review-and-recovery.md](reference/review-and-recovery.md). Reuse current grilling
+   Before requesting acknowledgment, run the risk-scaled fresh-context design review in
+   [reference/review-and-recovery.md](reference/review-and-recovery.md), using `goldfishing`. Reuse current grilling
    comprehension evidence; repair gaps in the package rather than coaching a reviewer privately.
-   Present both technical and applicable UX design, acceptance criteria, risks, and verification
-   to the mission initiator. Obtain acknowledgment of this exact design package **before whiteboard
+   Write the design brief with `briefing-decisions`, run its `scripts/brief_check.py` until it
+   passes, and run a `goldfishing` novice-reader review of it; repair the brief, not the reviewer.
+   Publish the checked text as the document the owner reads (on Amp, a document artifact). With
+   the plugin, pass `bundle.brief = { markdown, url }` in the design action: the dialog links the
+   document and the approval binds the text and the link. Present both technical and applicable UX
+   design, acceptance criteria, risks, and verification to the mission initiator. Obtain acknowledgment of this exact design package **before whiteboard
    defense or build**. A generic earlier request to build is not acknowledgment of an unseen design.
    In version one the initiator must be the Amp thread owner, or the owner must explicitly adopt
    the mission. Do not pretend to authenticate another multiplayer participant. With the plugin,

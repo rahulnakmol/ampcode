@@ -7,6 +7,7 @@ import { createMission, advance, blockers, fingerprint, saveMission, loadMission
 import { loadRecord, saveRecord } from '../plugins/mission-control/lib/mission'
 import { previewMigration, migrateMission } from '../plugins/mission-control/lib/migration'
 import { parseManifest, intentDigest } from '../plugins/mission-control/lib/contracts'
+import { BANNED, banned, confirmOptions, designDialog, mergeDialog, rawDetails, validateBrief, type Dialog } from '../plugins/mission-control/lib/brief'
 import { createMissionV2, advanceV2, blockersV2, fingerprintV2, parseMissionV2 } from '../plugins/mission-control/lib/mission-v2'
 
 const manifest = {
@@ -41,7 +42,8 @@ describe('v2 manifest contracts', () => {
 	})
 })
 
-const bundle = { spec: 'Export exact rows; reject changed source.', plan: 'Add failure harness, then repair.', technical: 'Checkpoint byte offsets.', ux: 'CLI errors preserve prior files.' }
+const brief = { markdown: readFileSync(join(import.meta.dir, '../evals/briefing-decisions/brief.md'), 'utf8'), url: 'https://github.com/rahulnakmol/ampcode/blob/34b8d0e8af6d53aaa60d33f7066983ac21e4fd0f/evals/briefing-decisions/brief.md' }
+const bundle = { spec: 'Export exact rows; reject changed source.', plan: 'Add failure harness, then repair.', technical: 'Checkpoint byte offsets.', ux: 'CLI errors preserve prior files.', brief }
 const candidate = { repo: 'acme/app', pr: 7, head: 'a'.repeat(40), base: 'b'.repeat(40), risk: 'low' as const }
 function v2Built(two = false) {
 	const m = structuredClone(manifest)
@@ -421,5 +423,84 @@ describe('mission public lifecycle', () => {
 			writeFileSync(path, '{broken')
 			expect(() => loadMission(path, 'T-test')).toThrow()
 		} finally { rmSync(dir, { recursive: true }) }
+	})
+})
+
+describe('decision briefs', () => {
+	const read = (path: string) => readFileSync(join(import.meta.dir, '..', path), 'utf8')
+	test('the plugin and brief_check.py share one banned list and agree on the shared lines', () => {
+		expect(BANNED).toEqual(JSON.parse(read('skills/briefing-decisions/scripts/banned.json')).patterns)
+		const lines = JSON.parse(read('tests/fixtures/brief-patterns.json'))
+		for (const line of lines.pass) expect([line, banned(line)]).toEqual([line, []])
+		for (const [line, rule] of lines.fail) expect(banned(line)).toContain(rule)
+	})
+	test('the plugin and brief_check.py reach the same verdict on every shared case', () => {
+		const { cases } = JSON.parse(read('tests/fixtures/brief-cases.json'))
+		const apply = (c: any) => {
+			let text = brief.markdown
+			for (const [old, next] of c.edits ?? []) {
+				expect(text).toContain(old)
+				text = text.replace(old, () => next)
+			}
+			if (c.cut) text = text.slice(0, text.indexOf(c.cut))
+			if (c.pad) { const i = text.lastIndexOf('</details>'); text = text.slice(0, i) + 'x'.repeat(c.pad) + '\n\n' + text.slice(i) }
+			return text + (c.append ?? '')
+		}
+		for (const c of cases) {
+			const run = () => validateBrief(apply(c))
+			if (c.rule === null || c.python_only) expect([c.why, run().decision.length > 0]).toEqual([c.why, true])
+			else expect([c.why, (() => { try { run(); return 'accepted' } catch (e: any) { return e.message } })()]).toEqual([c.why, expect.stringContaining(`(${c.rule})`)])
+		}
+	})
+	test('agent text never reaches dialog Markdown; the read-only details hold it unchanged', () => {
+		// Round-2 hiding payloads: a backslash before a link, a fence info string, a wide table row,
+		// a reference definition and an HTML comment. Each hides its words when rendered as Markdown.
+		const hostile = (name: string) => `${name} \\[ok](/u "hidden ${name}")\n\`\`\`hidden-${name} more\n\`\`\`\na | b\n--|--\nc | d | hidden ${name}\n\n[${name}]: /u "hidden ${name}"\n<!-- hidden ${name} -->\n    indented ${name}`
+		// Markdown the brief rules allow; it must still never reach the title or message.
+		const decision = 'Approve *moving* the [sales demo](https://github.com/a) website from the office computer to a paid hosting service.'
+		const markdown = brief.markdown.replace(/^decision: .*$/m, `decision: ${decision}`)
+		let s = advance(createMission('T-test', hostile('requirement')), { type: 'design', bundle: { spec: hostile('spec'), plan: hostile('plan'), technical: hostile('technical'), ux: hostile('ux'), brief: { markdown, url: brief.url } }, criteria: [hostile('criterion')] })
+		const shown = (d: Dialog, values: string[]) => {
+			const o = confirmOptions(d)
+			expect(`${o.title}\n${o.message}`).not.toMatch(/hidden|sales demo/)
+			const details = o.fields.find((f: any) => f.name === 'details') as any
+			expect(details).toMatchObject({ readOnly: true, multiline: true, optional: true })
+			for (const v of values) expect(details.value).toContain(v)
+			return o
+		}
+		const design = shown(designDialog(s), [decision, brief.url, ...['requirement', 'spec', 'plan', 'technical', 'ux', 'criterion'].map(hostile)])
+		expect(design.title).toBe('Approve the design')
+		expect(design.fields.map((f: any) => [f.type ?? 'text', f.name])).toEqual([['link', 'brief'], ['text', 'acknowledgment'], ['text', 'details']])
+		expect(design.fields[0].value).toBe(brief.url)
+		s = advance(advance(advance(advance(s, { type: 'approve-design', digest: s.design!.digest }), { type: 'defense', digest: s.design!.digest, record: 'Defended.' }), { type: 'build' }), { type: 'candidate', candidate })
+		s = advance(s, { type: 'review', gate: 1, fingerprint: fingerprint(s), passed: true, reviewer: 'T-r', record: 'ok' })
+		s = advance(s, { type: 'evidence', fingerprint: fingerprint(s), results: [hostile('result')], tryIt: hostile('try'), value: hostile('value') })
+		const merge = shown(mergeDialog(s), [decision, ...['criterion', 'result', 'try', 'value'].map(hostile)])
+		expect(merge.title).toBe('Merge into dev')
+		expect(merge.message).toContain('Pull request number 7, risk level low.')
+		expect(merge.fields.map((f: any) => [f.type ?? 'text', f.name])).toEqual([['link', 'pull-request'], ['text', 'acknowledgment'], ['text', 'details']])
+		const { brief: _, ...noBrief } = s.design!.bundle
+		const old = { ...s, design: { ...s.design!, bundle: noBrief } }
+		// Legacy records show today's raw details, unchanged, in the read-only field.
+		shown(designDialog(old), [rawDetails(old)])
+		shown(mergeDialog(old), [rawDetails(old)])
+	})
+	test('the synthetic briefs pass', () => {
+		expect(validateBrief(brief.markdown).risks).toHaveLength(3)
+		const example = /## Filled example[\s\S]*?````markdown\n([\s\S]*?)````/.exec(read('skills/briefing-decisions/reference/template.md'))![1]
+		expect(validateBrief(example).decision).toContain('shared calendar')
+	})
+	test('the digest covers the brief text and its link, so approving one brief does not approve another', () => {
+		const one = advance(createMission('T-test', 'Outcome'), { type: 'design', bundle, criteria: ['Exact rows'] })
+		const approved = advance(one, { type: 'approve-design', digest: one.design!.digest })
+		const other = { ...bundle, brief: { ...brief, markdown: brief.markdown.replace('ten minutes', 'twenty minutes') } }
+		const two = advance(approved, { type: 'design', bundle: other, criteria: ['Exact rows'] })
+		expect(two.design!.digest).not.toBe(one.design!.digest)
+		expect(two.approvedDesign).toBeUndefined()
+		expect(blockers(two)).toContain('Owner design approval required')
+		expect(() => advance(two, { type: 'approve-design', digest: one.design!.digest })).toThrow('stale')
+		const moved = advance(approved, { type: 'design', bundle: { ...bundle, brief: { ...brief, url: 'https://ampcode.com/artifacts/another-page' } }, criteria: ['Exact rows'] })
+		expect(moved.design!.digest).not.toBe(one.design!.digest)
+		expect(moved.approvedDesign).toBeUndefined()
 	})
 })

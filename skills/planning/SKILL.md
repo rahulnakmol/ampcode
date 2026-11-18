@@ -76,10 +76,9 @@ before asking anyone to sign off (G3, G5).
 | **G6 Handed off** | Each feature `owner` is a named person who agreed to it, not an assumption; each ready story has an owner and a milestone, and its `work` type sets the delivery route: `delivering` for software work in any domain, the named team for the rest | the backlog and the charter |
 | **G7 Achieved** | Delivered items have delivery records; goals have measurements; `backlog.py trace` lists no gaps, or each remaining gap has an owner and date in the charter | `backlog.py trace` |
 
-Fresh-context reviews follow the Elephant-Goldfish method used in `grilling` and `delivering`:
-you are the Elephant who holds the context; a Goldfish is a subagent that receives only the
-artifact and its sources, never your explanation or the verdict you hope for. Brief it as an
-adversary: find what is wrong, missing, untestable, or unsupported, with the exact location.
+Fresh-context reviews use the `goldfishing` skill: the reviewer receives only the artifact and
+its sources. Brief it as an adversary: find what is wrong, missing, untestable, or unsupported,
+with the exact location.
 Each skill's review brief also has it read the plan as every person it touches, and check each
 decision against the owner's own words. Repairs follow the same rules as the first draft: a
 reviewer's suggestion is your choice, labelled as an assumption, until the owner confirms it.
