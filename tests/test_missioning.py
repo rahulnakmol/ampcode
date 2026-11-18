@@ -1,0 +1,235 @@
+"""Tests for skills/missioning: the mission file checker and the playbook set.
+
+Run: python3 -m unittest tests.test_missioning -v
+"""
+
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SKILL = ROOT / "skills" / "missioning"
+SCRIPT = SKILL / "scripts" / "ledger_check.py"
+CHARTER = SKILL / "reference" / "charter.md"
+BRIEF = ROOT / "evals" / "briefing-decisions" / "brief.md"  # passes brief_check.py
+sys.path.insert(0, str(SCRIPT.parent))
+
+import ledger_check  # noqa: E402
+
+GOOD = """# Mission: security review of acme/payments
+
+## Charter
+
+- **Outcome:** A security review report for acme/payments before the March release.
+- **Decision owner:** Rahul Nakmol
+- **Approvers:** Priya Shah (@priya-s)
+- **Success criteria:** Every finding has evidence, severity, owner and disposition.
+- **Definition of Done:** Critical and High findings are fixed and retested,
+  or accepted in writing.
+- **Budget:** 3 review rounds per gate; 2 working days.
+- **Budget used:** unknown: no usage telemetry on this host.
+- **May do without asking:** read code, run the allowed scanners, draft reports.
+- **Always ask:** scanning anything outside acme/payments; releasing the report.
+- **Stop and ask when:** a check cannot prove a finding, or scope must change.
+- **Playbook:** security-review
+- **Host:** Claude Code
+
+## Gate ledger
+
+| Gate | Kind | State | Evidence | Review | Brief | Decider | Source | Date |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Charter and criteria | human | passed | charter above | reviews/charter-novice.md | briefs/charter.md | Rahul Nakmol | question: AskUserQuestion answer "Approve" | 2026-11-18 |
+| Threat model | agent | passed | threat-model.md, 14 threats | none needed: no decision, checked by scope gate | - | - | - | 2026-11-19 |
+| Scope and rules of engagement | human | pending | - | - | briefs/scope.md | - | - | - |
+| Report release | human | open | - | - | - | - | - | - |
+
+## Decision trail
+
+| Date | Decision | Why | Evidence | Decider |
+| --- | --- | --- | --- | --- |
+| 2026-11-18 | Use the security-review playbook | Owner asked for a security review | charter | Rahul Nakmol |
+"""
+
+PASSED = "| Charter and criteria | human | passed | charter above | reviews/charter-novice.md | briefs/charter.md | Rahul Nakmol | question: AskUserQuestion answer \"Approve\" | 2026-11-18 |"
+AGENT = "| Threat model | agent | passed | threat-model.md, 14 threats | none needed: no decision, checked by scope gate | - | - | - | 2026-11-19 |"
+
+
+def workspace(tmp):
+    """Create the brief and review files the GOOD mission file names."""
+    base = Path(tmp)
+    (base / "briefs").mkdir()
+    (base / "reviews").mkdir()
+    shutil.copy(BRIEF, base / "briefs" / "charter.md")
+    (base / "reviews" / "charter-novice.md").write_text("Novice reader: all four answers correct.\n")
+    return base
+
+
+def edit(old, new, text=GOOD):
+    assert old in text, old
+    return text.replace(old, new, 1)
+
+
+class Rules(unittest.TestCase):
+    def rules(self, text):
+        with tempfile.TemporaryDirectory() as tmp:
+            return sorted({p.split(":", 1)[0] for p in ledger_check.check(text, workspace(tmp))})
+
+    def assertRule(self, text, rule):
+        self.assertEqual(self.rules(text), [rule])
+
+    def test_good_file_passes(self):
+        self.assertEqual(self.rules(GOOD), [])
+
+    def test_r1_charter_fields(self):
+        self.assertRule(edit("- **Budget used:** unknown: no usage telemetry on this host.\n", ""), "R1")
+        self.assertRule(edit("Priya Shah (@priya-s)", "TBD"), "R1")
+        self.assertRule(edit("- **Playbook:**", "- **Outcome:** again\n- **Playbook:**"), "R1")
+        self.assertRule(edit("Priya Shah (@priya-s)", "<approver name>"), "R1")
+        self.assertRule(edit("- **Outcome:**", "- **outcome:**"), "R1")
+        # An autolink is a value, not a placeholder; a two-line value is joined.
+        self.assertEqual(self.rules(edit("before the March release.", "before the March release, see <https://example.com/plan>.")), [])
+
+    def test_r2_host_and_playbook(self):
+        self.assertRule(edit("- **Host:** Claude Code", "- **Host:** Cursor"), "R2")
+        self.assertRule(edit("- **Playbook:** security-review", "- **Playbook:** security"), "R2")
+        self.assertEqual(self.rules(edit("- **Playbook:** security-review", "- **Playbook:** none: one-off review")), [])
+        self.assertEqual(self.rules(edit("- **Host:** Claude Code", "- **Host:** copilot app")), [])
+
+    def test_r3_budget_names_a_limit(self):
+        self.assertRule(edit("3 review rounds per gate; 2 working days.", "as needed"), "R3")
+        self.assertRule(edit("3 review rounds per gate; 2 working days.", "no limit on tokens"), "R3")
+        self.assertEqual(self.rules(edit("3 review rounds per gate; 2 working days.", "no limit on tokens, decided by Rahul Nakmol")), [])
+
+    def test_r4_ledger_table(self):
+        self.assertRule(edit("| Gate | Kind | State |", "| Gate | State | Kind |"), "R4")
+        no_rows = re.sub(r"\| (Charter and|Threat|Scope|Report).*\n", "", GOOD)
+        self.assertRule(no_rows, "R4")
+
+    def test_r5_kind_and_state(self):
+        self.assertRule(edit("| human | passed |", "| human | approved |"), "R5")
+        self.assertRule(edit("| Report release | human |", "| Report release | owner |"), "R5")
+        self.assertRule(edit("| human | open |", "| human | Open |"), "R5")
+
+    def test_r6_decider_and_source(self):
+        self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "Sam Lee")), "R6")
+        self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "Rahul")), "R6")
+        self.assertEqual(self.rules(edit(PASSED, PASSED.replace("Rahul Nakmol", "@priya-s"))), [])
+        self.assertEqual(self.rules(edit(PASSED, PASSED.replace("Rahul Nakmol", "Rahul Nakmol, priya shah"))), [])
+        self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "-")), "R6")
+        self.assertRule(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', "dialog: owner dialog")), "R6")
+        self.assertEqual(self.rules(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', "dialog: Amp mission-control design approval"))), [])
+        self.assertRule(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', "question:")), "R6")
+        waived_agent = AGENT.replace("| passed |", "| waived |").replace("threat-model.md, 14 threats", "owner skipped: no attack surface")
+        self.assertRule(edit(AGENT, waived_agent), "R6")
+        self.assertEqual(self.rules(edit(AGENT, waived_agent.replace("| - | - | 2026-11-19 |", "| Rahul Nakmol | written: email 19 Nov | 2026-11-19 |"))), [])
+
+    def test_r7_chat_is_never_an_approval(self):
+        self.assertRule(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', "chat: said looks good")), "R7")
+        self.assertRule(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', "slack: thumbs up")), "R7")
+
+    def test_r8_brief(self):
+        self.assertRule(edit("briefs/charter.md", "briefs/missing.md"), "R8")
+        self.assertRule(edit("briefs/charter.md", "https://ampcode.com/artifacts/brief"), "R8")
+        self.assertEqual(self.rules(edit("briefs/charter.md", "briefs/charter.md (https://ampcode.com/artifacts/brief)")), [])
+        with tempfile.TemporaryDirectory() as tmp:
+            base = workspace(tmp)
+            text = (base / "briefs" / "charter.md").read_text()
+            (base / "briefs" / "charter.md").write_text(text.replace("## How to undo it", "## Undo"))
+            self.assertEqual(sorted({p.split(":", 1)[0] for p in ledger_check.check(GOOD, base)}), ["R8"])
+
+    def test_r9_review(self):
+        self.assertRule(edit("reviews/charter-novice.md", "not run"), "R9")
+        self.assertRule(edit("reviews/charter-novice.md", "reviews/absent.md"), "R9")
+        self.assertRule(edit(AGENT, AGENT.replace("none needed: no decision, checked by scope gate", "-")), "R9")
+        self.assertEqual(self.rules(edit("reviews/charter-novice.md", "https://ampcode.com/artifacts/review")), [])
+        self.assertRule(edit("reviews/charter-novice.md", "none needed: owner is sure"), "R9")
+
+    def test_r10_agent_evidence(self):
+        self.assertRule(edit(AGENT, AGENT.replace("threat-model.md, 14 threats", "-")), "R10")
+
+    def test_r11_waived_needs_reason(self):
+        waived = PASSED.replace("| passed | charter above |", "| waived | - |")
+        self.assertRule(edit(PASSED, waived), "R11")
+
+    def test_r12_decision_trail(self):
+        self.assertRule(edit("| charter | Rahul Nakmol |", "| charter |  |"), "R12")
+        self.assertRule(GOOD[: GOOD.index("## Decision trail")], "R12")
+
+
+class Files(unittest.TestCase):
+    def test_template_fails_and_example_passes(self):
+        text = CHARTER.read_text()
+        template = re.search(r"## Template.*?````markdown\n(.*?)````", text, re.S).group(1)
+        example = re.search(r"## Filled example.*?````markdown\n(.*?)````", text, re.S).group(1)
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            for line in example.splitlines():
+                for path in re.findall(r"\b((?:briefs|reviews)/[\w.-]+\.md)\b", line):
+                    (base / path).parent.mkdir(exist_ok=True)
+                    shutil.copy(BRIEF, base / path)
+            self.assertEqual(ledger_check.check(example, base), [])
+            self.assertIn("R1", {p.split(":", 1)[0] for p in ledger_check.check(template, base)})
+
+    def test_command_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = workspace(tmp)
+            good = base / "mission.md"
+            good.write_text(GOOD)
+            bad = base / "bad.md"
+            bad.write_text(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', "chat: ok")))
+            ok = subprocess.run([sys.executable, str(SCRIPT), str(good)], capture_output=True, text=True)
+            no = subprocess.run([sys.executable, str(SCRIPT), str(bad)], capture_output=True, text=True)
+        self.assertEqual((ok.returncode, ok.stdout.strip()), (0, "pass"))
+        self.assertEqual(no.returncode, 1)
+        self.assertTrue(no.stdout.startswith("R7:"), no.stdout)
+
+
+MISSIONS = SKILL / "reference" / "missions"
+HEADINGS = ["When to use", "Skills", "Steps", "Human gates", "Definition of Done", "Red flags"]
+# Skills the research plans for later waves. When one is built, update the playbooks that name it.
+PLANNED = (
+    "roadmapping", "researching", "steering", "releasing", "architecting", "reviewing-code",
+    "threat-modelling", "campaigning", "scanning-vulnerabilities", "provisioning", "monitoring",
+    "investigating-incidents", "assessing-products",
+)
+
+
+class Playbooks(unittest.TestCase):
+    def test_one_playbook_per_mission_linked_from_skill(self):
+        names = sorted(p.stem for p in MISSIONS.glob("*.md"))
+        self.assertEqual(names, sorted(ledger_check.PLAYBOOKS))
+        skill = (SKILL / "SKILL.md").read_text()
+        self.assertLessEqual(len(skill.splitlines()), 170)
+        for name in names:
+            self.assertIn(f"(reference/missions/{name}.md)", skill)
+        for ref in ("reference/charter.md", "reference/hosts.md", "scripts/ledger_check.py"):
+            self.assertIn(ref, skill)
+
+    def test_playbook_shape(self):
+        for path in sorted(MISSIONS.glob("*.md")):
+            with self.subTest(playbook=path.stem):
+                text = path.read_text()
+                self.assertLessEqual(len(text.splitlines()), 80)
+                self.assertEqual(re.findall(r"^## (.+)$", text, re.M), HEADINGS)
+                self.assertRegex(ledger_check.section(text, "Steps") and "\n".join(ledger_check.section(text, "Steps")), r"(?m)^1\. ")
+
+    def test_planned_skills_are_labelled_with_a_fallback(self):
+        for name in PLANNED:
+            self.assertFalse((ROOT / "skills" / name).exists(), f"{name} now exists: update the playbooks")
+        for path in sorted(MISSIONS.glob("*.md")):
+            text = path.read_text()
+            bullets = re.split(r"\n(?=- )", "\n".join(ledger_check.section(text, "Skills")))
+            for name in PLANNED:
+                if f"`{name}`" not in text:
+                    continue
+                with self.subTest(playbook=path.stem, skill=name):
+                    entry = [b for b in bullets if f"`{name}`" in b and "planned" in b]
+                    self.assertTrue(entry and "Fallback:" in entry[0], "planned skill needs a 'planned ... Fallback:' bullet in Skills")
+
+
+if __name__ == "__main__":
+    unittest.main()
