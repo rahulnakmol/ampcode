@@ -37,9 +37,9 @@ execution to an authorized agent with the right environment; never invent execut
    numbered acceptance criteria, failure handling, verification, and dependency-ordered work plan.
    Identify the real delivery target, including any separate rollout approval and check. Start
    from the `missioning` charter and gate ledger when one exists; otherwise write them in the
-   mission record's first three sections as part of the design package. A brief marked pending or not concrete is not an
-   approved mission. An explicit instruction to proceed
-   with assumptions authorizes only those stated assumptions within the user's existing authority.
+   mission record's first three sections as part of the design package. A brief marked pending or
+   not concrete is not an approved mission. An explicit instruction to proceed with assumptions
+   authorizes only those stated assumptions within the user's existing authority.
 4. Produce a concrete specification, dependency-ordered plan, and technical design. Use `crafting`
    for relevant UX design, including human and agent touchpoints; record why it is inapplicable
    when there is no experience change. If required design support is unavailable, report the gap.
@@ -102,7 +102,8 @@ This entry gate never replaces the two build reviews, executed tests, or custome
 - Establish authorized actions and the charter's budget: which of tokens, time, spend, attempts
   and review rounds are limited, and the limits. There is no fixed default; with none set, propose
   one in the design package. Until the owner acknowledges it, only read, research, draft, review,
-  publish the brief and record, with no effects action. Keep **Budget used** current across
+  publish the brief and record, within the review rounds `goldfishing` allows for the risk, with
+  no effects action. Keep **Budget used** current across
   threads, delegated work included. Use usage telemetry; without it, say exact accounting and
   enforcement are unavailable and label estimates. Checkpoint near a limit and surface a known or
   suspected breach. Do not claim compliance from a word count or create threads to erase usage.

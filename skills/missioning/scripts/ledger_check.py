@@ -31,7 +31,7 @@ SOURCES = ("dialog", "question", "tracker", "written")
 EMPTY = ("", "-")
 NOT_AN_ANSWER = re.compile(
     r"\b(?:chat|conversation|slack|dm|looks good|lgtm|sounds good|fine by me)\b|👍", re.I)
-PLACEHOLDER = re.compile(r"\b(?:TBD|TODO|TBC)\b|^\?+$|<(?!https?://|mailto:)[^<>\n]+>")
+PLACEHOLDER = re.compile(r"\b(?:TBD|TODO|TBC)\b|(?i:^(?:tbd|todo|tbc)$)|^\?+$|<(?!https?://|mailto:)[^<>\n]+>")
 SEPARATOR = re.compile(r"^\|(?:\s*:?-{3,}:?\s*\|)+$")
 SKILLS = Path(__file__).resolve().parents[2]  # this skill's parent: sibling skills live here
 
@@ -68,9 +68,9 @@ def fields(lines):
 def table(lines):
     """Header cells and data rows of the first Markdown table in lines."""
     rows = [l.strip() for l in lines if l.strip().startswith("|")]
-    if len(rows) < 2 or not SEPARATOR.match(rows[1]):
-        return None, []
     cells = lambda row: [c.strip() for c in row.strip("|").split("|")]
+    if len(rows) < 2 or not SEPARATOR.match(rows[1]) or len(cells(rows[1])) != len(cells(rows[0])):
+        return None, []
     return cells(rows[0]), [cells(r) for r in rows[2:]]
 
 
@@ -125,6 +125,8 @@ def check(text, base):
             add("R1", f"charter field {name} is empty or a placeholder")
         elif name in ("Decision owner", "Approvers") and not people_ok(values[0], name == "Approvers"):
             add("R1", f"{name} must be 'none' or comma-separated names, each with an optional '(handle)', not prose")
+        elif name == "Decision owner" and "," in values[0]:
+            add("R1", "Decision owner is one person; name others as Approvers")
     get = lambda name: (charter.get(name) or [""])[0]
     host, playbook, budget = get("Host").lower(), get("Playbook"), get("Budget")
     if host and host not in HOSTS:
@@ -149,6 +151,8 @@ def check(text, base):
         if kind not in KINDS or state not in STATES:
             add("R5", f"gate '{gate}': Kind must be human or agent and State one of {', '.join(STATES)}")
             continue
+        if re.match(r"charter\b", gate, re.I) and kind != "human":
+            add("R5", f"gate '{gate}': the charter gate is always a human gate")
         if (kind == "human" and state == "passed") or state == "waived":
             names = [n for n in (x.strip().lstrip("@").lower() for x in decider.split(",")) if n not in EMPTY]
             if not names or any(n not in deciders for n in names):

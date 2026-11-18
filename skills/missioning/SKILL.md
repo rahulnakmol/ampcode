@@ -11,8 +11,7 @@ skills do the work. It works the same on every host; [reference/hosts.md](refere
 names each host's tools.
 
 It does not schedule work, start teams, swarms or the Copilot app's multi-agent Projects, or run
-parallel workers by default, and it
-never holds authority the owner did not grant. One integration owner stays accountable for the
+parallel workers by default, and it never holds authority the owner did not grant. One integration owner stays accountable for the
 outcome. The rules here guide an agent; on hosts without an owner-only dialog they are not a
 security boundary.
 
@@ -85,12 +84,12 @@ Charter and Criteria rows, and every outside send or publish it ends with is an 
 | Charter | Outcome, Definition of Done, authority, budget | Drafts the charter; finds facts first |
 | Criteria | Grading criteria and weights | Proposes them, with alternatives |
 | Design or plan | The exact package, read as a brief | Drafts, reviews, writes the brief, repairs |
-| Effects | Each outside write the charter does not grant: send, apply, release, publish, high-risk merge | Shows the exact plan, applies only that plan, reads the result back |
+| Effects | Each release, publish, outside send, high-risk merge and shared or production apply | Shows the exact plan, applies only that plan, reads the result back |
 | Outcome | Acceptance against the Definition of Done | Evidence, trace, gaps, lessons |
 
 - **Approval is a recorded row.** A human gate passes only with a named decider who is the
-  decision owner or an approver, a source (`dialog`, `question`, `tracker` or `written`), the
-  brief and its review. An answer counts only when it answers the exact gate question, by
+  decision owner or an approver, a source (`dialog` or `question` for the decision owner only,
+  `tracker` or `written` for anyone), the brief and its review. An answer counts only when it answers the exact gate question, by
   choosing an offered option or naming the decision. "Looks good", an earlier conversation or
   silence is never an approval. Write the row only after that answer.
 - **Full-stop gates.** Every release, apply to a shared or production environment, publish,
@@ -108,8 +107,8 @@ Charter and Criteria rows, and every outside send or publish it ends with is an 
 2. Run a `goldfishing` novice-reader review of the brief with the decider's persona. Repair the
    brief, not the reviewer. Run the review lenses the gate needs on the work itself.
 3. Offer a review by another model provider only at high-risk gates; do not assume one.
-4. Ask the decider through the host's tool, with the brief's first lines and its link. Record the
-   answer in the ledger with the brief's path.
+4. Ask the decision owner through the host's tool, and any other approver for a tracker approval
+   or written record, with the brief's first lines and its link. Record the answer with the brief.
 
 A gate whose review could not run stays `pending`, never `passed`. A self-review is not a fresh
 review. Name the reviewed brief's sha256 in the review record. When the review budget ends before

@@ -99,6 +99,11 @@ class Rules(unittest.TestCase):
         # "todo" in prose is not a placeholder; "<what: fill in>" is not an autolink.
         self.assertEqual(self.rules(edit("draft reports.", "draft reports, update the todo list.")), [])
         self.assertRule(edit("draft reports.", "<actions: list them>"), "R1")
+        # A whole value of tbd is a placeholder in any case, and is never a person.
+        self.assertRule(edit("A security review report for acme/payments before the March release.", "tbd"), "R1")
+        self.assertIn("R1", self.rules(edit("Priya Shah (@priya-s)", "Tbc")))
+        # The Decision owner is one person: a second name would let them answer for each other.
+        self.assertRule(edit("- **Decision owner:** Rahul Nakmol", "- **Decision owner:** Rahul Nakmol, Priya Shah"), "R1")
         self.assertRule(edit("Priya Shah (@priya-s)", "none", edit(PASSED, PASSED.replace("Rahul Nakmol", "none"))), "R6")
         # An autolink is a value, not a placeholder; a two-line value is joined.
         self.assertEqual(self.rules(edit("before the March release.", "before the March release, see <https://example.com/plan>.")), [])
@@ -119,6 +124,8 @@ class Rules(unittest.TestCase):
         self.assertRule(edit("| Gate | Kind | State |", "| Gate | State | Kind |"), "R4")
         no_rows = re.sub(r"\| (Charter and|Threat|Scope|Report).*\n", "", GOOD)
         self.assertRule(no_rows, "R4")
+        # A separator with fewer cells than the header is not a table on GitHub either.
+        self.assertRule(edit("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n", "| --- | --- |\n"), "R4")
         # Without the separator line the first row would be read as one; it must fail, not hide.
         chat_first = edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', "chat: said looks good"))
         self.assertRule(chat_first.replace("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n", "", 1), "R4")
@@ -127,6 +134,9 @@ class Rules(unittest.TestCase):
         self.assertRule(edit("| human | passed |", "| human | approved |"), "R5")
         self.assertRule(edit("| Report release | human |", "| Report release | owner |"), "R5")
         self.assertRule(edit("| human | open |", "| human | Open |"), "R5")
+        # Recording the charter as an agent gate must not let a chat reply pass it.
+        as_agent = PASSED.replace("| human |", "| agent |").replace("reviews/charter-novice.md", "none needed: owner said looks good")
+        self.assertRule(edit(PASSED, as_agent), "R5")
 
     def test_r6_decider_and_source(self):
         self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "Sam Lee")), "R6")
@@ -137,6 +147,8 @@ class Rules(unittest.TestCase):
         self.assertEqual(self.rules(edit(PASSED, PASSED.replace("Rahul Nakmol", "Rahul Nakmol, priya shah").replace('question: AskUserQuestion answer "Approve"', "written: signed memo 18 Nov"))), [])
         self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "@priya-s")), "R6")
         self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "Rahul Nakmol, priya shah")), "R6")
+        dialog = PASSED.replace('question: AskUserQuestion answer "Approve"', "dialog: Amp mission-control design approval")
+        self.assertRule(edit(PASSED, dialog.replace("Rahul Nakmol", "@priya-s")), "R6")
         stamped = PASSED.replace('question: AskUserQuestion answer "Approve"', "dialog: owner stamped it")
         self.assertRule(edit(PASSED, stamped), "R6")
         self.assertRule(edit(PASSED, PASSED.replace("Rahul Nakmol", "-")), "R6")
@@ -146,6 +158,7 @@ class Rules(unittest.TestCase):
         waived_agent = AGENT.replace("| passed |", "| waived |").replace("threat-model.md, 14 threats", "owner skipped: no attack surface")
         self.assertRule(edit(AGENT, waived_agent), "R6")
         self.assertEqual(self.rules(edit(AGENT, waived_agent.replace("| - | - | 2026-11-19 |", "| Rahul Nakmol | written: email 19 Nov | 2026-11-19 |"))), [])
+        self.assertRule(edit(AGENT, waived_agent.replace("| - | - | 2026-11-19 |", '| @priya-s | question: AskUserQuestion answer "Skip" | 2026-11-19 |')), "R6")
 
     def test_r7_chat_is_never_an_approval(self):
         self.assertRule(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', "chat: said looks good")), "R7")
@@ -157,12 +170,17 @@ class Rules(unittest.TestCase):
         self.assertRule(edit(PASSED, PASSED.replace('AskUserQuestion answer "Approve"', "owner replied LGTM")), "R7")
         self.assertRule(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', 'written: Slack DM "approved"')), "R7")
         self.assertRule(edit(PASSED, PASSED.replace('AskUserQuestion answer "Approve"', "approved in conversation")), "R7")
+        self.assertRule(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', 'written: DM "ok"')), "R7")
         # The host's name is not chat: Copilot Chat's question tool is a real source.
         self.assertEqual(self.rules(edit(PASSED, PASSED.replace('AskUserQuestion answer "Approve"', 'ask_user in Copilot Chat, answer "A"'))), [])
 
     def test_r8_brief(self):
         self.assertRule(edit("briefs/charter.md", "briefs/missing.md"), "R8")
         self.assertRule(edit("briefs/charter.md", "https://ampcode.com/artifacts/brief"), "R8")
+        with tempfile.TemporaryDirectory() as tmp:
+            base = workspace(tmp)
+            absolute = str(base / "briefs" / "charter.md")
+            self.assertIn("R8", {p.split(":", 1)[0] for p in ledger_check.check(edit("briefs/charter.md", absolute), base)})
         self.assertEqual(self.rules(edit("briefs/charter.md", "briefs/charter.md (https://ampcode.com/artifacts/brief)")), [])
         with tempfile.TemporaryDirectory() as tmp:
             base = workspace(tmp)
