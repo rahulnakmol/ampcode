@@ -208,9 +208,10 @@ record sit in a read-only Details box.
 
 Communication supports standard/formal records and editorial explanations with descriptive
 headers, both guided by ASD-STE100 principles without an unvalidated compliance claim. ELI5 short
-forms contain fewer than 300 words and keep essential risks and blockers. Default budgets are
-4,000 tokens per task and 30,000 per session unless explicitly overridden; exact accounting and
-enforcement require runtime telemetry and are disclosed as unavailable when absent. The workflow
+forms contain fewer than 300 words and keep essential risks and blockers. Each mission sets its
+budget in its [`missioning`](./skills/missioning/SKILL.md) charter (there is no fixed token
+default); exact accounting and enforcement require runtime telemetry and are disclosed as
+unavailable when absent. The workflow
 uses deterministic tools for mechanical work, preserves repository conventions, and requires
 direct inspection of the produced artifact before completion.
 
@@ -280,6 +281,35 @@ all four sign-off questions from the brief and two of four from today's dialog t
 **Use it:** "Use briefing-decisions to write the sign-off brief for this vendor choice, for our
 finance director." **Adapt it:** headings, limits and banned codes are constants in the script
 and `banned.json`; mission-control's `lib/brief.ts` keeps a copy that a test compares.
+
+## Missioning
+
+[`skills/missioning/`](./skills/missioning/SKILL.md) is the thin conductor every mission starts
+from. One mission file holds a charter (outcome, decision owner, approvers, success criteria,
+Definition of Done, budget and what the agent may do without asking), a gate ledger and a
+decision trail. The success criteria are agreed before the work. The chosen playbook's steps go
+into the host's todo list, with `skip: <reason>` for any step not done. The agent asks only for
+preference calls. Before every human gate it writes a `briefing-decisions` brief and runs a
+`goldfishing` novice-reader review. An approval counts only as a ledger row naming an approver,
+where they answered (`dialog`, `question`, `tracker` or `written`), the brief and its review;
+never chat. `scripts/ledger_check.py` (standard library) rejects a row without these. It cannot
+prove a person really answered; on Amp, `mission-control`'s owner dialog is the stronger record.
+Close-out audits the trail and proposes skill edits for approval.
+
+Eight playbooks of about 60 lines, loaded only when used, cover ERP and AI transformation
+(through `blueprinting`), product delivery operations (`planning`), software delivery
+(`delivering`), campaigns and research, UX and UI design (`crafting`), code and security review,
+infrastructure and DevSecOps, and product and SaaS assessment. Skills from later waves are marked
+*planned* with a manual fallback; a playbook never reports that a planned skill ran.
+[`reference/hosts.md`](./skills/missioning/reference/hosts.md) maps each step to the tools of
+Amp, Claude Code, Copilot in VS Code and the Copilot app; the last three come from their
+documentation and are not tested. There are no teams, swarms or scheduled workers.
+
+**Use it:** "Use missioning to run a security review of acme/payments on Claude Code. I decide;
+Priya Shah approves the report release." **Adapt it:** add a playbook with the same six headings
+and register it in the checker's `PLAYBOOKS`; change charter fields in the checker and
+[`reference/charter.md`](./skills/missioning/reference/charter.md) together; add a host column to
+`hosts.md`. Simulated scenario runs are in [`evals/missioning/`](./evals/missioning/README.md).
 
 ## Planning
 
