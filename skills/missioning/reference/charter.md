@@ -27,9 +27,11 @@ below are allowed and ignored by the checker.
   Budget, Budget used, May do without asking, Always ask, Stop and ask when, Playbook, Host.
 - **Placeholder:** an empty value, TBD, TODO, TBC or `?` (any case), or `<text>` that is not an
   autolink such as `<https://...>`.
-- **People:** Decision owner and Approvers are comma-separated. `Elena Petrova (@elena-p)` gives
-  two identities, the name and the handle. A Decider must equal one of them, ignoring case and a
-  leading `@`. Name client authorities and outside approvers as Approvers.
+- **People:** Decision owner and Approvers are comma-separated names, each optionally followed by
+  one `(handle)`; prose, roles and notes go elsewhere. `Elena Petrova (@elena-p)` gives two
+  identities, the name and the handle. A Decider must equal one of them, ignoring case and a
+  leading `@`. Approvers is `none` when the Decision owner is the only approver. Name client
+  authorities and outside approvers as Approvers.
 - **Gate ledger:** under `## Gate ledger`, a table with exactly these headers: Gate, Kind, State,
   Evidence, Review, Brief, Decider, Source, Date. Kind is `human` or `agent`; State is `open`,
   `pending`, `passed`, `failed` or `waived`, lower case. Empty cells hold `-`. The State column is
@@ -46,15 +48,15 @@ below are allowed and ignored by the checker.
 
 | Rule | What passes |
 | --- | --- |
-| R1 | Every required charter field appears once and is not a placeholder |
+| R1 | Every required charter field appears once and is not a placeholder; Decision owner and Approvers follow People |
 | R2 | Host is Amp, Claude Code, Copilot in VS Code or Copilot app; Playbook is a playbook name or `none: <reason>` |
 | R3 | Budget names a limit with a number, or says `no limit on <what>, decided by <name>` |
 | R4 | The gate ledger table has the nine headers in order, nine cells per row and at least one row |
 | R5 | Kind and State take the values above |
 | R6 | A passed human gate, and any waived gate, has a Decider who is the Decision owner or an Approver, and a Source with a reference |
-| R7 | The Source kind is `dialog`, `question`, `tracker` or `written`: approval is never inferred from chat |
+| R7 | The Source kind is `dialog`, `question`, `tracker` or `written`, and the reference cites neither chat nor an acknowledgement such as "looks good" or "LGTM": approval is never inferred from chat |
 | R8 | A passed human gate's Brief is a local Markdown file that passes `briefing-decisions`' `brief_check.py`; a published URL may follow in parentheses |
-| R9 | A passed gate's Review is an existing file or an `https` URL; an agent gate may say `none needed: <reason>` |
+| R9 | A passed gate's Review is an existing file or an `https` URL (the first path in the cell is the review record); an agent gate may say `none needed: <reason>` |
 | R10 | A passed agent gate has Evidence |
 | R11 | A waived gate gives its reason in Evidence; it is never reported as passed |
 | R12 | The decision trail table has its five headers, and every row names a Decider |

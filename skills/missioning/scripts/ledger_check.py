@@ -29,6 +29,7 @@ KINDS = ("human", "agent")
 STATES = ("open", "pending", "passed", "failed", "waived")
 SOURCES = ("dialog", "question", "tracker", "written")
 EMPTY = ("", "-")
+NOT_AN_ANSWER = re.compile(r"\b(?:chat|looks good|lgtm|sounds good|fine by me)\b|👍", re.I)
 PLACEHOLDER = re.compile(r"\b(?:TBD|TODO|TBC)\b|^\?+$|<(?![a-z][a-z0-9+.-]*:)[^<>\n]+>", re.I)
 BRIEF_CHECK = Path(__file__).resolve().parents[2] / "briefing-decisions" / "scripts" / "brief_check.py"
 
@@ -63,9 +64,20 @@ def table(lines):
     return cells(rows[0]), [cells(r) for r in rows[2:]]
 
 
+WORD = r"[^\W\d_][\w.'’-]*"
+PERSON = re.compile(rf"(?:{WORD}(?: {WORD}){{0,4}}(?: \(@?[\w.-]+\))?|@[\w.-]+)")
+
+
+def people_ok(value):
+    """True for 'none' or comma-separated names, each optionally followed by '(handle)'."""
+    return value.strip().lower() == "none" or all(PERSON.fullmatch(e.strip()) for e in value.split(","))
+
+
 def identities(value):
     """Names and handles in a comma-separated list: 'Elena Petrova (@elena-p)' gives two."""
     out = set()
+    if value.strip().lower() == "none":
+        return out
     for entry in value.split(","):
         for part in re.findall(r"\(([^)]*)\)", entry) + [re.sub(r"\([^)]*\)", "", entry)]:
             part = part.strip().lstrip("@").strip().lower()
@@ -97,6 +109,8 @@ def check(text, base):
             add("R1", f"charter needs exactly one '- **{name}:**' line (found {len(values)})")
         elif not values[0] or PLACEHOLDER.search(values[0]):
             add("R1", f"charter field {name} is empty or a placeholder")
+        elif name in ("Decision owner", "Approvers") and not people_ok(values[0]):
+            add("R1", f"{name} must be 'none' or comma-separated names, each with an optional '(handle)', not prose")
     get = lambda name: (charter.get(name) or [""])[0]
     host, playbook, budget = get("Host").lower(), get("Playbook"), get("Budget")
     if host and host not in HOSTS:
@@ -127,7 +141,7 @@ def check(text, base):
             kind_of = kind_of.strip().lower()
             if source in EMPTY:
                 add("R6", f"gate '{gate}': Source must say where the decider answered")
-            elif kind_of not in SOURCES:
+            elif kind_of not in SOURCES or NOT_AN_ANSWER.search(reference):
                 add("R7", f"gate '{gate}': source '{source}' is not an approval; approval is never inferred from chat")
             elif not reference.strip():
                 add("R6", f"gate '{gate}': Source needs a reference after '{kind_of}:'")

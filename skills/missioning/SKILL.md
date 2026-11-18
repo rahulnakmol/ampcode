@@ -56,12 +56,14 @@ Load only the chosen playbook:
 | Product and SaaS assessment | [product-assessment](reference/missions/product-assessment.md) | this skill |
 
 - Copy the playbook's steps into the host's todo list. Mark each step you will not do
-  `skip: <reason>`; never delete it.
+  `skip: <reason>`; never delete it. A step that holds stand-in content stays open, marked
+  `draft: <reason>`.
 - Load each skill only when its step starts. When a playbook's conductor runs the work, follow
   that conductor; this skill keeps only the charter, ledger and close-out.
 - Some skills are **planned**, not built. Check which are installed. For a missing one, use the
   playbook's `Fallback:` and label its output "manual, no skill", or mark the step `skip:`.
-  Never report that a planned skill ran.
+  Never report that a planned skill ran. A host skill with the same name but another purpose is
+  not the planned skill.
 
 ## 4. Ask only for preference calls
 
@@ -73,7 +75,8 @@ recommended answer. A question in a normal message can go unseen. When the quest
 ## 5. Keep the gate ledger and decision trail
 
 The mission file holds both. Each gate is one ledger row: gate, kind, state, evidence, review,
-brief, decider, source and date. Every playbook uses this pattern:
+brief, decider, source and date. Every playbook uses this pattern; its own human gates add to the
+Charter and Criteria rows, and every outside send or publish it ends with is an Effects gate:
 
 | Gate | The owner decides | The agent does |
 | --- | --- | --- |
@@ -106,7 +109,8 @@ brief, decider, source and date. Every playbook uses this pattern:
    answer in the ledger with the brief's path.
 
 A gate whose review could not run stays `pending`, never `passed`. A self-review is not a fresh
-review.
+review. Name the reviewed brief's sha256 in the review record. When the review budget ends before
+the last repair, the question says the asked revision is unreviewed and offers one more round.
 
 ## 7. Spend the budget honestly
 

@@ -90,6 +90,12 @@ class Rules(unittest.TestCase):
         self.assertRule(edit("- **Playbook:**", "- **Outcome:** again\n- **Playbook:**"), "R1")
         self.assertRule(edit("Priya Shah (@priya-s)", "<approver name>"), "R1")
         self.assertRule(edit("- **Outcome:**", "- **outcome:**"), "R1")
+        # People fields hold names, not prose; "none" means no approver besides the owner.
+        self.assertRule(edit("Priya Shah (@priya-s)", "Priya Shah only (asked in round 1, Q2). Security gives input, not approval."), "R1")
+        self.assertRule(edit("- **Decision owner:** Rahul Nakmol", "- **Decision owner:** Rahul Nakmol (product owner)"), "R1")
+        self.assertEqual(self.rules(edit("Priya Shah (@priya-s)", "Priya Shah (@priya-s), Tom O'Neil, @tokafor")), [])
+        self.assertEqual(self.rules(edit("Priya Shah (@priya-s)", "none")), [])
+        self.assertRule(edit("Priya Shah (@priya-s)", "none", edit(PASSED, PASSED.replace("Rahul Nakmol", "none"))), "R6")
         # An autolink is a value, not a placeholder; a two-line value is joined.
         self.assertEqual(self.rules(edit("before the March release.", "before the March release, see <https://example.com/plan>.")), [])
 
@@ -130,6 +136,11 @@ class Rules(unittest.TestCase):
     def test_r7_chat_is_never_an_approval(self):
         self.assertRule(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', "chat: said looks good")), "R7")
         self.assertRule(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', "slack: thumbs up")), "R7")
+        # A real kind does not launder a chat reply.
+        self.assertRule(edit(PASSED, PASSED.replace('AskUserQuestion answer "Approve"', 'chat reply "looks good"')), "R7")
+        self.assertRule(edit(PASSED, PASSED.replace('AskUserQuestion answer "Approve"', "owner said it in Chat")), "R7")
+        self.assertRule(edit(PASSED, PASSED.replace('question: AskUserQuestion answer "Approve"', 'written: Slack message "Looks good"')), "R7")
+        self.assertRule(edit(PASSED, PASSED.replace('AskUserQuestion answer "Approve"', "owner replied LGTM")), "R7")
 
     def test_r8_brief(self):
         self.assertRule(edit("briefs/charter.md", "briefs/missing.md"), "R8")
