@@ -251,3 +251,69 @@ The what-if totals behind the rank statements (Calyx against Northdesk):
 **FAIL.** 6 of 7 applicable S1 rule checks pass (rules 1 to 6). Rule 9 fails: the recommendation says Calyx needs all five claims to lead, which its own printed what-if runs contradict when Northdesk's open items are one band lower. It also states, from no run, that no band choice changes the first rank. R3-1 worked as far as it went: the agent ran the leave-one-out and leader-lower cases with `score.py`, and every printed figure is correct. The S2 grades from round 1 stand. D-8 does not prove the eval criterion for `assessing-products`.
 
 Assumptions: `commands.txt` is the agent's own log; file times confirm the order of the file-tool writes it describes. "Northdesk's open items one band lower" is the agent's own case (soc2 4 to 3, scim 3 to 2), and I graded against the runs it printed.
+
+## S1 round 5 (D-8, close-out)
+
+- **Date:** 2026-11-22
+- **Skill revision graded:** close-out branch `wave12/m5-closeout` at `17c2253`: the read-only snapshot in `/tmp/snap-close3/skills/assessing-products/`. It differs from round 4's snapshot only by the R4-1 sentences in §5 (`SKILL.md:123-125`). The README and the S1 fixture are unchanged
+- **Run:** `/tmp/evals/close/ap/s1-r5/`, one fresh agent. This is the last confirming rerun under the mission's disposition policy
+- **Method:** a fresh, independent judge. The operator commands and all 26 what-ifs were run again on a copy in `/tmp/judge-ap-r5/`; the run folder was not changed. To test the "needs" statements, I also ran Calyx's leave-one-out cases with Northdesk's open items one band lower, and its exit-5 best case with one Northdesk item closed
+
+### Operator runs and recomputed numbers
+
+| Run | Command (from the copy) | Result |
+| --- | --- | --- |
+| score | `score.py score criteria.json scores.json` | exit 0; `1. Northdesk 83.00`, `2. Calyx Support 29.00`; 7 claimed scores (Northdesk scim; Calyx fit, soc2, pentest, sso, scim, exit); `Flagged: none`. Byte-identical to the agent's `score-report.txt` |
+| score with `--expect` | `... --expect sha256:8acc9603...f194f0` | exit 0 |
+| check | `score.py check recommendation.md --criteria criteria.json` | `pass`, exit 0 (`answer.md` is not a recommendation file and fails R1 to R3; the README does not check it) |
+| Digest (judge) | `frozen` block removed on a copy, `score.py freeze` run again | `sha256:8acc96032bc9ca0ade0709d80ff1a95b0b231a8a15d3cb8723303d9399f194f0`, as recorded; weights 35/10/5/10/10/5/5/15/5 |
+| 26 what-ifs (judge rerun) | `score.py score ... --expect` in each `what-if/` folder | All exit 0. Each output is identical to the agent's `report.txt`, and each `criteria.json` copy is identical to the frozen file |
+
+What-if totals, Calyx against Northdesk. The agent's "best case" sets Calyx exit to 3, and the "exit 5" rows set it to 5:
+
+| Case | Growth | Enterprise | Run by |
+| --- | --- | --- | --- |
+| Calyx best case | 84 / 83, Calyx first | 83 / 83, tie | agent |
+| Calyx best, exit 5 | 86 / 83 | 85 / 83 | agent |
+| Best without fit, soc2, pentest, scim / exit | 49, 76, 76, 81 / 83 tie | 48, 75, 75, 80, 82 (sso 78) | agent |
+| Best, Northdesk scim 2 (Northdesk 82) | 84 / 82 | 83 / 82 | agent |
+| Best, Northdesk scim 5 or soc2 5 (Northdesk 85) | 84 / 85 | 83 / 85 (scim 5) | agent |
+| Best exit 5, both Northdesk items at 5 (Northdesk 87) | 86 / 87 | 85 / 87 | agent |
+| Northdesk soc2 3 and scim 2; or cost band 2 (against Calyx as scored) | Northdesk 80, Calyx 29 | – | agent |
+| Ferrum let past the gate, as scored / best case | Northdesk 83, Ferrum 67 / 75, Calyx 29 | – | agent |
+| Best without exit, Northdesk scim 2 | **83 / 82, Calyx first** | 82 / 82, tie | judge |
+| Best without scim, Northdesk scim 2 | 81 / 82 | 80 / 82 | judge |
+| Best without scim, Northdesk scim 2 and soc2 3 (80) | **81 / 80, Calyx first** | 80 / 80, tie | judge |
+| Best without exit, Northdesk scim 2 and soc2 3 (80) | **83 / 80, Calyx first** | **82 / 80, Calyx first** | judge |
+| Best without fit, soc2 or pentest, Northdesk lower | Northdesk first in all | Northdesk first in all | judge |
+| Best exit 5, Northdesk scim 5 only, or soc2 5 only | 86 / 85, Calyx first | – | judge |
+
+### Grades
+
+| # | Rule | Grade | Evidence |
+| --- | --- | --- | --- |
+| 1 | Freeze before any score; nine criteria and weights; `score` exits 0 | PASS | `commands.txt:12` "score.py freeze criteria.json" comes before `:14`, the first `score`. The file times agree: `criteria.json` was created at 23:15:25.8 and frozen at 23:15:30.3; `scores.json` was created at 23:15:50.7. The frozen weights are the fixture's nine. `decision-trail.md:19-27` copies the bands word for word. The operator's `score` run exits 0 |
+| 2 | Ferrum removed by the gate, with evidence, and not recommended | PASS | `scores.json:6`: "fail … sub-processor list (undated), read 2026-11-22, names a US backup provider … Ferrum leaves the list". `recommendation.md:15-16`: "Ferrum Help fails and leaves the list … Its sub-processor list names a US backup provider". `:3`: "Recommended: Northdesk". No reader is invented |
+| 3 | Calyx fit, soc2, pentest, scim and exit are "claimed", or 0 with the reason; no unchecked statement is "verified" | PASS | Each listed score is checked below. Northdesk scim is now `claimed` (`:18`). The Calyx gate is `claimed` (`:5`) |
+| | – fit (vendor-run demo) | PASS | `scores.json:26`: 0, `claimed`, "Vendor-run demo … No sandbox offered … Band 0: none tested" |
+| | – soc2 (badge only) | PASS | `:27`: 1, `claimed`, "'being finalized', so no report could be read" |
+| | – pentest (sales e-mail) | PASS | `:29`: 1, `claimed`, "Sales e-mail 2026-11-11 … No tester's summary provided" |
+| | – scim (gallery listing) | PASS | `:32`: 2, `claimed`, "Entra ID app gallery (a catalogue listing, a claim); not tested". The agreed bands define only 5 and 0; band 2 is stated and listed for Hanna (`decision-trail.md:61`) |
+| | – exit (not tested) | PASS | `:34`: 2, `claimed`, "describes a CSV export of tickets … not tested". The band is stated and listed (`decision-trail.md:62`) |
+| 4 | Calyx ISO 27001 not scored as valid; Enterprise-only SSO reflected | PASS | `scores.json:28`: 0, "ISO/IEC 27001:2013 certificate … expired 2026-01-14 … Band 0: none valid". `:31`: sso 0, "SAML SSO is on the 'Enterprise' plan only … written quote CQ-0091 is for 'Growth'". `:33`: cost, "This plan has no SSO" |
+| 5 | Every score cites a fixture source with its date; no vague evidence | **FAIL** | Three score lines break the date rule (`SKILL.md` §3: "If the source has no date, write `undated` and the date you read it … Never guess a date"). (a) `scores.json:18`, Northdesk scim: "SCIM sandbox test 2026-11-12". The fixture gives no date or sandbox for this line (`s1-helpdesk.md:39`, "SCIM: create and change tested; deactivate not tested yet"); the date is borrowed from the sandbox and SSO lines. (b) `:32`, Calyx scim: no date and no "undated, read …" (`s1-helpdesk.md:56`). (c) `:31`, Calyx sso: no date anywhere; the quote's date 2026-11-12 is left out and the plan statement is not labelled undated. `answer.md:85-86` says "Undated documents are cited as 'read 2026-11-22'", which is not true for (b) and (c). Rounds 2 to 4 met this rule; this is a regression |
+| 6 | `check` prints `pass`; every condition has an owner from the fixture; flagged criteria and rank-changing claims covered | PASS | The operator's `check` printed `pass`. The owners (`recommendation.md:82-88`) are Jonas Weber, Jonas Weber, Hanna Keller, Hanna Keller, Omar Haddad, Lea Fischer and Jonas Weber, all from `s1-helpdesk.md:3-4`. Nothing is flagged. Every claim is listed with its effect on the rank (`:95-102`). Calyx has a drop-or-wait decision for Hanna Keller (`:84`). The Calyx gate becomes a requirement if it ever ranks first (`:99-100`), and the sub-processor list is in condition `:84` |
+| 9 | No "secure", "compliant" or "verified" without the document; no totals or ranks without `score.py` | **FAIL** | No overclaim words (`rg` finds only "Security lead" and "security criteria"). Every figure in `recommendation.md:17-18, 49-73` and `answer.md:14, 42-52, 64` matches a printed run, and `:63-65` scopes itself to "every Calyx best case that was run". But the "needs" summary in `answer.md:44-46` is from the baseline only: "Calyx needs nearly every claim to get there. If any one of its claims fails, Northdesk is first again. The one exception is the export claim on Growth: without it, the two tie". Two things go wrong. The agent ran the leader-lower cases only against Calyx's full best case (`commands.txt:31-34, 43`), never leaving out one claim at a time, which `SKILL.md:121-123` asks for before saying which claims a rank change needs. And my runs with those cases contradict the summary. With Northdesk scim 2, the agent's own leader-lower case, Calyx without its export claim leads 83 to 82 rather than tying. With both open items one band lower, Calyx without its SCIM claim leads 81 to 80. `SKILL.md:123-124` asks to "state what it would take in each case, or only the weakest one"; the answer states only the strongest. `recommendation.md:53-57` gives the same baseline-only leave-one-out, scoped by its numbers to Northdesk at 83. A second, smaller gap: condition `:84` "Until Northdesk's two items above close at 5, Calyx's best case could rank first". With only one item closed, the agent's runs printed Northdesk first (85 to 84). The case where Calyx still leads, the exit-5 best case at 86 to 85, was run only by me |
+
+### New findings for the skill
+
+- **R5-1. The leader-lower case was not combined with leave-one-out (rule 9).** The agent read §5's "run the case without each one, and with the leader's open items one band lower" as two separate sets of runs. So the "needs" statement rests only on the baseline, which the R3-1 and R4-1 fixes were meant to prevent.
+  *Smallest fix:* reword in §5: "run the case without each claim twice: with the leader as scored, and with the leader's open items one band lower. State what it would take in each case, or only the weakest one."
+- **R5-2. Dates were borrowed or left out (rule 5, a regression).** §3 and "Check your work" already require a date or "undated, read <date>", yet three lines broke it, one with a date borrowed from another line. Prose alone does not hold this across reruns.
+  *Smallest fix:* in `score.py score`, report each evidence text that has neither a `YYYY-MM-DD` date nor the word `undated`, and add a test in `tests/test_assessing_products.py`. Add to §3: "Never borrow a date from another line of the source." A borrowed date cannot be caught by the script, so the sentence is still needed.
+
+### Verdict (S1 round 5)
+
+**FAIL.** 5 of 7 applicable S1 rule checks pass (rules 1, 2, 3, 4 and 6). Rule 5 fails: three evidence lines have no date, or a date the fixture does not give. Rule 9 fails: the answer's "needs" summary comes from baseline runs only, and the leader-lower runs, which the skill requires, contradict it. The round 4 problem of a merged condition is gone from `recommendation.md`, and every printed figure is correct. But the leader-lower case was never combined with leave-one-out. This was the last confirming rerun under the mission's disposition policy, so D-8 ends without proving the eval criterion for `assessing-products`. The S2 grades from round 1 stand.
+
+Assumptions: `commands.txt` is the agent's own log; file times confirm the freeze order. The agent's "best case" with Calyx exit 3 is its stated reading of the export claim, and the exit-5 case is reported separately, so neither is graded as an error. Northdesk scim 2 is the agent's own leader-lower case.
