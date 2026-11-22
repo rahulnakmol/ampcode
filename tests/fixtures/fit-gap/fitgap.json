@@ -1,0 +1,24 @@
+{
+  "products": [
+    {
+      "name": "OptionA",
+      "scores": {
+        "R1": {"fit": "supported", "evidence": "Vendor documentation, EDI inbound orders, release 2026.2, read 2026-11-11", "status": "verified"},
+        "R2": {"fit": "configuration", "evidence": "Sandbox test 2026-11-12: credit groups set up without code", "status": "verified"},
+        "R3": {"fit": "extension", "evidence": "Partner estimate 2026-11-12: volume tiers need a pricing extension", "status": "claimed"},
+        "R4": {"fit": "integration", "evidence": "Tax portal API specification v3, read 2026-11-11", "status": "verified"},
+        "R5": {"fit": "process change", "evidence": "Workshop 2026-11-10: client accepts a scan at the returns desk", "status": "verified"}
+      }
+    },
+    {
+      "name": "OptionB",
+      "scores": {
+        "R1": {"fit": "configuration", "evidence": "Sandbox test 2026-11-12: EDI mapping set up without code", "status": "verified"},
+        "R2": {"fit": "supported", "evidence": "Vendor documentation, credit management, release 11, read 2026-11-11", "status": "verified"},
+        "R3": {"fit": "unresolved", "evidence": "Question Q-7 sent to the vendor 2026-11-12; no answer yet", "status": "claimed"},
+        "R4": {"fit": "supported", "evidence": "Vendor documentation, e-invoicing connector, read 2026-11-11", "status": "verified"},
+        "R5": {"fit": "integration", "evidence": "Returns API specification, read 2026-11-11", "status": "verified"}
+      }
+    }
+  ]
+}

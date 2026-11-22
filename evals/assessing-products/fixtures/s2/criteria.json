@@ -1,0 +1,40 @@
+{
+  "assessment": "Field service scheduling tool",
+  "criteria": [
+    {
+      "id": "fit",
+      "name": "Fit to requirements R1 to R14",
+      "weight": 35
+    },
+    {
+      "id": "apis",
+      "name": "APIs for the ERP and the mobile app",
+      "weight": 20
+    },
+    {
+      "id": "cost",
+      "name": "Total cost over 5 years",
+      "weight": 30
+    },
+    {
+      "id": "exit",
+      "name": "Exit risk",
+      "weight": 15
+    }
+  ],
+  "frozen": {
+    "weights": {
+      "fit": 35,
+      "apis": 20,
+      "cost": 30,
+      "exit": 15
+    },
+    "seals": {
+      "fit": "11dff9d523f5ff9b",
+      "apis": "3281d8145570df8f",
+      "cost": "988d27ec489af6b0",
+      "exit": "d23911497156c2f6"
+    },
+    "digest": "sha256:ce31c3751320caa0e03e29cbb1ada3d68d12d96f2293ff7a0ba41df27b8b05e6"
+  }
+}
