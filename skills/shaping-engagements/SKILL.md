@@ -31,3 +31,33 @@ Return the proposed scope, evidence-backed positioning, alternatives, unresolved
 commercial assumptions, bounded estimate and next decision. Cost is not selling price; effort
 is not elapsed time. Missing inputs become questions, not numbers. Preserve exact source revisions
 and invalidate affected responses after an addendum. No offer or submission is sent automatically.
+
+## Score a weighted fit-gap
+
+When the client wants options compared or a scored fit-gap, use `assessing-products` as a
+dependency: load it through Amp's skill tool and run its `scripts/score.py`. Each requirement is
+a criterion. Agree every weight with the client, record who agreed and when, and freeze the
+weights with `score.py freeze` before any fit category is assessed or scored, so nobody who sets
+the weights has seen the categories. Record the printed digest. The weights stay frozen; a
+change needs a recorded client decision and a new freeze, never a quiet edit after the fits are
+seen. Record each cell as `{"fit": "<category>", "evidence": "<source and date>",
+"status": "verified"}`, or `"claimed"` for a vendor statement nobody checked, then run:
+
+```bash
+python3 <assessing-products base>/scripts/score.py score criteria.json fitgap.json --fit-gap --expect sha256:<digest>
+```
+
+The script converts each fit category by the map below (`FIT_GAP_SCORES` in `score.py`), totals
+each option out of 100 and refuses an unknown category. The categories and their evidence rules
+stay in `proposals.md`; the map only scores them. Every `unresolved` fit is listed as a gap: make
+it a named question or exception with an owner. Without `assessing-products` or a shell, do not
+total by hand; return the unscored fit-gap and label the scores "not run".
+
+| Fit category | Score |
+| --- | --- |
+| supported | 5 |
+| configuration | 4 |
+| extension | 3 |
+| integration | 3 |
+| process change | 2 |
+| unresolved | 0 |
