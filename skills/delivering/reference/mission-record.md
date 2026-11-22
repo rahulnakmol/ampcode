@@ -1,8 +1,10 @@
 # Compact mission record
 
-Use one record per mission. Replace the prompts below with observed facts; omit inapplicable
-fields with a reason. Link existing briefs and evidence rather than duplicate them. This is a
-template, not an executable validator or proof of persistent background operation.
+Use one record per mission. Replace the prompts below with observed facts; outside the Charter,
+omit inapplicable fields with a reason. Link existing briefs and evidence rather than duplicate
+them. The record starts with the `missioning` charter, gate ledger and decision trail; run its
+`scripts/ledger_check.py` on this file. The rest of the record is a template, not an executable
+validator or proof of persistent background operation.
 
 ## Coordinate with mission-control when installed
 
@@ -41,22 +43,30 @@ claim tool enforcement or substitute local files for successful CI and branch pr
 ```markdown
 # Mission: <id and customer outcome>
 
+## Charter
+<the fields of missioning's reference/charter.md, Playbook software-delivery; Budget and Budget
+used replace any fixed token limit>
+
+## Gate ledger
+<missioning's table: design acknowledgment, review gates one and two, merge (human for ask/high
+risk, with a brief; agent for low/medium auto), release. On Amp, cite mission-control as
+`dialog: Amp mission-control ...`>
+
+## Decision trail
+<missioning's table>
+
 ## Agreement
 - Requirements: <original request and purpose; clarification/change provenance>
 - Brief: <path/URL and revision; self-contained or transferred with this record>
 - Design package: <concrete spec, plan, technical design, relevant crafting UX or inapplicability>
-- Fresh-context design review: <packet revision, reviewer/lens, reading list and actual reads,
+- Fresh-context design review: <ledger row; detail it cannot hold: reading list and actual reads,
   findings/dispositions, reused grilling evidence and its scope, pending checks or skip rationale>
-- Design acknowledgment: <initiator/thread owner or explicit owner adoption; package revision;
-  owner interaction reference; permitted assumptions; material changes reopen this gate>
+- Design acknowledgment: <ledger row; initiator/thread owner or explicit owner adoption; permitted
+  assumptions; material changes reopen this gate>
 - In / out: <scope and non-goals>
 - Target: <actual recipient/environment; integration and rollout are separate>
-- Permissions: <authorized local, remote, deployment actions and their source>
 - Risk / merge mode: <low | medium | high | unknown and rationale; auto default | owner-selected ask>
 - GitHub readiness: <existing access, required CI and branch protection evidence or blocker>
-- Limits: <agreed time/spend/attempt limits, or absent; next cost decision>
-- Tokens: <4,000/task and 30,000/session unless explicitly overridden; measured/estimated/unknown
-  usage including delegated work, remaining allowance, and accounting limitations>
 - Owner: <integration owner; independent reviewer when required>
 - Communication: <standard/formal | editorial; ELI5 when requested>
 - Ownership defense: <record from whiteboard-defense.md; brief/candidate, challenge, teach-back,
@@ -85,8 +95,8 @@ For each evidence record:
 ## Reviews and repairs
 | Finding | Severity/customer risk | Reviewer and reviewed revision | Regression evidence | Fix/disposition | Gate-two verification |
 | --- | --- | --- | --- | --- | --- |
-- Gate one: <scope, independence, candidate, result, limitations>
-- Gate two: <final candidate, finding closure, new-risk check, result, limitations>
+- Gate one: <ledger row; scope, independence, result, limitations>
+- Gate two: <ledger row; finding closure, new-risk check, result, limitations>
 - Spec/code drift: <checked acceptance IDs and revisions; missing/unauthorized/approved/stale-doc
   differences, source evidence, decisions and revalidation; also refresh after resume>
 - Accepted risks: <authorized owner, rationale, boundaries; never a fabricated pass>
@@ -95,8 +105,8 @@ For each evidence record:
 - Benefit: <baseline → observed result, comparable conditions, uncertainty>
 - Enabling dependency, if applicable: <criterion served; full-journey evidence still needed>
 - Presentation: <inspected artifacts, evidence, limitations, reproducible try-it procedure>
-- Merge acknowledgment: <required for ask/high; exact head/base/design/mode and owner interaction;
-  absent for low/medium auto is not a blocker; unknown risk always blocks>
+- Merge acknowledgment: <ledger row; required for ask/high with a brief of the presented evidence;
+  exact head/base/design/mode; absent for low/medium auto is not a blocker; unknown risk blocks>
 - CI / PR / merge: <exact head, required check outcomes, approvals, observed remote result>
 - Milestone/full journey: <combined behavior and regression evidence>
 - Release/deployment: <not authorized | pending | separately verified; target and evidence>
