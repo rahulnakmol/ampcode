@@ -1,0 +1,9 @@
+{
+  "assessment": "Expense management tool for a 400-person company",
+  "criteria": [
+    {"id": "fit", "name": "Functional fit to the 32 agreed requirements", "weight": 40},
+    {"id": "soc2", "name": "SOC 2 Type II report", "weight": 30},
+    {"id": "cost", "name": "Total cost over 3 years", "weight": 20},
+    {"id": "exit", "name": "Exit risk", "weight": 10}
+  ]
+}
