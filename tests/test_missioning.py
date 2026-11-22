@@ -303,7 +303,7 @@ MISSIONS = SKILL / "reference" / "missions"
 HEADINGS = ["When to use", "Skills", "Steps", "Human gates", "Definition of Done", "Red flags"]
 # Skills the research plans for later waves. When one is built, update the playbooks that name it.
 PLANNED = (
-    "roadmapping", "researching", "steering", "releasing", "architecting", "reviewing-code",
+    "roadmapping", "researching", "steering", "reviewing-code",
     "threat-modelling", "campaigning", "scanning-vulnerabilities", "provisioning", "monitoring",
     "investigating-incidents", "assessing-products",
 )

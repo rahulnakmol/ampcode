@@ -22,6 +22,9 @@ the skill explicitly when you want it, and ask Amp which skill it is using if un
 | Turn notes, transcripts, minutes and drafts into evidence and a confirmed intent | **synthesizing** | synthesize these notes, what are they really asking for, prepare the kickoff or grooming session | `evidence.md` with cited evidence; `intake.md` with the intent, where each ask goes in the backlog, and the next session's agenda |
 | Write a PRD, process-change brief or campaign brief | **specifying** | write a PRD, draft the brief, complete this PRD | `prd.md` with drivers, measurable goals, requirements and criteria; initiative seeded in the backlog |
 | Groom a backlog of executable stories | **grooming** | groom, refine, break down, split, size, prioritise, triage feedback | `backlog.json` that passes the contract and Definition of Ready; trace report |
+| Write a technical design with contracts, decisions and measurable quality targets | **architecting** | technical design, architecture, ADR, NFRs, API contract, data platform design | `design.md` with contracts, ADRs and NFRs (number, unit, test) checked by `design_check.py`; a threat-model link when trust boundaries change |
+| Review a diff or pull request adversarially before it merges | **interrogating-changes** | interrogate this change, adversarial review, review gate, review this PR against its criteria | A finding ledger with proven, located findings, regressions apart from old defects, a lowered-bar check, and a verdict tied to the exact patch |
+| Promote, tag and release with a rollback plan | **releasing** | rolling snapshot, stable release, promote dev to rolling, release notes, rollback plan | A read-only promotion plan with a digest, release notes, and a GO or NO-GO that requires a rollback plan |
 | Publish a backlog and collect sign-off | **syncing** | sync to GitHub, export to Excel, pull comments and approvals | Issues, sub-issues, milestones, Project items or a workbook; sign-offs and feedback back in the file |
 | Run an enterprise functional-discovery engagement | **blueprinting** | start or resume a consulting engagement, functional discovery, ERP/CRM workshops | Retained evidence, decision lineage, explicit gaps and coordinated functional handoffs |
 | Prepare client workshops and interpret supplied evidence | **discovering-requirements** | workshop agenda, client questionnaire, attributed transcript, debrief | Cited findings, contradictions and owned follow-up questions |
@@ -312,6 +315,19 @@ an export is not permission to share. Qualification is synthetic/redacted, not p
 
 Follow [Start a Blueprinting engagement](blueprinting.md) for the complete kickoff prompt,
 preview/confirmation boundary, domain choices, resume prompt and current limits.
+
+## Engineering, security and operations
+
+- **architecting:** "Use architecting to design the webhook delivery service in `services/hooks`:
+  contracts, ADRs and NFRs with numbers." It runs `scripts/design_check.py` on the design. In the
+  read-only Archi or Darci mode it gives you the command and marks the check "not run".
+- **interrogating-changes:** "Use interrogating-changes on `origin/dev...HEAD` (from the merge-base), with
+  the acceptance criteria in `docs/brief.md`." A fresh reviewer gets the diff and the criteria,
+  never the author's claims. `scripts/review_ledger.py verdict` ties the verdict to the patch, and
+  `scripts/floor_guard.py` flags lowered bars such as new skips or silenced checkers.
+- **releasing:** "Use releasing to plan a rolling snapshot of `dev`." `scripts/release_plan.py
+  plan` only reads git; a promotion runs only with your approval of the exact plan, or when a
+  mission contract pre-authorizes it.
 
 ## Combine skills without unnecessary ceremony
 

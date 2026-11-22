@@ -14,6 +14,14 @@ For client workshops, functional specifications, operating models and pre-sales/
 
 Oracle and other specialists retain Amp's automatic model routing. No Fast or Pro feature is requested by these definitions. Normal Amp model usage and orb costs still apply. Model choice is a starting configuration, not a performance guarantee.
 
+## Archi and Darci follow the `architecting` skill
+
+Archi and Darci are thin wrappers. Each mode loads the [`architecting`](../skills/architecting/SKILL.md) skill and follows it. Darci also follows the skill's `reference/data-and-ai.md`. The skill holds the design method: the interview, the technical remit, the design format, ADRs and measurable NFRs. The role files keep only the persona and the limits of the mode.
+
+- **Install the skill.** The modes need `architecting` in your Amp Personal Skills. It is published there after this milestone. Until then, or when the skill is missing, the mode says that it cannot load the skill and advises from the advisory contract only.
+- **Other hosts.** The skill is not tied to these modes. Other Amp modes, and other agent hosts that read skills, can use it directly.
+- **No shell checks.** The modes still have no shell. They cannot run `design_check.py`. They give you the exact command and label the check "not run". Run the command yourself after you save the design.
+
 ## Install and verify
 
 The GitHub repository is the source of truth. **Cloning or pushing it does not publish these modes to ampcode.com.**
@@ -24,7 +32,7 @@ For personal use across projects, publish the complete `plugins/advisory-team/` 
 amp plugins repositories
 ```
 
-Use the printed `amp clone` command and keep the clone under `~/.cache/amp/repositories/ampcode.com-user-plugins`. Preserve any existing local changes; do not reset a dirty publication checkout. Copy all five files, including the Markdown instructions. Review the diff, commit it, and push only after explicit approval. No separate Personal Skills publication is needed for this plugin.
+Use the printed `amp clone` command and keep the clone under `~/.cache/amp/repositories/ampcode.com-user-plugins`. Preserve any existing local changes; do not reset a dirty publication checkout. Copy all five files, including the Markdown instructions. Review the diff, commit it, and push only after explicit approval. Archi and Darci also need the `architecting` skill in your Amp Personal Skills repository; publish it separately, after explicit approval.
 
 After publication, new threads pick up the plugin. Ask Amp to reload plugins in an existing thread, or run `plugins: reload` from the command palette. Verify that all three modes appear in the full mode picker. Existing Swift, Weave and Prime modes are unaffected. If a mode is absent, check the publication destination, copied Markdown files, plugin load errors, and reload status.
 
@@ -74,7 +82,7 @@ To skip the interview:
 
 > Work autonomously from this brief. State assumptions and recommend one option. Identify decisions that need my confirmation before implementation.
 
-Expected output: recommendation, constraints, alternatives and tradeoffs, boundaries/diagrams, risks, phased implementation, validation and rollback. Guidance is ASD-STE100-inspired, not certified compliance.
+Expected output: recommendation, constraints, alternatives and tradeoffs, boundaries/diagrams, ADRs, NFRs with numbers and units, risks, phased implementation, validation and rollback. The design follows the `architecting` format, with `design_check.py: not run` and the command to run it. Guidance is ASD-STE100-inspired, not certified compliance.
 
 ## Work with Darci
 
@@ -86,7 +94,7 @@ For agentic data systems:
 
 Provide sanitized schemas, metric definitions, query plans and architecture proposals. Never paste credentials or connection strings. Darci separates time to first insight, query latency, dashboard responsiveness, freshness and retrieval quality. It should propose measurable scaling triggers instead of imposing a user-count threshold.
 
-Expected output: business-to-metric mapping, data/evidence flows, model and semantic contracts, platform decisions, governance, evaluation and an incremental delivery plan.
+Expected output: business-to-metric mapping, data/evidence flows, model and semantic contracts, platform decisions, governance, evaluation and an incremental delivery plan, in the `architecting` design format with the check labelled "not run".
 
 ## Work with Opsci
 
@@ -120,7 +128,7 @@ Reports are returned in chat. A host may save requested Markdown/HTML to an appr
 
 ## Change models and evaluate updates
 
-Model pins live in `plugins/advisory-team/index.ts`; behavior lives in the neighboring Markdown files. Discover current supported IDs and efforts before changing a pin:
+Model pins live in `plugins/advisory-team/index.ts`; behavior lives in the neighboring Markdown files and, for Archi and Darci, in the `architecting` skill. Discover current supported IDs and efforts before changing a pin:
 
 ```sh
 amp plugins show-agent-options --json

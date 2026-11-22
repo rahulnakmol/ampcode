@@ -311,6 +311,23 @@ and register it in the checker's `PLAYBOOKS`; change charter fields in the check
 [`reference/charter.md`](./skills/missioning/reference/charter.md) together; add a host column to
 `hosts.md`. Simulated scenario runs are in [`evals/missioning/`](./evals/missioning/README.md).
 
+## Engineering, security and operations skills
+
+Waves 1 and 2 of the mission skill plan add skills that the `missioning` playbooks for software
+delivery, security review, infrastructure, delivery operations and product assessment call. Each
+skill works on its own; each has deterministic checks in `scripts/` (Python standard library) and a
+fresh-agent evaluation in `evals/<skill>/`. Skills that could promote, apply, write to a tracker
+or publish run that effect only when the mission contract pre-authorizes it or the owner approves
+the exact plan.
+
+| Task | Skill |
+| --- | --- |
+| Technical design: contracts, ADRs, measurable NFRs; data and AI architecture | [architecting](./skills/architecting/SKILL.md) |
+| Adversarial fresh-context review of a diff or PR, with proven findings and a patch-bound verdict | [interrogating-changes](./skills/interrogating-changes/SKILL.md) |
+| Promotion from dev to rolling to main, release notes, rollback before GO | [releasing](./skills/releasing/SKILL.md) |
+
+Archi and Darci load `architecting`; install it in Personal skills before using those modes.
+
 ## Planning
 
 A planning mission is for a product, operations, or marketing strategist who is also the
