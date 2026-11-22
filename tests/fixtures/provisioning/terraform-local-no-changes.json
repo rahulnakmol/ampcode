@@ -1,0 +1,559 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.17.2",
+  "planned_values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "local_file.report",
+          "mode": "managed",
+          "type": "local_file",
+          "name": "report",
+          "provider_name": "registry.terraform.io/hashicorp/local",
+          "schema_version": 0,
+          "values": {
+            "content": "report v1\n",
+            "content_base64": null,
+            "content_base64sha256": "fDWuZxrRXcqCwtjRMIl2vVibYFofRpGhEzXPnwUhjeQ=",
+            "content_base64sha512": "UFAhx4+Foeae8bm9VZ0pQpTcfdAenBlDMi/Syq4F7egzWPfRpGhZ3ev1fdqXYouDE+BXIEFKCXvFPNkmbpj2TA==",
+            "content_md5": "18657d8fcb3c4a41e47cc9d78c4e1401",
+            "content_sha1": "c34688c88a38542609f167932993a1d00940537b",
+            "content_sha256": "7c35ae671ad15dca82c2d8d1308976bd589b605a1f4691a11335cf9f05218de4",
+            "content_sha512": "505021c78f85a1e69ef1b9bd559d294294dc7dd01e9c1943322fd2caae05ede83358f7d1a46859ddebf57dda97628b8313e05720414a097bc53cd9266e98f64c",
+            "directory_permission": "0777",
+            "file_permission": "0777",
+            "filename": "./out/report.txt",
+            "id": "c34688c88a38542609f167932993a1d00940537b",
+            "sensitive_content": null,
+            "source": null
+          },
+          "sensitive_values": {
+            "sensitive_content": true
+          }
+        },
+        {
+          "address": "random_pet.name",
+          "mode": "managed",
+          "type": "random_pet",
+          "name": "name",
+          "provider_name": "registry.terraform.io/hashicorp/random",
+          "schema_version": 0,
+          "values": {
+            "id": "apt-walrus",
+            "keepers": {
+              "revision": "1"
+            },
+            "length": 2,
+            "prefix": null,
+            "separator": "-"
+          },
+          "sensitive_values": {
+            "keepers": {}
+          }
+        },
+        {
+          "address": "terraform_data.keep_a",
+          "mode": "managed",
+          "type": "terraform_data",
+          "name": "keep_a",
+          "provider_name": "terraform.io/builtin/terraform",
+          "schema_version": 0,
+          "values": {
+            "id": "15881891-e2f5-c183-b079-4634753227bc",
+            "input": "a",
+            "output": "a",
+            "store": null,
+            "triggers_replace": null
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "terraform_data.keep_b",
+          "mode": "managed",
+          "type": "terraform_data",
+          "name": "keep_b",
+          "provider_name": "terraform.io/builtin/terraform",
+          "schema_version": 0,
+          "values": {
+            "id": "de2ae619-ab25-06d7-5c7e-34e8a73e471f",
+            "input": "b",
+            "output": "b",
+            "store": null,
+            "triggers_replace": null
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "terraform_data.old",
+          "mode": "managed",
+          "type": "terraform_data",
+          "name": "old",
+          "provider_name": "terraform.io/builtin/terraform",
+          "schema_version": 0,
+          "values": {
+            "id": "3478dcb1-9ba5-b7a9-6ff0-e1333b1269ad",
+            "input": "retired next",
+            "output": "retired next",
+            "store": null,
+            "triggers_replace": null
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "terraform_data.settings",
+          "mode": "managed",
+          "type": "terraform_data",
+          "name": "settings",
+          "provider_name": "terraform.io/builtin/terraform",
+          "schema_version": 0,
+          "values": {
+            "id": "a56102eb-08fb-9f06-cb34-4efb5c7de024",
+            "input": "v1",
+            "output": "v1",
+            "store": null,
+            "triggers_replace": null
+          },
+          "sensitive_values": {}
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "local_file.report",
+      "mode": "managed",
+      "type": "local_file",
+      "name": "report",
+      "provider_name": "registry.terraform.io/hashicorp/local",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "content": "report v1\n",
+          "content_base64": null,
+          "content_base64sha256": "fDWuZxrRXcqCwtjRMIl2vVibYFofRpGhEzXPnwUhjeQ=",
+          "content_base64sha512": "UFAhx4+Foeae8bm9VZ0pQpTcfdAenBlDMi/Syq4F7egzWPfRpGhZ3ev1fdqXYouDE+BXIEFKCXvFPNkmbpj2TA==",
+          "content_md5": "18657d8fcb3c4a41e47cc9d78c4e1401",
+          "content_sha1": "c34688c88a38542609f167932993a1d00940537b",
+          "content_sha256": "7c35ae671ad15dca82c2d8d1308976bd589b605a1f4691a11335cf9f05218de4",
+          "content_sha512": "505021c78f85a1e69ef1b9bd559d294294dc7dd01e9c1943322fd2caae05ede83358f7d1a46859ddebf57dda97628b8313e05720414a097bc53cd9266e98f64c",
+          "directory_permission": "0777",
+          "file_permission": "0777",
+          "filename": "./out/report.txt",
+          "id": "c34688c88a38542609f167932993a1d00940537b",
+          "sensitive_content": null,
+          "source": null
+        },
+        "after": {
+          "content": "report v1\n",
+          "content_base64": null,
+          "content_base64sha256": "fDWuZxrRXcqCwtjRMIl2vVibYFofRpGhEzXPnwUhjeQ=",
+          "content_base64sha512": "UFAhx4+Foeae8bm9VZ0pQpTcfdAenBlDMi/Syq4F7egzWPfRpGhZ3ev1fdqXYouDE+BXIEFKCXvFPNkmbpj2TA==",
+          "content_md5": "18657d8fcb3c4a41e47cc9d78c4e1401",
+          "content_sha1": "c34688c88a38542609f167932993a1d00940537b",
+          "content_sha256": "7c35ae671ad15dca82c2d8d1308976bd589b605a1f4691a11335cf9f05218de4",
+          "content_sha512": "505021c78f85a1e69ef1b9bd559d294294dc7dd01e9c1943322fd2caae05ede83358f7d1a46859ddebf57dda97628b8313e05720414a097bc53cd9266e98f64c",
+          "directory_permission": "0777",
+          "file_permission": "0777",
+          "filename": "./out/report.txt",
+          "id": "c34688c88a38542609f167932993a1d00940537b",
+          "sensitive_content": null,
+          "source": null
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "sensitive_content": true
+        },
+        "after_sensitive": {
+          "sensitive_content": true
+        }
+      }
+    },
+    {
+      "address": "random_pet.name",
+      "mode": "managed",
+      "type": "random_pet",
+      "name": "name",
+      "provider_name": "registry.terraform.io/hashicorp/random",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "id": "apt-walrus",
+          "keepers": {
+            "revision": "1"
+          },
+          "length": 2,
+          "prefix": null,
+          "separator": "-"
+        },
+        "after": {
+          "id": "apt-walrus",
+          "keepers": {
+            "revision": "1"
+          },
+          "length": 2,
+          "prefix": null,
+          "separator": "-"
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "keepers": {}
+        },
+        "after_sensitive": {
+          "keepers": {}
+        }
+      }
+    },
+    {
+      "address": "terraform_data.keep_a",
+      "mode": "managed",
+      "type": "terraform_data",
+      "name": "keep_a",
+      "provider_name": "terraform.io/builtin/terraform",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "id": "15881891-e2f5-c183-b079-4634753227bc",
+          "input": "a",
+          "output": "a",
+          "store": null,
+          "triggers_replace": null
+        },
+        "after": {
+          "id": "15881891-e2f5-c183-b079-4634753227bc",
+          "input": "a",
+          "output": "a",
+          "store": null,
+          "triggers_replace": null
+        },
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "terraform_data.keep_b",
+      "mode": "managed",
+      "type": "terraform_data",
+      "name": "keep_b",
+      "provider_name": "terraform.io/builtin/terraform",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "id": "de2ae619-ab25-06d7-5c7e-34e8a73e471f",
+          "input": "b",
+          "output": "b",
+          "store": null,
+          "triggers_replace": null
+        },
+        "after": {
+          "id": "de2ae619-ab25-06d7-5c7e-34e8a73e471f",
+          "input": "b",
+          "output": "b",
+          "store": null,
+          "triggers_replace": null
+        },
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "terraform_data.old",
+      "mode": "managed",
+      "type": "terraform_data",
+      "name": "old",
+      "provider_name": "terraform.io/builtin/terraform",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "id": "3478dcb1-9ba5-b7a9-6ff0-e1333b1269ad",
+          "input": "retired next",
+          "output": "retired next",
+          "store": null,
+          "triggers_replace": null
+        },
+        "after": {
+          "id": "3478dcb1-9ba5-b7a9-6ff0-e1333b1269ad",
+          "input": "retired next",
+          "output": "retired next",
+          "store": null,
+          "triggers_replace": null
+        },
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "terraform_data.settings",
+      "mode": "managed",
+      "type": "terraform_data",
+      "name": "settings",
+      "provider_name": "terraform.io/builtin/terraform",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "id": "a56102eb-08fb-9f06-cb34-4efb5c7de024",
+          "input": "v1",
+          "output": "v1",
+          "store": null,
+          "triggers_replace": null
+        },
+        "after": {
+          "id": "a56102eb-08fb-9f06-cb34-4efb5c7de024",
+          "input": "v1",
+          "output": "v1",
+          "store": null,
+          "triggers_replace": null
+        },
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {}
+      }
+    }
+  ],
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.17.2",
+    "values": {
+      "root_module": {
+        "resources": [
+          {
+            "address": "local_file.report",
+            "mode": "managed",
+            "type": "local_file",
+            "name": "report",
+            "provider_name": "registry.terraform.io/hashicorp/local",
+            "schema_version": 0,
+            "values": {
+              "content": "report v1\n",
+              "content_base64": null,
+              "content_base64sha256": "fDWuZxrRXcqCwtjRMIl2vVibYFofRpGhEzXPnwUhjeQ=",
+              "content_base64sha512": "UFAhx4+Foeae8bm9VZ0pQpTcfdAenBlDMi/Syq4F7egzWPfRpGhZ3ev1fdqXYouDE+BXIEFKCXvFPNkmbpj2TA==",
+              "content_md5": "18657d8fcb3c4a41e47cc9d78c4e1401",
+              "content_sha1": "c34688c88a38542609f167932993a1d00940537b",
+              "content_sha256": "7c35ae671ad15dca82c2d8d1308976bd589b605a1f4691a11335cf9f05218de4",
+              "content_sha512": "505021c78f85a1e69ef1b9bd559d294294dc7dd01e9c1943322fd2caae05ede83358f7d1a46859ddebf57dda97628b8313e05720414a097bc53cd9266e98f64c",
+              "directory_permission": "0777",
+              "file_permission": "0777",
+              "filename": "./out/report.txt",
+              "id": "c34688c88a38542609f167932993a1d00940537b",
+              "sensitive_content": null,
+              "source": null
+            },
+            "sensitive_values": {
+              "sensitive_content": true
+            }
+          },
+          {
+            "address": "random_pet.name",
+            "mode": "managed",
+            "type": "random_pet",
+            "name": "name",
+            "provider_name": "registry.terraform.io/hashicorp/random",
+            "schema_version": 0,
+            "values": {
+              "id": "apt-walrus",
+              "keepers": {
+                "revision": "1"
+              },
+              "length": 2,
+              "prefix": null,
+              "separator": "-"
+            },
+            "sensitive_values": {
+              "keepers": {}
+            }
+          },
+          {
+            "address": "terraform_data.keep_a",
+            "mode": "managed",
+            "type": "terraform_data",
+            "name": "keep_a",
+            "provider_name": "terraform.io/builtin/terraform",
+            "schema_version": 0,
+            "values": {
+              "id": "15881891-e2f5-c183-b079-4634753227bc",
+              "input": "a",
+              "output": "a",
+              "store": null,
+              "triggers_replace": null
+            },
+            "sensitive_values": {}
+          },
+          {
+            "address": "terraform_data.keep_b",
+            "mode": "managed",
+            "type": "terraform_data",
+            "name": "keep_b",
+            "provider_name": "terraform.io/builtin/terraform",
+            "schema_version": 0,
+            "values": {
+              "id": "de2ae619-ab25-06d7-5c7e-34e8a73e471f",
+              "input": "b",
+              "output": "b",
+              "store": null,
+              "triggers_replace": null
+            },
+            "sensitive_values": {}
+          },
+          {
+            "address": "terraform_data.old",
+            "mode": "managed",
+            "type": "terraform_data",
+            "name": "old",
+            "provider_name": "terraform.io/builtin/terraform",
+            "schema_version": 0,
+            "values": {
+              "id": "3478dcb1-9ba5-b7a9-6ff0-e1333b1269ad",
+              "input": "retired next",
+              "output": "retired next",
+              "store": null,
+              "triggers_replace": null
+            },
+            "sensitive_values": {}
+          },
+          {
+            "address": "terraform_data.settings",
+            "mode": "managed",
+            "type": "terraform_data",
+            "name": "settings",
+            "provider_name": "terraform.io/builtin/terraform",
+            "schema_version": 0,
+            "values": {
+              "id": "a56102eb-08fb-9f06-cb34-4efb5c7de024",
+              "input": "v1",
+              "output": "v1",
+              "store": null,
+              "triggers_replace": null
+            },
+            "sensitive_values": {}
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "local": {
+        "name": "local",
+        "full_name": "registry.terraform.io/hashicorp/local",
+        "version_constraint": "2.5.3"
+      },
+      "random": {
+        "name": "random",
+        "full_name": "registry.terraform.io/hashicorp/random",
+        "version_constraint": "3.7.2"
+      },
+      "terraform": {
+        "name": "terraform",
+        "full_name": "terraform.io/builtin/terraform"
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "local_file.report",
+          "mode": "managed",
+          "type": "local_file",
+          "name": "report",
+          "provider_config_key": "local",
+          "expressions": {
+            "content": {
+              "constant_value": "report v1\n"
+            },
+            "filename": {
+              "references": [
+                "path.module"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "random_pet.name",
+          "mode": "managed",
+          "type": "random_pet",
+          "name": "name",
+          "provider_config_key": "random",
+          "expressions": {
+            "keepers": {
+              "constant_value": {
+                "revision": "1"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "terraform_data.keep_a",
+          "mode": "managed",
+          "type": "terraform_data",
+          "name": "keep_a",
+          "provider_config_key": "terraform",
+          "expressions": {
+            "input": {
+              "constant_value": "a"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "terraform_data.keep_b",
+          "mode": "managed",
+          "type": "terraform_data",
+          "name": "keep_b",
+          "provider_config_key": "terraform",
+          "expressions": {
+            "input": {
+              "constant_value": "b"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "terraform_data.old",
+          "mode": "managed",
+          "type": "terraform_data",
+          "name": "old",
+          "provider_config_key": "terraform",
+          "expressions": {
+            "input": {
+              "constant_value": "retired next"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "terraform_data.settings",
+          "mode": "managed",
+          "type": "terraform_data",
+          "name": "settings",
+          "provider_config_key": "terraform",
+          "expressions": {
+            "input": {
+              "constant_value": "v1"
+            }
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "timestamp": "2026-11-22T19:12:29Z",
+  "applyable": false,
+  "complete": true,
+  "errored": false
+}

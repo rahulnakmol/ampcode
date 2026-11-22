@@ -1,0 +1,169 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.17.2",
+  "errored": false,
+  "complete": true,
+  "applyable": true,
+  "resource_drift": [
+    {
+      "address": "azurerm_storage_account.logs",
+      "mode": "managed",
+      "type": "azurerm_storage_account",
+      "name": "logs",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["update"],
+        "before": {"name": "stordersprodlogs", "tags": {"env": "prod"}},
+        "after": {"name": "stordersprodlogs", "tags": {"env": "prod", "owner": "set-in-portal"}},
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {}
+      }
+    }
+  ],
+  "resource_changes": [
+    {
+      "address": "azurerm_mssql_database.orders",
+      "mode": "managed",
+      "type": "azurerm_mssql_database",
+      "name": "orders",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["delete", "create"],
+        "before": {"name": "orders", "collation": "SQL_Latin1_General_CP1_CI_AS", "sku_name": "S1"},
+        "after": {"name": "orders", "collation": "Latin1_General_100_CI_AS_SC_UTF8", "sku_name": "S1"},
+        "after_unknown": {"id": true},
+        "before_sensitive": {},
+        "after_sensitive": {},
+        "replace_paths": [["collation"]]
+      },
+      "action_reason": "replace_because_cannot_update"
+    },
+    {
+      "address": "azurerm_storage_account.logs",
+      "mode": "managed",
+      "type": "azurerm_storage_account",
+      "name": "logs",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["update"],
+        "before": {"name": "stordersprodlogs", "tags": {"env": "prod", "owner": "set-in-portal"}},
+        "after": {"name": "stordersprodlogs", "tags": {"env": "prod"}},
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_db_instance.orders",
+      "mode": "managed",
+      "type": "aws_db_instance",
+      "name": "orders",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["delete"],
+        "before": {"identifier": "orders-prod", "engine": "postgres", "allocated_storage": 100, "deletion_protection": false},
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": false
+      },
+      "action_reason": "delete_because_no_resource_config"
+    },
+    {
+      "address": "aws_s3_bucket.assets",
+      "mode": "managed",
+      "type": "aws_s3_bucket",
+      "name": "assets",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {"bucket": "orders-prod-assets", "force_destroy": false},
+        "after_unknown": {"arn": true, "id": true},
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_security_group.web",
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "web",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["delete"],
+        "before": {"name": "orders-web", "description": "Web tier"},
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": false
+      },
+      "action_reason": "delete_because_no_resource_config"
+    },
+    {
+      "address": "google_sql_database_instance.main",
+      "mode": "managed",
+      "type": "google_sql_database_instance",
+      "name": "main",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "change": {
+        "actions": ["create", "delete"],
+        "before": {"name": "orders-main", "region": "europe-west1", "database_version": "POSTGRES_15"},
+        "after": {"name": "orders-main", "region": "europe-west2", "database_version": "POSTGRES_15"},
+        "after_unknown": {"self_link": true},
+        "before_sensitive": {},
+        "after_sensitive": {},
+        "replace_paths": [["region"]]
+      },
+      "action_reason": "replace_because_cannot_update"
+    },
+    {
+      "address": "google_storage_bucket.exports",
+      "mode": "managed",
+      "type": "google_storage_bucket",
+      "name": "exports",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "change": {
+        "actions": ["delete"],
+        "before": {"name": "orders-prod-exports", "location": "EU", "force_destroy": false},
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": false
+      },
+      "action_reason": "delete_because_no_resource_config"
+    },
+    {
+      "address": "google_compute_instance.worker",
+      "mode": "managed",
+      "type": "google_compute_instance",
+      "name": "worker",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "change": {
+        "actions": ["no-op"],
+        "before": {"name": "orders-worker", "machine_type": "e2-standard-2"},
+        "after": {"name": "orders-worker", "machine_type": "e2-standard-2"},
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "data.google_project.current",
+      "mode": "data",
+      "type": "google_project",
+      "name": "current",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "change": {
+        "actions": ["read"],
+        "before": null,
+        "after": {},
+        "after_unknown": {"number": true},
+        "before_sensitive": false,
+        "after_sensitive": {}
+      },
+      "action_reason": "read_because_dependency_pending"
+    }
+  ]
+}
