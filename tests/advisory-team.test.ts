@@ -157,3 +157,92 @@ describe('Archi and Darci load the architecting skill (W2)', () => {
 		expect(section).toMatch(/goldfishing/)
 	})
 })
+
+const opsci = read('plugins/advisory-team/opsci.md')
+const incidents = read('skills/investigating-incidents/SKILL.md')
+const hosts = read('skills/investigating-incidents/reference/read-only-hosts.md')
+
+describe('Opsci loads the investigating-incidents skill (W14)', () => {
+	test('W14.1 Opsci names investigating-incidents and stays advisory', () => {
+		expect(opsci).toContain('Load the `investigating-incidents` skill and follow it')
+		expect(opsci).toMatch(/never write files/i)
+		expect(opsci).toContain('If the `investigating-incidents` skill cannot be loaded, say so in your answer. Then advise from the advisory contract above.')
+	})
+
+	test('W14.2 opsci.md has at most 20 lines and keeps its role-specific limits', () => {
+		expect(opsci.replace(/\n$/, '').split('\n').length).toBeLessThanOrEqual(20)
+		expect(opsci).toContain('# Opsci')
+		expect(opsci).toContain('Never execute mitigation, change alert thresholds, restart services, deploy, or run destructive diagnostics')
+		expect(opsci).toContain('Do not claim a connector is installed.')
+		expect(opsci).toContain('Do not ask for credentials or silently delegate access to another agent.')
+		expect(opsci).toContain('Do not repeat secret-bearing log lines or use customer identifiers in web searches.')
+	})
+
+	test('W14.3 "Maintain competing hypotheses" is in the skill, not in opsci.md', () => {
+		expect(incidents).toContain('Maintain competing hypotheses')
+		expect(opsci).not.toContain('Maintain competing hypotheses')
+		expect(opsci).not.toContain('Correlate logs, metrics, traces')
+	})
+
+	test('W14.4 (X3) Opsci keeps the tool allowlist and "Never modify source"', () => {
+		const shared = read('plugins/advisory-team/shared.md')
+		expect(shared).toContain('Never modify source, configuration, databases, infrastructure, or remote state.')
+		const opsciAgent = setup().agents[2]
+		expect(opsciAgent.name).toBe('Opsci')
+		expect(opsciAgent.instructions).toBe(shared + '\n\n' + opsci)
+		expect(opsciAgent.tools).toEqual([
+			'Read', 'finder', 'librarian', 'oracle', 'read_thread',
+			'web_search', 'read_web_page', 'view_media', 'skill',
+		])
+	})
+
+	test('X7 investigating-incidents has a "Without a shell" rule that Opsci follows', () => {
+		const match = incidents.match(/^#+ Without a shell\n([\s\S]*?)(?=^#+ )/m)
+		expect(match).not.toBeNull()
+		expect(match![1]).toContain('pir_check.py')
+		expect(match![1]).toContain('not run')
+		expect(opsci).toContain('"Without a shell"')
+	})
+
+	test('W14.5 host wrappers list only read and search tools, with a check-the-names label', () => {
+		const block = (heading: string) => {
+			const section = hosts.split(/^## /m).find(s => s.startsWith(heading))
+			expect(section).toBeDefined()
+			return section!
+		}
+		const claude = block('Claude Code')
+		const tools = claude.match(/^tools: (.+)$/m)
+		expect(tools).not.toBeNull()
+		expect(tools![1].split(',').map(t => t.trim())).toEqual(['Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch'])
+		const copilot = block('Copilot')
+		const list = copilot.match(/^tools: \[(.+)\]$/m)
+		expect(list).not.toBeNull()
+		const names = list![1].split(',').map(t => t.trim().replace(/^["']|["']$/g, ''))
+		expect(names).toEqual(['read', 'search', 'web'])
+		expect(copilot).toMatch(/fetch/)
+		for (const section of [claude, copilot]) {
+			expect(section).toContain("check the tool names against your host's documentation")
+			expect(section).toContain('investigating-incidents')
+			for (const forbidden of [/^tools:.*\b(Write|Edit|MultiEdit|Bash|NotebookEdit|Task|Agent)\b/m, /^tools:.*\b(edit|execute|shell|agent)\b/m]) {
+				expect(section).not.toMatch(forbidden)
+			}
+		}
+	})
+})
+
+describe('Opsci fallback and host wrappers (W14 review r1)', () => {
+	test('N4 the fallback keeps the two rules the advisory contract lacks, within 20 lines', () => {
+		expect(opsci).toContain('Separate immediate mitigation from durable fixes.')
+		expect(opsci).toContain('No claim of executed queries or confirmed fixes without evidence.')
+		expect(opsci.replace(/\n$/, '').split('\n').length).toBeLessThanOrEqual(20)
+	})
+
+	test('N5 wrappers say where the skill goes and what web cannot do on GitHub.com', () => {
+		const claude = hosts.split(/^## /m).find(s => s.startsWith('Claude Code'))!
+		expect(claude).toContain('.claude/skills/investigating-incidents/')
+		expect(claude).toContain('~/.claude/skills/investigating-incidents/')
+		const copilot = hosts.split(/^## /m).find(s => s.startsWith('Copilot'))!
+		expect(copilot).toMatch(/not applicable for Copilot (cloud agent|in the cloud)/)
+		expect(copilot).toMatch(/on GitHub\.com[^.]*cannot fetch/i)
+	})
+})

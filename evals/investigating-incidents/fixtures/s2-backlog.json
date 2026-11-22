@@ -1,0 +1,134 @@
+{
+  "contract": "backlog/v1",
+  "title": "Invoicing reliability",
+  "approvers": [
+    {
+      "name": "Elena Petrova (Billing lead)",
+      "github": "elena-p"
+    }
+  ],
+  "items": [
+    {
+      "id": "I-1",
+      "type": "initiative",
+      "title": "Customers always get their invoices",
+      "domain": "product",
+      "problem": "Invoice failures created 60 support tickets in Q3 2026.",
+      "drivers": [
+        {
+          "id": "D-1",
+          "statement": "Missing invoices delay customer payments"
+        }
+      ],
+      "outcome": "Every invoice PDF is available within 1 minute of billing.",
+      "owner": "Elena Petrova"
+    },
+    {
+      "id": "G-1",
+      "type": "goal",
+      "parent": "I-1",
+      "title": "Invoice PDFs are generated on the first try",
+      "metric": "Share of invoice PDFs generated on the first try, invoice service logs",
+      "baseline": "98.1%",
+      "target": "at least 99.9%",
+      "by": "2027-03-31",
+      "drivers": [
+        "D-1"
+      ],
+      "trace": [
+        "R-1"
+      ]
+    },
+    {
+      "id": "F-1",
+      "type": "feature",
+      "parent": "G-1",
+      "title": "Dependable invoice PDF generation",
+      "description": "Invoice PDFs generate on every release, for every customer.",
+      "benefit_hypothesis": "We believe dependable generation will cut invoice tickets; we will know when first-try generation reaches 99.9%.",
+      "wsjf": {
+        "business_value": 8,
+        "time_criticality": 5,
+        "risk_reduction": 8,
+        "job_size": 3
+      },
+      "owner": "Elena Petrova",
+      "trace": [
+        "R-1"
+      ]
+    },
+    {
+      "id": "S-1",
+      "type": "story",
+      "parent": "F-1",
+      "title": "Invoice PDFs embed the customer logo",
+      "as_a": "billing administrator",
+      "i_want": "the customer logo on each invoice PDF",
+      "so_that": "customers recognise our invoices",
+      "work": "build",
+      "acceptance": [
+        {
+          "id": "S-1.1",
+          "given": "a customer with a logo",
+          "when": "an invoice PDF is generated",
+          "then": "the logo appears on page 1 within 2 seconds of the request"
+        }
+      ],
+      "priority": "should",
+      "size": "S",
+      "status": "ready",
+      "owner": "Elena Petrova",
+      "trace": [
+        "R-1"
+      ]
+    },
+    {
+      "id": "B-1",
+      "type": "bug",
+      "parent": "F-1",
+      "title": "Invoice totals round half-cents down",
+      "observed": "A total of 10.005 shows as 10.00.",
+      "expected": "It shows as 10.01.",
+      "steps": [
+        "Bill 10.005"
+      ],
+      "work": "build",
+      "acceptance": [
+        {
+          "id": "B-1.1",
+          "given": "a total of 10.005",
+          "when": "the PDF is generated",
+          "then": "the total reads 10.01"
+        }
+      ],
+      "priority": "should",
+      "urgency": "medium",
+      "size": "XS",
+      "status": "draft"
+    },
+    {
+      "id": "B-2",
+      "type": "bug",
+      "parent": "F-1",
+      "title": "Invoice date uses the server time zone",
+      "observed": "Invoices billed at 23:30 IST show the previous day.",
+      "expected": "The date is the customer's local date.",
+      "steps": [
+        "Bill at 23:30 IST"
+      ],
+      "work": "build",
+      "acceptance": [
+        {
+          "id": "B-2.1",
+          "given": "an invoice billed at 23:30 IST",
+          "when": "the PDF is generated",
+          "then": "the date shown is the billing day in 1 of 1 cases"
+        }
+      ],
+      "priority": "could",
+      "urgency": "low",
+      "size": "XS",
+      "status": "draft"
+    }
+  ]
+}
