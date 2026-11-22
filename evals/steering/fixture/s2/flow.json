@@ -1,0 +1,16 @@
+{
+  "contract": "flow/v1",
+  "items": [
+    { "id": "S-1", "started": "2026-10-30", "finished": "2026-11-04" },
+    { "id": "S-2", "started": "2026-11-02", "finished": "2026-11-06" },
+    { "id": "S-3", "started": "2026-11-03", "finished": "2026-11-12" },
+    { "id": "S-4", "started": "2026-11-09", "finished": "2026-11-13" },
+    { "id": "S-5", "started": "2026-11-10", "finished": "2026-11-19" },
+    { "id": "S-6", "started": "2026-11-16", "finished": "2026-11-20" },
+    { "id": "S-7", "started": "2026-11-11", "finished": null },
+    { "id": "S-8", "started": "2026-11-17", "finished": null },
+    { "id": "S-9", "started": "2026-11-18", "finished": null },
+    { "id": "S-10", "started": "2026-11-23", "finished": null },
+    { "id": "S-11", "started": "2026-11-24", "finished": null }
+  ]
+}

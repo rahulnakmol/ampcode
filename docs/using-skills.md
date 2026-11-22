@@ -31,7 +31,8 @@ the skill explicitly when you want it, and ask Amp which skill it is using if un
 | Plan and apply infrastructure changes safely | **provisioning** | terraform plan, bicep what-if, change set, apply infrastructure, drift check | A change summary with counts and a digest, destructive stateful changes named, an apply only of the approved plan, then a read-back and drift check |
 | Turn NFRs into SLOs and alerts | **monitoring** | SLO, error budget, burn-rate alert, runbook, dashboards, synthetic checks | `slos.json` checked by `slo_check.py`, the fast and slow alert pairs, a runbook per alert, and each alert "not proven" until it fires outside production |
 | Investigate an incident and write its review | **investigating-incidents** | incident, outage, error spike, post-incident review, postmortem, root cause | Hypotheses with evidence and counter-evidence, mitigation apart from the durable fix, a review checked by `pir_check.py`, and its actions filed as draft bugs |
-| Publish a backlog and collect sign-off | **syncing** | sync to GitHub, export to Excel, pull comments and approvals | Issues, sub-issues, milestones, Project items or a workbook; sign-offs and feedback back in the file |
+| Publish a backlog and collect sign-off | **syncing** | sync to GitHub, Azure DevOps or Linear, export to Excel, pull comments and approvals | Tracker items with parent links and milestones or iterations, or a workbook; sign-offs and feedback back in the file |
+| Steer delivery week by week | **steering** | weekly steering, flow metrics, forecast, RAID log, status report, are we on track | Throughput, cycle time, aging work and a seeded forecast from `flow.py`; a log checked by `raid_check.py`; a five-line status and a full pack |
 | Run an enterprise functional-discovery engagement | **blueprinting** | start or resume a consulting engagement, functional discovery, ERP/CRM workshops | Retained evidence, decision lineage, explicit gaps and coordinated functional handoffs |
 | Prepare client workshops and interpret supplied evidence | **discovering-requirements** | workshop agenda, client questionnaire, attributed transcript, debrief | Cited findings, contradictions and owned follow-up questions |
 | Design business processes and operating models | **designing-functions** | as-is/to-be, roles, exceptions, handoffs, functional specification, kickoff | Traceable functional design, alternatives and acceptance gaps |
@@ -355,6 +356,9 @@ preview/confirmation boundary, domain choices, resume prompt and current limits.
 - **investigating-incidents:** "Use investigating-incidents: checkout errors rose after this
   morning's release." It works read-only from the evidence you give it; `scripts/pir_check.py
   check` validates the review and `bugs` files its actions in a `grooming` backlog. Opsci uses it.
+- **steering:** "Use steering for this week's review of the close initiative." `scripts/flow.py`
+  measures flow and forecasts from `flow.json` or a `gh issue list --json` export;
+  `scripts/raid_check.py` checks the log and the status. It writes to no tracker.
 
 ## Combine skills without unnecessary ceremony
 

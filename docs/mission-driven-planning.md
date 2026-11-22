@@ -110,7 +110,7 @@ python3 skills/syncing/scripts/sync.py excel skills/grooming/reference/examples/
 | GitHub sync (issues, sub-issues, labels, milestones, pull, status comment) | Built; unit-tested against an in-memory fake of the GitHub API |
 | GitHub Projects | Built: cards, fields (type, priority, urgency, size, readiness, rank score, schedule), a Roadmap view, and a backlog table. Unit-tested against a fake, and run against a live user Project on 2026-11-11 (first sync, a card edited in GitHub, a milestone date moved) |
 | Excel export | Built; tested by reading the workbook back |
-| Linear, Azure DevOps | Planned; mapping recorded in `skills/syncing/reference/trackers.md` |
+| Linear, Azure DevOps | Built; tested offline with fake transports; not tested live. Mapping in `skills/syncing/reference/trackers.md` |
 | Audio transcription | Not included: supply transcripts from your meeting tool |
 | Dedicated enterprise functional-discovery workshops | Use [Blueprinting](blueprinting.md); this planning workflow consumes evidence to produce a PRD and backlog |
 
