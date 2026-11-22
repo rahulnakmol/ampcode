@@ -1,6 +1,6 @@
 ---
 name: syncing
-description: "Copies a backlog.json (contract backlog/v1) into the tracker stakeholders use and reads their sign-off and feedback back: GitHub issues with sub-issues, labels, milestones, and an optional GitHub Project, a status comment showing what was agreed, delivered, and achieved, or an Excel workbook. Shows a read-only plan before every write and applies only that exact plan, never duplicates or overwrites edits made in the tracker, records /approve sign-offs from listed approvers, and files comments as feedback on the right feature. Use when asked to sync, push, publish, or export a groomed backlog to GitHub or Excel, pull stakeholder comments or approvals, update stakeholders on progress, or check what a sync would change. Linear and Azure DevOps adapters are planned, not built. Not for editing the backlog itself (use grooming)."
+description: "Copies a backlog.json (contract backlog/v1) into the tracker stakeholders use and reads their sign-off and feedback back: GitHub issues with sub-issues, labels, milestones, and an optional GitHub Project, a status comment showing what was agreed, delivered, and achieved, Azure DevOps work items or Linear issues (adapters not tested live), or an Excel workbook. Shows a read-only plan before every write and applies only that exact plan, never duplicates or overwrites edits made in the tracker, records /approve sign-offs from listed approvers, and files comments as feedback on the right feature. Use when asked to sync, push, publish, or export a groomed backlog to GitHub, Azure DevOps, Linear, or Excel, pull stakeholder comments or approvals, update stakeholders on progress, or check what a sync would change. Not for editing the backlog itself (use grooming)."
 ---
 
 # Syncing
@@ -26,8 +26,9 @@ with validation errors, and refuses an initiative whose `prd` file is missing.
 
 1. **Plan.** Run `plan` and show the user its output: labels and milestones to create, issues to
    create or update (with a diff), sub-issue links, conflicts, orphans, and the digest line.
-2. **Get approval.** Writing issues in a shared repository changes external state: apply only
-   after the user approves this plan.
+2. **Get approval.** Writing to a tracker is an outside effect: apply only when the mission
+   contract pre-authorizes that exact effect, or the owner approves the exact plan digest.
+   Outside a contract mission, the owner approves the exact plan. This holds for every tracker.
 3. **Apply exactly that plan.** `apply --expect <digest>` re-plans and refuses to write anything
    if the plan changed since the user saw it (someone edited GitHub or the file). It then
    records issue numbers, IDs, URLs, what it wrote, and `synced_at` in `backlog.json`. Commit
@@ -157,10 +158,33 @@ acceptance criteria (one row per criterion with its delivery result), feedback, 
 traceability gaps. It is an export: edits in the workbook do not flow back. Use it for steering
 committees, offline review, or importing into a tool without an adapter.
 
-## Linear and Azure DevOps
+## Azure DevOps and Linear
 
-Not built yet. [reference/trackers.md](reference/trackers.md) records the intended mapping and
-the guarantees each adapter must keep. Until then, sync to GitHub or export to Excel.
+Both adapters are **not tested live**: tests drive them through fake transports only. Before
+the first real apply, run `plan` against a test project and read it.
+
+```sh
+python3 $S azure  plan backlog.json --org acme --project close [--process scrum|basic]  # token in AZURE_DEVOPS_EXT_PAT
+python3 $S linear plan backlog.json --team FIN --project "Month-end close"              # key in LINEAR_API_KEY
+```
+
+`apply --expect <digest>`, `pull`, and `report [--post]` work as for GitHub, with the same steps,
+approval rule, conflicts, orphans, sign-off, and feedback rules. Here the digest also binds the
+target that `plan` prints (organisation, project, and process, or team and project), so a plan
+approved for a test project does not apply to the real one. A missing token or key stops
+with one error that names the variable; the value is never printed. Read sign-off with
+`backlog.py status --tracker azure` (or `linear`). The mapping, in short (details in
+[reference/trackers.md](reference/trackers.md)):
+
+| Backlog | Azure DevOps (Agile process) | Linear |
+| --- | --- | --- |
+| Initiative, goal | Epic; a goal is also tagged `goal` | Issue labelled `type:initiative`, `type:goal` |
+| Feature | Feature (Epic with `--process basic`) | Issue labelled `type:feature` |
+| Story, bug | User Story, Bug; Product Backlog Item with `scrum`, Issue with `basic` | Issue labelled `type:story`, `type:bug` |
+| Parent and child | Parent (hierarchy) link | Sub-issue |
+| Milestone | Iteration matched by title | Project milestone matched by title |
+| Identity | Tag `backlog:ID` | Last description line `Backlog ID: ID` |
+| Approver handle | `approvers[].azure`: sign-in name (UPN) | `approvers[].linear`: display name or email |
 
 ## Adapt it
 

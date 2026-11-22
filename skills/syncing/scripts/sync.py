@@ -6,14 +6,19 @@
   sync.py github pull   backlog.json --repo OWNER/NAME [--since YYYY-MM-DD]       sign-offs, feedback, closed state
   sync.py github report backlog.json --repo OWNER/NAME [--post]                   status comment for stakeholders
   sync.py excel backlog.json --out backlog.xlsx                                   spreadsheet export
+  sync.py azure  plan|apply|pull|report backlog.json --org ORG --project NAME [--process agile|scrum|basic]
+  sync.py linear plan|apply|pull|report backlog.json --team KEY --project NAME
 
-GitHub calls go through the signed-in `gh` CLI. Standard library only. Needs the `grooming`
-skill installed beside this one: its backlog.py owns the contract.
+GitHub calls go through the signed-in `gh` CLI. Azure DevOps (azure.py) reads its token from
+AZURE_DEVOPS_EXT_PAT and Linear (linear.py) its key from LINEAR_API_KEY; neither is printed, and
+neither adapter is tested live. Standard library only. Needs the `grooming` skill installed
+beside this one: its backlog.py owns the contract.
 """
 
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -36,6 +41,7 @@ LABEL_COLORS = {"backlog": "5319e7", "type": "1d76db", "work": "0e8a16", "priori
                 "size": "c5def5", "urgency": "b60205", "status": "fbca04", "domain": "006b75"}
 MARKER = re.compile(r"<!-- backlog:([IGFSB]-\d+) -->")
 REPORT_MARKER = "<!-- backlog:report -->"
+STATUS = "Status from the planning backlog"  # also finds the status comment where HTML comments are dropped
 ASSUMED_OWNER = re.compile(r"\bowner assumed\b", re.I)  # grooming's note until the owner agrees
 MAX_BODY = 60000
 SIGN_OFF = "_To sign off, comment `/approve` as the first line. Any other comment is recorded as feedback._"
@@ -272,17 +278,11 @@ def plan(data, base, gh, overwrite=(), project=None):
         new_hash = content_hash(title, body)
         remote_ms = (issue.get("milestone") or {}).get("title")
         if not forced:
-            if not ext.get("hash") and remote_hash != new_hash:
-                conflict(item, number, "an issue with this ID exists but this file has no record of syncing it (another backlog, or lost sync fields); merge, or pass --overwrite")
-                continue
-            if ext.get("hash") and remote_hash != ext["hash"]:
-                conflict(item, number, "title or body edited in GitHub since the last sync; merge the edit into backlog.json, or pass --overwrite")
-                continue
-            if "labels" in ext and _own_labels(issue) != sorted(ext["labels"]):
-                conflict(item, number, f"labels changed in GitHub since the last sync (now {_own_labels(issue)}); merge, or pass --overwrite")
-                continue
-            if "milestone" in ext and remote_ms != ext["milestone"]:
-                conflict(item, number, f"milestone changed in GitHub to {remote_ms!r}; merge, or pass --overwrite")
+            why = edit_conflict(ext, remote_hash, new_hash, "an issue", "GitHub", [
+                ("labels", _own_labels(issue), f"labels changed in GitHub since the last sync (now {_own_labels(issue)})"),
+                ("milestone", remote_ms, f"milestone changed in GitHub to {remote_ms!r}")])
+            if why:
+                conflict(item, number, why)
                 continue
         if remote_hash != new_hash:
             actions.append({"do": "update", "id": item["id"], "number": number, "title": title, "body": body,
@@ -322,15 +322,44 @@ def plan(data, base, gh, overwrite=(), project=None):
     return actions
 
 
-def plan_digest(actions):
-    """Short fingerprint of a plan, so apply runs exactly the plan the user approved."""
+def edit_conflict(ext, remote_hash, new_hash, noun, tracker, fields=(), fold_case=False):
+    """Why the tracker holds something this file did not write, or None. Every adapter uses it.
+
+    ext is what the file recorded at the last sync; fields are (recorded key, value now in the
+    tracker, what changed) for the other values the file writes, such as labels and milestone.
+    With fold_case (Azure DevOps and Linear, which reuse the casing of a label they already have),
+    label lists are compared without case. GitHub compares them exactly, as before."""
+    if not ext.get("hash") and remote_hash != new_hash:
+        return f"{noun} with this ID exists but this file has no record of syncing it (another backlog, or lost sync fields); merge, or pass --overwrite"
+    if ext.get("hash") and remote_hash != ext["hash"]:
+        return f"title or body edited in {tracker} since the last sync; merge the edit into backlog.json, or pass --overwrite"
+    def same(value):
+        return sorted(v.lower() if fold_case else v for v in value) if isinstance(value, list) else value
+    for key, now, what in fields:
+        if key in ext and same(now) != same(ext[key]):
+            return f"{what}; merge, or pass --overwrite"
+    return None
+
+
+def plan_digest(actions, target=None):
+    """Short fingerprint of a plan, so apply runs exactly the plan the user approved.
+
+    target (tracker, organisation or team, project, …) is part of the fingerprint for Azure DevOps
+    and Linear. GitHub passes none, so its repository is not bound (a known limit)."""
     stable = [{k: v for k, v in a.items() if k != "diff"} for a in actions]
-    return hashlib.sha256(json.dumps(stable, sort_keys=True).encode()).hexdigest()[:12]
+    payload = stable if target is None else {"target": list(target), "actions": stable}
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
 
 
-def _diff(old, new):
+def bind(actions, expect, target=None):
+    """Refuse, before any write, to run a plan other than the one the user approved."""
+    if expect is not None and plan_digest(actions, target) != expect:
+        raise RuntimeError(f"the plan changed since it was approved (digest {plan_digest(actions, target)}, expected {expect}); review the new plan")
+
+
+def _diff(old, new, tracker="github"):
     import difflib
-    lines = list(difflib.unified_diff(old.splitlines(), new.splitlines(), "github", "backlog.json", lineterm="", n=1))
+    lines = list(difflib.unified_diff(old.splitlines(), new.splitlines(), tracker, "backlog.json", lineterm="", n=1))
     return "\n".join(lines[:40] + (["…"] if len(lines) > 40 else []))
 
 
@@ -339,8 +368,7 @@ def apply(data, base, gh, project=None, overwrite=(), expect=None):
 
     With expect, refuse to run unless the plan's digest matches the one the user approved."""
     actions = plan(data, base, gh, overwrite, project)
-    if expect is not None and plan_digest(actions) != expect:
-        raise RuntimeError(f"the plan changed since it was approved (digest {plan_digest(actions)}, expected {expect}); review the new plan")
+    bind(actions, expect)
     ids = backlog.items_by_id(data)
     numbers = {m["title"]: m["number"] for m in gh.call("GET", gh.path("milestones?state=all&per_page=100"), paginate=True)}
     remote, _ = gh.issues()
@@ -408,8 +436,6 @@ def _record(item, issue, digest, changed):
 def pull(data, gh, since=None):
     """Record sign-offs, open feedback, and tracker state. Returns a report dict."""
     ids = backlog.items_by_id(data)
-    handles = {a["github"].lower(): a["github"] for a in data.get("approvers", []) if a.get("github")}
-    me = gh.me()
     by_number = {((i.get("external") or {}).get("github") or {}).get("number"): i for i in data["items"]}
     by_number.pop(None, None)
     report = {"approvals": [], "feedback": [], "triage": [], "ignored": [], "closed_without_delivery": []}
@@ -423,19 +449,33 @@ def pull(data, gh, since=None):
                 report["closed_without_delivery"].append(iid)
 
     query = "issues/comments?per_page=100" + (f"&since={since}T00:00:00Z" if since else "")
+    comments = []
+    for c in gh.call("GET", gh.path(query), paginate=True):
+        item = by_number.get(int(c["issue_url"].rsplit("/", 1)[1]))
+        if item and c["user"].get("type") != "Bot":
+            comments.append((item, c["user"]["login"], c["html_url"], (c.get("body") or "").strip(), c["created_at"]))
+    file_comments(data, "github", comments, gh.me(), report)
+    return report
+
+
+def file_comments(data, tracker, comments, me, report):
+    """Sign-off and feedback rules shared by every tracker. comments: (item, login, url, body, at).
+
+    '/approve' as the first line on an initiative or feature, from a listed approver, is an
+    approval; any other comment on a feature, story, or bug is open feedback on that feature;
+    comments on an initiative or goal go to triage. Your own other comments are skipped."""
+    handles = {a[tracker].lower(): a[tracker] for a in data.get("approvers", []) if a.get(tracker)}
     known = {fb.get("source") for fb in data.get("feedback", [])}
     feedback = data.setdefault("feedback", [])
     next_fb = max([int(fb["id"][3:]) for fb in feedback] + [0]) + 1
-    for c in gh.call("GET", gh.path(query), paginate=True):
-        item = by_number.get(int(c["issue_url"].rsplit("/", 1)[1]))
-        login, url, body = c["user"]["login"], c["html_url"], (c.get("body") or "").strip()
-        if not item or c["user"].get("type") == "Bot" or url in known or REPORT_MARKER in body:
+    for item, login, url, body, at in comments:
+        if url in known or REPORT_MARKER in body:
             continue
         first = body.splitlines()[0].strip().lower() if body else ""
         if first == "/approve" and item["type"] in ("initiative", "feature"):
             if login.lower() in handles:
                 if url not in {a.get("url") for a in item.get("approvals", [])}:
-                    item.setdefault("approvals", []).append({"tracker": "github", "by": handles[login.lower()], "at": c["created_at"], "url": url})
+                    item.setdefault("approvals", []).append({"tracker": tracker, "by": handles[login.lower()], "at": at, "url": url})
                     report["approvals"].append(f"{item['id']} by {login}")
                 continue
             report["ignored"].append(f"/approve on {item['id']} by {login}, who is not an approver; treated as a comment")
@@ -443,20 +483,19 @@ def pull(data, gh, since=None):
             continue
         summary = " ".join(body.split())[:300]
         if item["type"] in ("initiative", "goal"):
-            report["triage"].append({"item": item["id"], "from": login, "at": c["created_at"], "url": url, "summary": summary})
+            report["triage"].append({"item": item["id"], "from": login, "at": at, "url": url, "summary": summary})
             continue
         feature = item["id"] if item["type"] == "feature" else item["parent"]
         feedback.append({"id": f"FB-{next_fb}", "feature": feature, "from": login, "summary": summary or "(empty comment)",
-                         "source": url, "at": c["created_at"], "disposition": "open"})
+                         "source": url, "at": at, "disposition": "open"})
         report["feedback"].append(f"FB-{next_fb} on {feature} from {login}")
         known.add(url)
         next_fb += 1
     if not feedback:
         data.pop("feedback")
-    return report
 
 
-def report_comment(data, base, today):
+def report_comment(data, base, today, tracker="github"):
     """The status comment for stakeholders: five plain points on goals (one per line), dates,
     blockers, sign-off, and feedback. The full chain stays in `backlog.py trace` and the Excel export."""
     seen = backlog.items_by_id(data)
@@ -504,11 +543,11 @@ def report_comment(data, base, today):
     blocked += [f"{', '.join(ids)} {'waits' if len(ids) == 1 else 'wait'} on {named(seen[d])}" for d, ids in held.items()]
 
     waiting = {}
-    for _, item, _, per in backlog.gates(data, base=base):
+    for _, item, _, per in backlog.gates(data, tracker, base=base):
         for handle, mine in per.items():
             if mine != "current":
                 waiting.setdefault(handle, []).append(item["id"])
-    names = {a["github"]: a["name"] for a in data.get("approvers", []) if a.get("github")}
+    names = {a[tracker]: a["name"] for a in data.get("approvers", []) if a.get(tracker)}
     signoff = [f"{names.get(h, h)} on {', '.join(ids)}" for h, ids in waiting.items()]
 
     feedback = [f"{fb.get('id')} on {fb.get('feature')} from {fb.get('from')}: {fb.get('summary', '')}"
@@ -526,7 +565,7 @@ def report_comment(data, base, today):
         f"- **Open feedback:** {few(feedback, 'none')}.",
     ]
     text = "\n".join(lines) + "\n"
-    return f"{REPORT_MARKER}\n_Status from the planning backlog, updated {today}. Edits here are overwritten._\n\n{text}"
+    return f"{REPORT_MARKER}\n_{STATUS}, updated {today}. Edits here are overwritten._\n\n{text}"
 
 
 def post_report(data, base, gh, today):
@@ -902,6 +941,277 @@ def write_xlsx(path, sheets):
             z.writestr(f"xl/worksheets/sheet{i}.xml", sheet_xml(rows))
 
 
+# Azure DevOps and Linear ----------------------------------------------------------------------
+# One plan, apply, and pull for both trackers; azure.py and linear.py only translate to their API.
+# Neither tracker keeps Markdown exactly as sent, so each item records two hashes: `sent`, what
+# this file rendered, and `hash`, what the tracker returned. Not tested live (Q6).
+
+def secret(name, what):
+    """A credential from the environment. Missing, or holding a control character (which would go
+    raw into an HTTP header): one error naming the variable, never the value."""
+    value = os.environ.get(name, "").strip(" ")
+    if not value:
+        raise RuntimeError(f"{name} is not set; set it to {what} (read from the environment, never printed)")
+    if any(ord(c) < 32 or ord(c) == 127 for c in value):
+        raise RuntimeError(f"{name} contains a control character, such as a line break; set it again without one")
+    return value
+
+
+def http_json(method, url, headers, body=None, content_type="application/json", opener=None):
+    """One HTTPS request with a JSON reply. An error names the status and reply, never the headers."""
+    import urllib.error
+    import urllib.request
+    request = urllib.request.Request(url, data=json.dumps(body).encode() if body is not None else None, method=method,
+                                     headers={**headers, "Content-Type": content_type, "Accept": "application/json"})
+    where = f"{method} {url.split('?')[0]} failed"
+    try:
+        with (opener or urllib.request.urlopen)(request, timeout=60) as reply:
+            text = reply.read().decode(errors="replace")
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"{where}: HTTP {exc.code} {exc.read().decode(errors='replace')[:300]}".rstrip()) from None
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"{where}: {exc.reason}") from None
+    except OSError as exc:  # a timeout or a dropped connection
+        raise RuntimeError(f"{where}: {exc}") from None
+    try:
+        return json.loads(text) if text.strip() else None
+    except ValueError:
+        raise RuntimeError(f"{where}: the reply is not JSON (a sign-in page means the token was refused)") from None
+
+
+def is_status(body):
+    """True for the text of the status comment this skill posts (it starts with STATUS)."""
+    return body.lstrip("_* \n").startswith(STATUS)
+
+
+def _starts(data):
+    """{milestone ID: start date}: its own start, or the day after the previous milestone's due date."""
+    from datetime import date, timedelta
+    starts, previous = {}, None
+    for m in sorted((m for m in data.get("milestones", []) if m.get("due")), key=lambda m: m["due"]):
+        starts[m["id"]] = m.get("start") or (previous and (date.fromisoformat(previous) + timedelta(days=1)).isoformat())
+        previous = m["due"]
+    return starts
+
+
+def plan_tracker(data, base, t, overwrite=()):
+    """Actions apply_tracker would take in Azure DevOps or Linear (adapter t), in order. Reads only.
+
+    The GitHub rules hold: matching uses the backlog ID the adapter stores, never the title, and an
+    item whose title, body, labels, milestone, or parent was edited in the tracker is a conflict."""
+    actions, conflicts = [], set()
+    remote, dupes = t.items()
+    have, starts = t.milestones(), _starts(data)
+    for m in data.get("milestones", []):
+        if t.milestone_title(m["title"]) not in have:
+            actions.append({"do": "create milestone", "title": t.milestone_title(m["title"]), "start": starts.get(m["id"]), "due": m.get("due")})
+
+    def conflict(item, key, why):
+        conflicts.add(item["id"])
+        actions.append({"do": "conflict", "id": item["id"], "key": key, "why": why})
+
+    wanted = set()
+    items = sorted(data["items"], key=lambda i: (ORDER[i["type"]], backlog.id_key(i["id"])))
+    for item in items:
+        view = t.view(data, item, base)
+        wanted.update(view["labels"])
+        ext = (item.get("external") or {}).get(t.name) or {}
+        if item["id"] in dupes:
+            conflict(item, dupes[item["id"]][0], f"backlog ID found on {dupes[item['id']]} in {t.tracker}; remove the extra ones")
+            continue
+        rec, forced = remote.get(item["id"]), item["id"] in overwrite
+        if not rec:
+            if ext.get("id") and t.exists(ext["id"]) and not forced:
+                conflict(item, ext["id"], f"its {t.marker} was removed in {t.tracker}; restore it or pass --overwrite to create a new one")
+            else:
+                actions.append({"do": "create", "id": item["id"], **view})
+            continue
+        key = rec["key"]
+        remote_hash, new_hash = content_hash(rec["title"], rec["body"]), content_hash(view["title"], view["body"])
+        if not forced:
+            why = edit_conflict(ext, remote_hash, new_hash, t.noun, t.tracker, [
+                ("labels", rec["labels"], f"{t.label_word} changed in {t.tracker} since the last sync (now {rec['labels']})"),
+                ("milestone", rec["milestone"], f"{t.milestone_word} changed in {t.tracker} to {rec['milestone']!r}")], fold_case=True)
+            if why:
+                conflict(item, key, why)
+                continue
+        if (ext.get("hash"), ext.get("sent"), ext.get("id")) == (remote_hash, new_hash, key):
+            pass  # the tracker holds what this file last wrote, and the file has not changed since
+        elif remote_hash == new_hash:
+            actions.append({"do": "record", "id": item["id"], "key": key, "hash": new_hash})
+        else:
+            actions.append({"do": "update", "id": item["id"], "key": key, **view, "diff": _diff(rec["body"], view["body"], t.name)})
+        own = {l.lower(): l for l in rec["labels"]}
+        add = sorted(l for l in view["labels"] if l.lower() not in own)
+        remove = sorted(name for low, name in own.items() if low not in {w.lower() for w in view["labels"]})
+        if add or remove:
+            actions.append({"do": "labels", "id": item["id"], "key": key, "add": add, "remove": remove})
+        if rec["milestone"] != view["milestone"]:
+            actions.append({"do": "milestone", "id": item["id"], "key": key, "milestone": view["milestone"]})
+
+    missing = t.missing_labels(wanted)
+    if missing:
+        actions.insert(0, {"do": "create labels", "labels": missing})
+
+    for item in items:
+        if item["type"] == "initiative" or item["id"] in conflicts or item["parent"] in conflicts:
+            continue
+        parent, child = remote.get(item["parent"]), remote.get(item["id"])
+        if parent and child and child["parent"] == parent["key"]:
+            continue
+        link = {"do": "link", "id": item["id"], "parent": item["parent"], **({"link": t.link_kind} if t.link_kind else {})}
+        if child and child["parent"]:
+            # Under the parent this file last linked: 'parent' changed in backlog.json, so link again.
+            # Anywhere else: someone moved it in the tracker, which is a conflict until --overwrite.
+            linked = ((item.get("external") or {}).get(t.name) or {}).get("parent")
+            if remote.get(linked, {}).get("key") != child["parent"] and item["id"] not in overwrite:
+                conflict(item, child["key"], f"its parent was moved in {t.tracker} since the last sync; move it back under "
+                                             f"{item['parent']}, or pass --overwrite {item['id']} to link it there")
+                continue
+            link["relink"] = True
+        actions.append(link)
+
+    ids = backlog.items_by_id(data)
+    for iid, rec in sorted(remote.items(), key=lambda kv: backlog.id_key(kv[0])):
+        if iid not in ids:
+            actions.append({"do": "orphan", "id": iid, "key": rec["key"],
+                            "why": f"in {t.tracker} but not in backlog.json; close or re-add it by hand"})
+    return actions
+
+
+def apply_tracker(data, base, t, overwrite=(), expect=None):
+    """Run plan_tracker's actions and record what was written in data. Returns the actions done.
+
+    With expect, refuse before any write unless the plan's digest matches the approved one."""
+    actions = plan_tracker(data, base, t, overwrite)
+    bind(actions, expect, t.target)
+    ids = backlog.items_by_id(data)
+    remote, _ = t.items()
+    done, conflicts = [], {a["id"] for a in actions if a["do"] == "conflict"}
+    for a in actions:
+        do = a["do"]
+        if do == "create labels":
+            t.create_labels(a["labels"])
+        elif do == "create milestone":
+            t.create_milestone(a)
+        elif do == "create":
+            remote[a["id"]] = t.create(a)
+            _record_tracker(t.name, ids[a["id"]], remote[a["id"]], content_hash(a["title"], a["body"]), changed=True)
+        elif do == "update":
+            remote[a["id"]] = t.update(a["key"], a)
+            stored = ((ids[a["id"]].get("external") or {}).get(t.name) or {}).get("fingerprint")
+            _record_tracker(t.name, ids[a["id"]], remote[a["id"]], content_hash(a["title"], a["body"]),
+                            changed=stored != backlog.fingerprint(ids[a["id"]], base))
+        elif do == "record":
+            _record_tracker(t.name, ids[a["id"]], remote[a["id"]], a["hash"], changed=False)
+        elif do == "labels":
+            t.set_labels(a["key"], a["add"], a["remove"])
+        elif do == "milestone":
+            t.set_milestone(a["key"], a["milestone"])
+        elif do == "link":
+            try:
+                t.link(remote[a["id"]]["key"], remote[a["parent"]]["key"], replace=a.get("relink", False))
+            except RuntimeError as exc:
+                a = {"do": "conflict", "id": a["id"], "key": remote[a["id"]]["key"],
+                     "why": f"could not link under {a['parent']} (moved in {t.tracker}?): {exc}"}
+                conflicts.add(a["id"])
+        done.append(a)
+    for item in data["items"]:
+        ext = (item.get("external") or {}).get(t.name)
+        if ext and item["id"] not in conflicts:
+            view = t.view(data, item, base)
+            ext.update({"labels": sorted(view["labels"]), "milestone": view["milestone"], "fingerprint": backlog.fingerprint(item, base)})
+            if item.get("parent") not in conflicts:
+                ext["parent"] = item.get("parent")  # what it is linked under now, to tell a local move from a tracker move
+    return done
+
+
+def _record_tracker(name, item, rec, sent, changed):
+    ext = item.setdefault("external", {}).get(name) or {}
+    ext.update({"id": rec["key"], "url": rec["url"], "hash": content_hash(rec["title"], rec["body"]), "sent": sent})
+    if changed or "synced_at" not in ext:
+        ext["synced_at"] = rec.get("at") or now()
+    ext.setdefault("state", "open")
+    item["external"][name] = ext
+
+
+def pull_tracker(data, t, since=None):
+    """Record sign-offs, open feedback, and tracker state with GitHub's rules. Returns a report dict."""
+    ids = backlog.items_by_id(data)
+    report = {"approvals": [], "feedback": [], "triage": [], "ignored": [], "closed_without_delivery": []}
+    remote, _ = t.items()
+    for iid, rec in sorted(remote.items(), key=lambda kv: backlog.id_key(kv[0])):
+        item = ids.get(iid)
+        if item and t.name in (item.get("external") or {}):
+            item["external"][t.name]["state"] = rec["state"]
+            if rec["state"] == "closed" and item["type"] in ("story", "bug") and not item.get("delivery"):
+                report["closed_without_delivery"].append(iid)
+    handles = {a[t.name].lower(): a[t.name] for a in data.get("approvers", []) if a.get(t.name)}
+    me, comments = t.me(handles), []
+    for item in data["items"]:
+        key = ((item.get("external") or {}).get(t.name) or {}).get("id")
+        for login, url, body, at in t.comments(key, handles) if key else []:
+            if since and at[:10] < since:
+                continue
+            if login.lower() == me and is_status(body):
+                continue  # our own status comment; a stakeholder quoting it is filed like any comment
+            comments.append((item, login, url, body.strip(), at))
+    file_comments(data, t.name, sorted(comments, key=lambda c: c[4]), me, report)
+    return report
+
+
+def status_text(data, base, t, today):
+    """The status comment for a tracker that may show an HTML comment as text: no hidden marker."""
+    return report_comment(data, base, today, t.name).replace(REPORT_MARKER + "\n", "", 1)
+
+
+def post_status(data, base, t, today):
+    """Create or update one status comment on each synced initiative. Returns their URLs."""
+    body, urls = status_text(data, base, t, today), []
+    handles = {a[t.name].lower(): a[t.name] for a in data.get("approvers", []) if a.get(t.name)}
+    for item in data["items"]:
+        key = ((item.get("external") or {}).get(t.name) or {}).get("id")
+        if item["type"] == "initiative" and key:
+            urls.append(t.post_status(key, body, handles))
+    return urls
+
+
+def _run_tracker(args, data, base):
+    """sync.py azure|linear: the same four actions as GitHub, through the adapter."""
+    sys.modules.setdefault("sync", sys.modules[__name__])  # adapters import this module by name
+    if args.adapter == "azure":
+        import azure
+        t = azure.Azure(args.org, args.project, args.process)
+    else:
+        import linear
+        t = linear.Linear(args.team, args.project)
+    overwrite = tuple(i.strip() for i in args.overwrite.split(",") if i.strip())
+    if args.action == "plan":
+        actions = plan_tracker(data, base, t, overwrite)
+        _print_actions(actions)
+        if actions:
+            digest = plan_digest(actions, t.target)
+            print(f"target: {' '.join(t.target)}")
+            print(f"digest: {digest}  (apply with --expect {digest} once approved)")
+        return 1 if any(a["do"] == "conflict" for a in actions) else 0
+    if args.action == "report":
+        print("\n".join(post_status(data, base, t, args.today)) if args.post else status_text(data, base, t, args.today), end="\n" if args.post else "")
+        return 0
+    if args.action == "apply":
+        if not args.expect:
+            raise RuntimeError("apply needs --expect DIGEST from a plan the user approved; run plan first")
+        try:
+            done = apply_tracker(data, base, t, overwrite, args.expect)
+        finally:
+            _save(args.file, data)
+        _print_actions(done)
+        return 1 if any(a["do"] == "conflict" for a in done) else 0
+    report = pull_tracker(data, t, args.since)
+    _save(args.file, data)
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    return 0
+
+
 # Commands -------------------------------------------------------------------------------------
 
 def _load_valid(path):
@@ -927,7 +1237,9 @@ def _print_actions(actions):
         if a["do"] == "labels":
             extra = f"+{a['add']} -{a['remove']}"
         if a["do"] == "link":
-            extra = f"sub-issue of {a['parent']}"
+            extra = f"{a.get('link', 'sub-issue')} of {a['parent']}"
+        if a["do"] == "create" and a.get("kind"):
+            extra = a["kind"]
         if a["do"] == "project field":
             target = f"{a['name']} ({a['type']})"
         if a["do"] in ("project schedule",):
@@ -942,8 +1254,8 @@ def _print_actions(actions):
     print("plan: " + (", ".join(f"{n} {k}" for k, n in counts.items()) or "nothing to do"))
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+def main(argv=None, prog=None):
+    parser = argparse.ArgumentParser(prog=prog, description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="adapter", required=True)
     g = sub.add_parser("github", help="GitHub issues, sub-issues, milestones, and Projects")
     g.add_argument("action", choices=("plan", "apply", "pull", "report"))
@@ -955,6 +1267,24 @@ def main(argv=None):
     g.add_argument("--since", help="pull: only comments updated on or after YYYY-MM-DD")
     g.add_argument("--post", action="store_true", help="report: post or update the comment instead of printing it")
     g.add_argument("--today", default=datetime.now().date().isoformat(), help="report: date to judge goals against and stamp")
+    for name, help_text in (("azure", "Azure DevOps (Azure Boards) work items; not tested live"),
+                            ("linear", "Linear issues in one team and project; not tested live")):
+        t = sub.add_parser(name, help=help_text)
+        t.add_argument("action", choices=("plan", "apply", "pull", "report"))
+        t.add_argument("file")
+        if name == "azure":
+            t.add_argument("--org", required=True, help="Azure DevOps organisation")
+            t.add_argument("--project", required=True, help="Azure DevOps project")
+            t.add_argument("--process", choices=("agile", "scrum", "basic"), default="agile",
+                           help="process of the project: work item types for stories and bugs (default agile)")
+        else:
+            t.add_argument("--team", required=True, help="Linear team key, such as FIN")
+            t.add_argument("--project", required=True, help="Linear project name")
+        t.add_argument("--overwrite", default="", help="comma-separated IDs whose tracker edits may be overwritten")
+        t.add_argument("--expect", help="apply: the digest printed by the plan the user approved")
+        t.add_argument("--since", help="pull: only comments created on or after YYYY-MM-DD")
+        t.add_argument("--post", action="store_true", help="report: post or update the comment instead of printing it")
+        t.add_argument("--today", default=datetime.now().date().isoformat(), help="report: date to judge goals against and stamp")
     x = sub.add_parser("excel", help="export to .xlsx")
     x.add_argument("file")
     x.add_argument("--out", required=True)
@@ -969,6 +1299,8 @@ def main(argv=None):
             print(f"wrote {args.out}")
             return 0
         data = _load_valid(args.file)
+        if args.adapter in ("azure", "linear"):
+            return _run_tracker(args, data, base)
         gh = GitHub(args.repo)
         overwrite = tuple(i.strip() for i in args.overwrite.split(",") if i.strip())
         if args.action == "plan":
