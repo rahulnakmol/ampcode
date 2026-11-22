@@ -947,13 +947,16 @@ def write_xlsx(path, sheets):
 # this file rendered, and `hash`, what the tracker returned. Not tested live (Q6).
 
 def secret(name, what):
-    """A credential from the environment. Missing, or holding a control character (which would go
-    raw into an HTTP header): one error naming the variable, never the value."""
+    """A credential from the environment, without the one trailing newline a paste often adds.
+    Missing, or holding a control character, a line separator, or any non-ASCII character (an HTTP
+    header cannot carry them safely): one error naming the variable, never the value."""
     value = os.environ.get(name, "").strip(" ")
+    value = value[:-2] if value.endswith("\r\n") else value[:-1] if value.endswith("\n") else value
+    value = value.strip(" ")
     if not value:
         raise RuntimeError(f"{name} is not set; set it to {what} (read from the environment, never printed)")
-    if any(ord(c) < 32 or ord(c) == 127 for c in value):
-        raise RuntimeError(f"{name} contains a control character, such as a line break; set it again without one")
+    if any(ord(c) < 32 or ord(c) >= 127 for c in value):  # controls, DEL, and anything not ASCII (U+0085, U+2028, €)
+        raise RuntimeError(f"{name} contains a control character, such as a line break, or a non-ASCII character; set it again without one")
     return value
 
 

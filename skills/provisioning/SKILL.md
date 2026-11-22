@@ -94,7 +94,11 @@ folder kept in git), so choose another folder.
    destructive change and for the unknown entries. With `missioning`, record the digest approval
    and each destructive confirmation as ledger rows; never infer them from chat.
 
-   If the owner refuses a destructive change, stop: the plan cannot be applied in part. Delete it
+   If the owner refuses a destructive change, first run step 8's `verify` on the saved plan with
+   `--confirm-destructive` for the confirmed changes only, and report its exit 1 as the record that
+   the gate refuses. Never pass the refused change. `verify` reads only the local file; record
+   its SHA-256 before you discard it.
+   Then stop: the plan cannot be applied in part. Delete it
    (`aws cloudformation delete-change-set` for a change set; discard the plan file and its JSON
    for Terraform; discard the what-if or preview files for Bicep and Infrastructure Manager),
    change the code, preview again, then summarize and ask again. Never list the apply commands

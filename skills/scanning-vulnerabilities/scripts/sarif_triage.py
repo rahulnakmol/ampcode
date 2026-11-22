@@ -27,11 +27,12 @@ exits 1 and prints one line per broken rule:
       "<Rescan|Test|PoC|CI> <tool or name> <YYYY-MM-DD>: <result>", for example
       "Rescan Bandit 1.9.4 2026-11-21: 0 results at app.py:24". The name has a letter or digit
       and is not a placeholder (TBD). The date is not after today (--today, default today's
-      UTC date). The result is not empty, not only "failed", and not a placeholder or a phrase
-      saying the run did not happen or finish (not run, not done, pending, TBD, failed to
-      start, to follow, awaiting, planned, scheduled, yet, n/a, none, skipped, cancelled,
-      errored, aborted, will, expected, to be run, couldn't run). check reads only the form;
-      a reviewer reads the content.
+      local date). The result is not empty and does not say the run did not happen or finish:
+      "not run", "pending" and "failed to start" anywhere; at its start not done, TBD, to
+      follow, awaiting, planned, scheduled, skipped, cancelled, aborted, will, expected, to be
+      run, yet to, couldn't run, didn't run or finish, timed out, in progress, queued,
+      postponed, deferred, going to rerun; and not only none, n/a, yet, errored or failed.
+      check reads only the form, not every phrasing; a reviewer reads the content.
   C5  no overclaim: "secure", "secured", "securely", "no (known) vulnerabilities",
       "vulnerability-free" outside `code` and fenced blocks, also when the words wrap across
       lines ("no vulnerability scan" and "Secure Shell" are allowed)
@@ -66,13 +67,23 @@ RETEST_FORM = re.compile(r"^(?:rescan|test|poc|ci)\s+(?P<name>\S.*?)\s+(?P<date>
                          r"\s*:(?P<result>.*)$", re.I | re.S)
 # A name that is a placeholder: "Rescan TBD 2026-11-21: ...".
 NO_NAME = re.compile(r"^(?:tbd|tba|tbc|todo|n/?a|none|unknown|tool|name|<[^<>]*>)$", re.I)
-# A result that is a placeholder, says the run did not happen or finish, or is only "failed".
-# "exploit failed, request rejected" says what failed, so it is a result.
-NO_RESULT = re.compile(
-    r"^(?:-+|\?+)$|^(?:(?:the\s+)?run\s+)?failed[.!]?$"
-    r"|\b(?:not\s+run|not\s+done|pending|tbd|tba|todo|failed\s+to\s+start|to\s+follow|awaiting|planned"
-    r"|scheduled|yet|n/a|none|unknown|skipped|cancell?ed|errored|aborted|will|expected|to\s+be\s+run"
-    r"|(?:could\s*n['\u2019]?t|could\s+not|cannot|can['\u2019]?t)\s+(?:be\s+)?run)\b", re.I)
+# A result that is a placeholder or says the run did not happen or finish. Most run-state words
+# count only at the start of the result, so honest results pass: "request rejected with 403 as
+# expected", "passed; 2 unrelated tests skipped". This is not every phrasing; a reviewer still
+# reads the result.
+NO_RESULT = re.compile("|".join((
+    # Anywhere in the result.
+    r"\b(?:not\s+run|pending|failed\s+to\s+start)\b",
+    # At the start of the result: "skipped: no network", "will run after deploy", "timed out".
+    r"^(?:not\s+(?:done|finished)|tbd|tba|todo|(?:results?\s+)?to\s+follow|awaiting|planned|scheduled"
+    r"|skipped|cancell?ed|aborted|will|expected|to\s+be\s+run|yet\s+to"
+    r"|(?:could\s*n['\u2019]?t|could\s+not|cannot|can['\u2019]?t)\s+(?:be\s+)?run"
+    r"|(?:did\s*n['\u2019]?t|did\s+not)\s+(?:run|finish)|timed\s+out|in\s+progress|queued|postponed"
+    r"|deferred|going\s+to\s+re-?run)\b",
+    # As the whole result, or before a stop or a colon: "none.", "errored: runner lost", "failed,
+    # see log". "none of the 3 hits remain" and "errored requests now return 400" are results.
+    r"^(?:-+|\?+|none|n/a|unknown|yet|errored|(?:(?:the\s+)?run\s+)?failed)\s*(?:[.,;:!]|$)",
+)), re.I)
 # An owner is a person, the same rule as threat-modelling and assessing-products. The name, the
 # text before the first "(" or ",", is not a team or role word, does not start with a placeholder,
 # and is not only <...>. Role text after it is free: "Dana Reyes (Platform Group lead)". But the
@@ -302,8 +313,9 @@ def scans_from(pairs, root):
 def retest_in_form(retest, today):
     """True when a Retest value is in the form "<Rescan|Test|PoC|CI> <tool or name> <YYYY-MM-DD>:
     <result>": a source word; a name with a letter or digit that is not a placeholder; a real date
-    no later than today; and a result that is not a placeholder, not only "failed", and not a
-    phrase saying the run did not happen or finish ("not run", "skipped", "will run", "yet").
+    no later than today; and a result that is not a placeholder, not only "failed", and does not
+    start with a phrase saying the run did not happen or finish ("skipped", "will run", "timed
+    out"); "not run", "pending" and "failed to start" count anywhere (NO_RESULT).
     A negative finding is a result: "Rescan Bandit 1.9.4 2026-11-21: no findings for B602"."""
     found = RETEST_FORM.match(retest.strip())
     if not found:
@@ -443,9 +455,9 @@ def main(argv=None):
         sub.add_argument("scans", nargs="+", metavar="CATEGORY=FILE.sarif")
     sub = commands.add_parser("check")
     sub.add_argument("--today", type=iso_date, metavar="YYYY-MM-DD",
-                     default=datetime.datetime.now(datetime.timezone.utc).date(),
+                     default=datetime.date.today(),
                      help="today's date for the C4 rule that a Retest date is not after today "
-                          "(default: today's UTC date)")
+                          "(default: today's local date)")
     sub.add_argument("report")
     args = parser.parse_args(argv)
     try:

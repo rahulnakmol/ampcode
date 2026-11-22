@@ -869,6 +869,56 @@ class ReviewShared(unittest.TestCase):
             sync.secret("LINEAR_API_KEY", "a key")
         self.assertNotIn("abc", str(caught.exception))
 
+    def test_d16_a_token_pasted_with_a_trailing_newline_is_used_without_it(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        path = Path(tmp.name, "backlog.json")
+        path.write_text(json.dumps(example()))
+        Path(tmp.name, "prd.md").write_text("**R-1** x")
+        cases = ((azure, FakeAzure, ["azure", "plan", str(path), "--org", "acme", "--project", "close"], "AZURE_DEVOPS_EXT_PAT", "patSECRET"),
+                 (linear, FakeLinear, ["linear", "plan", str(path), "--team", "FIN", "--project", "Month-end close"], "LINEAR_API_KEY", "lin_api_SECRET"))
+        for module, fake_class, args, variable, token in cases:
+            for pasted in (token + "\n", token + "\r\n"):
+                seen, out, err, fake = [], io.StringIO(), io.StringIO(), fake_class()
+                with mock.patch.object(module, "transport", lambda secret: seen.append(secret) or fake.call), \
+                        mock.patch.dict(os.environ, {variable: pasted}), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                    code = sync.main(args)
+                self.assertEqual((code, err.getvalue()), (0, ""), repr(pasted))
+                self.assertEqual(seen, [token], repr(pasted))  # the adapter gets the token without the newline
+                self.assertNotIn(token, out.getvalue())
+
+    def test_d16_line_breaks_inside_del_nel_and_line_separator_are_refused_in_one_line(self):
+        linear_args = ["linear", "--team", "FIN", "--project", "Month-end close"]
+        azure_args = ["azure", "--org", "acme", "--project", "close"]
+        values = ("lin_api_SECRETPART1\nSECRETPART2",   # a line break inside
+                  "lin_api_SECRETPART1\rSECRETPART2",   # a carriage return inside
+                  "lin_api_SECRETPART1\x7fSECRETPART2",  # DEL
+                  "lin_api_SECRETPART1\x85SECRETPART2",  # U+0085 next line (NEL)
+                  "lin_api_SECRETPART1\u2028SECRETPART2",  # U+2028 line separator
+                  "lin_api_SECRETPART1\r\n\r\n")         # only one trailing newline is forgiven
+        out = ""
+        for value in values:
+            out += self.secret_run(linear_args, "LINEAR_API_KEY", value)
+            out += self.secret_run(azure_args, "AZURE_DEVOPS_EXT_PAT", value.replace("lin_api_", "pat"))
+        for part in ("SECRETPART", "lin_api_", "patSECRET", "Traceback"):
+            self.assertNotIn(part, out)
+
+    def test_d19_a_non_ascii_token_is_refused_in_one_line(self):
+        linear_args = ["linear", "--team", "FIN", "--project", "Month-end close"]
+        azure_args = ["azure", "--org", "acme", "--project", "close"]
+        values = ("lin_api_SECRETPART1\u20acSECRETPART2",   # euro sign: not Latin-1, crashed the Linear header
+                  "lin_api_SECRETPART1\u00e9SECRETPART2",   # e acute: Latin-1, but not ASCII
+                  "lin_api_SECRETPART1\u00a0SECRETPART2",   # no-break space
+                  "lin_api_SECRETPART1\u201cSECRETPART2")   # a curly quote, as editors paste
+        out = ""
+        for value in values:
+            for args, variable, token in ((linear_args, "LINEAR_API_KEY", value), (azure_args, "AZURE_DEVOPS_EXT_PAT", value.replace("lin_api_", "pat"))):
+                text = self.secret_run(args, variable, token)
+                self.assertIn("non-ASCII", text)
+                out += text
+        for part in ("SECRETPART", "lin_api_", "patSECRET", "Traceback", "UnicodeEncodeError"):
+            self.assertNotIn(part, out)
+
     def test_m3_github_digest_is_unchanged_without_a_target(self):
         actions = [{"do": "create", "id": "S-1", "title": "x"}]
         import hashlib

@@ -10,7 +10,9 @@ unreadable file. Standard library only. The format, the rules and the accepted u
 ../reference/design-template.md.
 
   D1  an NFR target has no number
-  D2  an NFR target has no number followed by an accepted unit
+  D2  an NFR target has no number followed by an accepted unit outside its condition (a condition
+      runs from "at", "when", "while", "with", "during", "given" or "under ... load" to its first
+      number and unit): "p95 under 300 at 50 req/s" fails, "p95 under 300 ms at 50 req/s" passes
   D3  an NFR has no verification test (empty, or only placeholder words such as TBD, n/a, later)
   D4  an ADR lists fewer than two options (top-level items under Options; nested bullets do not count)
   D5  an ADR has no valid Status, no Decision or no Consequences
@@ -18,7 +20,8 @@ unreadable file. Standard library only. The format, the rules and the accepted u
   D7  an NFR ID or an ADR ID appears twice
   D8  "Trust boundaries change:" is missing or not yes/no, or is yes without a threat-model path or link
   D9  structure: a required section, the NFR table or an ADR is missing or malformed, an NFR line
-      sits outside the first NFR table, or Mermaid is used
+      (a line that starts with an NFR ID) sits anywhere outside the first NFR table, a line after
+      that table in its section starts with | or names an NFR ID, or Mermaid is used
 
 The check proves the design is complete and consistent. It cannot prove that a target is right,
 that a test was run, or that a threat model is adequate.
@@ -56,6 +59,12 @@ LINK = re.compile(r"https?://\S+|\]\([^()\s]+\)|^[^\s<>]+[./][^\s<>]+$")
 FIELD = re.compile(r"^\*{0,2}(Status|Options|Decision|Consequences):\*{0,2}[ \t]*(.*)$")
 ITEM = re.compile(r"^([ \t]*)(?:[-*+]|\d+[.)])[ \t]+\S")
 SEPARATOR = re.compile(r"^\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-*:?\s*$")
+# A condition runs from its word to its first number, which carries a unit: "at 50 req/s",
+# "when 10,000 users". "Recall at 10" is no condition, because 10 has no unit.
+CONDITION = re.compile(r"\b(?:at(?!\s+(?:most|least)\b)|when|while|with|during|given|under\s+(?:\w+\s+)?load)\b"
+                       r"[^,;\d]*?" + MEASURE.pattern, re.I)
+# An NFR line starts with an NFR ID, after any table bar, list marker, heading mark or emphasis.
+NFR_LINE = re.compile(r"^[\s|>#*_+`-]*(?:\d+[.)]\s+)?[*_`]*NFR-\d+\b")
 
 
 def sections(text):
@@ -109,12 +118,16 @@ def check_nfrs(body, add):
         seen.add(nid)
         if not re.search(r"\d", target):
             add("D1", f"{nid} target '{target}' has no number")
-        elif not MEASURE.search(target):
-            add("D2", f"{nid} target '{target}' has no number with an accepted unit (see design-template.md)")
+        elif not MEASURE.search(CONDITION.sub("", target)):
+            add("D2", f"{nid} target '{target}' has no number with an accepted unit outside its condition"
+                " (see design-template.md)")
         if blank(verification):
             add("D3", f"{nid} has no verification test")
     if not count:
         add("D9", "Non-functional requirements needs at least one NFR row")
+    for line in lines[:start]:
+        if NFR_LINE.match(line):
+            add("D9", f"'{line.strip()[:60]}' is outside the NFR table; keep every NFR in the one table")
     for line in lines[end:]:
         if line.strip().startswith("|") or re.search(r"NFR-\d+", line):
             add("D9", f"'{line.strip()[:60]}' is outside the NFR table; keep every NFR in the one table")
@@ -191,6 +204,12 @@ def check(text):
         add("D6", "needs one '## Contracts' section naming each interface and data contract")
     if len(found.get("non-functional requirements", [])) == 1:
         check_nfrs(found["non-functional requirements"][0], add)
+    title = None
+    for line in text.splitlines():
+        if line.startswith("## "):
+            title = line[3:].strip().lower()
+        elif title != "non-functional requirements" and NFR_LINE.match(line):
+            add("D9", f"'{line.strip()[:60]}' is outside the NFR table; keep every NFR in the one table")
     if len(found.get("decisions", [])) == 1:
         check_adrs(found["decisions"][0], add)
 

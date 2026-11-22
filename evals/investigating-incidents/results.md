@@ -266,3 +266,83 @@ The runs above were graded on commit `20bd6d7` plus the working-tree fixes each 
 commit was later squashed into the `wave12/m3-operations` branch commits, so it is not an ancestor
 of the merged branch. The only changes since the graded runs are the ones listed in the "Changes
 after" sections above and the gate-review fixes recorded in the mission's review files.
+
+## S2 rerun for D-10 (close-out)
+
+- Date: 2026-11-22
+- Graded revision: `910331f` on `dev`. The run used the read-only snapshot `/tmp/snap`. Its
+  `skills/investigating-incidents/`, `skills/grooming/`, this eval's README and its fixtures are
+  byte-identical to `git archive 910331f`.
+- Judge: a fresh, independent subagent that did not see the run's conversation. It graded only
+  the S2 rules (7 to 11) of `/tmp/snap/evals/investigating-incidents/README.md`.
+- Run: `/tmp/evals/close/ii/s2-r2/` (review.md, backlog.json, commands.txt, answer.md). S1 was not
+  rerun; its round 2 grades stand.
+
+### Judge's commands and their decisive output
+
+The judge ran these from `/tmp/snap`, on copies of the run's files in a scratch folder.
+
+```text
+$ python3 skills/investigating-incidents/scripts/pir_check.py check <copy>/review.md
+pass                                                   exit=0
+$ python3 skills/grooming/scripts/backlog.py validate <copy>/backlog.json
+0 errors, 0 warnings; 1/6 stories and bugs ready       exit=0
+
+# Fixture items unchanged: the backlog minus B-3..B-5 equals fixtures/s2-backlog.json (jq -S diff empty).
+# Item IDs: I-1 G-1 F-1 S-1 B-1 B-2 B-3 B-4 B-5
+
+# Replay: the review's Backlog lines reset to "to file", then `bugs` run on a fresh fixture copy:
+$ python3 skills/investigating-incidents/scripts/pir_check.py bugs <re>/review.md --backlog <re>/backlog.json --feature F-1
+filed A1 as B-3 under F-1 (draft, priority must, urgency high)
+filed A2 as B-4 under F-1 (draft, priority must, urgency high)
+filed A3 as B-5 under F-1 (draft, priority must, urgency high)
+# The regenerated backlog equals the run's backlog.json (jq -S diff empty), and the review equals the run's.
+# The agent's hand edit of B-5.1 in both files therefore matches what `bugs` writes.
+
+$ grep -n '"owner"' backlog.json
+24, 55, 80   (I-1, F-1 and S-1 from the fixture; B-3, B-4 and B-5 have no owner)
+```
+
+### S2 rules
+
+| Rule | Grade | Evidence |
+| --- | --- | --- |
+| 7. `check` prints `pass`; `validate` 0 errors | PASS | The judge's run prints `pass` (exit 0) and `0 errors, 0 warnings; 1/6 stories and bugs ready` (exit 0) |
+| 8. One draft bug per action under F-1 from B-3; `build`, `S`, `must`, `high`; each Backlog line names its bug | PASS | There are three actions (review.md:65, :85, :105) and three bugs, B-3 to B-5. Each bug has `"parent": "F-1"`, `"status": "draft"`, `"work": "build"`, `"size": "S"`, `"priority": "must"` and `"urgency": "high"`. The review says `- Severity: SEV-2` (review.md:3). The Backlog lines read `- Backlog: B-3` (review.md:69), `- Backlog: B-4` (:89) and `- Backlog: B-5` (:109). B-1, B-2 and the other fixture items are unchanged |
+| 9. `missing alert` for the 14-minute gap; bug notes point to `monitoring` | PASS | review.md:87 `- Kind: missing alert`. review.md:90: "the first signal was a customer email at 18:17+05:30, 14 minutes later". The B-4 notes say "Missing alert: write the alert rule and its runbook with the `monitoring` skill" |
+| 10. Timeline in UTC offsets converted from Asia/Kolkata, in order | PASS | review.md:25-32: all 8 rows use `2026-10-21THH:MM+05:30`, running 18:00, 18:03, 18:17, 18:25, 18:31, 18:38, 18:40, 19:30. review.md:21 says "18:00+05:30 is 12:30Z". review.md:4 gives "(12:33Z to 13:08Z)", which is correct for 18:03 and 18:38 at +05:30 |
+| 11. No "verified", "working" or "secure" without evidence | PASS | The verdict-word grep finds only `Verification:` field labels and answer.md:30 "It does not prove the root cause or that any fix works". H1 `confirmed` (review.md:38) rests on the staging reproduction and the 200 of 200 run in s2-notes.md:63-65 |
+
+### D-10: the owner handling
+
+D-10 holds in a real run. The actions read `- Owner: to assign (F-1 owner: Elena Petrova)`
+(review.md:68, :88, :108). `bugs` wrote no `owner` on B-3 to B-5 and appended "Owner to assign
+(F-1 owner: Elena Petrova)." to each bug's notes. `validate` accepted the result with 0 errors.
+Round 1 finding 3 did not recur.
+
+### Findings
+
+1. **Skill: `check` passes an unmeasurable criterion that grooming then warns on (minor; no rule
+   fails).** The template asks for "then <result with a number>", but P7 checks only the
+   Given/When/Then form. The judge replayed the run with B-5.1's `then` changed to "the PDF
+   generation step fails and the release does not deploy". `check` raised nothing beyond the
+   expected P8. After `bugs`, `validate` reported "warning B-5: acceptance B-5.1 'then' states no
+   measurable quantity", the same warning the agent reports in answer.md:25. The agent had to
+   hand-edit both files to clear it, and the replay confirms the two edits agree.
+   Smallest fix: in `pir_check.py`, make P7 apply grooming's measurable-quantity test to each
+   criterion's `then`. Or have `bugs` refuse to file a criterion that grooming would warn on. Add
+   a test to `tests/test_investigating_incidents.py`.
+2. **Answer: one attribution the notes do not make (minor).** answer.md:5 says "The incident
+   lead reproduced the failure in staging". The notes say only "Reproduced in staging"
+   (s2-notes.md:64). The review itself does not attribute it (review.md:38).
+   Smallest fix: none in the skill. Its rule "No claim says more than its evidence" covers this.
+3. **Review: an intent written as a state (minor).** review.md:58-59 says "until the durable
+   fix (A1) ships, the library upgrade stays out of production". The same sentence admits the
+   notes do not say what is running. Smallest fix: write "should stay out of production"
+   (a recommendation).
+
+### Verdict (D-10 close-out)
+
+**PASS.** S2 passes rules 7 to 11 on `910331f`. Together with S1 round 2 (rules 1 to 6 and 11),
+every pass rule of the eval passes. The run confirms D-10 end to end. Finding 1 is a small gap
+between `pir_check.py` and grooming. It fails no rule and can follow as a backlog item.

@@ -29,10 +29,12 @@ exit 2 on a usage error or an unreadable file. Standard library only. The file f
       eu-west-1, primary or main, counts as outside production: name environments so they say
       what they are
   M8  the SLO file or a runbook claims an alert works or is verified; record where and when it
-      fired instead. Fine: questions; a negation earlier in the same sentence part, up to
-      . ! ? : ; ("we have not, as of today, verified the alert"); a condition in the same comma
-      clause ("if the alert works, close it"); and "working hours". "Nobody doubts that the
-      alert works" is a claim
+      fired instead. Fine: questions; a negation earlier in the same clause, which ends at
+      . ! ? : ; or at a following and, but, so or yet ("we have not, as of today, verified the
+      alert", "there is no proof that the alert works"); a condition in the same comma clause
+      ("if the alert works, close it"); and "working hours". Claims: "nobody doubts that the
+      alert works", "we did not change it, so the alert works"; not only, not just and not
+      merely do not negate
   M9  structure: invalid JSON, no SLOs, or a missing or repeated SLO or alert ID
 
 An alert counts as proven only when it has firing evidence from outside production. The check
@@ -74,10 +76,16 @@ OVERCLAIM = re.compile(
     # "we verified the alert", "Verified: ALERT-1"
     rf"|\bverified[\s:]+(?:that\s+)?(?:(?:the|all|our|every)\s+)?{SUBJECT}\b",
     re.I)
-# A negation covers a claim anywhere later in its sentence part, which ends at . ! ? : ; or a
-# line break, not at a comma: "We have not, as of today, verified the alert." A negation followed
-# by a doubt word affirms the claim instead: "Nobody doubts that the alert works."
-NEGATION = re.compile(r"\b(?:not|never|nobody|no\s+one|cannot)\b|n't\b", re.I)
+# A negation covers a claim later in its sentence part, which ends at . ! ? : ; or a line
+# break, not at a comma: "We have not, as of today, verified the alert." Its reach ends at a
+# following "and", "but", "so" or "yet": "We did not change it, so the alert works." is a claim.
+# "not only", "not just" and "not merely" do not negate. A negation followed by a doubt word
+# affirms the claim instead: "Nobody doubts that the alert works."
+NEGATION = re.compile(
+    r"\bnot\b(?!\s+(?:only|just|merely)\b)|\b(?:never|nobody|no\s+one|cannot|no\s+(?:proof|evidence))\b"
+    r"|n't\b", re.I)
+# "yet" right after the negation is the adverb ("not yet shown"); "so far" is not the joining "so".
+JOIN = re.compile(r"\b(?:and|but|so(?!\s+far\b)|yet)\b", re.I)
 DOUBT = re.compile(r"\b(?:doubts?|doubted|questions?|questioned|disputes?|disputed|deny|denies|denied)\b", re.I)
 # A condition covers a claim only inside its own comma clause: "If the alert works, close it"
 # is honest; "Once deployed, the alert works." is a claim.
@@ -136,10 +144,13 @@ def production(environment):
 
 
 def negated(part):
-    """True when the last negation in part covers what follows it, which a doubt word after it
-    undoes ("nobody doubts that")."""
+    """True when the last negation in part covers what follows it. A doubt word after it undoes
+    it ("nobody doubts that"), and so does a joining and, but, so or yet ("did not fail and")."""
     hits = list(NEGATION.finditer(part))
-    return bool(hits) and not DOUBT.search(part, hits[-1].end())
+    if not hits:
+        return False
+    rest = part[hits[-1].end():]
+    return not DOUBT.search(rest) and not JOIN.search(re.sub(r"^\s*yet\b", "", rest, flags=re.I))
 
 
 def overclaims(content):

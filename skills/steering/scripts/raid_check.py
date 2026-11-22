@@ -19,8 +19,11 @@ Rules:
   overclaim   a line in the status or the full pack that says "on track" or "verified" has
               evidence on the same line (a date, a percentile or a percentage); one that says
               "signed" (off) or "approved" cites its source (the /approve comment's #issuecomment
-              link, /approve with its date, or a written: ledger row) or says "claimed".
-              "not ..." passes
+              link, /approve with its own date such as "/approve on 2026-11-24", or a written:
+              ledger row) or says "claimed". "not ..." passes; so does a clause that starts "Do
+              not" or "Never", and a request ("asked me to mark F2 as signed off") that a later
+              clause refuses ("I did not"). Headings, fenced code and table header rows are
+              skipped; table body rows are read
   format      in a log: only the four sections, each once, each with one table with the template's
               columns and no table line outside it; known states and outcomes; unique IDs. In a
               status file: only "## Status" (once) and "## Full pack". Something to check in
@@ -54,8 +57,19 @@ SIGN_OFF = ("signed", "approved")
 NEGATED = re.compile(r"\b(?:not|never|no longer)\s+(?:(?:yet|been|fully)\s+)*$", re.I)
 EVIDENCE = re.compile(r"\d{4}-\d{2}-\d{2}|\d+(?:\.\d+)?\s?%|\b\d+(?:st|nd|rd|th) percentile\b", re.I)
 SOURCE = re.compile(r"#issuecomment-\d+|\bwritten:|\bclaimed\b", re.I)
-APPROVE = re.compile(r"/approve\b")
-DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+DATE = r"\d{4}-\d{2}-\d{2}"
+# The date of a /approve comment: right after it ("/approve 2026-11-24", "/approve on 2026-11-24",
+# "/approve comment of 2026-11-24"), or right before a parenthesis naming it ("on 2026-11-24
+# (tracker /approve)"). Any other date on the line is not the comment's date.
+APPROVE_DATED = re.compile(
+    rf"/approve\b(?:\s+comment)?(?:\s+(?:on|of|dated|at)\s+|\s*[,:(]?\s*){DATE}"
+    rf"|{DATE}\s*\((?:[\w-]+\s+)?/approve\b", re.I)
+CLAUSE = re.compile(r"[^.;:!?]+[.;:!?]*")
+DO_NOT = re.compile(r"^(?:please\s+)?(?:do\s+not|don't|never)\b", re.I)
+REQUEST = re.compile(r"\b(?:asked|asks|wants|wanted|told)\s+(?:me|us)\s+to\b", re.I)
+REFUSAL = re.compile(r"^(?:I|we)\s+(?:did\s+not|didn't|have\s+not|haven't|will\s+not|won't)\b", re.I)
+FENCE = re.compile(r"^\s*(?:```|~~~)")
+HEADING = re.compile(r"^\s*#{1,6}\s")
 STATUS_FILE = ("Status", "Full pack")
 
 
@@ -197,14 +211,42 @@ def status_section(name, first, lines):
 
 
 def sourced(line):
-    """A sign-off source: a comment link, a written: row, the label 'claimed', or /approve with a date."""
-    return bool(SOURCE.search(line) or (APPROVE.search(line) and DATE.search(line)))
+    """A sign-off source: a comment link, a written: row, the label 'claimed', or /approve with its date."""
+    return bool(SOURCE.search(line) or APPROVE_DATED.search(line))
+
+
+def claims_in(line):
+    """Overclaim words the line asserts. A clause that starts "Do not" or "Never" asserts none, and
+    neither does a reported request ("asked me to ...") that a later clause refuses ("I did not")."""
+    clauses = [c.strip() for c in CLAUSE.findall(line)]
+    found = []
+    for i, clause in enumerate(clauses):
+        if DO_NOT.match(clause):
+            continue
+        if REQUEST.search(clause) and any(REFUSAL.match(c) for c in clauses[i + 1:]):
+            continue
+        found += [m.group(1) for m in OVERCLAIM.finditer(clause) if not NEGATED.search(clause[:m.start()])]
+    return found
+
+
+def prose(lines, first):
+    """(line number, line) for prose: no headings, fenced code, or table header and separator rows."""
+    fenced = False
+    for i, line in enumerate(lines):
+        if FENCE.match(line):
+            fenced = not fenced
+            continue
+        following = lines[i + 1].strip() if i + 1 < len(lines) else ""
+        if fenced or HEADING.match(line) or SEPARATOR.match(line.strip()) or (
+                line.strip().startswith("|") and SEPARATOR.match(following)):
+            continue
+        yield first + i, line
 
 
 def overclaims(name, where, first, lines):
     out = []
-    for number, line in enumerate(lines, first):
-        claims = [m.group(1) for m in OVERCLAIM.finditer(line) if not NEGATED.search(line[:m.start()])]
+    for number, line in prose(lines, first):
+        claims = claims_in(line)
         signed = [c for c in claims if c.lower().startswith(SIGN_OFF)]
         if signed and not sourced(line):
             out.append(f"overclaim: {name}: {where} line {number} says {signed[0]!r} with no source; cite "

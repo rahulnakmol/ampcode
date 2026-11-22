@@ -6,7 +6,9 @@ Expected values are derived by hand from the committed SARIF fixtures (see
 tests/fixtures/scanning-vulnerabilities/README.md), never from the code under test.
 """
 
+import datetime
 import json
+import os
 import re
 import subprocess
 import sys
@@ -30,8 +32,9 @@ SAMPLE = [
 ]
 
 
-def run(*args):
-    return subprocess.run([sys.executable, str(SCRIPT), *args], capture_output=True, text=True, timeout=60)
+def run(*args, env=None):
+    return subprocess.run([sys.executable, str(SCRIPT), *args], capture_output=True, text=True, timeout=60,
+                          env={**os.environ, **env} if env else None)
 
 
 def sarif(tool, results, rules=(), version="1.0"):
@@ -412,6 +415,45 @@ class Check(Base):
         # A fixed Medium needs no retest evidence.
         self.assertEqual(self.rules(edit("| High |", "| Medium |", text)), [])
 
+    def test_d13_run_state_words_only_at_the_start_of_the_result(self):
+        # D-13 (gate1 N13, N14, N16; gate2 RP4, RP5, RP7): run-state words fail only at the start
+        # of the result or as the whole result; "not run", "pending" and "failed to start" fail
+        # anywhere. The reviewer still reads the result, so not every phrasing is caught.
+        cell = "| Rescan ToolA 1.0 2026-11-21: 0 results at `x.py:5` |"
+        form = "<Rescan|Test|PoC|CI> <tool or name> <YYYY-MM-DD>: <result>"
+        honest = ("request rejected with 403 as expected", "none of the 3 B602 hits remain",
+                  "passed; 2 unrelated tests skipped", "the old token will no longer work",
+                  "yet again rejected", "errored requests now return 400")
+        for result in honest:
+            with self.subTest(result=result):
+                self.assertEqual(self.rules(edit(cell, f"| PoC F1-exploit 2026-11-20: {result} |")), [])
+        did_not_run = (
+            # Synonyms that said the run did not happen or finish, and passed.
+            "didn't run", "did not finish", "timed out", "in progress", "queued", "postponed",
+            "deferred", "going to rerun", "Didn\u2019t run: runner offline", "did not run",
+            "didn't finish", "timed out after 30 minutes", "queued behind the nightly build",
+            "in progress, 40% done", "deferred to next sprint", "going to re-run tomorrow",
+            # Still matched anywhere.
+            "0 results so far; full rescan pending", "partial: 0 results, full rescan not run",
+            "0 results; the full run failed to start",
+            # Whole-result words with trailing punctuation or a clause after it.
+            "errored.", "errored: runner lost", "none.", "yet", "failed, see log", "yet to run")
+        for result in did_not_run:
+            with self.subTest(result=result):
+                found = self.rules(edit(cell, f"| Rescan Bandit 1.9.4 2026-11-21: {result} |"))
+                self.assertEqual(len(found), 1, found)
+                self.assertTrue(found[0].startswith("C4:") and form in found[0], found)
+        # D-13: a name made only of underscores or other symbols is no name.
+        for retest in ("Rescan ___ 2026-11-21: 0 results", "PoC _-_ 2026-11-21: 0 results",
+                       "CI __init__ 2026-11-21: passed"):
+            with self.subTest(retest=retest):
+                found = self.rules(edit(cell, f"| {retest} |"))
+                if retest.startswith("CI"):
+                    self.assertEqual(found, [])  # a name with letters among the underscores
+                else:
+                    self.assertEqual(len(found), 1, found)
+                    self.assertTrue(found[0].startswith("C4:"), found)
+
     def test_w7_9_overclaim_words_fail(self):
         for claim in ("The service is secure.", "Scans found no vulnerabilities.",
                       "The code is vulnerability-free.", "No known vulnerabilities remain.",
@@ -542,13 +584,27 @@ class SkillText(unittest.TestCase):
         self.assertEqual(done.returncode, 0)
         self.assertIn("merge", done.stdout)
 
-    def test_check_today_defaults_to_the_utc_date(self):
+    def test_check_today_defaults_to_the_local_date(self):
         # RP1: a Retest date after today fails. --today sets today for tests; the default is
-        # today's UTC date, so a date far ahead fails and an old one passes without the option.
+        # today's local date (D-13: it was the UTC date), so a date far ahead fails and an old
+        # one passes without the option.
         done = run("check", "--help")
         self.assertEqual(done.returncode, 0)
         self.assertIn("--today", done.stdout)
-        self.assertIn("UTC", done.stdout)
+        self.assertIn("local date", " ".join(done.stdout.split()))
+        # D-13: the local date decides. At UTC+14 and at UTC-12 the local dates are 26 hours
+        # apart, so a run dated today at UTC+14 is in the future at UTC-12. With a UTC default
+        # one of the two checks below fails at any hour.
+        ahead = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=14)).date()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "report.md"
+            path.write_text(edit("| Rescan ToolA 1.0 2026-11-21: 0 results at `x.py:5` |",
+                                 f"| Rescan ToolA 1.0 {ahead.isoformat()}: 0 results at `x.py:5` |"))
+            east = run("check", str(path), env={"TZ": "EAST-14"})  # POSIX: local is UTC+14
+            self.assertEqual(east.stdout.strip(), "pass", east.stdout + east.stderr)
+            west = run("check", str(path), env={"TZ": "WEST+12"})  # POSIX: local is UTC-12
+            self.assertEqual(west.returncode, 1, west.stdout)
+            self.assertTrue(west.stdout.startswith("C4: F1"), west.stdout)
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "report.md"
             path.write_text(edit("| Rescan ToolA 1.0 2026-11-21: 0 results at `x.py:5` |",
@@ -603,6 +659,10 @@ class SkillText(unittest.TestCase):
         # Replanned patch, round 1: the row names the date and result rules check now adds.
         self.assertIn("The date is the run date, not after today", triage)
         self.assertIn("skipped, cancelled, errored", triage)
+        # D-13: the default date is the local date, and the word list is not every phrasing.
+        self.assertIn("not after today (your local date; `check --today` sets it)", triage)
+        self.assertIn("at the start of the result", triage)
+        self.assertIn("The list is not every phrasing: a reviewer still reads the result", triage)
         done = " ".join(self.text.split("## Check your work", 1)[1].split())
         self.assertIn("retest evidence in the Retest form", done)
 

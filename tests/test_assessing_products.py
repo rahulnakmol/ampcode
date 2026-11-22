@@ -563,6 +563,12 @@ class SkillText(unittest.TestCase):
                       "for each option the evidence allows", part)
         self.assertIn("each plan quoted or offered", part)
 
+    def test_eval_r3_1_which_claims_a_rank_change_needs_comes_from_runs(self):
+        # D-8, eval round 3, R3-1: "Calyx needs all five" was drawn from best-case runs alone.
+        part = self.section("## 5. Read the result")
+        self.assertIn("To say which claims a rank change needs, run the case without each one, and with the "
+                      "leader's open items one band lower; otherwise say only what the runs printed", part)
+
     def test_eval_r2_2_claims_need_a_condition_for_a_product_not_recommended(self):
         # Eval round 2, R2-2: a not-recommended product's rank-changing claims and its unproven gate got no owner.
         part = self.section("## 5. Read the result")

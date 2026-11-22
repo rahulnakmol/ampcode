@@ -83,7 +83,7 @@ Copy [templates/post-incident-review.md](templates/post-incident-review.md). A w
 | P4 | Keep at least 2 hypotheses, each with an ID (`H1`), a status (`open`, `supported`, `confirmed`, `rejected`, with or without backticks) and evidence |
 | P5 | Keep exactly one root-cause line. `Root cause (H1): …` needs H1 `confirmed`: only the IDs in the label count, and each must be confirmed. Otherwise write exactly `Root cause: not established.`, and beside it only lines that start with `Open:` (`Open: H1 and H2 until the pool metrics are read.`). The whole section counts |
 | P6 | Keep mitigation in its own `## Mitigation` section, apart from the actions, and have at least one `durable fix` action |
-| P7 | Give each action its own ID, a kind (`durable fix`, `missing alert`, `prevention`), observed, expected, numbered steps and Given/When/Then acceptance. A `- Owner:`-style line is a field even when indented; any other line continues the field, step or criterion above it |
+| P7 | Give each action its own ID, a kind (`durable fix`, `missing alert`, `prevention`), observed, expected, numbered steps and Given/When/Then acceptance whose "then" states a quantity (a number, or each, all, none, at least, at most, within), with a real number (a digit outside an ID such as S-2.1) in at least one "then", as grooming requires. A `- Owner:`-style line is a field even when indented; any other line continues the field, step or criterion above it |
 | P8 | Give each action a backlog ID (`B-n` or `S-n`) |
 | P9 | Write observations, not verdicts: no "the alert works" or "fires correctly", "is secure", "no vulnerabilities", "vulnerability-free", or "was verified" / "verified." as a state. Fine: "not verified", the verb ("secure the queue", "verified the rollback in the log"), "secure" before a noun ("secure storage", "Secure Score"), and text in a code span or double quotes |
 
@@ -120,9 +120,11 @@ python3 <skill>/scripts/pir_check.py check review.md
 `<skill>` is this skill's folder, `<grooming>` the grooming skill's folder. `bugs` checks the
 review first and writes nothing on a finding. Then it adds one draft bug per action without a
 backlog ID, under the feature you name, with the bug IDs after the highest existing bug ID, and
-writes each ID into the action's `- Backlog:` line. Title, observed, expected, steps and
-acceptance come from the action; `work` is `build`, `size` is `S`, `status` is `draft`. A
-`missing alert` bug's notes point to `monitoring`. Priority and urgency follow the severity:
+writes each ID into the action's `- Backlog:` line. It writes both files or neither; a path that
+is a symbolic link is followed, so the target file is updated and keeps its mode. Title,
+observed, expected, steps and acceptance come from the action; `work` is `build`, `size` is
+`S`, `status` is `draft`. A `missing alert` bug's notes point to `monitoring`. Priority and
+urgency follow the severity:
 
 | Severity | Meaning | Bug priority | Bug urgency |
 | --- | --- | --- | --- |

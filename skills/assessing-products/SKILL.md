@@ -119,7 +119,8 @@ category is refused, and the report lists every unresolved fit as a gap.
   not the result". Never edit the frozen files, and never compute a what-if outside the script.
   State only the ranks a what-if run printed. Before you say what it would take for a claim to
   change the rank, run the best case for each option the evidence allows, for example each plan
-  quoted or offered.
+  quoted or offered. To say which claims a rank change needs, run the case without each one, and
+  with the leader's open items one band lower; otherwise say only what the runs printed.
 
 ## 6. Write the recommendation
 

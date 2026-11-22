@@ -67,26 +67,29 @@ CODE_SPAN = re.compile(r"`[^`]*`")
 QUOTED = re.compile(r"\"[^\"\n]*\"|\u201c[^\u201d\n]*\u201d|\u2018[^\u2019\n]*\u2019|(?<!\w)'[^'\n]*'(?!\w)")
 THIRD_PARTY = re.compile(r"\b(?:calls\s+it|claims|claimed|says|said|states|stated)\s*:?\s*$", re.I)
 # The model's author is not a third party: a quote stays read when one of these words appears in the
-# same clause before the verb ("Our review says ...", "This model states ...", "We said ...").
-AUTHOR = re.compile(r"\b(?:we|our|us|the\s+model|this\s+model|this\s+review|the\s+review|our\s+review|"
-                    r"the\s+team)\b", re.I)
+# same clause before the verb ("Our review says ...", "This threat model states ...", "I said ...").
+# "our" names the author only before review, model, threat model, assessment or team: "Our vendor says"
+# is a third party. "I" counts only as a capital, so "i.e." does not.
+AUTHOR = re.compile(r"(?-i:\bI\b)|\b(?:we|us|my|our\s+(?:review|model|threat\s+model|assessment|team)|"
+                    r"(?:the|this)\s+(?:model|threat\s+model|review|assessment|author|team))\b", re.I)
 # The cookie attribute named in a list: "the Secure and HttpOnly flags", "the Secure, HttpOnly and
 # SameSite=Strict attributes". Case-sensitive: only "Secure" written as a name.
 ATTRIBUTE_LIST = re.compile(r"Secure(?:,?\s+(?:and|or|[A-Z][\w=-]*)){1,4},?\s+(?:flags?|attributes?)\b")
 # In a threat's title, mitigation and verification, "verified" names a control only when, right after
 # it, comes (a) with, against, using or by and then a means within three words (a means noun below, or
-# a tool or version name: a word with a digit, a dot, or two or more capitals), with no team word in
-# the rest of the clause; or
+# a tool's version or file: "1.85", "v2.3", "testssl.sh"; a bare vendor or standard name such as AWS
+# or SOC2 is not a means), with no team word in the rest of the clause; or
 # (b) a noun from VERIFIED_NOUN, after at most a determiner: "verified with HMAC-SHA256", "verified
 # against the old key", "verified the signature", "only verified tokens". Anything else is a claim.
 VERIFIED_MEANS = re.compile(r"\s+(?:with|against|using|by)((?:\s+[\w.'-]+){1,3})", re.I)
-MEANS_WORD = re.compile(r"(?:hmac|signatures?|checksums?|hash(?:es)?|digests?|keys?|certificates?|tests?|ci|"
+MEANS_WORD = re.compile(r"(?:hmac(?:-sha-?\d+)?|sha-?\d+|ed25519|signatures?|checksums?|hash(?:es)?|digests?|"
+                        r"keys?|certificates?|tests?|ci|"
                         r"scans?|scanners?|tools?|scripts?|schemas?|polic(?:y|ies)|rules?|pipelines?|runs?|jobs?)$",
                         re.I)
-TOOL_WORD = re.compile(r"^(?=.*(?:\d|\w\.\w|[A-Z].*[A-Z]))[\w.-]+$")
+TOOL_WORD = re.compile(r"^(?:v?\d+(?:\.\d+)+|[\w-]+(?:\.[\w-]{2,})+)$", re.I)
 TEAM_WORD = re.compile(r"\b(?:team|group|department|squad|function|staff|people|person|reviewers?)s?\b", re.I)
 VERIFIED_NOUN = re.compile(r"\s+(?:(?:the|a|an|each|every|its|their|this|that)\s+)?(?:signatures?|tokens?|"
-                           r"hash(?:es)?|checksums?|certificates?|signers?|ones?|inputs?|requests?|payloads?)\b",
+                           r"hash(?:es)?|checksums?|certificates?|signers?|inputs?|requests?|payloads?)\b",
                            re.I)
 INTENSIFIED = re.compile(r"\b(?:fully|all|completely|formally|independently)\s+$", re.I)
 DESCRIBED = ("title", "mitigation", "verification")

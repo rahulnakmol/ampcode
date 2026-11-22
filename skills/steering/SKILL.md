@@ -93,9 +93,11 @@ A missing input is not a reason to guess. Write "not examined" for what it would
    digest). `record-signoff` writes the backlog and has no plan step:
    the owner approves the exact command, with its item, approver and source. Outside a contract
    mission, the owner approves the exact plan or command. Until the sign-off is recorded, report
-   it as "claimed: email from <who>, <date>; not in the tracker". In the status, a "signed" line
-   cites its source (the `/approve` comment or the `written:` row) or says "claimed";
-   `raid_check.py` checks this.
+   it as "claimed: email from <who>, <date>; not in the tracker". `raid_check.py` reads the status
+   and the full pack. It treats "signed" and "approved" as sign-off words: such a line needs
+   `/approve` with its date ("/approve on 2026-11-24"), the comment link, or the `written:` row,
+   or it says "claimed". Write a refusal as "F2 is not signed off" or "Do not mark F2 as
+   approved".
 8. **Write the status and the full pack.** Copy [templates/status.md](templates/status.md) to
    its own file. The `## Status` section has at most five lines: overall state, flow, forecast,
    risks and issues, decisions needed. The full pack holds the detail.

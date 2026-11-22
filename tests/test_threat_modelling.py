@@ -556,7 +556,7 @@ class Overclaim(unittest.TestCase):
             ("verification", "Integration test asserts the Secure flag on every Set-Cookie header"),
             ("verification", "Unit test: a token verified against the old key gets 401"),
             ("title", "A forged webhook is accepted as `verified`"),  # backticks, not quotes
-            ("mitigation", "Planned: reject a replayed webhook; a verified one is accepted once"),
+            ("mitigation", "Planned: reject a replayed webhook; a verified request is accepted once"),
             ("verification", "Contract test: only verified tokens reach the API"),
             ("element name", "SFTP server (secure file transfer)"),
             ("abuse how", "Replays a request captured over Secure Shell"),
@@ -652,6 +652,41 @@ class Overclaim(unittest.TestCase):
                 else:
                     model[field] = value
                 self.assertEqual(rules(model), ["M12"])
+
+    def test_d11_bare_vendor_or_standard_name_is_not_a_means(self):
+        # D-11: a vendor or standard name is not evidence. A tool counts only as a version (a number with
+        # a dot) or a file name; "one" is no longer a noun that makes "verified" a control.
+        for value in ("verified by AWS", "verified by SOC2", "verified one way or another",
+                      "a verified one is accepted once", "verified by Okta SSO"):
+            for field, index, prefix in (("title", 2, ""), ("mitigation", 0, "Planned: "),
+                                         ("verification", 0, "")):
+                with self.subTest(field=field, value=value):
+                    model = minimal()
+                    model["threats"][index][field] = prefix + value
+                    self.assertEqual(rules(model), ["M12"])
+        for value in ("Semgrep: rule set verified by semgrep 1.85 on 2026-11-20",
+                      "TLS settings verified by check_tls.py in staging",
+                      "Signature verified with HMAC-SHA256 in a unit test"):
+            with self.subTest(passes=value):
+                model = minimal()
+                model["threats"][0]["verification"] = value
+                self.assertEqual(problems(model), [])
+
+    def test_d14_author_words_and_our_vendor(self):
+        # D-14: I, my, this threat model, the author and the assessment name the model's author; "our" does
+        # only before review, model, threat model or assessment, so "Our vendor says" is a third party.
+        for summary in ("I said 'secure'.", "My review says 'secure'.", "This threat model states 'secure'.",
+                        "The author states 'secure'.", "The assessment says 'secure'.",
+                        "Our threat model says 'secure'.", "Our assessment states 'secure'."):
+            with self.subTest(summary=summary):
+                model = minimal()
+                model["summary"] = summary
+                self.assertEqual(rules(model), ["M12"])
+        for summary in ("Our vendor says 'secure by design'.", "Our supplier states 'no known vulnerabilities'."):
+            with self.subTest(passes=summary):
+                model = minimal()
+                model["summary"] = summary
+                self.assertEqual(problems(model), [])
 
     def test_x2_author_cannot_quote_itself(self):
         # Gate 2 RP3: a third-party verb does not skip a quote when the model's author is its subject.
@@ -851,6 +886,12 @@ class SkillText(unittest.TestCase):
         asvs = (SKILL / "reference" / "asvs.md").read_text()
         self.assertIn("The model you are writing is not evidence for V1.1.2.", flat(asvs))
         self.assertNotIn("is the evidence for it", asvs)
+        # D-7, eval round 3: a table row may be a `gap` without reading the source; `met` may not.
+        self.assertIn("A row of this table may be cited as `gap` or `not examined` by its subject alone.", flat(asvs))
+        self.assertIn("Before you cite any requirement as `met`, quote it, or cite one not in this table, "
+                      "read its full text in the source", flat(asvs))
+        stride = (SKILL / "reference" / "stride.md").read_text()
+        self.assertIn("A cited threat must cover this flow's sender.", flat(stride))
         for ref in ("V7.1.1", "V7.1.2", "V12.1.1"):
             self.assertRegex(asvs, rf"(?m)^\| {re.escape(ref)} \| \S")
         self.assertIn("not the full list", flat(asvs))
