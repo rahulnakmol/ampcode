@@ -88,3 +88,72 @@ describe('advisory team', () => {
 		expect(calls).toHaveLength(1)
 	})
 })
+
+const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
+const roles = {
+	archi: read('plugins/advisory-team/archi.md'),
+	darci: read('plugins/advisory-team/darci.md'),
+}
+const skill = read('skills/architecting/SKILL.md')
+const dataAndAi = read('skills/architecting/reference/data-and-ai.md')
+
+describe('Archi and Darci load the architecting skill (W2)', () => {
+	test('W2.1 Archi names architecting; Darci names architecting and data-and-ai; both stay advisory', () => {
+		expect(roles.archi).toContain('Load the `architecting` skill and follow it')
+		expect(roles.darci).toContain('Load the `architecting` skill')
+		expect(roles.darci).toContain('`reference/data-and-ai.md`')
+		for (const text of Object.values(roles)) {
+			expect(text).toMatch(/never write files/i)
+		}
+	})
+
+	test('W2.2 each role file has at most 20 lines and keeps its role-specific limits', () => {
+		for (const text of Object.values(roles)) {
+			expect(text.replace(/\n$/, '').split('\n').length).toBeLessThanOrEqual(20)
+		}
+		expect(roles.darci).toContain('Do not request connection strings in chat')
+		expect(roles.darci).toContain('Live connectors are not installed')
+		expect(roles.darci).toContain('Do not run migrations, expensive exploratory queries, or extract customer records by default.')
+		expect(roles.darci).toContain('Do not launch implementation work.')
+		for (const text of Object.values(roles)) expect(text).toContain('Never write files')
+		expect(roles.archi).toMatch(/one-shot consultation/i)
+		expect(roles.archi).toMatch(/return the interview questions to the caller/i)
+		expect(roles.archi).toMatch(/do not invent the user's answers/i)
+	})
+
+	test('W2.3 the moved method lines are in the skill, not in the role files', () => {
+		expect(skill).toContain('Domain-driven design: ubiquitous language')
+		expect(dataAndAi).toContain('Compare SQL Server/PostgreSQL reporting')
+		expect(roles.archi).not.toContain('Domain-driven design: ubiquitous language')
+		expect(roles.darci).not.toContain('Compare SQL Server/PostgreSQL reporting')
+	})
+
+	test('W2.4 the tool allowlist and "Never modify source" are unchanged', () => {
+		const shared = read('plugins/advisory-team/shared.md')
+		expect(shared).toContain('Never modify source, configuration, databases, infrastructure, or remote state.')
+		const { agents } = setup()
+		for (const [i, key] of ['archi', 'darci'].entries()) {
+			expect(agents[i].instructions).toBe(shared + '\n\n' + roles[key as keyof typeof roles])
+			expect(agents[i].tools).toEqual([
+				'Read', 'finder', 'librarian', 'oracle', 'read_thread',
+				'web_search', 'read_web_page', 'view_media', 'skill',
+			])
+		}
+	})
+
+	test('W2.5 each role file says what to do when the skill cannot be loaded', () => {
+		for (const text of Object.values(roles)) {
+			expect(text).toContain('If the `architecting` skill cannot be loaded, say so in your answer. Then advise from the advisory contract above.')
+		}
+	})
+
+	test('W2.6 architecting has a "Without a shell" rule: give the design_check.py command, label it "not run"', () => {
+		const match = skill.match(/^#+ Without a shell\n([\s\S]*?)(?=^#+ )/m)
+		expect(match).not.toBeNull()
+		const section = match![1]
+		expect(section).toContain('design_check.py')
+		expect(section).toContain('not run')
+		expect(section).toMatch(/give the\s+caller the exact command/i)
+		expect(section).toMatch(/goldfishing/)
+	})
+})
