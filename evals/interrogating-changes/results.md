@@ -86,5 +86,6 @@ unchanged, and both operator patch IDs are confirmed.
 
 All three findings were fixed in `SKILL.md` after grading: §2 now covers a request that already
 carries the author's claim, §5 says how an unfiled pre-existing Blocker or Major is handed over
-and recorded, and §9 makes an unaccepted lowered-bar flag at least a Major, so the verdict
-enforces it. No rule failed, so the scenarios were not rerun.
+and recorded, and §9 tells the reviewer to record an unaccepted lowered-bar flag as at least a Major in
+the ledger, which is how the verdict enforces it (the ledger script does not read the
+lowered-bar output itself). No rule failed, so the scenarios were not rerun.

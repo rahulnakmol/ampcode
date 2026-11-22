@@ -155,10 +155,14 @@ catalogue examples that have the same gaps.
 
 ## Disposition (mission thread)
 
-Round 2 was the one rerun the mission allows. Its single failed rule traces to the skill's NFR
+Round 2 was the one rerun the mission allows (skill revision: the working tree of
+wave12/m1-architecture before commit 66164c3; round 2's designs are in the mission's eval
+folder). Its single failed rule traces to the skill's NFR
 catalogue, whose example rows had no condition (Isolation) or no environment (Cost and others),
 and the S1 agent copied them. Fixed after round 2: every catalogue row now has a condition and a
 test that names its environment and timing; step 5 and Check your work ask where each number
 came from; the brief-reading rule covers widened or narrowed wording; the handoff keeps each
-claim's label. A third run was not made in M1. It is filed as deferred item D-1 (rerun S1 and
+claim's label. Disposition: fixed; the confirming rerun is deferred as item D-1 (rerun S1 and
 S2 once on the fixed catalogue, in the M5 close-out) in the mission ledger.
+
+Until D-1 runs, success criterion SC3 is not proven for `architecting`.

@@ -10,7 +10,7 @@ and reported. The mission thread runs it and writes `results.md`.
 1. Build the repositories: `bash evals/interrogating-changes/make-fixtures.sh <tmp>/fixtures`.
    Each of `s1` and `s2` has the tags `base` and `head`.
 2. The operator computes each patch ID by hand:
-   `git -C <repo> diff base..head | git patch-id --verbatim`.
+   `git -C <repo> diff base...head | git patch-id --verbatim`.
 3. Start a fresh agent (a new Amp subagent) for each scenario. It may read only
    `skills/interrogating-changes/` and the scenario's repository, and write only a working folder.
    It never reads this README or `make-fixtures.sh`. Subagents cannot start further agents, so the

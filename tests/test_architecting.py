@@ -204,6 +204,8 @@ class Designs(unittest.TestCase):
         self.assertEqual(design_check.check(link), [])
         quoted = replace("docs/threat-model-reminders.md", "`docs/threat-model-reminders.md`.")
         self.assertEqual(design_check.check(quoted), [])
+        prose = replace("docs/threat-model-reminders.md", "we will write one later")
+        self.assertEqual(rules(prose), ["D8"])
 
     def test_no_trust_boundary_change_needs_no_threat_model(self):
         text = replace("Trust boundaries change: yes\nThreat model: docs/threat-model-reminders.md\n",

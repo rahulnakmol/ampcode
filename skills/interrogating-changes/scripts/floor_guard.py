@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Flag a unified diff that makes a check easier to pass (a lowered bar).
 
-  git diff <base>..<head> | python3 floor_guard.py [--accept <id>=<reason> ...]
+  git diff <base>...<head> | python3 floor_guard.py [--accept <id>=<reason> ...]
   python3 floor_guard.py change.diff [--accept <id>=<reason> ...]
 
 It flags, per file in the diff:
   assert-  an assertion removed with no added assertion to replace it
-  skip-    an added skip, ignore or focus marker (pytest.mark.skip, it.skip, it.only, t.Skip, ...)
+  skip-    an added skip, ignore or focus marker (pytest.mark.skip, pytestmark, @skip(, it.skip,
+           test.skipIf, test.concurrent.skip, it.only, fit, fdescribe, t.Skip, ...)
   silence- an added or widened checker silencer (noqa, eslint-disable, @ts-ignore, type: ignore,
            nosec, nolint, ...): '# noqa: F401' to '# noqa' is widened
   floor-   a lowered, removed or commented-out number on a coverage, threshold, min, minimum, fail_under,
@@ -31,8 +32,10 @@ ASSERTION = re.compile(
     r"^\s*(?:await\s+|with\s+)?(?:assert\b|(?:self\.|this\.|t\.|s\.)?assert\w*!?\s*\(|expect\s*\("
     r"|pytest\.raises\s*\(|require\.\w+\s*\(|t\.(?:Error|Fatal)f?\s*\()|\.should\b")
 SKIP = re.compile(
-    r"@pytest\.mark\.(?:skip|skipif|xfail)\b|\bunittest\.skip\w*|\.skipTest\s*\(|\bpytest\.(?:skip|xfail)\s*\("
-    r"|\b(?:it|test|describe|context)\.(?:skip|only|todo)\b|\b(?:xit|xtest|xdescribe)\s*\("
+    r"(?:@|\bpytestmark\s*=\s*\[?\s*)?\bpytest\.mark\.(?:skip|skipif|xfail)\b|\bunittest\.skip\w*|\.skipTest\s*\("
+    r"|\bpytest\.(?:skip|xfail)\s*\(|^\s*@skip(?:If|Unless)?\s*\("
+    r"|\b(?:it|test|describe|context)(?:\.(?:concurrent|sequential|serial))*\.(?:skip(?:If|Unless)?|only|todo(?:If)?)\b"
+    r"|\b(?:xit|xtest|xdescribe)\s*\(|(?<![\w.$])(?<!def )(?:fit|fdescribe)\s*\("
     r"|\bt\.Skip\w*\s*\(|#\[ignore\]|@(?:Disabled|Ignore)\b")
 SILENCER = re.compile(
     r"\bnoqa\b|eslint-disable(?:-next-line|-line)?|@ts-(?:ignore|nocheck|expect-error)\b|\btype:\s*ignore\b|\bnosec\b"
@@ -88,7 +91,7 @@ def parse(text):
 
 def bar_key(key):
     lowered = key.lower().replace("-", "_")
-    words = re.split(r"[_.\s]+", re.sub(r"([a-z])([A-Z])", r"\1_\2", key).lower())
+    words = re.split(r"[_.\s-]+", re.sub(r"([a-z])([A-Z])", r"\1_\2", key).lower())
     return "fail_under" in lowered or bool(BAR_WORDS & set(words))
 
 

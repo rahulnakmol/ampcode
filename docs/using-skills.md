@@ -321,7 +321,7 @@ preview/confirmation boundary, domain choices, resume prompt and current limits.
 - **architecting:** "Use architecting to design the webhook delivery service in `services/hooks`:
   contracts, ADRs and NFRs with numbers." It runs `scripts/design_check.py` on the design. In the
   read-only Archi or Darci mode it gives you the command and marks the check "not run".
-- **interrogating-changes:** "Use interrogating-changes on this branch against `origin/dev`, with
+- **interrogating-changes:** "Use interrogating-changes on `origin/dev...HEAD` (from the merge-base), with
   the acceptance criteria in `docs/brief.md`." A fresh reviewer gets the diff and the criteria,
   never the author's claims. `scripts/review_ledger.py verdict` ties the verdict to the patch, and
   `scripts/floor_guard.py` flags lowered bars such as new skips or silenced checkers.

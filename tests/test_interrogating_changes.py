@@ -3,8 +3,8 @@
 Run: python3 -m unittest tests.test_interrogating_changes -v
 
 Each test builds its own git repository with its own identity, so it needs no git setup.
-Expected patch IDs come from git itself (`git diff base..head | git patch-id --verbatim`), never
-from the script under test.
+Expected patch IDs come from git itself (`git diff base...head | git patch-id --verbatim`, from
+the merge-base), never from the script under test.
 """
 
 import copy
@@ -73,7 +73,7 @@ def git(repo, *args, stdin=None):
 
 
 def patch_id(repo, base, head):
-    diff = git(repo, "diff", f"{base}..{head}")
+    diff = git(repo, "diff", f"{base}...{head}")
     return git(repo, "patch-id", "--verbatim", stdin=diff).split()[0]
 
 
@@ -243,6 +243,27 @@ class Check(LedgerCase):
         finding = dict(REGRESSION, status="declined")
         self.assertFails(self.check(self.ledger([finding])), "F1", "declined")
 
+    def test_f3_l3_finding_outside_the_scope_fails(self):
+        ledger = self.ledger([PRE_EXISTING])
+        ledger["rounds"][0]["scope"] = ["README.md"]
+        self.assertFails(self.check(ledger), "L3", "F2", "not in the round's scope")
+
+    def test_f3_l7_declined_regression_major_fails_even_when_filed(self):
+        filed = dict(REGRESSION, status="declined", filed="https://example.com/issues/1")
+        self.assertFails(self.check(self.ledger([filed])), "L7", "F1")
+        pre = dict(PRE_EXISTING, severity="Major", status="declined", filed="https://example.com/issues/2")
+        result = self.check(self.ledger([pre]))
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_f3_line_after_a_deletion_is_touched(self):
+        # The change deletes BASE_APP lines 2-3 (the guard). HEAD_APP line 2,
+        # "    return balance - amount", is the line after the gap, so it counts as touched.
+        after = dict(REGRESSION, location="app.py:2", quote="return balance - amount")
+        result = self.check(self.ledger([after]))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertFails(self.check(self.ledger([dict(after, origin="pre-existing", severity="Nit")])),
+                         "L5", "changed by this change")
+
     def test_recorded_patch_id_must_match_the_round(self):
         ledger = self.ledger()
         ledger["rounds"][0]["patch_id"] = "0" * 40
@@ -315,6 +336,28 @@ class Verdict(LedgerCase):
                   round_(self.repo, self.base, self.head, [], 2)]
         self.assertFails(self.verdict({"rounds": rounds}), "verdict: changes needed")
 
+    def test_g1_m1_moved_target_diffs_from_the_merge_base(self):
+        # The target branch moves after the change was cut from base: it edits the fee line
+        # (HEAD_APP line 6) and adds other.py. Neither is part of the change.
+        git(self.repo, "checkout", "-q", "-b", "target", self.base)
+        (self.repo / "other.py").write_text("x = 1\n")
+        git(self.repo, "add", "other.py")
+        target = commit(self.repo, BASE_APP.replace("0.01", "0.02"), "target moves")
+        expected = git(self.repo, "patch-id", "--verbatim",
+                       stdin=git(self.repo, "diff", f"{target}...{self.head}")).split()[0]
+        two_dot = git(self.repo, "patch-id", "--verbatim",
+                      stdin=git(self.repo, "diff", f"{target}..{self.head}")).split()[0]
+        self.assertNotEqual(expected, two_dot)
+        result = run(LEDGER, "verdict", "--repo", str(self.repo), "--base", target, "--head", self.head)
+        self.assertFails(result, f"patch-id: {expected}", "not reviewed")
+        # Line 6 only the target changed: a correct "pre-existing" label passes L5.
+        ledger = {"rounds": [round_(self.repo, target, self.head, [REGRESSION, PRE_EXISTING])]}
+        self.assertEqual(ledger["rounds"][0]["patch_id"], expected)
+        checked = self.check(ledger)
+        self.assertEqual(checked.returncode, 0, checked.stdout)
+        wrong = {"rounds": [round_(self.repo, target, self.head, [dict(PRE_EXISTING, origin="regression")])]}
+        self.assertFails(self.check(wrong), "F2", "unchanged since base")
+
     def test_n5_git_failure_is_not_run(self):
         result = self.verdict(head="no-such-ref")
         self.assertFails(result, "git failed", "not run")
@@ -377,9 +420,20 @@ class FloorGuard(unittest.TestCase):
 
     def test_w4_2_added_skip_marker(self):
         for line in ('@pytest.mark.skip(reason="flaky")', "@unittest.skip('later')",
-                     "it.skip('adds', () => {", "    t.Skip(\"later\")", "#[ignore]"):
+                     "it.skip('adds', () => {", "    t.Skip(\"later\")", "#[ignore]",
+                     "test.skipIf(process.platform === 'win32')('adds', () => {",
+                     "it.skipIf(isCI)('adds', () => {", "test.concurrent.skip('adds', async () => {",
+                     "it.concurrent.skip('adds', async () => {", "fit('adds', () => {",
+                     "fdescribe('total', () => {", 'pytestmark = pytest.mark.skip(reason="later")',
+                     '@skip("later")'):
             with self.subTest(line=line):
                 self.assertFlags(diff("tests/t", added=[line]), "skip marker added")
+
+    def test_w4_2_words_containing_fit_are_not_skip_markers(self):
+        for line in ("    return profit(items)", "def fitness(x):", "    model.fit(X, y)",
+                     "    def fit(self, X):", "    to = 'qa@skip.example'"):
+            with self.subTest(line=line):
+                self.assertClean(diff("src/a", added=[line]))
 
     def test_w4_3_added_checker_silencer(self):
         for line in ("import os  # noqa", "// eslint-disable-next-line no-console", "// @ts-ignore",
@@ -403,6 +457,10 @@ class FloorGuard(unittest.TestCase):
             ("branches", "branches: 75", "branches: 50"),
             ("functions", "functions: 90", "functions: 0"),
             ("statements", '"statements": 100', '"statements": 99.5'),
+            ("coverage-threshold", "coverage-threshold: 90", "coverage-threshold: 80"),
+            ("min-coverage", "min-coverage: 90", "min-coverage: 80"),
+            ("--min-coverage", "run: report --min-coverage 90", "run: report --min-coverage 80"),
+            ("min-coverage-overall", "          min-coverage-overall: 80", "          min-coverage-overall: 40"),
         ]
         for key, old, new in cases:
             with self.subTest(key=key):

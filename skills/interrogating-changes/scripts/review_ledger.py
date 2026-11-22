@@ -7,9 +7,10 @@
 check: exits 0 and prints "pass" when the ledger follows rules L1 to L9 in
 ../reference/ledger.md. Otherwise exits 1 and prints each problem as "<rule>: <what to fix>".
 
-verdict: prints the candidate's patch ID (`git diff <base>..<head> | git patch-id --verbatim`)
-and one verdict: "pass", "changes needed", "stale" (the ledger reviewed another patch),
-"ledger invalid" or "not reviewed" (no ledger). Exits 0 only on "pass".
+verdict: prints the candidate's patch ID (`git diff <base>...<head> | git patch-id --verbatim`;
+three dots, so the diff runs from the merge-base of base and head) and one verdict: "pass",
+"changes needed", "stale" (the ledger reviewed another patch), "ledger invalid" or
+"not reviewed" (no ledger). Exits 0 only on "pass".
 
 Standard library only. The check proves that each quote is in the named file at the reviewed
 revision and that its origin matches the lines the change touched. It cannot prove that the reviewer read
@@ -50,11 +51,13 @@ def diff(repo, *args):
 
 
 def patch_id(repo, base, head):
-    """The verbatim patch ID of base..head, '' for an empty diff, None when git fails.
+    """The verbatim patch ID of base...head, '' for an empty diff, None when git fails.
 
-    --verbatim keeps whitespace, so re-indenting code (moving a line out of an `if`) changes it.
+    Three dots diff from the merge-base of base and head, so a target that moved after the
+    branch was cut adds nothing to the patch. --verbatim keeps whitespace, so re-indenting code
+    (moving a line out of an `if`) changes it.
     """
-    text = diff(repo, f"{base}..{head}")
+    text = diff(repo, f"{base}...{head}")
     if text is None:
         return None
     out = git(repo, "patch-id", "--verbatim", stdin=text)
@@ -67,13 +70,13 @@ def show(repo, rev, path):
 
 
 def changed_lines(repo, base, head):
-    """{path at head: head line numbers the change touched}, with renames followed.
+    """{path at head: head line numbers the change touched since the merge-base}, renames followed.
 
     A touched line is an added line, or a line on either side of a deletion, so a removed
     guard counts against the lines around the gap.
     """
     touched, path = {}, None
-    for line in (diff(repo, "-U0", "-M", base, head) or "").splitlines():
+    for line in (diff(repo, "-U0", "-M", f"{base}...{head}") or "").splitlines():
         if line.startswith("+++ "):
             path = line[6:] if line.startswith("+++ b/") else None
         elif line.startswith("@@") and path:
@@ -180,7 +183,7 @@ def check(ledger, repo):
         if rnd["_base"] and rnd["_head"]:
             actual = patch_id(repo, rnd["_base"], rnd["_head"])
             if rnd.get("patch_id") != actual:
-                add("L1", f"round {index}: 'patch_id' {rnd.get('patch_id')!r} is not the patch ID of base..head ({actual or 'empty diff'})")
+                add("L1", f"round {index}: 'patch_id' {rnd.get('patch_id')!r} is not the patch ID of base...head ({actual or 'empty diff'})")
         scope = rnd.get("scope")
         if not isinstance(scope, list) or not scope or not all(isinstance(p, str) and p for p in scope):
             add("L1", f"round {index}: 'scope' must list the files read; zero findings count only with files read")
@@ -285,7 +288,7 @@ def main(argv=None):
     one = sub.add_parser("check", help="check a ledger against rules L1 to L9")
     one.add_argument("ledger")
     one.add_argument("--repo", default=".")
-    two = sub.add_parser("verdict", help="patch ID and verdict for base..head")
+    two = sub.add_parser("verdict", help="patch ID and verdict for base...head")
     two.add_argument("--base", required=True)
     two.add_argument("--head", required=True)
     two.add_argument("--ledger")

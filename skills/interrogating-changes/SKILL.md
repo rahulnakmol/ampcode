@@ -16,7 +16,9 @@ scripts.
 
 ## 1. Freeze the candidate
 
-1. Name the base and head as commit hashes, not branch names.
+1. Name the base (the target branch's commit) and head as commit hashes, not branch names. The
+   candidate is `<base>...<head>` (three dots): the diff from the merge-base of the target and
+   head, so changes the target gained after the branch was cut are not part of it.
 2. Get the patch ID:
    `python3 scripts/review_ledger.py verdict --repo . --base <base> --head <head>`.
    It prints the patch ID and "not reviewed". The patch ID keeps whitespace, so a re-indent
@@ -27,7 +29,7 @@ scripts.
 ## 2. Start a fresh reviewer
 
 Give the reviewer:
-- the diff (`git diff <base>..<head>`) and read access to the repository at head and base;
+- the diff (`git diff <base>...<head>`) and read access to the repository at head and base;
 - the intent of the change and its acceptance criteria;
 - the lens or lenses for this reviewer, from [reference/lenses.md](reference/lenses.md);
 - the ledger format, [reference/ledger.md](reference/ledger.md).
@@ -140,17 +142,18 @@ A change can pass by making the checks easier. Run the lowered-bar check:
 - on any diff that touches tests, CI files or checker configs (coverage, lint, type-check).
 
 ```bash
-git diff <base>..<head> | python3 scripts/floor_guard.py
+git diff <base>...<head> | python3 scripts/floor_guard.py
 ```
 
 It flags a removed assertion with no replacement, an added skip or focus marker, an added or
 widened checker silencer (`noqa`, `eslint-disable`, `@ts-ignore`, `type: ignore`, `nosec`,
 `nolint`), a lowered, removed or commented-out threshold, and an ignored failure in CI. Input
 with no diff prints "not run", never `pass`. It reads text patterns for common Python,
-JavaScript/TypeScript, Go and CI files, and may miss other languages' forms. Each flag is a
-finding under the tests lens, at least a Major, until it has a reason. Accept a flag only with a reason the reviewer agrees with:
-`--accept <id>="<reason>"`. The reason prints in the output; copy it to the report. A flag
-without an accepted reason blocks.
+JavaScript/TypeScript, Go and CI files, and may miss other languages' forms. Accept a flag only
+with a reason the reviewer agrees with: `--accept <id>="<reason>"`. The reason prints in the
+output; copy it to the report. `review_ledger.py` does not read this output, so the reviewer
+records each flag without an accepted reason in the ledger as a finding under the tests lens, at
+least a Major. That is how the verdict blocks on it.
 
 ## Common rationalizations
 

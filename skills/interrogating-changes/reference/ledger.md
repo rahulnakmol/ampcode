@@ -40,8 +40,8 @@ One JSON file per review. Each round adds an entry to `rounds`; earlier rounds n
 | `contract` | The calling mission contract, if any. Needed for a cap of 5 |
 | `cap` | Failed rounds before the disposition policy applies: 3, or 5 when the contract says so |
 | `round` | 1, 2, 3 … in order |
-| `base`, `head` | The revisions reviewed in this round. Use commit hashes: a branch name moves |
-| `patch_id` | `git diff <base>..<head> \| git patch-id --verbatim`, first field |
+| `base`, `head` | The revisions reviewed in this round: `base` is the target branch's commit, `head` the candidate's. Use commit hashes: a branch name moves. The change is `<base>...<head>`, from their merge-base |
+| `patch_id` | `git diff <base>...<head> \| git patch-id --verbatim`, first field (three dots: from the merge-base) |
 | `scope` | Every file the reviewer read in this round. Never empty |
 | `findings` | The findings raised or rechecked in this round; `[]` when none |
 | `disposition` | Only on a failed round past the cap: `fixed`, `replanned` or `filed`, as the disposition policy (or the owner, without a contract) decided. Leave it out before the cap |
@@ -69,11 +69,11 @@ the new head, so rules L3 to L5 check it there.
 
 | Rule | Fails when |
 | --- | --- |
-| L1 | The file is not an object with rounds; a round is out of order; `base` or `head` is not a commit; `patch_id` is not the patch ID of base..head; `scope` is empty; `cap` is not 3, or is 5 without `contract` |
+| L1 | The file is not an object with rounds; a round is out of order; `base` or `head` is not a commit; `patch_id` is not the patch ID of base...head; `scope` is empty; `cap` is not 3, or is 5 without `contract` |
 | L2 | A finding misses a field (named in the message), has a value outside the lists above, a `location` that is not `path:line`, or `evidence` that does not start `run: ` or `read: ` |
 | L3 | A finding's file is not in the round's `scope` |
 | L4 | The quote is not in the file at the round's head, or not at the stated lines: **not proven**. A `fixed` finding is checked at the head of the round that raised it |
-| L5 | A `regression` whose quoted lines at head the change did not touch, or a `pre-existing` finding whose lines it did. Touched lines come from `git diff -U0 -M <base> <head>`: added lines, and the lines on both sides of a deletion. A copied line is a regression where it was added |
+| L5 | A `regression` whose quoted lines at head the change did not touch, or a `pre-existing` finding whose lines it did. Touched lines come from `git diff -U0 -M <base>...<head>` (from the merge-base): added lines, and the lines on both sides of a deletion. A copied line is a regression where it was added |
 | L6 | A reused ID whose `problem`, `lens`, `severity` or `origin` changed, or an ID twice in one round |
 | L7 | A `declined` finding that is not a Nit, unless it is pre-existing and names where it is `filed` |
 | L8 | A failed round past the cap without a `disposition` of `fixed`, `replanned` or `filed`; any other disposition value; or a disposition on a round that is not a failed round past the cap |
@@ -96,7 +96,8 @@ computes the candidate's patch ID and compares it with the last round's `patch_i
 
 The patch ID ignores line numbers but keeps whitespace (`--verbatim`), so a clean rebase keeps
 it and a re-indent (a line moved out of an `if`) changes it. The diff is
-`<base>..<head>` (the two trees), so name the same base the review used.
+`<base>...<head>`: from the merge-base of base and head, so a target that moved after the branch
+was cut does not change it. Name the same base and head the review used.
 
 ## What the checks cannot prove
 

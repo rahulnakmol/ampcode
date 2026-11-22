@@ -165,6 +165,15 @@ class Rules(unittest.TestCase):
     def test_a1_name_and_description(self):
         self.assertEqual(self.rules(skill=GOOD.replace("name: sampling-things", "name: sampler")), ["A1"])
         self.assertEqual(self.rules(skill=GOOD.replace(" Not for counting.", "")), ["A1"])
+        self.assertEqual(self.rules(skill=GOOD.replace(" Use when asked to sample.", "")), ["A1"])
+        long = "Samples things. " + "x" * (1025 - 60) + " Use when asked to sample. Not for counting."
+        self.assertEqual(len(long), 1025)
+        self.assertEqual(self.rules(skill=GOOD.replace(
+            "Samples things. Use when asked to sample. Not for counting.", long)), ["A1"])
+        fits = "Samples things. " + "x" * (1024 - 60) + " Use when asked to sample. Not for counting."
+        self.assertEqual(len(fits), 1024)
+        self.assertEqual(self.rules(skill=GOOD.replace(
+            "Samples things. Use when asked to sample. Not for counting.", fits)), [])
 
     def test_a3_missing_section(self):
         self.assertEqual(self.rules(skill=GOOD.replace("## Red flags\n", "")), ["A3"])
@@ -175,6 +184,14 @@ class Rules(unittest.TestCase):
 
     def test_a5_routing_rows(self):
         self.assertEqual(self.rules(rows=False), ["A5"])
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp)
+            (root / "docs" / "using-skills.md").write_text("")
+            self.assertEqual([p.split(":")[0] for p in problems("sampling-things", root)], ["A5"])
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp)
+            (root / "README.md").write_text("")
+            self.assertEqual([p.split(":")[0] for p in problems("sampling-things", root)], ["A5"])
 
     def test_a6_banned_phrase(self):
         self.assertEqual(self.rules(skill=GOOD + "\nKeep a review budget.\n"), ["A6"])
