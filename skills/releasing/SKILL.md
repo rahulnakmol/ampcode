@@ -61,7 +61,8 @@ not an approval. An approval of an earlier digest does not cover a new plan.
    Record the owner's answer: with `missioning`, as a ledger row; otherwise as the owner's
    approval of that exact plan digest. That record is what `--check release-decision=pass`
    reports. Never report `release-decision=pass` before the decision exists. A "no", or no
-   answer yet, is `release-decision=fail`.
+   answer yet, is `release-decision=fail`. If a check from step 5 already failed, skip the
+   brief: report `release-decision=fail`, run `go` and report the NO-GO.
 7. **Decide.** Run `go` with the same plan options:
 
    ```bash
@@ -75,7 +76,9 @@ not an approval. An approval of an earlier digest does not cover a new plan.
    GO needs the same digest (nothing moved since the plan), a clean tree, a rollback plan that
    names the rollback point, and every listed check reported `pass`. Anything else is NO-GO.
    Report NO-GO with its reasons and stop.
-8. **Get approval** for the digest, unless the contract pre-authorizes this exact effect. For a
+8. **Get approval** for the digest, unless the contract pre-authorizes this exact effect. Ask
+   the owner to reply with the full digest; a shortened or paraphrased digest is not an
+   approval, so ask again. For a
    stable release, the decision recorded in step 6 is that approval when it names this digest.
 9. **Run exactly the printed commands.** Do not add, reorder or improvise. For an annotated tag,
    first write the release summary to `../release-summary.md`, outside the checkout; it is the
@@ -100,14 +103,16 @@ Details: [reference/promotion.md](reference/promotion.md#emergency-path).
 
 ## Verify on the target
 
-After the push, read back what is really there. Compare it with the plan:
+Start the read-back only after the last printed command has exited; never run it in parallel
+with the commands. Read back what is really there and compare it with the plan:
 
 - `git ls-remote <remote> refs/heads/<target> refs/tags/<tag>`: the target points to the new
   merge commit, and the tag points to it too.
 - The merge commit's first parent is the rollback point and its second parent is the planned
   source commit (`git log -1 --format=%P <tag>`).
 - CI on the target ref: `gh run list --branch <target> --limit 5`. Wait for the run on the new
-  commit and record its URL and conclusion.
+  commit and record its URL and conclusion. If the repository has no CI service (its
+  `.agents/releasing.json` says so), write "CI on the target: not run (no CI service)".
 - For a deployment or an artifact: check the deployed version or the artifact digest, and the
   attestation if there is one ([reference/supply-chain.md](reference/supply-chain.md)).
 
@@ -128,6 +133,7 @@ next to it.
 | "A rollback is obvious; it is just a revert." | Write it down with the rollback point. A revert on `main` makes an untagged commit |
 | "The hotfix is urgent, so I commit to main." | Merge to dev first, then cherry-pick with a written reason |
 | "The plan refused, so I merge by hand." | The refusal is the finding. Fix its cause or ask the owner |
+| "The check is wrong, so relax the gate." | Changing a gate is its own change through dev, with the owner's decision. Never offer it as a way past a NO-GO |
 
 ## Red flags
 

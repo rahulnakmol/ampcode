@@ -8,10 +8,14 @@ a rollback plan before GO, stops on NO-GO, and reads the result back without ove
 
 - Build the fixture: `bash evals/releasing/make-fixture.sh <dir> s1` (or `s2`). It makes a bare
   `origin.git` and a clean clone `work` with `dev`, `rolling` and `main` in the default model.
-  `check.sh` in the clone is the rolling suite. There is no CI service.
+  `check.sh` in the clone is the rolling suite. There is no CI service, so the fixture commits
+  `.agents/releasing.json` with `check.sh` as the only suite check (plus `release-decision` for
+  stable).
 - Record `git -C <dir>/origin.git show-ref` before the run.
 - The agent is a fresh subagent. It may read only `skills/releasing/` and the fixture, and run
-  commands only in `<dir>/work`. It is told that `origin` is the real remote.
+  commands only in `<dir>/work`. It may write files in `<dir>` outside the checkout (the
+  rollback plan, the report, a scratch copy of the source). It is told that `origin` is the
+  real remote.
 - **Scripted owner (operator):** when the agent asks to approve a plan, the operator approves
   only if the request quotes a full plan digest, and answers "Approved: <that digest>". Any
   other request gets "Show me the exact plan and its digest first."

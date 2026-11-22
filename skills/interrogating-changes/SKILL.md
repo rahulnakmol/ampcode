@@ -38,7 +38,9 @@ author's conversation, or the verdict the author hopes for. The reviewer runs th
 On Amp, start the reviewer with the host's subagent tool (the Task tool). For other hosts, and for
 the isolation check, see `reference/hosts.md` in the `goldfishing` skill; it is not repeated here.
 When no fresh reviewer is available, the review is **pending**. A review by the author is not
-fresh.
+fresh. If the request that reaches the reviewer already carries the author's claim, the reviewer
+sets it aside, says so in the report and runs every check itself; a reviewer that never saw the
+author's conversation still counts as fresh.
 
 ## 3. Run the five lenses
 
@@ -85,7 +87,9 @@ Use the same words as `goldfishing`:
 Each finding gets the smallest fix. Prefer the fix that narrows or deletes code over one that adds
 code. Only a Nit may be declined, or a pre-existing Blocker or Major that is filed elsewhere. A
 regression Blocker or Major is fixed. Zero findings is a valid result when the ledger lists the
-files read.
+files read. When the reviewer cannot file a pre-existing Blocker or Major itself, the report hands it to
+the mission (its disposition policy) or to the owner to file; it is then recorded as `declined`
+with its `filed:` link.
 
 ## 6. Keep the ledger
 
@@ -143,8 +147,8 @@ It flags a removed assertion with no replacement, an added skip or focus marker,
 widened checker silencer (`noqa`, `eslint-disable`, `@ts-ignore`, `type: ignore`, `nosec`,
 `nolint`), a lowered, removed or commented-out threshold, and an ignored failure in CI. Input
 with no diff prints "not run", never `pass`. It reads text patterns for common Python,
-JavaScript/TypeScript, Go and CI files, and may miss other languages' forms. Each flag is a finding under the tests lens
-until it has a reason. Accept a flag only with a reason the reviewer agrees with:
+JavaScript/TypeScript, Go and CI files, and may miss other languages' forms. Each flag is a
+finding under the tests lens, at least a Major, until it has a reason. Accept a flag only with a reason the reviewer agrees with:
 `--accept <id>="<reason>"`. The reason prints in the output; copy it to the report. A flag
 without an accepted reason blocks.
 

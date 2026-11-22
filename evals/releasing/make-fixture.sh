@@ -26,7 +26,21 @@ else
   printf '#!/usr/bin/env bash\necho "rolling suite: 12 of 12 passed"\n' > check.sh
 fi
 chmod +x check.sh
-g add check.sh
+# The fixture has no CI service, so the repository's settings drop the source-ci check and
+# check.sh is the whole gate.
+mkdir -p .agents
+cat > .agents/releasing.json <<'JSON'
+{
+  "checks": {
+    "rolling": {"full-suite": "check.sh is green on {from} at {source} (this repository has no CI service)"},
+    "stable": {
+      "full-suite": "check.sh is green on {from} at {source} (this repository has no CI service)",
+      "release-decision": "the owner's explicit stable-release decision for {tag} is recorded"
+    }
+  }
+}
+JSON
+g add check.sh .agents/releasing.json
 g commit -q -m "chore: add the rolling suite"
 g branch rolling
 g branch main

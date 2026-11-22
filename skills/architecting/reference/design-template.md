@@ -31,7 +31,7 @@ Do not use Mermaid: the check rejects a `mermaid` code fence (D9).
 | D6 | There is no `## Contracts` section, or it is empty |
 | D7 | An NFR ID or an ADR ID appears twice |
 | D8 | The `Trust boundaries change:` line is missing or not `yes`/`no`; or it says `yes` and `Threat model:` is a placeholder (as in D3) or has no path or link |
-| D9 | A required section is missing or repeated, the NFR table or an ADR heading is malformed, there are no NFRs or ADRs, a line after the first NFR table starts with `\|` or names an `NFR-n`, or a Mermaid fence is used |
+| D9 | A required section is missing or repeated, the NFR table or an ADR heading is malformed, there are no NFRs or ADRs, a line after the first NFR table, inside the Non-functional requirements section, starts with `\|` or names an `NFR-n`, or a Mermaid fence is used |
 
 ### NFR table
 
@@ -94,7 +94,7 @@ Status: draft
 
 | Contract | Kind | Producer | Consumer | Shape and compatibility |
 | --- | --- | --- | --- | --- |
-| <name> | <HTTP API, event, file, table> | <owner> | <user> | <fields, versioning, errors> |
+| <name> | <HTTP API, event, file, table> | <owner> | <user> | <fields and errors>; Compatibility: <versioning or change rule> |
 
 ## Decisions
 
@@ -159,10 +159,10 @@ Status: draft
 
 | Contract | Kind | Producer | Consumer | Shape and compatibility |
 | --- | --- | --- | --- | --- |
-| POST /v1/exports | HTTP API | Orders API | Web UI, tenant integrations | `{from, to, format}` in; 202 with `exportId`; 409 on a duplicate `Idempotency-Key` |
-| GET /v1/exports/{id} | HTTP API | Orders API | Web UI, tenant integrations | Status and a signed link valid for 15 minutes; tenant taken from the token, never the path |
-| export.requested v1 | Event | Orders API | Export worker | `exportId`, `tenantId`, range; additive changes only, new fields optional |
-| Export file v1 | CSV file | Export worker | Tenants | Header row; UTF-8; columns fixed per version |
+| POST /v1/exports | HTTP API | Orders API | Web UI, tenant integrations | `{from, to, format}` in; 202 with `exportId`; 409 on a duplicate `Idempotency-Key`; Compatibility: `/v1` changes are additive only, a breaking change is `/v2` and `/v1` stays 6 months |
+| GET /v1/exports/{id} | HTTP API | Orders API | Web UI, tenant integrations | Status and a signed link valid for 15 minutes; tenant taken from the token, never the path; Compatibility: as `POST /v1/exports` |
+| export.requested v1 | Event | Orders API | Export worker | `exportId`, `tenantId`, range; Compatibility: additive changes only, new fields optional |
+| Export file v1 | CSV file | Export worker | Tenants | Header row; UTF-8; Compatibility: columns fixed per version, new columns only in a new version |
 
 ## Decisions
 
@@ -192,9 +192,9 @@ Consequences: Less load on the API; a leaked link works until it expires, so it 
 | --- | --- | --- | --- |
 | NFR-1 | Latency | POST /v1/exports p95 under 300 ms at 50 req/s | k6 load test in staging before each release |
 | NFR-2 | Throughput | 1,000,000 rows exported within 5 min | Timed export of a seeded tenant in staging, each release |
-| NFR-3 | Availability | Export API 99.9 % each month | Synthetic probe every minute; monthly availability report |
-| NFR-4 | Isolation | 0 findings of cross-tenant file access | Automated test: tenant A requests tenant B's export ID and link, expects 404 |
-| NFR-5 | Retention | Export files deleted within 7 days | Storage lifecycle rule test; weekly scan for files older than 7 days |
+| NFR-3 | Availability | Export API 99.9 % each month, excluding announced maintenance | Synthetic probe every minute in production; monthly availability report |
+| NFR-4 | Isolation | 0 findings of cross-tenant file access, for every export ID and link | Automated integration test in CI on each change: tenant A requests tenant B's export ID and link, expects 404 |
+| NFR-5 | Retention | Export files deleted within 7 days of creation | Lifecycle rule test in staging each release; weekly scan in production for files older than 7 days |
 
 ## Trust boundaries
 

@@ -78,14 +78,17 @@ microservices.
 
 1. Copy the skeleton from [reference/design-template.md](reference/design-template.md).
 2. **Context and Containers:** text tables or square-corner text diagrams. No Mermaid.
-3. **Contracts:** every interface and data contract: shape, owner, consumer, errors, versioning
-   and compatibility rules.
+3. **Contracts:** every interface and data contract: shape, owner, consumer, errors, and an
+   explicit `Compatibility:` rule (versioning or change rule) in each row.
 4. **Decisions:** one ADR per consequential decision, with at least two real options, a status
    and consequences. See [reference/adr.md](reference/adr.md).
-5. **NFRs:** each with an ID, a quality, a target with a number and a unit, and a verification
-   test. Pick qualities from [reference/nfr-catalogue.md](reference/nfr-catalogue.md). IDs are
-   stable (`NFR-1`, `NFR-2` …): never renumber or reuse one, because `monitoring` turns them into
-   SLOs and tests and briefs cite them.
+5. **NFRs:** each with an ID, a quality, a target with a number, a unit and a condition (load,
+   state or time window), and a verification test that names its kind, tool, environment and
+   when it runs. Say where each number came from: the brief, derived from it, or proposed for
+   the owner to confirm. Pick qualities from
+   [reference/nfr-catalogue.md](reference/nfr-catalogue.md). IDs are stable (`NFR-1`, `NFR-2` …):
+   never renumber or reuse one, because `monitoring` turns them into SLOs and tests and briefs
+   cite them.
 6. **Trust boundaries:** say `yes` or `no`, and link the threat model when `yes` (section 4).
 7. Add what the task needs: current and proposed boundaries (for an evolution), risks, phased
    implementation, test-first acceptance criteria, migration and rollback, and the measurements
@@ -138,6 +141,8 @@ not know it), for example:
 python3 /path/to/skills/architecting/scripts/design_check.py docs/designs/order-export.md
 ```
 
+Link the design and a manual threat model by sibling file name (for example
+`order-export-threat-model.md`), so the links still work wherever the caller saves both files.
 Label the check `design_check.py: not run`. You may read the design against rules D1 to D9 by
 hand, but report that as a manual reading, never as a pass. Do not start the `goldfishing`
 review either: without a subagent tool it cannot run. Record it as "not run" and give the caller
@@ -147,7 +152,8 @@ the review to run.
 
 End with a handoff for the builder: the recommended change, the owning boundary, the rationale,
 acceptance criteria, how to validate it, and the unresolved decisions. Give the design path and
-revision, the check result (or "not run"), and the threat-model link.
+revision, the check result (or "not run"), and the threat-model link. Keep each claim's label
+from the design (claimed, not proven, not examined) in the handoff.
 
 - `delivering` turns acceptance criteria and NFR verifications into tests; `monitoring` turns
   NFR IDs into SLOs; the ADRs feed the mission's decision trail.
@@ -195,9 +201,13 @@ revision, the check result (or "not run"), and the threat-model link.
 
 - `design_check.py` prints `pass` on the design in this session, or the handoff says "not run"
   with the exact command.
-- Every NFR has an ID, a number with a unit, a condition and a verification test.
+- Every NFR has an ID, a number with a unit, a condition, the source of its number, and a
+  verification test that names its kind, environment and when it runs.
 - Every ADR has at least two real options, a status, a decision and consequences.
 - Each contract names its owner, consumer, shape and compatibility rule.
 - When trust boundaries change, the threat model is linked; a manual fallback is labelled.
 - No claim says more than its evidence; untested claims are labelled.
+- A decision that rests on your reading of a brief constraint labels that reading as an
+  assumption and lists it as an open question, including widening or narrowing the brief's
+  wording (such as one person read as a group).
 - A fresh reviewer read the design, or the review is recorded as not run.
