@@ -162,11 +162,51 @@ def missing_from_source(repo, source, target):
     missing = []
     for commit in out.split():
         parents = git(repo, "rev-list", "--parents", "-n", "1", commit)[1].split()[1:]
-        if len(parents) > 1 and all(brought_into(repo, parents[0], p, source) for p in parents[1:]):
-            continue  # an earlier promotion or rollback merge: its commits are in the source
         subject = git(repo, "log", "-1", "--format=%s", commit)[1]
+        if len(parents) > 1 and all(brought_into(repo, parents[0], p, source) for p in parents[1:]):
+            # An earlier promotion or rollback merge: its commits are in the source. It may still
+            # carry changes of its own (an evil merge).
+            extra = own_changes(repo, commit, parents)
+            if extra:
+                missing.append(f"{commit[:7]} {subject} (changes of its own, not from a clean merge of "
+                               f"its parents: {', '.join(extra)})")
+            continue
+        if len(parents) < 2:
+            # A cherry-pick or revert whose twin on the source a later promotion already brought
+            # into the target: --cherry-pick above no longer sees that twin. Look for it among the
+            # source commits the target did not hold when this commit was made.
+            own = patch_ids(repo, "-1", commit)
+            if own and own <= patch_ids(repo, source, *[f"^{p}" for p in parents]):
+                continue
         missing.append(f"{commit[:7]} {subject}")
     return missing
+
+
+def patch_ids(repo, *revs):
+    """The stable patch IDs of the non-merge commits that `git log <revs>` lists."""
+    log = subprocess.run(["git", "-C", str(repo), "log", "--no-merges", "-p", "--format=commit %H", *revs],
+                         capture_output=True)
+    ids = subprocess.run(["git", "-C", str(repo), "patch-id", "--stable"], input=log.stdout, capture_output=True)
+    return {line.split()[0] for line in ids.stdout.decode(errors="replace").splitlines() if line.strip()}
+
+
+def own_changes(repo, merge, parents):
+    """Paths where a merge's tree differs from `git merge-tree` of its two parents. Where the
+    parents conflict, taking the second parent's version (the merged-in side) is no change."""
+    if len(parents) != 2:
+        return [f"{len(parents)} parents, not checked"]
+    code, out = git(repo, "merge-tree", "--write-tree", "--name-only", "--no-messages", "-z", *parents)
+    if code not in (0, 1):
+        return ["git merge-tree failed (git 2.38 or later is needed), not checked"]
+    tree, *conflicted = [p for p in out.split("\0") if p]
+    changed = [p for p in git(repo, "diff", "--name-only", "--no-renames", "-z", tree, merge)[1].split("\0") if p]
+    return [p for p in changed
+            if p not in conflicted or sha_of_path(repo, merge, p) != sha_of_path(repo, parents[1], p)]
+
+
+def sha_of_path(repo, commit, path):
+    code, out = git(repo, "rev-parse", "--verify", "--quiet", f"{commit}:{path}")
+    return out if code == 0 else None
 
 
 def brought_into(repo, first, other, source):

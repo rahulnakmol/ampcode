@@ -33,7 +33,7 @@ Why these forms:
 | Rule | Why |
 | --- | --- |
 | The working tree has changes or untracked files | The merge runs in this checkout |
-| The target has a commit the source lacks | Someone skipped the model; promoting would hide it |
+| The target has a commit the source lacks, or a merge with changes of its own | Someone skipped the model; promoting would hide it |
 | The tag already exists | Tags are never moved or reused |
 | A stable version is not above the highest version tag | Versions only go up |
 | A snapshot without `--label` on a date that already has a snapshot tag | Tags stay unique and in order |
@@ -45,13 +45,19 @@ It does not count as missing:
 - an earlier promotion merge whose second parent is already in the source (each "Rolling
   snapshot" merge on `rolling`, each "Release" merge on `main`);
 - a commit whose patch equals a source commit: an emergency cherry-pick, or a rollback revert
-  that was also made on the source;
+  that was also made on the source. This holds after a later promotion brought that source
+  commit into the target too: the planner compares the patch ID with every source commit the
+  target did not hold when the commit was made;
 - a merge whose brought-in commits (those from its second parent and not from its first) are
   each in the source or have the same patch as a source commit. This covers a rollback revert
   merged into `rolling` with a merge commit, once the same revert is on `dev`.
 
-A merge that brings any other commit is still named. When the target already
-contains the source, it prints `nothing to promote`.
+A merge that brings any other commit is still named. So is a merge that carries changes of its
+own (an evil merge): a merge is passed over only when its tree equals what `git merge-tree`
+gives for its two parents. Where the parents conflict, the merge may take the second parent's
+version of the file (the merged-in side); any other content is named, with the paths. A merge
+with more than two parents is named as "not checked". This check needs git 2.38 or later. When
+the target already contains the source, it prints `nothing to promote`.
 
 The digest is a SHA-256 over the kind, both branch names and commit IDs, the message, the tag,
 the commits, the checks and the commands. Anything that moves changes the digest, and `go`
