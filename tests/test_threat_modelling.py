@@ -887,11 +887,16 @@ class SkillText(unittest.TestCase):
         self.assertIn("The model you are writing is not evidence for V1.1.2.", flat(asvs))
         self.assertNotIn("is the evidence for it", asvs)
         # D-7, eval round 3: a table row may be a `gap` without reading the source; `met` may not.
-        self.assertIn("A row of this table may be cited as `gap` or `not examined` by its subject alone.", flat(asvs))
+        self.assertIn("A row of this table may be cited as `gap` or `not examined` by its subject alone", flat(asvs))
         self.assertIn("Before you cite any requirement as `met`, quote it, or cite one not in this table, "
                       "read its full text in the source", flat(asvs))
         stride = (SKILL / "reference" / "stride.md").read_text()
         self.assertIn("A cited threat must cover this flow's sender.", flat(stride))
+        # D-7, eval round 4, findings 11 to 13.
+        self.assertIn("When no table row covers a threat's control, list its chapter or section under `not_examined`.",
+                      flat(asvs))
+        self.assertIn("Resting an `n/a` reason on anything listed in `not_examined`.", flat(stride))
+        self.assertIn("the sources do not state, or that is only planned", flat(self.text))
         for ref in ("V7.1.1", "V7.1.2", "V12.1.1"):
             self.assertRegex(asvs, rf"(?m)^\| {re.escape(ref)} \| \S")
         self.assertIn("not the full list", flat(asvs))

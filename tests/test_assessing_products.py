@@ -569,6 +569,12 @@ class SkillText(unittest.TestCase):
         self.assertIn("To say which claims a rank change needs, run the case without each one, and with the "
                       "leader's open items one band lower; otherwise say only what the runs printed", part)
 
+    def test_eval_r4_1_differing_what_if_cases_are_not_merged(self):
+        # D-8, eval round 4, R4-1: "only if all of these" merged a case where fewer claims sufficed.
+        part = self.section("## 5. Read the result")
+        self.assertIn("never merge them into one condition", part)
+        self.assertIn('"None of these changes the rank" also needs a run', part)
+
     def test_eval_r2_2_claims_need_a_condition_for_a_product_not_recommended(self):
         # Eval round 2, R2-2: a not-recommended product's rank-changing claims and its unproven gate got no owner.
         part = self.section("## 5. Read the result")

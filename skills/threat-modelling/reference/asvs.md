@@ -52,8 +52,10 @@ This table is not the full list. It holds the requirements the example cites and
 ones, read in the v4.0.3 source. Each line names the requirement's subject. Before you cite any
 requirement as `met`, quote it, or cite one not in this table, read its full text in the source;
 do not quote a requirement from memory. A row of this table may be cited as `gap` or
-`not examined` by its subject alone. When you cannot read the source for anything else, list the
-chapter or section as `not examined`.
+`not examined` by its subject alone, or `not applicable` when its section's subject cannot occur;
+do not rest that on a planned control. When no table row covers a threat's control, list its
+chapter or section under `not_examined`. When you cannot read the source for anything else, list
+the chapter or section as `not examined`.
 
 | Reference | Subject |
 | --- | --- |

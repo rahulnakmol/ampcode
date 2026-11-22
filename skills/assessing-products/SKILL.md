@@ -120,7 +120,9 @@ category is refused, and the report lists every unresolved fit as a gap.
   State only the ranks a what-if run printed. Before you say what it would take for a claim to
   change the rank, run the best case for each option the evidence allows, for example each plan
   quoted or offered. To say which claims a rank change needs, run the case without each one, and
-  with the leader's open items one band lower; otherwise say only what the runs printed.
+  with the leader's open items one band lower; otherwise say only what the runs printed. When
+  the cases differ, state what it would take in each case, or only the weakest one; never merge
+  them into one condition. "None of these changes the rank" also needs a run.
 
 ## 6. Write the recommendation
 

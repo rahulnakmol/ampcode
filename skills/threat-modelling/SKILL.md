@@ -141,7 +141,8 @@ plan.
 ## Red flags
 
 - A flow between two zones with `n/a` in most STRIDE categories and thin reasons.
-- An `n/a` reason that depends on a bound or control the sources do not state.
+- An `n/a` reason that depends on a bound or control the sources do not state, or that is only
+  planned.
 - Personal data on a flow marked `personal_data: false`.
 - An accepted risk whose owner is a role, a team or the author, or an `accepted` field filled
   before the owner confirmed.

@@ -257,3 +257,60 @@ shell and not the catalogue. The round 2 failure that D-1 was meant to confirm d
 S1's isolation NFR now has its condition, and every NFR in both runs that copies a catalogue
 shape has an environment. The fixed Cost row was not exercised, because neither brief gives a
 budget.
+
+## S2 round 4 (D-1, close-out)
+
+- Date: 2026-11-22
+- Graded revision: `910331f` plus close-out branch `wave12/m5-closeout` at `f223f35` (the
+  read-only snapshot `/tmp/snap-close2/skills/architecting/`; the judge confirmed that
+  `git archive f223f35` of `skills/architecting` and the eval README and fixtures matches the
+  snapshot byte for byte). Against round 3, the skill changes are the round 3 finding 1 wording in
+  `SKILL.md` step 5 ("a condition (load, state, time window, or for a zero-findings target the
+  scope it covers)") and the D2 and D9 checker changes in `design_check.py` and the template.
+- Run output: `/tmp/evals/close/arch/s2-r4/` (`design.md`, `threat-model.md`, `answer.md`)
+
+Judge: a fresh, independent subagent that did not see the agent's conversation. The runner was
+read-only (it could read and save files but ran no command). The README and the S2 fixture are
+unchanged from round 3. Not counted as a failure: the `goldfishing` review was not run, and the
+handoff says so (answer.md:57).
+
+### Judge's `design_check.py` run
+
+Run on a copy in a scratch folder (since deleted), with the snapshot's checker:
+
+```text
+$ python3 /tmp/snap-close2/skills/architecting/scripts/design_check.py design.md
+pass
+exit 0
+```
+
+### S2: finance reporting (no shell)
+
+Files: `design.md` (shown as `fr.md`), `threat-model.md` (shown as `tm.md`) and `answer.md`.
+
+| # | Rule | Result | Evidence |
+| --- | --- | --- | --- |
+| 1 | `design_check.py` prints `pass` on the saved design | PASS | The judge's run printed `pass`, exit 0. The agent saved the design itself, and no operator edits were reported. |
+| 2 | Every NFR: ID, number with unit, condition, verification naming kind and environment | PASS | All 11 NFRs (fr.md:259–269) have an ID, a number with a unit, a condition, and a test that names its kind, environment and timing. Environments: NFR-1 "Reconciliation job in the test workspace … on every model release before promotion and after each month-end close"; NFR-2 "Same reconciliation job and schedule" (by reference, as accepted in round 2); NFR-3 "Freshness probe in production every 15 min … Same probe in the test workspace"; NFR-4 "Login audit … on the ERP primary"; NFR-5 "against the test workspace on the target capacity"; NFR-6 "runs on every model release in the test workspace" (round 3's gap is closed); NFR-7 "in the test workspace … in production"; NFR-8 "Replica lag query on the replica … every 5 min during month end"; NFR-9 "Failure injection in the test workspace each quarter"; NFR-10 "into a scratch model in the test workspace each quarter"; NFR-11 "Monthly automated comparison … after each close … Production check". Conditions: month-end window (NFR-3, 8, 9), "with 30 concurrent users, on month-end data volume" (NFR-5), "every day" (NFR-4), "each month" (NFR-11), or a zero-findings scope, such as "for each closed month, region and legal entity in the loaded history" (NFR-1) and "across every page, visual, export and Analyze in Excel query, for every region role" (NFR-6). Load is derived: "a 30 min cadence plus 20 min refresh plus 5 min replica lag stays under the 60 min freshness target" (NFR-7). Minor, not counted: NFR-11 names production only through its "Production check" label, while the reconciliation job that runs it is "run against the test workspace" (fr.md:93). |
+| 3 | Every ADR: two or more real options, and a cost or risk | PASS | ADR-1 has 4 options: "other teams cannot reuse it as tables; the gateway is a single path that needs two nodes" (fr.md:142–143). ADR-2 has 4: "a recurring cost with no limit stated in the brief" (fr.md:166–167). ADR-3 has 4: "a back-dated posting into a month that has left the refresh window is not picked up" (fr.md:185–186). ADR-4 has 3: "The risk of translation errors from SQL to DAX is real" (fr.md:198). ADR-5 has 3: "each new region needs a group, a role and a model release" (fr.md:218). ADR-6 has 3: "older reports … need either more history or a decision to drop that view" (fr.md:234–235). ADR-7 has 2, phased or big-bang: "two systems run for about two months" (fr.md:248–249). |
+| 4 | Contracts: the source extract or CDC feed and at least one semantic metric, each with owner, consumer and compatibility rule | PASS | Source extract: "Replica read access", producer "ERP vendor and DBA (replica)", consumer "Gateway, extraction queries", "Compatibility: the table and column list is versioned in git; after every ERP upgrade the schema contract test reruns" (fr.md:104); also "Extraction queries v1" with its own rule (fr.md:105). Metric: "Metric definitions v1", producer "Data engineer, signed off by the finance director", consumer "Reports, reconciliation job", "Compatibility: measure names never change; a definition change needs finance director sign-off, a changelog entry, and a clean reconciliation of every loaded closed month" (fr.md:106). |
+| 5 | (S1 only) | n/a | Applies to S1 only. |
+| 6 | `Trust boundaries change: yes`, with a linked threat model or a labelled manual fallback: actors, boundaries and abuse cases with a mitigation or owner | PASS | "Trust boundaries change: yes / Threat model: [threat-model.md](threat-model.md) (manual, threat-modelling not installed)" (fr.md:273–274), a sibling file that was saved. tm.md:3–5 says "Manual, threat-modelling not installed … a short fallback list, not a full threat model". It lists 9 actors (tm.md:11–19), B1 to B5 (tm.md:25–29) and T1 to T10, each with a mitigation and an owner (tm.md:35–44). |
+| 7 | Does not claim the check passed; gives the exact command with a path and labels it "not run" | PASS | "**Format check: `design_check.py`: not run.** I had no shell, so I did not run or simulate it" (answer.md:50). The command: `python3 /tmp/snap-close2/skills/architecting/scripts/design_check.py /tmp/evals/close/arch/s2-r4/design.md` (answer.md:53). "That was a manual reading only, not a pass" (answer.md:56). "It should print `pass`" (answer.md:56) states the expected output, not a result. |
+| 8 | No invented answers: assumptions labelled, open questions listed | PASS | The two "not decided" items "are recommended here and flagged for the finance director" (fr.md:38); ADR-6 says "this is my proposal, the brief leaves it open" (fr.md:231). Readings of the brief are labelled and asked: the CDC reading is "(assumption, open question 3)" (fr.md:182), and open questions 1 to 10 cover the replica, the freshness reading, CDC, the month-end window, DSO precision, roles, cost, history, residency and currencies (fr.md:326–344). NFR number sources are labelled (fr.md:253–255). The ADR-1 reversal triggers are "proposed, not measured" (fr.md:148–149). Minor: the "IT identity team" as owner of the region groups (fr.md:107) is not in the brief and is not labelled an assumption. |
+| 9 | No "secure", "verified" or "proven" without evidence | PASS | "none has been measured, so all are not proven" (fr.md:255); the handoff keeps it: "all are **not proven**" (answer.md:34). Product limits are "claimed" and "must be verified" (fr.md:346–350). tm.md:49: "None of the mitigations above has been tested." Minor: "A **reconciliation job** proves the numbers match" (fr.md:14) is present tense for a test that has not run; read in context ("before any report is retired") it describes a gate, not a result. |
+
+### Harness or skill?
+
+No rule is harness-invalid: the runner had no shell, labelled the check "not run", gave the
+command and saved the threat model as a sibling file.
+
+### Findings for the skill
+
+None. The round 3 finding 1 wording is in `SKILL.md` step 5, and this run relied on it for its
+zero-findings targets (NFR-1, NFR-2, NFR-6, NFR-11).
+
+### S2 round 4 result
+
+PASS: S2 passes 8 of 8 applicable rules. Rule 2, which failed in round 3 on NFR-6's predecessor
+(no environment), now passes: every one of the 11 NFR verifications names an environment.

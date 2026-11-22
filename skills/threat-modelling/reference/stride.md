@@ -46,3 +46,4 @@ These are starting points, not proof. Each control in a model needs a verificati
 - Naming a control without a verification. The check fails it (M8).
 - Citing a threat in an `n/a` reason that does not cover this flow's sender. A cited threat must
   cover this flow's sender.
+- Resting an `n/a` reason on anything listed in `not_examined`. Write a threat for it instead.
