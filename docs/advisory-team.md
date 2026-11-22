@@ -22,6 +22,14 @@ Archi and Darci are thin wrappers. Each mode loads the [`architecting`](../skill
 - **Other hosts.** The skill is not tied to these modes. Other Amp modes, and other agent hosts that read skills, can use it directly.
 - **No shell checks.** The modes still have no shell. They cannot run `design_check.py`. They give you the exact command and label the check "not run". Run the command yourself after you save the design.
 
+## Opsci follows the `investigating-incidents` skill
+
+Opsci is a thin wrapper too. The mode loads the [`investigating-incidents`](../skills/investigating-incidents/SKILL.md) skill and follows it. The skill holds the incident method: the workflow, competing hypotheses, telemetry guidance, the recommended response and the post-incident review. The role file keeps only the persona and the limits of the mode, including "Never execute mitigation, change alert thresholds, restart services, deploy, or run destructive diagnostics".
+
+- **Install the skill.** The mode needs `investigating-incidents` in your Amp Personal Skills. Until it is published, or when it is missing, Opsci says that it cannot load the skill and advises from the advisory contract only.
+- **No shell checks.** Opsci cannot run `pir_check.py` or grooming's `backlog.py`. It returns the review with each action marked `to file`, gives you the commands in order (`bugs`, then `backlog.py validate`, then `check`) and labels them "not run". It never invents bug IDs.
+- **Other hosts.** The skill's [read-only host wrappers](../skills/investigating-incidents/reference/read-only-hosts.md) give a Claude Code subagent and a Copilot custom agent with read and search tools only. Check the tool names against your host's documentation.
+
 ## Install and verify
 
 The GitHub repository is the source of truth. **Cloning or pushing it does not publish these modes to ampcode.com.**
@@ -32,7 +40,7 @@ For personal use across projects, publish the complete `plugins/advisory-team/` 
 amp plugins repositories
 ```
 
-Use the printed `amp clone` command and keep the clone under `~/.cache/amp/repositories/ampcode.com-user-plugins`. Preserve any existing local changes; do not reset a dirty publication checkout. Copy all five files, including the Markdown instructions. Review the diff, commit it, and push only after explicit approval. Archi and Darci also need the `architecting` skill in your Amp Personal Skills repository; publish it separately, after explicit approval.
+Use the printed `amp clone` command and keep the clone under `~/.cache/amp/repositories/ampcode.com-user-plugins`. Preserve any existing local changes; do not reset a dirty publication checkout. Copy all five files, including the Markdown instructions. Review the diff, commit it, and push only after explicit approval. Archi and Darci also need the `architecting` skill, and Opsci the `investigating-incidents` skill, in your Amp Personal Skills repository; publish them separately, after explicit approval.
 
 After publication, new threads pick up the plugin. Ask Amp to reload plugins in an existing thread, or run `plugins: reload` from the command palette. Verify that all three modes appear in the full mode picker. Existing Swift, Weave and Prime modes are unaffected. If a mode is absent, check the publication destination, copied Markdown files, plugin load errors, and reload status.
 
@@ -104,6 +112,14 @@ Supply the symptom, impact, time window/time zone, deployment identity, sanitize
 
 Expected output: impact/timeline, confirmed facts, hypotheses and counter-evidence, implicated code where supported, missing evidence, bounded follow-up queries, mitigation and repair guidance. It does not restart services, deploy, tune alerts or execute remediation.
 
+After the incident, ask for a post-incident review in the `investigating-incidents` format. Opsci returns it as text, with each action marked `to file`. Save it, then file its fixes and missing alerts as draft bugs in your grooming backlog and check both files:
+
+```sh
+python3 skills/investigating-incidents/scripts/pir_check.py bugs review.md --backlog backlog.json --feature F-2
+python3 skills/grooming/scripts/backlog.py validate backlog.json
+python3 skills/investigating-incidents/scripts/pir_check.py check review.md
+```
+
 ## Connect live data and telemetry deliberately
 
 **No live connectors ship with this version.** Darci and Opsci can analyze exports and recommend SQL/KQL or other queries, but cannot execute them against your services yet.
@@ -128,7 +144,7 @@ Reports are returned in chat. A host may save requested Markdown/HTML to an appr
 
 ## Change models and evaluate updates
 
-Model pins live in `plugins/advisory-team/index.ts`; behavior lives in the neighboring Markdown files and, for Archi and Darci, in the `architecting` skill. Discover current supported IDs and efforts before changing a pin:
+Model pins live in `plugins/advisory-team/index.ts`; behavior lives in the neighboring Markdown files and in the skills they load: `architecting` for Archi and Darci, `investigating-incidents` for Opsci. Discover current supported IDs and efforts before changing a pin:
 
 ```sh
 amp plugins show-agent-options --json

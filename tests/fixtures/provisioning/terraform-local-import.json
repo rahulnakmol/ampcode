@@ -1,0 +1,178 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.17.2",
+  "planned_values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "random_integer.n",
+          "mode": "managed",
+          "type": "random_integer",
+          "name": "n",
+          "provider_name": "registry.terraform.io/hashicorp/random",
+          "schema_version": 0,
+          "values": {
+            "id": "15",
+            "keepers": null,
+            "max": 50,
+            "min": 1,
+            "result": 15,
+            "seed": null
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "terraform_data.marker",
+          "mode": "managed",
+          "type": "terraform_data",
+          "name": "marker",
+          "provider_name": "terraform.io/builtin/terraform",
+          "schema_version": 0,
+          "values": {
+            "input": "kept",
+            "store": null,
+            "triggers_replace": null
+          },
+          "sensitive_values": {}
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "random_integer.n",
+      "mode": "managed",
+      "type": "random_integer",
+      "name": "n",
+      "provider_name": "registry.terraform.io/hashicorp/random",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "id": "15",
+          "keepers": null,
+          "max": 50,
+          "min": 1,
+          "result": 15,
+          "seed": null
+        },
+        "after": {
+          "id": "15",
+          "keepers": null,
+          "max": 50,
+          "min": 1,
+          "result": 15,
+          "seed": null
+        },
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {},
+        "importing": {
+          "id": "15,1,50"
+        }
+      }
+    },
+    {
+      "address": "terraform_data.marker",
+      "mode": "managed",
+      "type": "terraform_data",
+      "name": "marker",
+      "provider_name": "terraform.io/builtin/terraform",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "input": "kept",
+          "store": null,
+          "triggers_replace": null
+        },
+        "after_unknown": {
+          "id": true,
+          "output": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    }
+  ],
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.17.2",
+    "values": {
+      "root_module": {
+        "resources": [
+          {
+            "address": "random_integer.n",
+            "mode": "managed",
+            "type": "random_integer",
+            "name": "n",
+            "provider_name": "registry.terraform.io/hashicorp/random",
+            "schema_version": 0,
+            "values": {
+              "id": "15",
+              "keepers": null,
+              "max": 50,
+              "min": 1,
+              "result": 15,
+              "seed": null
+            },
+            "sensitive_values": {}
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "random": {
+        "name": "random",
+        "full_name": "registry.terraform.io/hashicorp/random",
+        "version_constraint": "3.7.2"
+      },
+      "terraform": {
+        "name": "terraform",
+        "full_name": "terraform.io/builtin/terraform"
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "random_integer.n",
+          "mode": "managed",
+          "type": "random_integer",
+          "name": "n",
+          "provider_config_key": "random",
+          "expressions": {
+            "max": {
+              "constant_value": 50
+            },
+            "min": {
+              "constant_value": 1
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "terraform_data.marker",
+          "mode": "managed",
+          "type": "terraform_data",
+          "name": "marker",
+          "provider_config_key": "terraform",
+          "expressions": {
+            "input": {
+              "constant_value": "kept"
+            }
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "timestamp": "2026-11-22T19:42:55Z",
+  "applyable": true,
+  "complete": true,
+  "errored": false
+}

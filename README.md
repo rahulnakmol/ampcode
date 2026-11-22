@@ -328,8 +328,11 @@ the exact plan.
 | Threat model: trust zones, STRIDE and LINDDUN per flow, abuse cases, OWASP ASVS review | [threat-modelling](./skills/threat-modelling/SKILL.md) |
 | Merge and triage scanner SARIF (code, dependencies, secrets, IaC, containers) with stated coverage | [scanning-vulnerabilities](./skills/scanning-vulnerabilities/SKILL.md) |
 | Vendor or product assessment with weights frozen before scoring and cited evidence | [assessing-products](./skills/assessing-products/SKILL.md) |
+| Infrastructure as code on Azure, AWS or Google Cloud: preview, policy, cost, a change summary digest, approved apply, drift check | [provisioning](./skills/provisioning/SKILL.md) |
+| SLOs and error budgets from NFRs, burn-rate alerts with runbooks, proven to fire outside production | [monitoring](./skills/monitoring/SKILL.md) |
+| Read-only incident investigation with competing hypotheses, a post-incident review and fixes filed as bugs | [investigating-incidents](./skills/investigating-incidents/SKILL.md) |
 
-Archi and Darci load `architecting`; install it in Personal skills before using those modes.
+Archi and Darci load `architecting`, and Opsci loads `investigating-incidents`; install them in Personal skills before using those modes.
 
 ## Planning
 

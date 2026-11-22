@@ -304,7 +304,7 @@ HEADINGS = ["When to use", "Skills", "Steps", "Human gates", "Definition of Done
 # Skills the research plans for later waves. When one is built, update the playbooks that name it.
 PLANNED = (
     "roadmapping", "researching", "steering", "reviewing-code",
-    "campaigning", "provisioning", "monitoring", "investigating-incidents",
+    "campaigning",
 )
 
 
