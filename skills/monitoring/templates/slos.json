@@ -1,0 +1,52 @@
+{
+  "service": "tenant order export",
+  "design": "docs/designs/order-export.md",
+  "slos": [
+    {
+      "id": "SLO-1",
+      "sli": {
+        "nfr": "NFR-3",
+        "good": "Export API responses (POST /v1/exports, GET /v1/exports/{id}) with a status below 500",
+        "valid": "All Export API responses, except during announced maintenance"
+      },
+      "target": 99.9,
+      "window_days": 30,
+      "alerts": [
+        {
+          "id": "ALERT-1",
+          "severity": "page",
+          "burn_rate": 14.4,
+          "long_window": "1h",
+          "short_window": "5m",
+          "runbook": "runbook.md",
+          "firing": {
+            "environment": "staging",
+            "date": "2026-11-18",
+            "evidence": "Fire drill: fault injection returned 503 on 20 % of staging requests; page received by the on-call test schedule (drill record docs/fire-drills/2026-11-18.md)"
+          }
+        },
+        {
+          "id": "ALERT-2",
+          "severity": "page",
+          "burn_rate": 6,
+          "long_window": "6h",
+          "short_window": "30m",
+          "runbook": "runbook.md"
+        },
+        {
+          "id": "ALERT-3",
+          "severity": "ticket",
+          "burn_rate": 1,
+          "long_window": "3d",
+          "short_window": "6h",
+          "runbook": "runbook.md",
+          "firing": {
+            "environment": "ci",
+            "date": "2026-11-18",
+            "evidence": "Rule test: promtool test rules alerts/order-export-test.yml passed in CI run 4127"
+          }
+        }
+      ]
+    }
+  ]
+}
