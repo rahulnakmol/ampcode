@@ -331,6 +331,7 @@ the exact plan.
 | Infrastructure as code on Azure, AWS or Google Cloud: preview, policy, cost, a change summary digest, approved apply, drift check | [provisioning](./skills/provisioning/SKILL.md) |
 | SLOs and error budgets from NFRs, burn-rate alerts with runbooks, proven to fire outside production | [monitoring](./skills/monitoring/SKILL.md) |
 | Read-only incident investigation with competing hypotheses, a post-incident review and fixes filed as bugs | [investigating-incidents](./skills/investigating-incidents/SKILL.md) |
+| Weekly steering of delivery: flow metrics, Monte Carlo forecast, risks, issues and decisions log, five-line status | [steering](./skills/steering/SKILL.md) |
 
 Archi and Darci load `architecting`, and Opsci loads `investigating-incidents`; install them in Personal skills before using those modes.
 
@@ -347,7 +348,7 @@ keeps score against the initiative's business drivers. Five small skills, each u
 | [`synthesizing`](./skills/synthesizing/SKILL.md) | Turns raw inputs into cited evidence, then grills the owner to a confirmed intent and places each ask in the backlog (new initiative, goal, feature, change, bug, feedback) | `evidence.md`, `intake.md` (kickoff or session agenda) |
 | [`specifying`](./skills/specifying/SKILL.md) | Writes the PRD with `grilling`: drivers, measurable goals, requirements, criteria; fresh-reader review | `prd.md`, initiative and goals in `backlog.json` |
 | [`grooming`](./skills/grooming/SKILL.md) | Builds and maintains the backlog contract; splits, sizes, triages, records delivery | `backlog.json`, checked by `backlog.py` |
-| [`syncing`](./skills/syncing/SKILL.md) | Plans and applies GitHub sync (issues, sub-issues, milestones, Project fields and roadmap view); pulls `/approve` and comments; exports Excel | Tracker items; sign-offs and feedback in the file |
+| [`syncing`](./skills/syncing/SKILL.md) | Plans and applies GitHub, Azure DevOps or Linear sync (items, parent links, milestones or iterations; GitHub Project fields and roadmap view); pulls `/approve` and comments; exports Excel | Tracker items; sign-offs and feedback in the file |
 
 The [backlog contract](./skills/grooming/reference/contract.md) is SAFe-inspired without epics:
 initiative (drivers, PRD) → goals (metric, baseline, target) → features (benefit hypothesis,
@@ -357,10 +358,12 @@ described, to what was agreed, delivered, and achieved, and lists every gap.
 
 Stakeholders work only in the tracker: they comment, and sign off with `/approve`. Every tracker
 write and every reply in the user's name waits for the user's approval of a shown plan. Scripts
-are standard-library Python; GitHub calls use the signed-in `gh`. Linear and Azure DevOps
-adapters are planned, with the mapping in
-[`trackers.md`](./skills/syncing/reference/trackers.md); there is no audio transcription and no
-plugin. See the [guide](./docs/mission-driven-planning.md) for prompts, entry points, and limits.
+are standard-library Python; GitHub calls use the signed-in `gh`. The Azure DevOps and Linear
+adapters use their REST and GraphQL APIs with a token from an environment variable; they are
+tested offline only and labelled "not tested live", with the mapping in
+[`trackers.md`](./skills/syncing/reference/trackers.md). There is no audio transcription and no
+plugin. Once delivery starts, [`steering`](./skills/steering/SKILL.md) runs the weekly loop:
+flow metrics and a seeded forecast, a risks, issues and decisions log, and a five-line status. See the [guide](./docs/mission-driven-planning.md) for prompts, entry points, and limits.
 Five simulated end-to-end missions, judged by stakeholder and product-lens judges, live in
 [`evals/planning/`](./evals/planning/README.md), with results in
 [`docs/planning-evaluation.md`](./docs/planning-evaluation.md).

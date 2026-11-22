@@ -20,6 +20,7 @@ NEW_SKILLS = (
     "architecting", "interrogating-changes", "releasing",
     "threat-modelling", "scanning-vulnerabilities", "assessing-products",
     "provisioning", "monitoring", "investigating-incidents",
+    "steering",
 )
 
 SECTIONS = ("Common rationalizations", "Red flags", "Adapt it", "Check your work")
