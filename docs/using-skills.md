@@ -28,6 +28,9 @@ the skill explicitly when you want it, and ask Amp which skill it is using if un
 | Threat model a design or system | **threat-modelling** | threat model, STRIDE, LINDDUN, abuse cases, ASVS review, trust boundaries | `model.json` checked by `threat_check.py` and rendered tables; every threat mitigated with a verification, accepted by a named person, or a backlog item |
 | Merge and triage security scan results | **scanning-vulnerabilities** | triage these scans, SARIF, dependency or secret scan, what did the scanners find | One findings table with dispositions, coverage per category ("scanned, N findings" or "not examined"), never "secure" |
 | Assess products or vendors against agreed criteria | **assessing-products** | vendor assessment, compare tools, score products, SOC 2 or ISO evidence | Frozen weights with a digest, scores with cited evidence, claims kept "claimed", a recommendation with conditions and owners |
+| Plan and apply infrastructure changes safely | **provisioning** | terraform plan, bicep what-if, change set, apply infrastructure, drift check | A change summary with counts and a digest, destructive stateful changes named, an apply only of the approved plan, then a read-back and drift check |
+| Turn NFRs into SLOs and alerts | **monitoring** | SLO, error budget, burn-rate alert, runbook, dashboards, synthetic checks | `slos.json` checked by `slo_check.py`, the fast and slow alert pairs, a runbook per alert, and each alert "not proven" until it fires outside production |
+| Investigate an incident and write its review | **investigating-incidents** | incident, outage, error spike, post-incident review, postmortem, root cause | Hypotheses with evidence and counter-evidence, mitigation apart from the durable fix, a review checked by `pir_check.py`, and its actions filed as draft bugs |
 | Publish a backlog and collect sign-off | **syncing** | sync to GitHub, export to Excel, pull comments and approvals | Issues, sub-issues, milestones, Project items or a workbook; sign-offs and feedback back in the file |
 | Run an enterprise functional-discovery engagement | **blueprinting** | start or resume a consulting engagement, functional discovery, ERP/CRM workshops | Retained evidence, decision lineage, explicit gaps and coordinated functional handoffs |
 | Prepare client workshops and interpret supplied evidence | **discovering-requirements** | workshop agenda, client questionnaire, attributed transcript, debrief | Cited findings, contradictions and owned follow-up questions |
@@ -342,6 +345,16 @@ preview/confirmation boundary, domain choices, resume prompt and current limits.
   we agreed." `scripts/score.py freeze` locks the weights before any score; `score` refuses a
   changed weight; `check` needs conditions with named owners. `shaping-engagements` uses
   `score.py --fit-gap` for a weighted pre-sales fit-gap.
+- **provisioning:** "Use provisioning on this Terraform plan for staging."
+  `scripts/change_summary.py summarize` gives the counts and a digest; an apply runs only on
+  that exact plan, with your approval or a mission contract that pre-authorizes it, and a
+  destructive stateful change needs its own confirmation.
+- **monitoring:** "Use monitoring to set SLOs and alerts from the NFRs in `design.md`."
+  `scripts/slo_check.py check` validates the SLO file and `alerts` prints the burn-rate pairs;
+  `check --release` fails while any alert has no firing evidence from outside production.
+- **investigating-incidents:** "Use investigating-incidents: checkout errors rose after this
+  morning's release." It works read-only from the evidence you give it; `scripts/pir_check.py
+  check` validates the review and `bugs` files its actions in a `grooming` backlog. Opsci uses it.
 
 ## Combine skills without unnecessary ceremony
 
