@@ -57,7 +57,7 @@ permission to process client data; GitHub source alone does not install skills i
 | Blueprinting task | Skill |
 | --- | --- |
 | Engagement continuity, policy and shared helpers | [blueprinting](./skills/blueprinting/SKILL.md) |
-| Opportunity, pre-sales and RFP | [shaping-engagements](./skills/shaping-engagements/SKILL.md) |
+| Opportunity, pre-sales and RFP, including a weighted fit-gap scored with `assessing-products` | [shaping-engagements](./skills/shaping-engagements/SKILL.md) |
 | Workshops, questionnaires and evidence | [discovering-requirements](./skills/discovering-requirements/SKILL.md) |
 | Process, operating model and functional handover | [designing-functions](./skills/designing-functions/SKILL.md) |
 | Narrative, reviewed packets and exports | [publishing-engagements](./skills/publishing-engagements/SKILL.md) |
@@ -325,6 +325,9 @@ the exact plan.
 | Technical design: contracts, ADRs, measurable NFRs; data and AI architecture | [architecting](./skills/architecting/SKILL.md) |
 | Adversarial fresh-context review of a diff or PR, with proven findings and a patch-bound verdict | [interrogating-changes](./skills/interrogating-changes/SKILL.md) |
 | Promotion from dev to rolling to main, release notes, rollback before GO | [releasing](./skills/releasing/SKILL.md) |
+| Threat model: trust zones, STRIDE and LINDDUN per flow, abuse cases, OWASP ASVS review | [threat-modelling](./skills/threat-modelling/SKILL.md) |
+| Merge and triage scanner SARIF (code, dependencies, secrets, IaC, containers) with stated coverage | [scanning-vulnerabilities](./skills/scanning-vulnerabilities/SKILL.md) |
+| Vendor or product assessment with weights frozen before scoring and cited evidence | [assessing-products](./skills/assessing-products/SKILL.md) |
 
 Archi and Darci load `architecting`; install it in Personal skills before using those modes.
 

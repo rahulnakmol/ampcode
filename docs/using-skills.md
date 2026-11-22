@@ -25,11 +25,14 @@ the skill explicitly when you want it, and ask Amp which skill it is using if un
 | Write a technical design with contracts, decisions and measurable quality targets | **architecting** | technical design, architecture, ADR, NFRs, API contract, data platform design | `design.md` with contracts, ADRs and NFRs (number, unit, test) checked by `design_check.py`; a threat-model link when trust boundaries change |
 | Review a diff or pull request adversarially before it merges | **interrogating-changes** | interrogate this change, adversarial review, review gate, review this PR against its criteria | A finding ledger with proven, located findings, regressions apart from old defects, a lowered-bar check, and a verdict tied to the exact patch |
 | Promote, tag and release with a rollback plan | **releasing** | rolling snapshot, stable release, promote dev to rolling, release notes, rollback plan | A read-only promotion plan with a digest, release notes, and a GO or NO-GO that requires a rollback plan |
+| Threat model a design or system | **threat-modelling** | threat model, STRIDE, LINDDUN, abuse cases, ASVS review, trust boundaries | `model.json` checked by `threat_check.py` and rendered tables; every threat mitigated with a verification, accepted by a named person, or a backlog item |
+| Merge and triage security scan results | **scanning-vulnerabilities** | triage these scans, SARIF, dependency or secret scan, what did the scanners find | One findings table with dispositions, coverage per category ("scanned, N findings" or "not examined"), never "secure" |
+| Assess products or vendors against agreed criteria | **assessing-products** | vendor assessment, compare tools, score products, SOC 2 or ISO evidence | Frozen weights with a digest, scores with cited evidence, claims kept "claimed", a recommendation with conditions and owners |
 | Publish a backlog and collect sign-off | **syncing** | sync to GitHub, export to Excel, pull comments and approvals | Issues, sub-issues, milestones, Project items or a workbook; sign-offs and feedback back in the file |
 | Run an enterprise functional-discovery engagement | **blueprinting** | start or resume a consulting engagement, functional discovery, ERP/CRM workshops | Retained evidence, decision lineage, explicit gaps and coordinated functional handoffs |
 | Prepare client workshops and interpret supplied evidence | **discovering-requirements** | workshop agenda, client questionnaire, attributed transcript, debrief | Cited findings, contradictions and owned follow-up questions |
 | Design business processes and operating models | **designing-functions** | as-is/to-be, roles, exceptions, handoffs, functional specification, kickoff | Traceable functional design, alternatives and acceptance gaps |
-| Qualify an offer or prepare an RFP response | **shaping-engagements** | pre-sales, bid decision, proposal, fit-gap, effort estimate | Grounded commercial scope, assumptions, estimates and unresolved obligations |
+| Qualify an offer or prepare an RFP response | **shaping-engagements** | pre-sales, bid decision, proposal, fit-gap, weighted fit-gap, effort estimate | Grounded commercial scope, assumptions, estimates, a weighted fit-gap with frozen weights, and unresolved obligations |
 | Prepare reviewed consulting documents and decks | **publishing-engagements** | executive brief, editable handoff, client-safe packet | Inspected selected exports with evidence and sharing restrictions |
 | Challenge consulting evidence and deliverables | **reviewing-engagements** | review functional coverage, check claims, review proposal or handoff | Source-grounded findings tied to exact revisions |
 
@@ -328,6 +331,17 @@ preview/confirmation boundary, domain choices, resume prompt and current limits.
 - **releasing:** "Use releasing to plan a rolling snapshot of `dev`." `scripts/release_plan.py
   plan` only reads git; a promotion runs only with your approval of the exact plan, or when a
   mission contract pre-authorizes it.
+- **threat-modelling:** "Use threat-modelling on `docs/designs/order-export.md`; its trust
+  boundaries change." It writes `model.json`, checks it with `scripts/threat_check.py check` and
+  renders the tables where the design's `Threat model:` line points. Backlog items stay proposed
+  until `grooming` files them.
+- **scanning-vulnerabilities:** "Merge and triage these SARIF files from the scan of `services/api`."
+  `scripts/sarif_triage.py merge` and `coverage` build the findings table; `check` rejects a
+  report without dispositions or with words such as "secure". It scans only local paths you name.
+- **assessing-products:** "Use assessing-products to score the three tools against the criteria
+  we agreed." `scripts/score.py freeze` locks the weights before any score; `score` refuses a
+  changed weight; `check` needs conditions with named owners. `shaping-engagements` uses
+  `score.py --fit-gap` for a weighted pre-sales fit-gap.
 
 ## Combine skills without unnecessary ceremony
 

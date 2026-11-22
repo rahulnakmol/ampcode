@@ -16,7 +16,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 # The mission thread adds each skill here at milestone integration.
-NEW_SKILLS = ("architecting", "interrogating-changes", "releasing")
+NEW_SKILLS = (
+    "architecting", "interrogating-changes", "releasing",
+    "threat-modelling", "scanning-vulnerabilities", "assessing-products",
+)
 
 SECTIONS = ("Common rationalizations", "Red flags", "Adapt it", "Check your work")
 BANNED = (
