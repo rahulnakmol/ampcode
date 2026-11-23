@@ -266,6 +266,10 @@ tool schemas and errors), production specs for physical and media pieces (sizes,
 formats, captions), complex-rendering guidance, the measures from the brief, and open questions. In
 the final reply, embed the key mockups as an image gallery, default state first.
 
+In a contract mission, render every changed state (a screenshot or visual artifact) before the
+baseline or kickoff, and show those renders to the owner with the kickoff brief. The owner then
+approves the contract on what they saw, not on a prose description.
+
 ## Before every reply: claim audit
 
 Judges of this skill found that its biggest weakness is claims that outrun the artifacts. Before

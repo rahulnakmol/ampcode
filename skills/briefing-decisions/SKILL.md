@@ -12,8 +12,13 @@ plain English. Everything only a specialist needs goes into a technical record a
 ## When to use it
 
 Use it for every human gate: design approval, merge, release, budget, vendor choice, roadmap or
-plan sign-off. `delivering` uses it for mission-control design approval: the owner reads the brief as a
-document, and the approval binds its exact text and link. Do not use it for status updates that ask no decision.
+plan sign-off. Do not use it for status updates that ask no decision.
+
+In a contract mission (`delivering`, `missioning`), the kickoff brief is the one brief. It lists
+every open question with its default, every effect to pre-authorize, and the five stop reasons
+in plain words. The owner reads it as a document, and the kickoff approval binds its exact text
+and link. Checkpoint and close-out reports ask nothing. Their sections are those listed in
+`delivering`, which copies `reportSections` verbatim. They follow the writing rules in step 3 below.
 
 ## Write the brief
 

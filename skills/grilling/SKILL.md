@@ -69,9 +69,12 @@ For consequential work, act as the context-rich **Elephant** from the Elephant-G
 solution. Correct misunderstandings at their source. Keep the problem description separate from
 the grading criteria: discuss what evidence would convince a skeptical recipient, not just what
 features to build. Each criterion names an observable outcome, a plausible wrong result it rejects,
-and how to check it. Preserve decisions, rejected alternatives and their reasons, not the entire
-chat. Propose the first technical approach in prose when needed, clearly labelled as a proposal;
-do not turn the user's initial solution into an unquestioned constraint or start implementation.
+and how to check it. A criterion names a finite set of cases: one like "reject anything that…"
+lists its cases. A class found later becomes a new work item (in a mission, a new item in the
+contract), not a reason to keep the criterion open. Preserve decisions, rejected alternatives
+and their reasons, not the entire chat. Propose the first technical approach in prose when
+needed, clearly labelled as a proposal; do not turn the user's initial solution into an
+unquestioned constraint or start implementation.
 
 ## 3. Map the decision tree
 
@@ -349,7 +352,9 @@ do not add an extra interview.
 In a delivering mission, this brief check supplies the comprehension evidence for the subsequent
 design review when its scope and revision still match; do not repeat it for ceremony. A confirmed
 requirements brief is not approval of a technical/UX design that has not yet been presented.
-The design package still needs its own review and owner acknowledgment before defense/build.
+The design package still needs its own review and owner acknowledgment before build; in a
+contract mission, that acknowledgment is the one kickoff approval of the whole contract, after
+the defense.
 
 Then ask the user to confirm or correct it, including any labelled assumption they may want to
 decide themselves. A severity-4 case found while writing the brief may be confirmed in the same

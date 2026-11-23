@@ -34,11 +34,11 @@ BANNED = (
 )
 
 # Files searched with list B (part of file set F).
-BANNED_SEARCH = ("skills/delivering", "skills/missioning")
+BANNED_SEARCH = ("skills/delivering", "skills/missioning", "skills/goldfishing/SKILL.md", "skills/briefing-decisions/SKILL.md")
 # List L: files that list the five stop reasons.
 STOP_TEXT_FILES = ("skills/delivering/SKILL.md", "skills/missioning/SKILL.md", "skills/missioning/reference/charter.md")
 # Files that must name the disposition policy for a review cap (K3).
-DISPOSITION_FILES = ("skills/delivering/SKILL.md", "skills/missioning/SKILL.md")
+DISPOSITION_FILES = ("skills/delivering/SKILL.md", "skills/missioning/SKILL.md", "skills/goldfishing/SKILL.md")
 # The copy of reportSections that published skills and other hosts read.
 REPORT_SECTIONS_FILE = "skills/delivering/SKILL.md"
 
