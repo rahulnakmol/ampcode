@@ -50,5 +50,5 @@ product.
 
 - A state in the matrix with no mockup.
 - A screenshot taken but not inspected.
-- Paid research beyond `crafting`'s budget without asking.
+- Paid research that is not pre-authorized, done without asking.
 - Accessibility left to "later".

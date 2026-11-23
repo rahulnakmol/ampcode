@@ -155,6 +155,10 @@ def check(text, base):
         add("R2", f"Host must be one of Amp, Claude Code, Copilot in VS Code, Copilot app, not '{get('Host')}'")
     if playbook and playbook not in PLAYBOOKS and not re.match(r"none: \S", playbook):
         add("R2", f"Playbook must be a playbook name or 'none: <reason>', not '{playbook}'")
+    effects = get("Pre-authorized effects").strip()
+    granted = set(re.findall(r"\bE\d+\b", effects))
+    if effects and not PLACEHOLDER.search(effects) and effects.lower() != "none" and not re.match(r"E\d+\b", effects):
+        add("R13", "Pre-authorized effects must be 'none' or a list of 'E<n> <effect>' entries")
 
     owner = people(get("Decision owner"))
     deciders = owner + people(get("Approvers"))
@@ -179,11 +183,17 @@ def check(text, base):
             continue
         if re.match(r"(?:mission )?(?:charter|kickoff)\b", gate, re.I) and kind != "human":
             add("R5", f"gate '{gate}': the charter and kickoff gates are always human gates")
-        if re.match(r"pre-authori[sz]ed\b", evidence, re.I):
-            if kind == "human":
-                add("R13", f"gate '{gate}': a pre-authorized effect is an agent row, not a human gate; do not ask for it again")
-            elif not re.match(r"pre-authori[sz]ed: *[^\s;,]", evidence, re.I) or PLACEHOLDER.search(evidence):
+        pre = re.match(r"pre-authori[sz]ed\b(?::(.*))?", evidence, re.I)
+        named = set(re.findall(r"\bE\d+\b", gate))
+        if kind == "human" and (pre or named & granted):
+            add("R13", f"gate '{gate}': a pre-authorized effect is an agent row, not a human gate; do not ask for it again")
+        elif pre:
+            source = (pre.group(1) or "").strip()
+            cited = named | set(re.findall(r"\bE\d+\b", source))
+            if not source or source.split()[0].strip(".,;").lower() in ("-", "none") or PLACEHOLDER.search(source):
                 add("R13", f"gate '{gate}': Evidence must read 'pre-authorized: <source>'")
+            elif not cited or not cited <= granted:
+                add("R13", f"gate '{gate}': name the effect's ID (E<n>) from the charter's Pre-authorized effects")
         if (kind == "human" and state == "passed") or state == "waived":
             names = people(decider)
             if not names or not all(is_one_of(n, deciders) for n in names):

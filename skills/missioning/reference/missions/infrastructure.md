@@ -32,7 +32,8 @@ and incident response. Not for application code alone (`software-delivery`).
    approval.
 3. Write or change the IaC; test modules before use.
 4. Preview the change; run policy, cost and IaC scans.
-5. For each shared or production environment, get approval of the exact plan; apply only it.
+5. For each shared or production environment, get approval of the exact plan unless the charter
+   pre-authorizes that apply; apply only that plan.
 6. Read the resources back; confirm the drift check shows no changes.
 7. Write SLOs, alerts, dashboards and runbooks as code; show each alert fires.
 8. Release through the promotion path with a rollback plan.

@@ -28,8 +28,8 @@ below are allowed and ignored by the checker.
   without asking, Always ask, Stop and ask when, Playbook, Host.
 - **Contract fields:** Open questions lists each question with the default the agent takes unless
   the owner changes it at kickoff (`Q1 <question> Default: <answer>`), or `none`. Pre-authorized
-  effects lists each outside effect the owner approves at kickoff, with an ID and where its
-  authority comes from (`E1 <effect>`), or `none`. Always ask names outside effects that are not
+  effects lists each outside effect the owner approves at kickoff, each starting with its ID and
+  saying where its authority comes from (`E1 <effect>`), or `none`. Always ask names outside effects that are not
   pre-authorized. Stop and ask when refers to the five stop reasons below, and adds nothing.
 - **Placeholder:** an empty value, the upper-case words TBD, TODO or TBC anywhere, a whole value
   of tbd, todo or tbc in any case, `?`, or `<text>` that is not an `https://` or `mailto:` autolink.
@@ -79,7 +79,7 @@ recorded assumption, taken from the open question's default or a safe, reversibl
 | R10 | A passed agent gate has Evidence that is not a placeholder |
 | R11 | A waived gate gives its reason in Evidence, not a placeholder; it is never reported as passed |
 | R12 | The decision trail table has its five headers, and every row names a Decider |
-| R13 | A gate whose Evidence starts with "pre-authorized" is an `agent` row, and its Evidence reads `pre-authorized: <source>`, citing the charter's Pre-authorized effects or the owner's recorded grant |
+| R13 | Pre-authorized effects is `none` or a list of `E<n> <effect>` entries. A gate whose Evidence starts with "pre-authorized" is an `agent` row, its Evidence reads `pre-authorized: <source>`, and its Gate or Evidence names only `E<n>` IDs the charter lists, at least one. A human gate never names a listed `E<n>` |
 
 ## Template
 

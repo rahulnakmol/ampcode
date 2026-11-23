@@ -31,9 +31,9 @@ GOOD = """# Mission: security review of acme/payments
 - **Definition of Done:** Critical and High findings are fixed and retested,
   or accepted in writing.
 - **Open questions:** Q1 report format? Default: Markdown with a SARIF appendix.
-- **Pre-authorized effects:** E1 send the report to Priya Shah by email.
+- **Pre-authorized effects:** E1 open tracker issues for Critical and High findings in acme/payments.
 - **May do without asking:** read code, run the allowed scanners, draft reports.
-- **Always ask:** scanning anything outside acme/payments; any other release of the report.
+- **Always ask:** scanning anything outside acme/payments; releasing the report.
 - **Stop and ask when:** one of the five stop reasons in missioning.
 - **Playbook:** security-review
 - **Host:** Claude Code
@@ -44,7 +44,8 @@ GOOD = """# Mission: security review of acme/payments
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Charter and criteria | human | passed | charter above | reviews/charter-novice.md | briefs/charter.md | Rahul Nakmol | question: AskUserQuestion answer "Approve" | 2026-11-18 |
 | Threat model | agent | passed | threat-model.md, 14 threats | none needed: no decision, checked by scope gate | - | - | - | 2026-11-19 |
-| Scope and rules of engagement | human | pending | - | - | briefs/scope.md | - | - | - |
+| Accepted risk (finding 3) | human | pending | - | - | briefs/risk.md | - | - | - |
+| File findings (E1) | agent | open | pre-authorized: charter E1 | - | - | - | - | - |
 | Report release | human | open | - | - | - | - | - | - |
 
 ## Decision trail
@@ -90,7 +91,8 @@ class Rules(unittest.TestCase):
             line = re.search(rf"- \*\*{name}:\*\*.*\n", GOOD).group(0)
             with tempfile.TemporaryDirectory() as tmp:
                 problems = ledger_check.check(edit(line, ""), workspace(tmp))
-            self.assertEqual(problems, [f"R1: charter needs exactly one '- **{name}:**' line (found 0)"])
+            r1 = [p for p in problems if p.startswith("R1:")]
+            self.assertEqual(r1, [f"R1: charter needs exactly one '- **{name}:**' line (found 0)"])
         self.assertRule(edit("Q1 report format? Default: Markdown with a SARIF appendix.", "TBD"), "R1")
         # "none" is a value: a mission may have no open questions or pre-authorized effects.
         self.assertEqual(self.rules(edit("Q1 report format? Default: Markdown with a SARIF appendix.", "none")), [])
@@ -130,7 +132,7 @@ class Rules(unittest.TestCase):
 
     def test_r4_ledger_table(self):
         self.assertRule(edit("| Gate | Kind | State |", "| Gate | State | Kind |"), "R4")
-        no_rows = re.sub(r"\| (Charter and|Threat|Scope|Report).*\n", "", GOOD)
+        no_rows = re.sub(r"\| (Charter and|Threat|Accepted|File|Report).*\n", "", GOOD)
         self.assertRule(no_rows, "R4")
         # A separator with fewer cells than the header is not a table on GitHub either.
         self.assertRule(edit("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n", "| --- | --- |\n"), "R4")
@@ -260,16 +262,26 @@ class Rules(unittest.TestCase):
         self.assertRule(edit(PASSED, PASSED.replace("| passed | charter above |", "| waived | TODO |")), "R11")
 
     def test_r13_pre_authorized_effects(self):
-        # A pre-authorized effect is an agent row whose Evidence cites the pre-authorization.
-        effect = "| Send report (E1) | agent | passed | pre-authorized: charter E1; sent 2026-11-21, read back | none needed: pre-authorized effect | - | - | - | 2026-11-21 |"
-        self.assertEqual(self.rules(edit(AGENT, AGENT + "\n" + effect)), [])
-        open_effect = "| Send report (E1) | agent | open | pre-authorized: charter E1 | - | - | - | - | - |"
-        self.assertEqual(self.rules(edit(AGENT, AGENT + "\n" + open_effect)), [])
-        # Without its source it is not pre-authorized.
-        self.assertRule(edit(AGENT, AGENT + "\n" + effect.replace("pre-authorized: charter E1;", "pre-authorized;")), "R13")
-        self.assertRule(edit(AGENT, AGENT + "\n" + open_effect.replace("pre-authorized: charter E1", "Pre-authorized:")), "R13")
+        # A pre-authorized effect is an agent row whose Evidence cites the charter's entry.
+        done = "| File findings (E1) | agent | passed | pre-authorized: charter E1; 3 issues, read back | none needed: pre-authorized effect | - | - | - | 2026-11-21 |"
+        row = "| File findings (E1) | agent | open | pre-authorized: charter E1 | - | - | - | - | - |"
+        self.assertEqual(self.rules(edit(row, done)), [])
+        # Without a source, with an empty one, or citing no listed effect, it is not pre-authorized.
+        for evidence in ("pre-authorized;", "Pre-authorized:", "pre-authorized: -", "pre-authorized: none"):
+            with self.subTest(evidence=evidence):
+                self.assertRule(edit(row, row.replace("pre-authorized: charter E1", evidence)), "R13")
+        self.assertRule(edit(row, row.replace("(E1)", "(E9)").replace("charter E1", "charter E9")), "R13")
+        self.assertRule(edit(row, row.replace(" (E1)", "").replace("charter E1", "owner's email")), "R13")
+        self.assertRule(edit("E1 open tracker issues for Critical and High findings in acme/payments.", "none"), "R13")
+        # The field lists E-numbered effects, or says none; a blanket grant is not a list.
+        self.assertRule(edit("E1 open tracker issues for Critical and High findings in acme/payments.", "whatever is needed"), "R13")
+        none = edit(row + "\n", "", edit("E1 open tracker issues for Critical and High findings in acme/payments.", "none"))
+        self.assertEqual(self.rules(none), [])
+        two = "E1 open tracker issues in acme/payments, E2 email the report to Priya Shah."
+        self.assertEqual(self.rules(edit(row, row.replace("E1", "E2"), edit("E1 open tracker issues for Critical and High findings in acme/payments.", two))), [])
         # Recorded as a human gate, a pre-authorized effect would ask the owner a second time.
-        as_human = PASSED.replace("Charter and criteria", "Send report (E1)").replace("| charter above |", "| pre-authorized: charter E1 |")
+        self.assertRule(edit(row, "| File findings (E1) | human | open | - | - | - | - | - | - |"), "R13")
+        as_human = PASSED.replace("Charter and criteria", "Report release").replace("| charter above |", "| pre-authorized: charter E1 |")
         self.assertRule(edit(PASSED, PASSED + "\n" + as_human), "R13")
 
     def test_r12_decision_trail(self):
@@ -361,7 +373,9 @@ class Contract(unittest.TestCase):
                     self.assertIn(reason, lines)
 
     def test_review_cap_follows_the_disposition_policy(self):
-        self.assertIn("disposition policy", (SKILL / "SKILL.md").read_text())
+        paragraphs = (SKILL / "SKILL.md").read_text().split("\n\n")
+        cap = [p for p in paragraphs if "review cap" in p]
+        self.assertTrue(cap and all("disposition policy" in p for p in cap), cap)
 
 
 class Playbooks(unittest.TestCase):
