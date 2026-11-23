@@ -177,7 +177,9 @@ const STOP = { ...CONTRACT, effects: CONTRACT.effects.filter((e: any) => e.kind 
 test('journey, stop variant: without a dev-merge effect 2 milestones chain on open pull requests: 1 dialog, 0 merges, close-out', async () => {
 	const gh = fakeGitHub(), h = contractHarness(gh.github)
 	try {
-		await kickoff(h, STOP)
+		await h.call('mission_start', { contract: STOP })
+		expect(await h.call('mission_preflight')).toContain('Merge variant: stop.')
+		await h.call('mission_approve')
 		await prepare(h, gh, 'M2', 10)
 		expect((await h.status()).next).toBe('Record M2 as ready with mission_merge; its pull request stays open')
 		expect(await h.call('mission_merge', { milestoneId: 'M2' })).toContain('M2 is ready and was not merged')

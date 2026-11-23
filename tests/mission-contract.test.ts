@@ -523,6 +523,19 @@ describe('Ship or stop: a pre-authorized dev-merge effect picks ship; without it
 		const listed = clone(); listed.effects[2].preAuthorized = false
 		expect(variant(createRecord(THREAD, listed))).toBe('stop')
 	})
+	test('the kickoff dialog tells the owner whether milestones merge', () => {
+		const ship = kickoffDialog(createRecord(THREAD, contract)).message
+		const stop = kickoffDialog(createRecord(THREAD, stopContract())).message
+		expect(ship).toContain('Each milestone merges into dev once its gates pass.')
+		expect(ship).not.toContain('No milestone merges')
+		expect(stop).toContain('No milestone merges: each pull request stays open for you, and the next milestone builds on it.')
+		expect(stop).not.toContain('Each milestone merges')
+	})
+	test('a start event carries variants only as true', () => {
+		const r = JSON.parse(JSON.stringify(createRecord(THREAD, contract)))
+		r.events[0].action.variants = false
+		expect(() => parseRecord(r, THREAD)).toThrow('Refused (variants)')
+	})
 	test('a record started before effect kinds existed stays ship: its merges replay and it still merges', () => {
 		// What the earlier plugin wrote: a merge effect with no kind, and no variants marker on the start event.
 		const legacy = stopContract(); legacy.effects.push({ id: 'E3', effect: 'Squash-merge each milestone into dev when green', preAuthorized: true, source: 'Global AGENTS.md' })
