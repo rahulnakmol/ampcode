@@ -55,7 +55,8 @@ included. Repair every wrong or missing answer in the brief and check it again.
 
 - **Amp:** publish the checked text as a document artifact. With mission-control, pass
   `bundle.brief = { markdown, url }` in the design action, where `url` is that document
-  (see `delivering`); in a contract mission the kickoff brief goes to `mission_approve` instead.
+  (see `delivering`). In a contract mission the kickoff brief is the contract's Brief field
+  (`mission_start({ contract })`), and `mission_approve` shows it in the kickoff dialog.
   Publish from the checked text: the dialog cannot prove the page matches.
 - **Other hosts:** give the Markdown file to the approver. An HTML picture opens in a browser.
 - Record the approval with the brief's revision. Approval in chat is not approval of the brief

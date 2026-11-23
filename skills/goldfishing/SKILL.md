@@ -95,8 +95,9 @@ next checkpoint report instead of asking).
 A reviewer that fails, times out or cannot read its inputs is retried once, then recorded as
 **not run**. Not run is never a pass. When no fresh reviewer is available, the gate is
 **pending**: keep the artifact, name the review it still needs, and tell the owner. In a contract
-mission, a pending gate blocks its milestone's merge: retry it, and if it stays pending, the
-milestone cannot meet its exit criteria, which is stop reason 5. A review by the author is not a fresh review.
+mission, a pending gate blocks its milestone's merge: retry it once; if it is still pending,
+re-planning and splitting cannot supply a reviewer, so the milestone cannot meet its exit
+criteria: stop reason 5. A review by the author is not a fresh review.
 
 ## 7. Isolation check
 
