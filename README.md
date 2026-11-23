@@ -243,7 +243,10 @@ Neither plugin loading nor local records imply hostile-shell isolation.
 
 Its [mission record](./skills/delivering/reference/mission-record.md) lists coordinator tools and
 manual fallback; [review/recovery guidance](./skills/delivering/reference/review-and-recovery.md)
-preserves revision-bound reviews and safe resumption. [Research](./docs/delivering-research.md) records the design rationale;
+preserves revision-bound reviews and safe resumption. Both milestone gates review with
+`interrogating-changes` (gate 2 also runs its lowered-bar check), a mission picks the ship or
+stop variant for its PRs, and [hosts-pr-watch](./skills/delivering/reference/hosts-pr-watch.md)
+waits on PRs where Amp's GitHub events are not available. [Research](./docs/delivering-research.md) records the design rationale;
 [evaluations](./evals/delivering/README.md) distinguish simulated decisions from live execution.
 Install/publish `grilling` alongside it for the expectation loop; if unavailable, the agent reports
 the dependency rather than silently installing it. Source integration does not publish skills to

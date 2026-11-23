@@ -9,16 +9,18 @@ repository, service or change. Not for the review gates inside a delivery missio
 ## Skills
 
 - `missioning`: the conductor for this mission.
-- `threat-modelling` (planned, wave 1). Fallback: a data-flow diagram, trust boundaries, STRIDE
-  per element (LINDDUN when personal data flows), abuse cases, and a check against a named
-  standard such as OWASP ASVS. Each threat ends in a mitigation, an accepted risk with a named
-  owner, or a backlog item. Label it "manual, no skill".
-- `scanning-vulnerabilities` (planned, wave 2). Fallback: run only scanners the rules of
-  engagement allow; attach their output; triage reachability; state what was not scanned.
-- `reviewing-code` (planned, wave 1; Amp's official `reviewing-code` is another skill and may
-  serve as this fallback). Fallback: review the diff or code for correctness,
-  security, data handling, concurrency and tests; check each finding against callers, guards,
-  tests and the base revision; label pre-existing defects apart from regressions.
+- `threat-modelling`: the threat model: STRIDE on each flow across a trust boundary, LINDDUN on
+  personal data, abuse cases and an OWASP ASVS review, each threat with an outcome. If not
+  installed: a data-flow diagram, trust boundaries, STRIDE per element and abuse cases, each threat
+  ending in a mitigation, an accepted risk with a named owner or a backlog item, labelled "manual,
+  no skill".
+- `scanning-vulnerabilities`: the allowed static scans, merged into one triaged findings table
+  with coverage per category. If not installed: run only scanners the rules of engagement allow,
+  attach their output, triage reachability and state what was not scanned.
+- `interrogating-changes`: the adversarial code review through its five lenses, each finding
+  proved by a run or a quoted read. If not installed: review for correctness, security, data
+  handling, concurrency and tests, check each finding against callers, guards, tests and the base
+  revision, and label pre-existing defects apart from regressions.
 - `grooming`: findings into the backlog as bugs.
 - `goldfishing`: a critic review of the report before release.
 

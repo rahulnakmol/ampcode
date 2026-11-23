@@ -16,7 +16,8 @@ research that informs one. Not for designing a product experience (`experience-d
   shows how the target is reached. Label it "manual, no skill".
 - `researching` (planned, wave 3). Fallback: desk research into `synthesizing`'s evidence-ledger
   format; every claim cited with a URL and date, or marked unverified.
-- `steering` (planned, wave 2). Fallback: a weekly readout of each funnel measure against target.
+- `steering`: the weekly readout, with risks, decision requests and guardrail actions. If not
+  installed: a weekly readout of each funnel measure against target.
 - Surveys and quantitative analysis in `crafting`: planned enhancement, wave 3. Fallback: script
   every statistic; state the sample size and how it was drawn.
 

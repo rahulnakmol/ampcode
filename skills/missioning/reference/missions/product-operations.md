@@ -10,13 +10,18 @@ ready stories go to `delivering` through the `software-delivery` playbook.
 
 - `planning`: the conductor through gate 6, with `synthesizing`, `specifying`, `grooming` and
   `syncing`. Follow its gates, sign-off and writing rules; they override this playbook.
-- `steering` (planned, wave 2). Fallback: each week, read `backlog.py status` and `trace`, list
-  throughput, work in progress and blockers, keep a risks-and-issues list with owner and date, and
-  apply each guardrail's stated action on breach. Label the report "manual, no skill".
-- `releasing` (planned, wave 1). Fallback: track releases as milestones in the tracker, and ask
-  before any promotion.
-- Linear and Azure DevOps adapters and outside sign-off in `syncing`: planned enhancement, wave 2.
-  Fallback: export to Excel; record outside sign-off as `written:` with the email or document.
+- `steering`: the weekly loop: flow, a forecast against each milestone, the log of risks, issues,
+  decision requests and guardrails, and the five-line status. If not installed: each week, read
+  `backlog.py status` and `trace`, list throughput, work in progress and blockers, keep a
+  risks-and-issues list with owner and date, apply each guardrail's stated action on breach, and
+  label the report "manual, no skill".
+- `releasing`: each promotion of what the initiative ships, with a rollback plan and a read-back.
+  A promotion is an outside effect: it runs when the mission contract pre-authorizes it, otherwise
+  it is stop reason 2. If not installed: track releases as milestones in the tracker.
+- Linear and Azure DevOps adapters and outside sign-off (`record-signoff`) in `syncing`: the
+  backlog in those trackers (adapters not tested live), and a sign-off given by email or document
+  recorded with its source. If not installed: export to Excel; record outside sign-off as
+  `written:` with the email or document.
 
 ## Steps
 
