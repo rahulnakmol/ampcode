@@ -26,19 +26,26 @@ RFP (`shaping-engagements` through `blueprinting`).
 
 1. Charter the mission with `missioning`.
 2. Write the requirements with the decider.
-3. Agree the criteria and weights; freeze them in the decision trail.
-4. Build the long list; agree the shortlist.
+3. Agree the criteria, the weights and the shortlist rule at kickoff; freeze them in the
+   decision trail.
+4. Build the long list; shortlist by the agreed rule.
 5. Gather evidence per product; label every unverified claim.
 6. Verify the claims that matter in a sandbox or a document.
 7. Score from the frozen weights with a script.
 8. Review the conclusions; write the recommendation with conditions and owners.
-9. Publish after the recommendation gate; close out.
+9. Publish the report as an effect, pre-authorized or asked; close out.
+
+Milestones: M1 long list and shortlist (step 4), M2 evidence and scores (5 to 7), M3
+recommendation and publication (8 and 9).
 
 ## Human gates
 
-- Requirements and weights.
-- Shortlist.
-- Recommendation.
+- Kickoff: requirements, criteria and weights, with the shortlist rule as an open question with
+  a default.
+- Publishing the report: an effect, pre-authorized at kickoff or asked.
+
+The recommendation goes to the decider in the close-out; the buying decision is theirs, after the
+mission.
 
 ## Definition of Done
 

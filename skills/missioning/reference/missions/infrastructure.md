@@ -26,9 +26,10 @@ and incident response. Not for application code alone (`software-delivery`).
 
 ## Steps
 
-1. Charter the mission with `missioning`. The authority grants name which environments may be
-   applied without asking, such as a personal sandbox.
-2. Write the target design.
+1. Charter the mission with `missioning`. Its pre-authorized effects name which environments may
+   be applied without asking, such as a personal sandbox.
+2. Write the target design, SLOs and alert routing; run the readiness preflight; get the kickoff
+   approval.
 3. Write or change the IaC; test modules before use.
 4. Preview the change; run policy, cost and IaC scans.
 5. For each shared or production environment, get approval of the exact plan; apply only it.
@@ -38,14 +39,16 @@ and incident response. Not for application code alone (`software-delivery`).
 9. When something breaks, investigate; file fixes and missing alerts as bugs.
 10. Close out.
 
+Milestones: M1 change applied (steps 3 to 6), M2 observability (7), M3 release (8). Step 9 runs
+whenever something breaks.
+
 ## Human gates
 
-- Target design.
-- SLOs and alert routing.
-- Every apply to a shared environment.
-- Every promotion to rolling and main.
-- Production change windows.
-- Any production mitigation during an incident.
+- Kickoff: the target design, SLOs and alert routing, open questions with defaults, and the
+  pre-authorized environments.
+- Effects, each on its exact plan unless pre-authorized: every apply to a shared environment;
+  every promotion to rolling and main; production change windows; any production mitigation
+  during an incident.
 
 Deleting or replacing a stateful resource (database, storage, key vault, DNS) needs its own
 explicit confirmation. Credentials never enter the repository, the mission file or the chat.

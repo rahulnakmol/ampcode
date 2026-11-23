@@ -26,22 +26,31 @@ a standalone review (`security-review`) or release-only work.
 ## Steps
 
 1. Charter the mission with `missioning`; the charter is part of `delivering`'s mission record.
-2. Use `grilling` and `crafting` to confirm the brief: journeys and behaviour.
-3. Write the technical design and acceptance criteria; run the fresh design review.
-4. Write the design brief; get design acknowledgment.
-5. Run `delivering`'s whiteboard defense and build loop, one slice at a time.
-6. Review gates one and two on the exact candidate; repair and recheck.
-7. Present evidence; merge into `dev` under the risk policy; read the merge back.
-8. Release only with separate approval; verify on the target.
+2. Use `grilling` and `crafting` to confirm the brief: journeys, behaviour and rendered states.
+3. Write the technical design, acceptance criteria with finite case lists, milestones and work
+   items; run the fresh design review.
+4. Run the whiteboard defense and the readiness preflight; write the kickoff brief; get the one
+   kickoff approval.
+5. Run `delivering`'s contract loop for the milestone: each work item test-first, freshly reviewed.
+6. Review gates one and two on the milestone's exact candidate; at a cap, follow the disposition
+   policy.
+7. Merge the milestone into `dev` when its gates pass; read the merge back; send the checkpoint
+   report.
+8. Release only as an effect: pre-authorized at kickoff or asked, with a rollback plan; verify on
+   the target.
 9. Close out: trace each criterion to its executed evidence on the released revision.
+
+Milestones: one per slice of the design, each running steps 5 to 7; then release and close-out
+(steps 8 and 9).
 
 ## Human gates
 
-- Confirmed brief (journeys and behaviour).
-- Design acknowledgment.
-- High-risk merge or ask-mode merge: a brief of the presented evidence saved beside the mission
-  record. An automatic low- or medium-risk merge is an agent row.
-- Release.
+- Kickoff: the confirmed brief, the design and its defense, open questions with defaults and
+  pre-authorized effects, after a passing readiness preflight (steps 1 to 4).
+- Release: an effect, pre-authorized at kickoff or asked with the exact plan.
+
+Every merge into `dev` is an agent row at every risk level, once both reviews and the evidence
+match the exact candidate.
 
 ## Definition of Done
 
@@ -53,5 +62,5 @@ its target.
 
 - A merge request reported as a merge.
 - Green CI reported as a review verdict.
-- Build started before design acknowledgment.
+- Build started before the kickoff approval.
 - A release inferred from permission to merge.

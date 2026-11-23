@@ -29,11 +29,17 @@ decision.
 8. When software is built, compare each built state with its mockup.
 9. Close out with the comparison and open differences.
 
+Milestones: M1 directions (steps 3 and 4), M2 system and mockups (5 to 7), M3 built-product
+comparison (8 and 9).
+
 ## Human gates
 
-- Need and angle.
-- Chosen direction.
-- Final critic pass.
+- Kickoff: the need, the angle and the success measures (steps 1 and 2). The chosen direction is
+  an open question; its default is the direction that best meets the success criteria.
+- Effects: publishing or sending designs outside the team, unless pre-authorized.
+
+The directions and the final critic pass appear in checkpoint reports, which ask nothing; the
+owner may redirect at any time.
 
 ## Definition of Done
 
