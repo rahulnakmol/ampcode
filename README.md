@@ -236,8 +236,8 @@ records the earlier design rationale; [evaluations](./evals/delivering/README.md
 stop-replay eval, distinguish simulated decisions from live execution. Install `grilling`
 alongside it. Source integration does not publish skills to Amp Personal Skills or the plugin to
 Amp Personal Plugins. Promotion to `rolling` or `main`, deployment and Personal publication are
-outside effects that run only when the contract pre-authorizes them or the owner approves each one once in the effect dialog (without the plugin, that question is
-stop reason 2).
+outside effects that run only when the contract pre-authorizes them or the owner approves each
+one once in the effect dialog (without the plugin, that question is stop reason 2).
 
 ## Goldfishing
 

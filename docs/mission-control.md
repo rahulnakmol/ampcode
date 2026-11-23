@@ -157,9 +157,9 @@ and unresolved effects with Amp's transfer tools. Never copy an approval into a 
 Create a delivery thread for [outcome] in [repository], using delivering, on
 [an orb, or the named runner and checkout]. Carry this brief into its first
 prompt: [brief]. It writes one contract, with the milestone merges into dev
-and pushing mission branches pre-authorized, runs the readiness preflight on it, and asks me for one approval
-at kickoff in that thread. If it needs unpushed work,
-transfer and verify the exact files or commit first.
+and pushing mission branches pre-authorized, runs the readiness preflight on
+it, and asks me for one approval at kickoff in that thread. If it needs
+unpushed work, transfer and verify the exact files or commit first.
 ```
 
 This uses Amp's own thread tools, not a `mission-control` launcher. Inside a mission, the
@@ -364,8 +364,9 @@ verifiable authentication receipts.
 - A listed effect that is not pre-authorized, or an effect that is not in the contract
   (`{ effect, why }`), opens the effect dialog. Perform it only after the owner approves it.
 - Milestone merges into `dev` happen through `mission_merge`, not `mission_effect`, but the
-  contract must list them as a pre-authorized effect for the milestones to merge: in `delivering`, that entry chooses the
-  ship variant, and without it the mission merges nothing and leaves each milestone PR open.
+  contract must list them as a pre-authorized effect for the milestones to merge: in
+  `delivering`, that entry chooses the ship variant, and without it the mission merges nothing
+  and leaves each milestone PR open.
 
 ## Milestones, reviews and merges
 
