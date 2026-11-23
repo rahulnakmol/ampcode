@@ -50,8 +50,9 @@ below are allowed and ignored by the checker.
   included, is not an approval, with one exception: the Decision owner's reply to the kickoff
   question (the message that asks the owner to approve the kickoff brief or a baseline revision
   of it), quoted with its message ID, is recorded as `written: <thread> message <ID>` on the
-  Kickoff gate row only. A reply to any other message, including one that links another gate's
-  brief, is chat and never an approval.
+  Kickoff gate row only; each revision's reply gets its own Kickoff row (for example
+  `Kickoff r2`), and a passed row is never edited. A reply to any other message, including one
+  that links another gate's brief, is chat and never an approval. The checker cannot verify this.
 - **Decision trail:** under `## Decision trail`, a table with headers Date, Decision, Why,
   Evidence, Decider. Add rows; never rewrite them (the checker cannot verify this). A conductor
   that already keeps decision provenance adds one row that links it.

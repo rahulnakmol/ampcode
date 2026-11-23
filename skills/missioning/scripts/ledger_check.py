@@ -186,13 +186,16 @@ def check(text, base):
             add("R5", f"gate '{gate}': the charter and kickoff gates are always human gates")
         # Effect IDs: '(E<n>)' in the Gate, any case; in Evidence, upper case and only when it
         # speaks of pre-authorization, so codes such as 'E501' or 'rustc E0308' stay plain evidence.
+        # Any spelling of a leading "pre-authorized" marks the row; only the hyphenated form
+        # with a colon gives its source.
+        starts = re.match(r"pre[- ]?authori[sz]ed\b", evidence, re.I)
         pre = re.match(r"pre-authori[sz]ed\b(?::(.*))?", evidence, re.I)
         mentions = re.search(r"\bpre[- ]?authori[sz](?:e[sd]?|ations?|ing)\b", evidence, re.I)
         named = {i.upper() for i in re.findall(r"\((E\d+)\)", gate, re.I)}
         cited = named | (set(re.findall(r"\bE\d+\b", evidence)) if mentions else set())
-        if kind == "human" and (pre or cited & granted):
+        if kind == "human" and (starts or cited & granted):
             add("R13", f"gate '{gate}': a pre-authorized effect is an agent row, not a human gate; if this is that listed effect, record it as an agent row and do not ask again; if it is a different or wider effect, give it its own ID and do not describe it as pre-authorized")
-        elif kind == "agent" and (pre or cited):
+        elif kind == "agent" and (starts or cited):
             grant = (pre.group(1) or "").strip() if pre else ""
             if not grant or grant.split()[0].strip(".,;").lower() in ("-", "none") or PLACEHOLDER.search(grant):
                 add("R13", f"gate '{gate}': Evidence must read 'pre-authorized: <source>'")
