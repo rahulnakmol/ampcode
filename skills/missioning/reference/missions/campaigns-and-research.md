@@ -33,12 +33,18 @@ research that informs one. Not for designing a product experience (`experience-d
 8. Launch only after the launch gate; read back what was published.
 9. Read the funnel measures against target; file lessons; close out.
 
+Milestones: M1 brief and research (steps 2 to 4), M2 assets and approvals (5 to 7), M3 launch
+and readout (8 and 9).
+
 ## Human gates
 
-- Brief and message house.
+- Kickoff: the charter, open questions with defaults, and the effects to pre-authorize.
+- Brief and message house: `planning`'s sign-off by the named approvers.
 - Each external approval: Source `written:` or `tracker:`, on the final file.
-- Launch: an outside send, so the exact plan of what goes where and when.
-- Post-campaign readout.
+- Launch: an outside send of the exact plan of what goes where and when; pre-authorized at
+  kickoff for the calendar plan the approvers sign, or asked when it arises.
+
+The post-campaign readout is the owner's review of the close-out; it blocks nothing.
 
 ## Definition of Done
 

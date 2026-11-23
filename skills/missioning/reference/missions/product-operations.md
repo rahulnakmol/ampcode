@@ -30,6 +30,9 @@ ready stories go to `delivering` through the `software-delivery` playbook.
 7. Record delivery and goal measurements with `grooming`; run `backlog.py trace`.
 8. Close out when gate 7 passes.
 
+Milestones: M1 agreed backlog (steps 2 and 3, planning's gates 1 to 6), M2 delivery tracking
+(steps 4 to 7), with the weekly status as the checkpoint report.
+
 ## Human gates
 
 Planning's gates 1 to 7 are **agent** rows in the ledger, labelled "gate 1" to "gate 7". Their
@@ -38,10 +41,13 @@ Evidence cites the output named in planning's "Checked by" column. Gates 3 and 5
 
 The **human** gates in the ledger are:
 
-- the charter and its success criteria;
-- each decision request;
-- any re-plan when the forecast misses a milestone;
-- the Definition of Done confirmation.
+- the kickoff: the charter, its success criteria, open questions with defaults and pre-authorized
+  effects;
+- each decision request, to its named decider with a deadline and a default (`steering`): at the
+  deadline the default is applied and recorded in the trail, the row stays open, and work goes on;
+- a re-plan that changes a goal, a milestone date or its scope: stop reason 1.
+
+The Definition of Done is shown by gate 7 and the close-out; the owner's review blocks nothing.
 
 Each has a brief in the mission folder's `reviews/`. Owner confirmations inside a stage, such as
 the intake in gate 1, stay as that stage's skill runs them and are cited as evidence. Routine

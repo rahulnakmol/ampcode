@@ -30,7 +30,8 @@ consultant owns the evidence. Not for one software feature (use `software-delive
 1. Charter the mission with `missioning`; Approvers include the named client authorities.
 2. Use `grilling` to settle the engagement's decision and audience.
 3. Start or resume the engagement with `blueprinting`; keep `mission.md` as a working note.
-4. Draft the hypothesis tree and a day-one answer for evidence to confirm or kill.
+4. Draft the hypothesis tree and a day-one answer for evidence to confirm or kill; get the one
+   kickoff approval.
 5. Prepare workshops and questionnaires; retain every source; record contradictions.
 6. Design the target operating model and functional specification from the evidence.
 7. Obtain written client confirmation of the operating model baseline.
@@ -39,10 +40,13 @@ consultant owns the evidence. Not for one software feature (use `software-delive
 10. Present the funded portfolio to the steering committee; record its decision.
 11. Hand each funded initiative to a `planning` mission; close out.
 
+Milestones: M1 discovery (step 5), M2 target operating model (6 and 7), M3 roadmap and business
+case (8 and 9), M4 portfolio decision and handover (10 and 11).
+
 ## Human gates
 
-- The decision and audience of the engagement.
-- The hypothesis tree.
+- Kickoff: the charter, the engagement's decision and audience, and the hypothesis tree (steps 1
+  to 4), with open questions and defaults.
 - The operating model baseline: written client confirmation, as `blueprinting` already requires.
   The gate passes only when `engagement.py baseline <decision-id>` reports `ready: true`; Source
   is `written: <decision id>`.

@@ -3,10 +3,11 @@
 
   python3 ledger_check.py mission.md
 
-Exits 0 and prints "pass" when the file follows rules R1 to R12. Otherwise exits 1 and prints
-each problem as "<rule>: <what to fix>". Standard library only. The grammar and the rules are in
-../reference/charter.md. The check proves the record is complete and consistent. It cannot prove
-that a person really answered, and it cannot read Amp dialogs, tracker comments or URLs.
+Exits 0 and prints "pass" when the file follows rules R1 to R13 (R3 is retired). Otherwise exits 1
+and prints each problem as "<rule>: <what to fix>". Standard library only. The grammar and the
+rules are in ../reference/charter.md. The check proves the record is complete and consistent. It
+cannot prove that a person really answered, and it cannot read Amp dialogs, tracker comments or
+URLs.
 """
 
 import re
@@ -15,8 +16,9 @@ import sys
 from pathlib import Path
 
 FIELDS = (
-    "Outcome", "Decision owner", "Approvers", "Success criteria", "Definition of Done", "Budget",
-    "Budget used", "May do without asking", "Always ask", "Stop and ask when", "Playbook", "Host",
+    "Outcome", "Decision owner", "Approvers", "Success criteria", "Definition of Done",
+    "Open questions", "Pre-authorized effects", "May do without asking", "Always ask",
+    "Stop and ask when", "Playbook", "Host",
 )
 HOSTS = ("amp", "claude code", "copilot in vs code", "copilot app")
 PLAYBOOKS = (
@@ -148,14 +150,15 @@ def check(text, base):
         elif name == "Decision owner" and "," in values[0]:
             add("R1", "Decision owner is one person; name others as Approvers")
     get = lambda name: (charter.get(name) or [""])[0]
-    host, playbook, budget = get("Host").lower(), get("Playbook"), get("Budget")
+    host, playbook = get("Host").lower(), get("Playbook")
     if host and host not in HOSTS:
         add("R2", f"Host must be one of Amp, Claude Code, Copilot in VS Code, Copilot app, not '{get('Host')}'")
     if playbook and playbook not in PLAYBOOKS and not re.match(r"none: \S", playbook):
         add("R2", f"Playbook must be a playbook name or 'none: <reason>', not '{playbook}'")
-    decided = re.search(r"no limit on .+, decided by \S", budget, re.I)
-    if budget and not decided and (not re.search(r"\d", budget) or re.search(r"\bunlimited\b|\bno limit\b", budget, re.I)):
-        add("R3", "Budget must name a limit with a number, or say 'no limit on <what>, decided by <name>'")
+    effects = get("Pre-authorized effects").strip()
+    granted = {i.upper() for i in re.findall(r"\bE\d+\b", effects, re.I)}
+    if effects and not PLACEHOLDER.search(effects) and not re.match(r"none\b|E\d+\b", effects, re.I):
+        add("R13", "Pre-authorized effects must be 'none' or a list of 'E<n> <effect>' entries")
 
     owner = people(get("Decision owner"))
     deciders = owner + people(get("Approvers"))
@@ -178,8 +181,20 @@ def check(text, base):
         if kind not in KINDS or state not in STATES:
             add("R5", f"gate '{gate}': Kind must be human or agent and State one of {', '.join(STATES)}")
             continue
-        if re.match(r"(?:mission )?charter\b", gate, re.I) and kind != "human":
-            add("R5", f"gate '{gate}': the charter gate is always a human gate")
+        if re.match(r"(?:mission )?(?:charter|kickoff)\b", gate, re.I) and kind != "human":
+            add("R5", f"gate '{gate}': the charter and kickoff gates are always human gates")
+        # Effect IDs: any case in the Gate; upper case only in Evidence, where hashes are lower case.
+        pre = re.match(r"pre-authori[sz]ed\b(?::(.*))?", evidence, re.I)
+        named = {i.upper() for i in re.findall(r"\bE\d+\b", gate, re.I)}
+        cited = named | set(re.findall(r"\bE\d+\b", evidence))
+        if kind == "human" and (pre or named & granted):
+            add("R13", f"gate '{gate}': a pre-authorized effect is an agent row, not a human gate; do not ask for it again")
+        elif kind == "agent" and (pre or cited):
+            grant = (pre.group(1) or "").strip() if pre else ""
+            if not grant or grant.split()[0].strip(".,;").lower() in ("-", "none") or PLACEHOLDER.search(grant):
+                add("R13", f"gate '{gate}': Evidence must read 'pre-authorized: <source>'")
+            elif not cited or not cited <= granted:
+                add("R13", f"gate '{gate}': name the effect's ID (E<n>) from the charter's Pre-authorized effects")
         if (kind == "human" and state == "passed") or state == "waived":
             names = people(decider)
             if not names or not all(is_one_of(n, deciders) for n in names):

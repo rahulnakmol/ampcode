@@ -22,9 +22,15 @@ below are allowed and ignored by the checker.
 ## Grammar
 
 - **Charter:** under `## Charter`, one field per line, `- **Name:** value`. Names are exact and
-  case-sensitive. A value continues on lines indented by two spaces. Extra fields are allowed.
-  Required, each once: Outcome, Decision owner, Approvers, Success criteria, Definition of Done,
-  Budget, Budget used, May do without asking, Always ask, Stop and ask when, Playbook, Host.
+  case-sensitive. A value continues on lines indented by two spaces. Extra fields are allowed, so
+  an old charter's budget lines still pass. Required, each once: Outcome, Decision owner,
+  Approvers, Success criteria, Definition of Done, Open questions, Pre-authorized effects, May do
+  without asking, Always ask, Stop and ask when, Playbook, Host.
+- **Contract fields:** Open questions lists each question with the default the agent takes unless
+  the owner changes it at kickoff (`Q1 <question> Default: <answer>`), or `none`. Pre-authorized
+  effects lists each outside effect the owner approves at kickoff, each starting with its ID
+  (`E1 <effect>`), or `none` with an optional reason. Always ask names outside effects that are
+  not pre-authorized. Stop and ask when refers to the five stop reasons below, and adds nothing.
 - **Placeholder:** an empty value, the upper-case words TBD, TODO or TBC anywhere, a whole value
   of tbd, todo or tbc in any case, `?`, or `<text>` that is not an `https://` or `mailto:` autolink.
 - **People:** Decision owner is one name and Approvers are comma-separated names, each optionally
@@ -46,15 +52,26 @@ below are allowed and ignored by the checker.
   Evidence, Decider. Add rows; never rewrite them (the checker cannot verify this). A conductor
   that already keeps decision provenance adds one row that links it.
 
+## The five stop reasons
+
+After kickoff, the agent asks the owner only when one of these holds. Anything else becomes a
+recorded assumption, taken from the open question's default or a safe, reversible choice.
+
+1. Change to the baseline: a criterion, scope item or design decision is wrong or conflicts, and no reading inside the contract works.
+2. Outside effect not in the contract: an irreversible or outside effect that the contract does not pre-authorize.
+3. A fact only a person holds, with no safe, reversible default.
+4. A red line: security, legal or safety.
+5. A milestone cannot meet its exit criteria after the work was re-planned and split.
+
 ## Rules the checker applies
 
 | Rule | What passes |
 | --- | --- |
 | R1 | One Charter section; every required field appears once and is not a placeholder; Decision owner (one person) and Approvers follow People |
 | R2 | Host is Amp, Claude Code, Copilot in VS Code or Copilot app; Playbook is a playbook name or `none: <reason>` |
-| R3 | Budget names a limit with a number and does not say "unlimited", or says `no limit on <what>, decided by <name>` |
+| R3 | Retired: missions have no budget. An old budget line is an extra field and passes |
 | R4 | One `## Gate ledger` section and one ledger table in the file; the table (every line up to a blank one, with no table row after it) has the nine headers in order, the separator line with one cell per header, nine cells per row and at least one row |
-| R5 | Kind and State take the values above; a gate named Charter is `human` |
+| R5 | Kind and State take the values above; a gate named Charter or Kickoff is `human` |
 | R6 | A passed human gate, and any waived gate, has a Decider who is the Decision owner or an Approver, and a Source with a reference; a `dialog` or `question` Decider is the Decision owner |
 | R7 | The Source kind is `dialog`, `question`, `tracker` or `written`, and the reference cites neither chat, a conversation, Slack or a DM nor an acknowledgement such as "looks good" or "LGTM" (a fixed word list; "ask_user in Copilot Chat" names the question tool and is excepted): approval is never inferred from chat |
 | R8 | A passed human gate's Brief is a local `.md` file, relative to the mission file, that passes `briefing-decisions`' `brief_check.py`; a published URL may follow in parentheses |
@@ -62,6 +79,7 @@ below are allowed and ignored by the checker.
 | R10 | A passed agent gate has Evidence that is not a placeholder |
 | R11 | A waived gate gives its reason in Evidence, not a placeholder; it is never reported as passed |
 | R12 | The decision trail table has its five headers, and every row names a Decider |
+| R13 | Pre-authorized effects is `none` or a list of `E<n> <effect>` entries. An `agent` row whose Evidence starts with "pre-authorized" or whose Gate or Evidence names an `E<n>` (upper case in Evidence) has Evidence `pre-authorized: <source>`, and names only `E<n>` IDs the charter lists, at least one. A human row's Evidence never starts with "pre-authorized", and its Gate never names a listed `E<n>` |
 
 ## Template
 
@@ -75,11 +93,11 @@ below are allowed and ignored by the checker.
 - **Approvers:** <names, with handles in parentheses>
 - **Success criteria:** <measurable results, written before the work>
 - **Definition of Done:** <what must be true to close>
-- **Budget:** <limits: tokens, time, money, attempts, review rounds>
-- **Budget used:** <measured, estimated or unknown, with delegated work>
+- **Open questions:** <Q1 question. Default: answer; or none>
+- **Pre-authorized effects:** <E1 effect, with its source; or none>
 - **May do without asking:** <actions>
-- **Always ask:** <actions>
-- **Stop and ask when:** <conditions>
+- **Always ask:** <outside effects that are not pre-authorized>
+- **Stop and ask when:** one of the five stop reasons in missioning; nothing else.
 - **Playbook:** <playbook name>
 - **Host:** <Amp | Claude Code | Copilot in VS Code | Copilot app>
 
@@ -87,7 +105,7 @@ below are allowed and ignored by the checker.
 
 | Gate | Kind | State | Evidence | Review | Brief | Decider | Source | Date |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Charter and criteria | human | open | - | - | - | - | - | - |
+| Kickoff | human | open | - | - | - | - | - | - |
 
 ## Decision trail
 
@@ -111,14 +129,15 @@ below are allowed and ignored by the checker.
 - **Outcome:** The finance team gets a recommended expense-management product,
   with conditions, before the April budget review.
 - **Decision owner:** Elena Petrova (@elena-p)
-- **Approvers:** Tom Okafor (@tokafor)
+- **Approvers:** none
 - **Success criteria:** Three products scored against weights agreed before scoring.
 - **Definition of Done:** Every score cites evidence; unverified claims are labelled.
-- **Budget:** 5 working days; 3 review rounds per gate; no spend on paid trials.
-- **Budget used:** estimated 1 day; tokens unknown: no usage telemetry on this host.
+- **Open questions:** Q1 How many products to shortlist? Default: the top three by score.
+  Q2 Use paid trials? Default: no; vendor documents and free sandboxes only.
+- **Pre-authorized effects:** E1 share the report with the finance team, approved at kickoff.
 - **May do without asking:** read public vendor documents, draft the criteria and scores.
-- **Always ask:** contacting vendors; sharing the report outside finance.
-- **Stop and ask when:** a requirement is unclear, or a vendor claim cannot be checked.
+- **Always ask:** contacting vendors; sharing the report outside finance; any spending.
+- **Stop and ask when:** one of the five stop reasons in missioning; nothing else.
 - **Playbook:** product-assessment
 - **Host:** Copilot app
 
@@ -126,11 +145,9 @@ below are allowed and ignored by the checker.
 
 | Gate | Kind | State | Evidence | Review | Brief | Decider | Source | Date |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Charter | human | passed | charter above | reviews/charter-novice.md | briefs/charter.md | Elena Petrova | question: ask_user answer "Approve the charter" | 2026-02-27 |
-| Requirements and weights | human | passed | criteria.md | reviews/weights-novice.md | briefs/weights.md | Elena Petrova | question: ask_user answer "Approve the weights" | 2026-03-02 |
-| Evidence pack | agent | passed | scores.md, 3 products | none needed: checked at the shortlist gate | - | - | - | 2026-03-04 |
-| Shortlist | human | pending | scores.md | reviews/shortlist-novice.md | briefs/shortlist.md | - | - | - |
-| Recommendation | human | open | - | - | - | - | - | - |
+| Kickoff | human | passed | charter above, criteria.md | reviews/kickoff-novice.md | briefs/kickoff.md | Elena Petrova | question: ask_user answer "Approve the kickoff" | 2026-03-02 |
+| Evidence pack | agent | passed | scores.md, 3 products | none needed: scored by script from the frozen weights | - | - | - | 2026-03-04 |
+| Share the report with finance (E1) | agent | open | pre-authorized: charter E1, kickoff 2026-03-02 | - | - | - | - | - |
 
 ## Decision trail
 
@@ -138,6 +155,7 @@ below are allowed and ignored by the checker.
 | --- | --- | --- | --- | --- |
 | 2026-03-02 | Weight security at 30 percent | Card data is in scope | criteria.md | Elena Petrova |
 | 2026-03-03 | Label vendor uptime figures as claimed | No status page history | scores.md | Elena Petrova |
+| 2026-03-04 | Shortlist the top three by score | Default of Q1, taken as an assumption | scores.md | Agent (default Q1) |
 
 ## Close-out
 
