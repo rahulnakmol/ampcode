@@ -1,20 +1,13 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import type { Mission } from './mission'
 
 // A milestone candidate is structural, so contract code and this adapter share no import.
-// The v1 Mission is still accepted until its call sites move to milestone candidates.
 export type MilestoneCandidate = { repo: string; pr: number; head: string; base: string }
-type Target = Mission | MilestoneCandidate
 const REPO = /^[\w.-]+\/[\w.-]+$/, SHA = /^[a-f0-9]{40}$/
 
-function candidateOf(t: Target, needDesign = false): MilestoneCandidate {
-	if ('repo' in t) {
-		if (typeof t.repo !== 'string' || !REPO.test(t.repo) || !Number.isSafeInteger(t.pr) || t.pr <= 0 || typeof t.head !== 'string' || !SHA.test(t.head) || typeof t.base !== 'string' || !SHA.test(t.base)) throw new Error('Invalid milestone candidate')
-		return t
-	}
-	if (!t.candidate || (needDesign && !t.design)) throw new Error(needDesign ? 'Mission design and candidate required' : 'Candidate required')
-	return t.candidate
+function candidateOf(c: MilestoneCandidate): MilestoneCandidate {
+	if (typeof c.repo !== 'string' || !REPO.test(c.repo) || !Number.isSafeInteger(c.pr) || c.pr <= 0 || typeof c.head !== 'string' || !SHA.test(c.head) || typeof c.base !== 'string' || !SHA.test(c.base)) throw new Error('Invalid milestone candidate')
+	return c
 }
 
 // Protection and CI predicates shared by the merge check and the readiness preflight.
@@ -39,8 +32,8 @@ function checksProblem(required: any, runs: any[], sha: string) {
 
 // GitHub responses are untrusted runtime data; missing/unsupported protection
 // forms fail closed. Rulesets-only repositories need a separately tested adapter.
-export function assertMergeReady(s: Target, pr: any, protection: any, runs: any[]) {
-	const c = candidateOf(s, true)
+export function assertMergeReady(s: MilestoneCandidate, pr: any, protection: any, runs: any[]) {
+	const c = candidateOf(s)
 	if (pr.isMergeQueueEnabled !== false || pr.isInMergeQueue !== false || pr.mergeQueueEntry !== null) throw new Error('Merge queues or unknown queue state are unsupported')
 	if (pr.state !== 'open' || pr.merged !== false || pr.head?.sha !== c.head || pr.base?.sha !== c.base || pr.base?.ref !== 'dev' || pr.base?.repo?.full_name !== c.repo) throw new Error('Remote candidate changed; revalidate before merge')
 	const problem = protectionProblem(protection) ?? pinningProblem(protection.required_status_checks) ?? checksProblem(protection.required_status_checks, runs, c.head)
@@ -123,7 +116,7 @@ export class GitHub {
 		if (reads.protection?.ok && typeof sha === 'string' && SHA.test(sha)) reads.checkRuns = await this.read(`repos/${repo}/commits/${sha}/check-runs?filter=latest&per_page=100`)
 		return assessReadiness(reads)
 	}
-	async pull(s: Target) {
+	async pull(s: MilestoneCandidate) {
 		const c = candidateOf(s), [owner, name] = c.repo.split('/')
 		const pr = await this.api(`repos/${c.repo}/pulls/${c.pr}`)
 		const query = 'query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){isMergeQueueEnabled isInMergeQueue mergeQueueEntry{id}}}}'
@@ -132,7 +125,7 @@ export class GitHub {
 		if (response.errors || !queue || typeof queue.isMergeQueueEnabled !== 'boolean' || typeof queue.isInMergeQueue !== 'boolean' || !Object.hasOwn(queue, 'mergeQueueEntry')) throw new Error('Authoritative merge queue state unavailable')
 		return { ...pr, isMergeQueueEnabled: queue.isMergeQueueEnabled, isInMergeQueue: queue.isInMergeQueue, mergeQueueEntry: queue.mergeQueueEntry }
 	}
-	async preflight(s: Target) {
+	async preflight(s: MilestoneCandidate) {
 		const c = candidateOf(s)
 		const pr = await this.pull(s)
 		const protection = await this.api(`repos/${c.repo}/branches/dev/protection`)
@@ -143,7 +136,7 @@ export class GitHub {
 		// and head precondition still govern the race after this read.
 		assertMergeReady(s, await this.pull(s), protection, checks.check_runs)
 	}
-	async request(s: Target) {
+	async request(s: MilestoneCandidate) {
 		const c = candidateOf(s)
 		// Automatic workflow, not persistent GitHub auto-merge authorization:
 		// an unmet remote gate must not authorize a future, unreviewed head.

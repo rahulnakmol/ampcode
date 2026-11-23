@@ -1,29 +1,19 @@
 import { expect, test } from 'bun:test'
 import { assertMergeReady, GitHub, type MilestoneCandidate } from '../plugins/mission-control/lib/github'
-import { createMission, advance } from '../plugins/mission-control/lib/mission'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-
-const brief = { markdown: readFileSync(join(import.meta.dir, '../evals/briefing-decisions/brief.md'), 'utf8'), url: 'https://ampcode.com/artifacts/demo-brief' }
 
 const head = 'a'.repeat(40), base = 'b'.repeat(40)
 function fixture() {
-	let mission = createMission('T-fixture', 'Export safely')
-	mission = advance(mission, { type: 'design', bundle: { spec: 'Exact rows', plan: 'Test then fix', technical: 'Offsets', ux: 'CLI recovery', brief }, criteria: ['Exact rows'] })
-	mission.candidate = { repo: 'acme/app', pr: 7, head, base, risk: 'low' }
 	const pr = { state: 'open', merged: false, isMergeQueueEnabled: false, isInMergeQueue: false, mergeQueueEntry: null, head: { sha: head }, base: { sha: base, ref: 'dev', repo: { full_name: 'acme/app' } } }
 	const protection = { enforce_admins: { enabled: true }, required_pull_request_reviews: { bypass_pull_request_allowances: { users: [], teams: [], apps: [] } }, required_status_checks: { strict: true, contexts: ['test'], checks: [{ context: 'test', app_id: 15368 }] } }
 	const runs = [{ name: 'test', app: { id: 15368 }, head_sha: head, status: 'completed', conclusion: 'success' }]
-	// A milestone candidate is the structural type { repo, pr, head, base }; the v1 Mission stays supported.
+	// A milestone candidate is the structural type { repo, pr, head, base }.
 	const candidate: MilestoneCandidate = { repo: 'acme/app', pr: 7, head, base }
-	return { mission, candidate, pr, protection, runs }
+	return { candidate, pr, protection, runs }
 }
-const targets = { mission: (f: ReturnType<typeof fixture>) => f.mission, candidate: (f: ReturnType<typeof fixture>) => f.candidate }
 
-for (const [kind, target] of Object.entries(targets)) {
-test(`only exact-candidate checks from required pinned apps authorize the adapter (${kind})`, () => {
+test('only exact-candidate checks from required pinned apps authorize the adapter', () => {
 	const f = fixture()
-	expect(() => assertMergeReady(target(f), f.pr, f.protection, f.runs)).not.toThrow()
+	expect(() => assertMergeReady(f.candidate, f.pr, f.protection, f.runs)).not.toThrow()
 	for (const change of [
 		{ pr: { ...f.pr, isMergeQueueEnabled: true } },
 		{ pr: { ...f.pr, isInMergeQueue: true } },
@@ -48,11 +38,11 @@ test(`only exact-candidate checks from required pinned apps authorize the adapte
 		{ runs: [...f.runs, f.runs[0]] },
 	]) {
 		const c = { ...f, ...change }
-		expect(() => assertMergeReady(target(c), c.pr, c.protection, c.runs)).toThrow()
+		expect(() => assertMergeReady(c.candidate, c.pr, c.protection, c.runs)).toThrow()
 	}
 })
 
-test(`adapter reads remote state before requesting exact-head squash merge (${kind})`, async () => {
+test('adapter reads remote state before requesting exact-head squash merge', async () => {
 	const f = fixture(), effects: string[][] = []
 	const gh = new GitHub(async args => {
 		effects.push(args)
@@ -61,23 +51,22 @@ test(`adapter reads remote state before requesting exact-head squash merge (${ki
 		if (path === 'graphql') return JSON.stringify({ data: { repository: { pullRequest: { isMergeQueueEnabled: false, isInMergeQueue: false, mergeQueueEntry: null } } } })
 		return JSON.stringify(path.includes('/protection') ? f.protection : path.includes('/check-runs') ? { total_count: 1, check_runs: f.runs } : f.pr)
 	})
-	await gh.preflight(target(f))
-	await gh.request(target(f))
+	await gh.preflight(f.candidate)
+	await gh.request(f.candidate)
 	expect(effects.at(-1)).toEqual(['pr', 'merge', '7', '--repo', 'acme/app', '--squash', '--match-head-commit', head])
 	const bad = new GitHub(async () => { throw new Error('Disconnected') })
-	await expect(bad.preflight(target(f))).rejects.toThrow('Disconnected')
+	await expect(bad.preflight(f.candidate)).rejects.toThrow('Disconnected')
 })
 
-test(`unready mutation fails without leaving deferred authorization for a later head (${kind})`, async () => {
+test('unready mutation fails without leaving deferred authorization for a later head', async () => {
 	let deferred = false
 	const gh = new GitHub(async args => {
 		if (args.includes('--auto')) { deferred = true; return '' }
 		throw new Error('Required conversation unresolved')
 	})
-	await expect(gh.request(target(fixture()))).rejects.toThrow('Required conversation unresolved')
+	await expect(gh.request(fixture().candidate)).rejects.toThrow('Required conversation unresolved')
 	expect(deferred).toBe(false)
 })
-}
 
 // Readiness preflight (contract section 3): six named predicates, checked without a candidate.
 const devSha = 'd'.repeat(40)

@@ -598,9 +598,22 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 	return s
 }
 
+/** A record of a retired schema (the v1 single-PR flow or the v2 shadow flow). Nothing reads,
+ * replays or rewrites it; the tools and hooks report this message and leave its bytes unchanged. */
+export class RetiredSchema extends Error {
+	constructor(schema: 'v1' | 'v2') {
+		// Only v1 sent merges, so only a v1 record can have a merge request still open.
+		const flow = schema === 'v1' ? 'single-PR mission' : 'shadow mission'
+		const merge = schema === 'v1' ? ' If that mission requested a merge, check its pull request on GitHub first.' : ''
+		super(`Retired schema: this thread's mission record is a ${schema} ${flow}, which mission-control no longer runs. Nothing was changed: the record stays on disk as it was.${merge} To continue the work, start a contract mission with mission_start { contract } in a new thread.`)
+	}
+}
+
 /** Rebuild a record by replaying its events. A projection that differs from the replay is refused. */
 export function parseRecord(value: unknown, thread: string): ContractRecord {
 	const v = value as any
+	if (v?.version === 1 && v.schemaVersion === undefined) throw new RetiredSchema('v1')
+	if (v?.schemaVersion === 2) throw new RetiredSchema('v2')
 	if (!v || typeof v !== 'object' || v.schemaVersion !== 3) throw new Error('Not a schema 3 contract mission record; preserve and investigate')
 	if (v.thread !== thread) throw new Error('Mission record belongs to another thread')
 	if (!Array.isArray(v.events) || !v.events.length) throw new Error('Mission record has no events')
