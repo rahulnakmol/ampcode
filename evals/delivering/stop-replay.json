@@ -22,7 +22,7 @@
     },
     {
       "id": "R3",
-      "situation": "During the build, the acceptance criterion \"reject any Markdown that hides words\" keeps producing new classes of hidden-word Markdown in review.",
+      "situation": "During the build, review of the acceptance criterion \"reject any Markdown that hides words\" finds that one case in its listed cases still fails, and it keeps producing new classes of hidden-word Markdown that the list does not name.",
       "expected_decision": "proceed",
       "expected_action": "Fix the cases in the closed case list; file new classes as new work items."
     },
@@ -34,7 +34,7 @@
     },
     {
       "id": "R5",
-      "situation": "After a cap, an extra review round failed on a Major inside the closed case list.",
+      "situation": "After a review cap, an extra review round failed on a Major inside the closed case list and also reported a Major about something outside the list.",
       "expected_decision": "proceed",
       "expected_action": "Reopen and re-plan the items concerned; file only findings outside the list."
     },
