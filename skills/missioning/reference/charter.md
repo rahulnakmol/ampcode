@@ -79,7 +79,7 @@ recorded assumption, taken from the open question's default or a safe, reversibl
 | R10 | A passed agent gate has Evidence that is not a placeholder |
 | R11 | A waived gate gives its reason in Evidence, not a placeholder; it is never reported as passed |
 | R12 | The decision trail table has its five headers, and every row names a Decider |
-| R13 | Pre-authorized effects is `none` or a list of `E<n> <effect>` entries. An `agent` row whose Evidence starts with "pre-authorized" or whose Gate or Evidence names an `E<n>` has Evidence `pre-authorized: <source>`, and names only `E<n>` IDs the charter lists, at least one. A human row's Evidence never starts with "pre-authorized", and its Gate never names a listed `E<n>` |
+| R13 | Pre-authorized effects is `none` or a list of `E<n> <effect>` entries. An `agent` row whose Evidence starts with "pre-authorized" or whose Gate or Evidence names an `E<n>` (upper case in Evidence) has Evidence `pre-authorized: <source>`, and names only `E<n>` IDs the charter lists, at least one. A human row's Evidence never starts with "pre-authorized", and its Gate never names a listed `E<n>` |
 
 ## Template
 

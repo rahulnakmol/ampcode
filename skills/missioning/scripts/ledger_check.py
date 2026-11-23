@@ -156,7 +156,7 @@ def check(text, base):
     if playbook and playbook not in PLAYBOOKS and not re.match(r"none: \S", playbook):
         add("R2", f"Playbook must be a playbook name or 'none: <reason>', not '{playbook}'")
     effects = get("Pre-authorized effects").strip()
-    granted = set(re.findall(r"\bE\d+\b", effects))
+    granted = {i.upper() for i in re.findall(r"\bE\d+\b", effects, re.I)}
     if effects and not PLACEHOLDER.search(effects) and not re.match(r"none\b|E\d+\b", effects, re.I):
         add("R13", "Pre-authorized effects must be 'none' or a list of 'E<n> <effect>' entries")
 
