@@ -29,6 +29,12 @@ BANNED = (
     "high-risk merge", "owner merge acknowledgment",
 )
 LIMIT = 1024
+# Common "-ing" words that are not gerunds (A1).
+NOT_GERUNDS = {
+    "thing", "nothing", "something", "anything", "everything", "morning", "evening", "during",
+    "ceiling", "string", "spring", "king", "ring", "wing", "bring", "sing", "ping", "ding", "sling",
+    "swing", "sting", "cling", "fling", "wring", "sibling",
+}
 
 
 def frontmatter(text):
@@ -55,10 +61,12 @@ def problems(name, root=ROOT, item=False):
     text = path.read_text()
     meta = frontmatter(text)
 
-    # A1: name, directory and description.
+    # A1: name, directory and description. A gerund word ends in "ing" with a vowel (or y) before
+    # it and is not in NOT_GERUNDS, so "modelling" counts and "string" or "morning" do not. This
+    # reads spelling, not grammar: an "-ing" noun missing from the list still passes.
     words = (meta.get("name") or "").split("-")
     if meta.get("name") != name or not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", name) \
-            or not any(w.endswith("ing") for w in words):
+            or not any(re.fullmatch(r"\w*[aeiouy]\w*ing", w) and w not in NOT_GERUNDS for w in words):
         out.append(f"A1: name {meta.get('name')!r} must be a lowercase gerund equal to {name!r}")
     description = meta.get("description", "")
     if not description or len(description) > LIMIT:
@@ -145,24 +153,24 @@ description: "Samples things. Use when asked to sample. Not for counting."
 
 class Rules(unittest.TestCase):
     def tree(self, tmp, skill=GOOD, script="import json\nimport sys\nif '--help' in sys.argv: print('usage')\n",
-             evals="| S1 | a |\n| S2 | b |\n", results=True, rows=True):
+             evals="| S1 | a |\n| S2 | b |\n", results=True, rows=True, name="sampling-things"):
         root = Path(tmp)
-        base = root / "skills" / "sampling-things"
+        base = root / "skills" / name
         (base / "scripts").mkdir(parents=True)
-        (base / "SKILL.md").write_text(skill)
+        (base / "SKILL.md").write_text(skill.replace("name: sampling-things", f"name: {name}"))
         (base / "scripts" / "tool.py").write_text(script)
-        (root / "evals" / "sampling-things").mkdir(parents=True)
-        (root / "evals" / "sampling-things" / "README.md").write_text(evals)
+        (root / "evals" / name).mkdir(parents=True)
+        (root / "evals" / name / "README.md").write_text(evals)
         if results:
-            (root / "evals" / "sampling-things" / "results.md").write_text("graded\n")
+            (root / "evals" / name / "results.md").write_text("graded\n")
         (root / "docs").mkdir()
-        (root / "README.md").write_text("[x](./skills/sampling-things/SKILL.md)\n" if rows else "")
-        (root / "docs" / "using-skills.md").write_text("| **sampling-things** |\n" if rows else "")
+        (root / "README.md").write_text(f"[x](./skills/{name}/SKILL.md)\n" if rows else "")
+        (root / "docs" / "using-skills.md").write_text(f"| **{name}** |\n" if rows else "")
         return root
 
-    def rules(self, item=False, **kw):
+    def rules(self, item=False, name="sampling-things", **kw):
         with tempfile.TemporaryDirectory() as tmp:
-            return sorted({p.split(":")[0] for p in problems("sampling-things", self.tree(tmp, **kw), item)})
+            return sorted({p.split(":")[0] for p in problems(name, self.tree(tmp, name=name, **kw), item)})
 
     def test_complete_skill_passes(self):
         self.assertEqual(self.rules(), [])
@@ -179,6 +187,33 @@ class Rules(unittest.TestCase):
         self.assertEqual(len(fits), 1024)
         self.assertEqual(self.rules(skill=GOOD.replace(
             "Samples things. Use when asked to sample. Not for counting.", fits)), [])
+
+    def test_d5_a1_gerund_needs_a_vowel_before_ing(self):
+        # D-5: "string", "thing" and the like end in "ing" but are not gerunds.
+        for name in ("string-tools", "thing-maker", "king", "ring-buffer", "spring-boot", "wing", "bring-up"):
+            with self.subTest(name=name):
+                self.assertEqual(self.rules(name=name), ["A1"])
+        for name in ("threat-modelling", "steering", "interrogating-changes", "sampling-things"):
+            with self.subTest(name=name):
+                self.assertEqual(self.rules(name=name), [])
+
+    def test_d5_f5_common_ing_nouns_are_not_gerunds(self):
+        # Gate 1 F5: words with a vowel before "ing" that are still not gerunds.
+        for name in ("nothing-tools", "morning-report", "evening-digest", "during-release",
+                     "ceiling-checks", "sibling-repos", "something-useful"):
+            with self.subTest(name=name):
+                self.assertEqual(self.rules(name=name), ["A1"])
+        # A deny-listed word does not hide a real gerund in the same name.
+        self.assertEqual(self.rules(name="tracking-everything"), [])
+
+    def test_d5_f5_every_current_skill_name_passes(self):
+        # Every skill with an "-ing" word in its name ("distill" has none, and never passed A1).
+        names = sorted(p.parent.name for p in (ROOT / "skills").glob("*/SKILL.md")
+                       if any(w.endswith("ing") for w in p.parent.name.split("-")))
+        self.assertIn("threat-modelling", names)
+        for name in names:
+            with self.subTest(name=name):
+                self.assertEqual([p for p in problems(name, item=True) if "lowercase gerund" in p], [])
 
     def test_a3_missing_section(self):
         self.assertEqual(self.rules(skill=GOOD.replace("## Red flags\n", "")), ["A3"])

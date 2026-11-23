@@ -853,6 +853,9 @@ class EvalRound1(unittest.TestCase):
         self.assertTrue(has_paragraph(text, "refuses a destructive change", "stop", "cannot be applied in part",
                                       "delete-change-set", "discard the plan file", "preview again",
                                       "Never list the apply commands for the refused plan"))
+        # D-9 (D9-1): the gate still runs and its refusal is reported.
+        self.assertTrue(has_paragraph(text, "refuses a destructive change", "first run step 8's `verify`",
+                                      "confirmed changes only", "exit 1", "Never pass the refused change"))
 
     def test_f4_s1_operator_approves_any_full_digest(self):
         readme = (ROOT / "evals" / "provisioning" / "README.md").read_text()

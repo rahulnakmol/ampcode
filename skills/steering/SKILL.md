@@ -83,9 +83,9 @@ A missing input is not a reason to guess. Write "not examined" for what it would
    outside the tracker (an email, a letter), do one of these:
    - ask the approver to comment `/approve` on the tracker item; `syncing`'s `pull` records it;
    - record the written sign-off with `syncing`'s `record-signoff` (the item, the approver, the
-     email or document as the source) when your `syncing` has it. Until then, record it as a
-     `written:` row in the mission ledger with the email or document, as the `missioning`
-     product-operations playbook says.
+     email or document as the source); `backlog.py status` then shows the gate approved until
+     the item changes. If the installed `syncing` has no `record-signoff`, record a `written:`
+     row in the mission ledger with the email or document instead.
 
    Never post `/approve` for someone else: `pull` records the comment as their sign-off.
    Record a sign-off only when the mission contract pre-authorizes that exact effect, or the
@@ -93,9 +93,11 @@ A missing input is not a reason to guess. Write "not examined" for what it would
    digest). `record-signoff` writes the backlog and has no plan step:
    the owner approves the exact command, with its item, approver and source. Outside a contract
    mission, the owner approves the exact plan or command. Until the sign-off is recorded, report
-   it as "claimed: email from <who>, <date>; not in the tracker". In the status, a "signed" line
-   cites its source (the `/approve` comment or the `written:` row) or says "claimed";
-   `raid_check.py` checks this.
+   it as "claimed: email from <who>, <date>; not in the tracker". `raid_check.py` reads the status
+   and the full pack. It treats "signed" and "approved" as sign-off words: such a line needs
+   `/approve` with its date ("/approve on 2026-11-24"), the comment link, or the `written:` row,
+   or it says "claimed". Write a refusal as "F2 is not signed off" or "Do not mark F2 as
+   approved".
 8. **Write the status and the full pack.** Copy [templates/status.md](templates/status.md) to
    its own file. The `## Status` section has at most five lines: overall state, flow, forecast,
    risks and issues, decisions needed. The full pack holds the detail.

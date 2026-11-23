@@ -27,11 +27,14 @@ exits 1 and prints one line per broken rule:
       "<Rescan|Test|PoC|CI> <tool or name> <YYYY-MM-DD>: <result>", for example
       "Rescan Bandit 1.9.4 2026-11-21: 0 results at app.py:24". The name has a letter or digit
       and is not a placeholder (TBD). The date is not after today (--today, default today's
-      UTC date). The result is not empty, not only "failed", and not a placeholder or a phrase
-      saying the run did not happen or finish (not run, not done, pending, TBD, failed to
-      start, to follow, awaiting, planned, scheduled, yet, n/a, none, skipped, cancelled,
-      errored, aborted, will, expected, to be run, couldn't run). check reads only the form;
-      a reviewer reads the content.
+      local date). The result is not empty, and these words fail anywhere in it, even in an
+      honest sentence: skipped, cancelled, errored, aborted, timed out, queued, postponed,
+      deferred, in progress, pending, will, expected, yet, none, n/a, unknown, TBD, planned,
+      scheduled, awaiting, to follow, to be run, not run, not done, failed to start, didn't
+      run, start or finish, couldn't run, going to run, and not/never/hasn't (been) run,
+      started, finished, rescanned, retested or re-run. "failed" fails alone or after "the"
+      or a run word ("the run failed", "scan failed: runner offline"), not after PoC.
+      check reads only the form, not every phrasing; a reviewer reads the content.
   C5  no overclaim: "secure", "secured", "securely", "no (known) vulnerabilities",
       "vulnerability-free" outside `code` and fenced blocks, also when the words wrap across
       lines ("no vulnerability scan" and "Secure Shell" are allowed)
@@ -66,13 +69,30 @@ RETEST_FORM = re.compile(r"^(?:rescan|test|poc|ci)\s+(?P<name>\S.*?)\s+(?P<date>
                          r"\s*:(?P<result>.*)$", re.I | re.S)
 # A name that is a placeholder: "Rescan TBD 2026-11-21: ...".
 NO_NAME = re.compile(r"^(?:tbd|tba|tbc|todo|n/?a|none|unknown|tool|name|<[^<>]*>)$", re.I)
-# A result that is a placeholder, says the run did not happen or finish, or is only "failed".
-# "exploit failed, request rejected" says what failed, so it is a result.
+# A result that says the run did not happen or finish. Replanned at the M5 review cap: the test
+# is a strict superset of origin/dev's, so nothing origin/dev refused can pass. Honest results that
+# use these words anywhere fail too; reword them ("request rejected with 403", not "... as
+# expected"). Not every phrasing is caught; a reviewer still reads the result.
+# 1. origin/dev's NO_RESULT, unchanged.
 NO_RESULT = re.compile(
     r"^(?:-+|\?+)$|^(?:(?:the\s+)?run\s+)?failed[.!]?$"
     r"|\b(?:not\s+run|not\s+done|pending|tbd|tba|todo|failed\s+to\s+start|to\s+follow|awaiting|planned"
     r"|scheduled|yet|n/a|none|unknown|skipped|cancell?ed|errored|aborted|will|expected|to\s+be\s+run"
     r"|(?:could\s*n['\u2019]?t|could\s+not|cannot|can['\u2019]?t)\s+(?:be\s+)?run)\b", re.I)
+# 2. More run states, anywhere: "timed out", "did not start", "has not been run", "never
+#    retested". Not "not executed": "script rendered as text, not executed" is an XSS result.
+RUN_STATE = re.compile(
+    r"\b(?:skipped|cancell?ed|errored|aborted|crashed|timed\s+out|queued|postponed|deferred|in\s+progress"
+    r"|not\s+run|not\s+done|not\s+finished|pending|failed\s+to\s+start"
+    r"|going\s+to\s+(?:re-?)?(?:run|scan|test)"
+    r"|(?:did\s*n['\u2019]?t|did\s+not)\s+(?:run|finish|start)"
+    r"|(?:not|never|\w+n['\u2019]t)\s+(?:yet\s+)?(?:been\s+)?(?:run|ran|started|finished|re-?scanned|re-?tested|re-?run)"
+    r"|(?:could\s*n['\u2019]?t|could\s+not|cannot|can['\u2019]?t)\s+(?:be\s+)?run)\b", re.I)
+# 3. "failed" after an optional article and run word, as the whole result or before , ; or :
+#    "the run failed", "scan failed: runner offline", "failed, see log". Not after PoC or exploit:
+#    "PoC failed, request rejected with 403" is a result.
+RUN_FAILED = re.compile(r"^(?:(?:the|an?)\s+)?(?:(?:rescan|scan|rerun|run|tests?|job|build|ci)\s+)?failed"
+                        r"(?:[.!?]*$|\s*[,;:])", re.I)
 # An owner is a person, the same rule as threat-modelling and assessing-products. The name, the
 # text before the first "(" or ",", is not a team or role word, does not start with a placeholder,
 # and is not only <...>. Role text after it is free: "Dana Reyes (Platform Group lead)". But the
@@ -302,8 +322,7 @@ def scans_from(pairs, root):
 def retest_in_form(retest, today):
     """True when a Retest value is in the form "<Rescan|Test|PoC|CI> <tool or name> <YYYY-MM-DD>:
     <result>": a source word; a name with a letter or digit that is not a placeholder; a real date
-    no later than today; and a result that is not a placeholder, not only "failed", and not a
-    phrase saying the run did not happen or finish ("not run", "skipped", "will run", "yet").
+    no later than today; and a result that no_result() accepts.
     A negative finding is a result: "Rescan Bandit 1.9.4 2026-11-21: no findings for B602"."""
     found = RETEST_FORM.match(retest.strip())
     if not found:
@@ -317,7 +336,12 @@ def retest_in_form(retest, today):
     except ValueError:
         return False
     result = found["result"].strip()
-    return bool(result) and not NO_RESULT.search(result)
+    return bool(result) and not no_result(result)
+
+
+def no_result(result):
+    """True when a result says the run did not happen or finish (NO_RESULT, RUN_STATE, RUN_FAILED)."""
+    return bool(NO_RESULT.search(result) or RUN_STATE.search(result) or RUN_FAILED.match(result))
 
 
 def iso_date(text):
@@ -443,9 +467,9 @@ def main(argv=None):
         sub.add_argument("scans", nargs="+", metavar="CATEGORY=FILE.sarif")
     sub = commands.add_parser("check")
     sub.add_argument("--today", type=iso_date, metavar="YYYY-MM-DD",
-                     default=datetime.datetime.now(datetime.timezone.utc).date(),
+                     default=datetime.date.today(),
                      help="today's date for the C4 rule that a Retest date is not after today "
-                          "(default: today's UTC date)")
+                          "(default: today's local date)")
     sub.add_argument("report")
     args = parser.parse_args(argv)
     try:

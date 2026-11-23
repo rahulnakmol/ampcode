@@ -51,7 +51,8 @@ Open: <hypotheses still open and the evidence that would decide them; only with 
 ## Actions
 
 One block per action. Kind is `durable fix`, `missing alert` or `prevention`. Mitigation does not
-go here. `pir_check.py bugs` replaces "to file" with the bug ID.
+go here. `pir_check.py bugs` replaces "to file" with the bug ID. Each criterion's "then" states a
+quantity, and at least one has a real number, not only a word such as "each".
 
 ### A1: <the result, in at most 120 characters>
 
@@ -64,7 +65,7 @@ go here. `pir_check.py bugs` replaces "to file" with the bug ID.
   1. <first step to reproduce>
   2. <next step>
 - Acceptance:
-  - Given <state>, when <event>, then <result with a number>.
+  - Given <state>, when <event>, then <result with a number, such as "0 of 20 PDFs fail">.
 - Rationale: <why this action removes or reduces the cause>
 - Expected signal: <what changes in which telemetry when it works>
 - Risk: <what this change could break>

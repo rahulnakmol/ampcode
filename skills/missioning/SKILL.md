@@ -60,10 +60,10 @@ Load only the chosen playbook:
   and a definition of done.
 - Load each skill only when its step starts. When a playbook's conductor runs the work, follow
   that conductor; this skill keeps only the charter, ledger and close-out.
-- Some skills are **planned**, not built. Check which are installed. For a missing one, use the
-  playbook's `Fallback:` (or the step's own text) and label its output "manual, no skill", or
-  mark the step `skip:`. Never report that a planned skill ran; a host skill with the same name
-  but another purpose is not the planned skill.
+- Some skills are **planned**, not built. Check which are installed. For a missing built skill,
+  use its `If not installed:` line; for a planned one, its `Fallback:` (or the step's own text).
+  Label that output "manual, no skill", or mark the step `skip:`. Never report that a planned
+  skill ran; a host skill with the same name but another purpose is not the planned skill.
 
 ## 4. Ask only at kickoff and for the five stop reasons
 

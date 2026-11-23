@@ -375,9 +375,29 @@ BANNED = (
 HEADINGS = ["When to use", "Skills", "Steps", "Human gates", "Definition of Done", "Red flags"]
 # Skills the research plans for later waves. When one is built, update the playbooks that name it.
 PLANNED = (
-    "roadmapping", "researching", "reviewing-code",
+    "roadmapping", "researching",
     "campaigning",
 )
+# Skills built in waves 1 and 2 (W23). `interrogating-changes` is the plan's `reviewing-code`,
+# renamed so it does not mask Amp's official skill of that name.
+BUILT = (
+    "architecting", "threat-modelling", "releasing", "interrogating-changes",
+    "scanning-vulnerabilities", "provisioning", "monitoring", "investigating-incidents",
+    "steering", "assessing-products",
+)
+
+
+def skills_bullets(path):
+    """The bullets of a playbook's Skills section, each with its wrapped lines joined."""
+    text = "\n".join(ledger_check.section(path.read_text(), "Skills"))
+    return [" ".join(b.split()) for b in re.split(r"\n(?=- )", text) if b.strip()]
+
+
+def names_built(bullet):
+    """True when the bullet names a built skill or a built enhancement (syncing, shaping-engagements)."""
+    return (any(f"`{name}`" in bullet for name in BUILT)
+            or ("`syncing`" in bullet and "adapter" in bullet)
+            or ("`shaping-engagements`" in bullet and "scoring" in bullet))
 
 
 class Contract(unittest.TestCase):
@@ -432,6 +452,61 @@ class Playbooks(unittest.TestCase):
                 with self.subTest(playbook=path.stem, skill=name):
                     entry = [b for b in bullets if f"`{name}`" in b and "planned" in b]
                     self.assertTrue(entry and "Fallback:" in entry[0], "planned skill needs a 'planned ... Fallback:' bullet in Skills")
+
+    def test_w23_1_built_skills_are_not_labelled_planned(self):
+        for name in BUILT:
+            self.assertTrue((ROOT / "skills" / name / "SKILL.md").is_file(), name)
+        # Hand-picked bullets that must count as naming a built skill or enhancement.
+        self.assertTrue(names_built("- Linear and Azure DevOps adapters and outside sign-off in `syncing`: planned."))
+        self.assertTrue(names_built("- Shared fit-gap scoring in `shaping-engagements`: planned."))
+        self.assertFalse(names_built("- `planning`: the conductor, with `syncing`."))
+        for path in sorted(MISSIONS.glob("*.md")):
+            lines = path.read_text().splitlines()
+            for item in skills_bullets(path) + lines:
+                if names_built(item):
+                    with self.subTest(playbook=path.stem, text=item[:60]):
+                        self.assertNotIn("planned", item.lower())
+
+    def test_w23_2_built_skills_keep_an_if_not_installed_fallback(self):
+        seen = set()
+        for path in sorted(MISSIONS.glob("*.md")):
+            bullets = skills_bullets(path)
+            for bullet in bullets:
+                if names_built(bullet):
+                    with self.subTest(playbook=path.stem, bullet=bullet[:60]):
+                        self.assertEqual(bullet.count("If not installed:"), 1)
+                        self.assertNotIn("Fallback:", bullet)
+            for name in BUILT:
+                if any(f"`{name}`" in b for b in bullets):
+                    seen.add(name)
+                    with self.subTest(playbook=path.stem, skill=name):
+                        own = [b for b in bullets if b.startswith(f"- `{name}`")]
+                        self.assertEqual(len(own), 1, "each built skill named in Skills has its own bullet")
+                        self.assertIn("If not installed:", own[0])
+        # The playbooks between them name every built skill.
+        self.assertEqual(seen, set(BUILT))
+
+    def test_w23_3_playbooks_name_interrogating_changes_not_reviewing_code(self):
+        for path in sorted(MISSIONS.glob("*.md")):
+            with self.subTest(playbook=path.stem):
+                self.assertNotIn("`reviewing-code`", path.read_text())
+        for stem in ("security-review", "software-delivery"):
+            own = [b for b in skills_bullets(MISSIONS / f"{stem}.md") if b.startswith("- `interrogating-changes`")]
+            self.assertEqual(len(own), 1, stem)
+
+    def test_promotion_without_the_skill_follows_the_contract(self):
+        # A promotion is an outside effect: pre-authorized by the contract, else stop reason 2.
+        # "Ask for each promotion" would ask the owner again for a pre-authorized effect.
+        for path in sorted(MISSIONS.glob("*.md")):
+            text = " ".join(path.read_text().split()).lower()
+            for phrase in ("ask for each", "ask before any", "before asking"):
+                with self.subTest(playbook=path.stem, phrase=phrase):
+                    self.assertNotIn(phrase, text)
+            for bullet in skills_bullets(path):
+                if bullet.startswith("- `releasing`"):
+                    with self.subTest(playbook=path.stem):
+                        self.assertIn("pre-authorizes", bullet)
+                        self.assertIn("stop reason 2", bullet)
 
 
 if __name__ == "__main__":

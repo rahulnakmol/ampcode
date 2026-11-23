@@ -16,6 +16,7 @@ python3 $S github apply  backlog.json --repo acme/close [--project acme/7] --exp
 python3 $S github pull   backlog.json --repo acme/close [--since 2027-01-14]
 python3 $S github report backlog.json --repo acme/close [--post] [--today 2027-04-21]
 python3 $S excel backlog.json --out backlog.xlsx
+python3 $S record-signoff backlog.json --item F-1 --by "Dana Whitfield (VP Product)" --source "email, 2027-01-20"
 ```
 
 GitHub calls use the signed-in `gh` CLI; check with `gh auth status`. The token needs issues
@@ -137,13 +138,40 @@ Pulling twice adds nothing new. Commit `backlog.json` after each pull and hand t
 `grooming`. To have new comments wake the planning thread, subscribe it to each initiative and
 feature issue (see `planning`, section 5).
 
+## Record a sign-off given outside the tracker
+
+When an approver signs by email, in a letter, or in meeting minutes instead of commenting
+`/approve`, record it:
+
+```sh
+python3 $S record-signoff backlog.json --item F-1 --by "Dana Whitfield (VP Product)" --source "email from Dana, 2027-01-20"
+```
+
+- `--item` is an initiative or feature. `--by` is an approver's `name` from `approvers`, with or
+  without the role in brackets, in any case. An exact full name wins; otherwise the name without
+  the role must fit one approver, and a name that fits two is refused, so give the role too. `--source` names the email or document; it is required. Anything else is refused with one error line, and the file is not changed.
+- It appends `{ "tracker": "written", "by", "at", "source", "fingerprint" }` to the item's
+  `approvals`. The fingerprint covers the item and its stories (or goals). The sign-off counts
+  for every tracker in `backlog.py status`, also on a backlog never synced, until any of that
+  content changes; then it is stale and needs a new sign-off. Recording the same one twice adds
+  nothing.
+- This writes a sign-off into the backlog, so run it only when the mission contract
+  pre-authorizes that exact effect, or the owner approves the exact command (item, approver, and
+  source). Outside a contract mission, the owner approves the exact command. Never record a
+  sign-off without the email or document that shows it.
+
 ## Show stakeholders where things stand
 
 `report` prints the status comment: five plain points for people who will not open the backlog.
 They cover goals with their latest reading (one per line), the next milestone dates with delivery
 counts, what is blocked (features with no named owner or an assumed one, drafts with the
 research they wait on, and ready work behind a draft), who has not signed what yet, and open
-feedback. A milestone whose date has passed shows how many items have a delivery record, not
+feedback. A gate that is approved, by anyone, is left out of "Not yet signed by". A feature whose
+notes say "Signs off: Elena Petrova" lists only her, and "Who signs" names her for it; other
+gates show "any listed approver". The note changes only the comment: any listed approver still
+passes the gate. A note that names nobody on the list, or two people (a typo, "Dr." in front),
+also shows "any listed approver", and `plan` and `report` print one warning line for that
+feature; fix the note or the `approvers` entry. A milestone whose date has passed shows how many items have a delivery record, not
 "overdue": work can be live before its delivery is recorded. Won't-have items are left out of
 every count and of GitHub milestones. The full chain from driver to delivery stays in `backlog.py trace` and the Excel export. With
 `--post` (after the user approves the text) it creates the comment on each initiative issue, or
@@ -220,4 +248,5 @@ After `apply --expect 4f1c09a2b7de`, Priya comments `/approve` on the initiative
 - Every conflict in the plan was resolved with the user, not overwritten by default.
 - After `pull`, `backlog.py status` lists the approvals stakeholders posted, and every new
   feedback entry is on the feature the comment was about.
+- Every `record-signoff` names its source, and the command was approved before it ran.
 - For Excel, read the workbook back and check that the row counts match `backlog.py tree`.

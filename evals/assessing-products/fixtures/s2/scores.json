@@ -24,7 +24,7 @@
         "fit": {"score": 3, "evidence": "Vendor demo 2026-10-19 of its own script; no sandbox", "status": "claimed"},
         "apis": {"score": 3, "evidence": "API docs read 2026-10-21; webhooks for jobs only", "status": "verified"},
         "cost": {"score": 4, "evidence": "Written quote P-1203, 2026-10-22: 5-year total 455,000 EUR", "status": "verified"},
-        "exit": {"score": 3, "evidence": "Contract draft clause 9 returns data as CSV; export not tested", "status": "claimed"}
+        "exit": {"score": 3, "evidence": "Contract draft clause 9 (undated), read 2026-10-22, returns data as CSV; export not tested", "status": "claimed"}
       }
     }
   ]

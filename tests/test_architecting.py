@@ -141,6 +141,68 @@ class Designs(unittest.TestCase):
         self.assertEqual(rules(replace("\n## Trust boundaries", "\nNFR-1 again: fast.\n\n## Trust boundaries")), ["D9"])
         self.assertEqual(rules(replace("\n## Trust boundaries", "\n| NFR-1 | Latency | fast | |\n\n## Trust boundaries")), ["D9"])
 
+    def test_d3_nfr_line_before_the_table(self):
+        # D-3: an NFR line above the table, in the NFR section or elsewhere, breaks D9.
+        above = "| ID | Quality | Target | Verification |"
+        for line in ("NFR-3: p95 under 300 ms at 50 req/s.", "| NFR-3 | Latency | fast | |",
+                     "- **NFR-3** Latency: fast."):
+            with self.subTest(line=line):
+                self.assertEqual(rules(replace(above, f"{line}\n\n{above}")), ["D9"])
+                self.assertEqual(rules(replace("\n## Containers", f"\n{line}\n\n## Containers")), ["D9"])
+        # A reference to an NFR inside a sentence is not an NFR line.
+        cited = replace("Decision: Queue and worker.", "Decision: Queue and worker, to meet NFR-1.")
+        self.assertEqual(design_check.check(cited), [])
+        intro = replace(above, f"The brief gives NFR-1; the team proposed NFR-2.\n\n{above}")
+        self.assertEqual(design_check.check(intro), [])
+
+    def test_d4_unit_only_in_the_condition_fails(self):
+        # D-4: the target part, before its condition, needs its own unit.
+        for target in ("p95 under 300 at 50 req/s", "p95 under 300 when 10,000 users are active",
+                       "p95 under 300 under load of 50 req/s", "p95 under 300 with 10,000 tenants",
+                       "At 50 req/s, p95 under 300",
+                       # Gate 1 F4: for, per, across and over before a load or scope.
+                       "p95 under 300 for 50 req/s", "p95 under 300 for a load of 50 req/s",
+                       "p95 under 300 per 1,000 requests", "p95 under 300 across 10,000 tenants",
+                       "p95 under 300 over 200 connections"):
+            with self.subTest(target=target):
+                text = replace("p95 under 300 ms at 50 req/s", target)
+                self.assertEqual(rules(text), ["D2"])
+                self.assertIn("NFR-1", design_check.check(text)[0])
+        for target in ("p95 under 300 ms at 50 req/s", "p95 at most 300 ms at 50 req/s",
+                       "At 50 req/s, p95 under 300 ms", "p95 under 300 ms at 200 req/s with 10,000 tenants",
+                       "p95 under 300 ms under load of 50 req/s",
+                       "Recall at 10 of at least 90 % on the evaluation set, for the current index",
+                       # Gate 1 F4: before a time, these words state the target, not a load.
+                       "Backups kept for 30 days", "Error budget under 0.1 % over 30 days",
+                       "p95 under 300 ms for 50 req/s", "500 req/s sustained for 30 min"):
+            with self.subTest(target=target):
+                self.assertEqual(design_check.check(replace("p95 under 300 ms at 50 req/s", target)), [])
+
+    def test_d4_load_only_target_fails(self):
+        # Gate 2 F24: at, when, while, with, during, given and "under ... load" are always
+        # stripped, so a target whose only number is in such a condition fails D2.
+        for target in ("Latency acceptable at 50 req/s", "Respond fast when 10,000 users are active",
+                       "Stays responsive at 500 users", "Stays responsive under load of 50 req/s",
+                       "Fast with 10,000 tenants", "At 50 req/s, p95 under 300", "p95 under 300 at 50 req/s",
+                       "p95 under 300 for 50 req/s",
+                       # replanned at the M5 review cap: a load-only target fails; write the target
+                       # with its own unit, e.g. 'Serve 50 req/s'
+                       "Serve at 50 req/s", "Stay up during 10,000 sessions"):
+            with self.subTest(target=target):
+                self.assertEqual(rules(replace("p95 under 300 ms at 50 req/s", target)), ["D2"])
+
+    def test_d4_comparator_with_no_number_outside_checks_the_whole_target(self):
+        # Gate 1 N3, gate 2 F18: for, per, across and over are stripped only when a number stays
+        # outside them; otherwise the whole target is checked. Each passed at base.
+        for target in ("Handle over 500 req/s", "Support over 10,000 tenants",
+                       "At most 5 errors per 1,000 requests", "under 5 errors per 1,000 requests",
+                       "Backups kept for 30 days", "Serve 50 req/s", "p95 under 300 ms at 50 req/s",
+                       "Handle 500 req/s",
+                       # Gate 1 R3-2: accepted for for/per/across/over at the M5 review cap.
+                       "Fast for 50 req/s"):
+            with self.subTest(target=target):
+                self.assertEqual(design_check.check(replace("p95 under 300 ms at 50 req/s", target)), [])
+
     def test_w1_4_adr_with_one_option(self):
         # W1.4: an ADR with fewer than two options.
         self.assertEqual(rules(replace("- Queue and worker\n- Timer inside the API\n", "- Queue and worker\n")), ["D4"])
@@ -270,6 +332,24 @@ class SkillText(unittest.TestCase):
         self.assertIn("threat-modelling", text)
         for word in ("actors", "trust boundaries", "abuse cases", "mitigation", "owner"):
             self.assertIn(word, text)
+
+    def test_every_catalogue_target_passes_d1_and_d2(self):
+        # M5 gate repair: the catalogue's WCAG row failed D2, so an agent copying it would fail the check.
+        rows = [l for l in (SKILL / "reference" / "nfr-catalogue.md").read_text().splitlines()
+                if l.startswith("|") and re.search(r"\d", l.split("|")[2])
+                and not re.match(r"\|\s*(Quality|-)", l)]
+        self.assertGreater(len(rows), 10)
+        for row in rows:
+            target = row.split("|")[2].strip()
+            text = replace("| NFR-1 | Latency | p95 under 300 ms at 50 req/s |",
+                           f"| NFR-1 | Latency | {target} |")
+            with self.subTest(target=target):
+                self.assertEqual([r for r in rules(text) if r.startswith(("D1", "D2"))], [])
+
+    def test_d1_a_scope_is_the_condition_of_a_zero_findings_target(self):
+        # D-1, eval round 3 finding 1: the catalogue's isolation example uses a scope, not a load.
+        text = " ".join((SKILL / "SKILL.md").read_text().split())
+        self.assertIn("(load, state, time window, or for a zero-findings target the scope it covers)", text)
 
     def test_review_cap_follows_disposition_policy(self):
         self.assertIn("disposition policy", (SKILL / "SKILL.md").read_text())

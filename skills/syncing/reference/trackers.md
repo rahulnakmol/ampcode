@@ -49,8 +49,9 @@ digest.
   project does not pass `--expect` against the real one.
 - **Labels and tags are compared without case** (Azure DevOps and Linear only; GitHub compares them exactly). A tracker that already has `Backlog` reuses it
   for `backlog`; that is not an edit.
-- **Tokens.** A token or key that contains a control character, such as a line break, is refused
-  with one error that names the variable, never the value.
+- **Tokens.** One trailing newline, as a paste often adds, is removed and the token accepted; a
+  token or key that still contains a control character, such as a line break, or any non-ASCII
+  character is refused with one error that names the variable, never the value.
 - **Parents.** Each item records the parent it was last linked under (`external.<tracker>.parent`).
   If `parent` changed in backlog.json, the plan links the item again (`link`, replacing the old
   parent). If the item was moved in the tracker, it is a conflict until `--overwrite <ID>`. In Azure DevOps

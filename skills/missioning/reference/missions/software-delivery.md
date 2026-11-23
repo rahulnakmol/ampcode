@@ -12,16 +12,19 @@ a standalone review (`security-review`) or release-only work.
 - `delivering`: the conductor from design to `dev` integration. Follow its gates, reviews and
   merge policy; they override this playbook. On Amp, `mission-control` enforces them.
 - `goldfishing` and `briefing-decisions`: design review and the owner's brief.
-- `architecting` (planned, wave 1). Fallback: write the technical design inside the delivering
-  design package: contracts, decisions with alternatives (as short ADRs) and each non-functional
-  requirement with a number and a test.
-- `reviewing-code` (planned, wave 1; Amp's official `reviewing-code` is another skill and may
-  serve as this fallback). Fallback: `delivering`'s own review gates one and two, with
-  fresh reviewers for consequential changes.
-- `threat-modelling` (planned, wave 1), when trust boundaries change. Fallback: list actors,
-  trust boundaries and abuse cases in the design package, each with a mitigation or an owner.
-- `releasing` (planned, wave 1). Fallback: follow the repository's promotion rules; ask for each
-  promotion with a rollback plan written before the request.
+- `architecting`: the technical design in `delivering`'s design package: contracts, ADRs with
+  options and measurable non-functional requirements. If not installed: write the contracts,
+  decisions as short ADRs and each non-functional requirement with a number and a test.
+- `interrogating-changes`: the code review at `delivering`'s review gates one and two, with a
+  verdict tied to the exact patch. If not installed: `delivering`'s own review gates, with fresh
+  reviewers for consequential changes.
+- `threat-modelling`, when trust boundaries change: the threat model the design links. If not
+  installed: list actors, trust boundaries and abuse cases in the design package, each with a
+  mitigation or an owner.
+- `releasing`: each promotion after `dev`, with notes, a rollback plan, a GO or NO-GO and a
+  read-back on the target. A promotion is an outside effect: it runs when the mission contract
+  pre-authorizes it, otherwise it is stop reason 2. If not installed: follow the repository's
+  promotion rules, with the rollback plan written first.
 
 ## Steps
 

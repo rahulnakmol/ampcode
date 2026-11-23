@@ -613,7 +613,25 @@ def approval_detail(data, item, tracker="github", base=None):
     """(state, {approver handle: 'current' | 'stale' | 'none'}) for an initiative or feature.
 
     state is 'not synced', 'unsynced changes' (edited locally since the last sync; needs base),
-    'approved' (at least one current approval), 'stale', or 'missing'."""
+    'approved' (at least one current approval), 'stale', or 'missing'.
+
+    A written sign-off (tracker 'written', from syncing's record-signoff) counts for every
+    tracker. It is matched to an approver by name and is current while its fingerprint equals the
+    covered items' fingerprint now, synced or not; after any content change it is stale."""
+    written, names = {}, {" ".join(str(a.get("name", "")).lower().split()): a.get(tracker) or a["name"]
+                          for a in data.get("approvers", []) if a.get("name")}
+    now = "sha256:" + hashlib.sha256("\n".join(fingerprint(k, base) for k in _covered(data, item)).encode()).hexdigest()
+    for a in item.get("approvals", []):
+        who = names.get(" ".join(str(a.get("by", "")).lower().split()))
+        if a.get("tracker") == "written" and who:
+            written[who] = "current" if a.get("fingerprint") == now or written.get(who) == "current" else "stale"
+    if written:
+        state, per = approval_detail(data, dict(item, approvals=[a for a in item["approvals"] if a.get("tracker") != "written"]), tracker, base)
+        rank = {"none": 0, "stale": 1, "current": 2}
+        per.update({who: max(per.get(who, "none"), mine, key=rank.get) for who, mine in written.items()})
+        if "current" in written.values():
+            return "approved", per
+        return ("stale" if state in ("not synced", "missing") else state), per
     handles = {a[tracker].lower(): a[tracker] for a in data.get("approvers", []) if a.get(tracker)}
     covered = _covered(data, item)
     exts = [((k.get("external") or {}).get(tracker) or {}) for k in covered]

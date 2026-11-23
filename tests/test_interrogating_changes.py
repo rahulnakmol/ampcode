@@ -518,6 +518,58 @@ class FloorGuard(unittest.TestCase):
             result = run(GUARD, str(path))
             self.assertEqual((result.returncode, result.stdout.strip()), (0, "pass"))
 
+    def test_d2_swift_skip_and_removed_xctassert(self):
+        for line in ('        throw XCTSkip("later")', '        try XCTSkipIf(isCI, "flaky")',
+                     '        try XCTSkipUnless(hasNetwork)'):
+            with self.subTest(line=line):
+                self.assertFlags(diff("Tests/TotalTests.swift", added=[line]), "skip marker added")
+        for line in ("        XCTAssertEqual(total([1, 2]), 3)", "        XCTAssertTrue(isEmpty([]))"):
+            with self.subTest(line=line):
+                self.assertFlags(diff("Tests/TotalTests.swift", removed=[line]), "assertion removed")
+        self.assertClean(diff("Tests/TotalTests.swift", removed=["        XCTAssertEqual(total([1, 2]), 3)"],
+                              added=["        XCTAssertEqual(total([1, 2, 3]), 6)"]))
+
+    def test_d2_lowered_jacoco_minimum(self):
+        for path, old, new in (("pom.xml", "  <minimum>0.80</minimum>", "  <minimum>0.60</minimum>"),
+                               ("pom.xml", "  <minimum>80%</minimum>", "  <minimum>60%</minimum>"),
+                               ("build.gradle", "        minimum = 0.80", "        minimum = 0.60"),
+                               ("build.gradle.kts", '        minimum = "0.80".toBigDecimal()',
+                                '        minimum = "0.60".toBigDecimal()'),
+                               ("build.gradle.kts", '        minimum = BigDecimal("0.80")',
+                                '        minimum = BigDecimal("0.60")')):
+            with self.subTest(path=path, new=new):
+                self.assertFlags(diff(path, removed=[old], added=[new]), "minimum lowered from")
+        self.assertFlags(diff("pom.xml", removed=["  <minimum>0.80</minimum>"],
+                              added=["  <!-- <minimum>0.80</minimum> -->"]), "removed or commented out")
+        for path, old, new in (("pom.xml", "  <minimum>0.80</minimum>", "  <minimum>0.90</minimum>"),
+                               ("build.gradle.kts", '        minimum = BigDecimal("0.80")',
+                                '        minimum = BigDecimal("0.85")')):
+            with self.subTest(path=path, raised=new):
+                self.assertClean(diff(path, removed=[old], added=[new]))
+
+    def test_d2_assertion_commented_out_with_a_double_dash(self):
+        cases = (("tests/total.sql", "SELECT is(total(), 3, 'total');"),
+                 ("tests/total.sql", "EXEC tSQLt.AssertEquals 3, @total;"),
+                 ("spec/total_spec.lua", "  assert.are.equal(3, total({1, 2}))"),
+                 ("test/TotalSpec.hs", '  assertEqual "total" 3 (total [1, 2])'),
+                 ("test/TotalSpec.hs", "    total [1, 2] `shouldBe` 3"))
+        for path, line in cases:
+            with self.subTest(line=line):
+                self.assertFlags(diff(path, removed=[line], added=["-- " + line.lstrip()]), "assertion removed")
+        self.assertClean(diff("test/TotalSpec.hs", removed=["    total [1, 2] `shouldBe` 3"],
+                              added=["    total [1, 2, 3] `shouldBe` 6"]))
+
+    def test_d2_bun_and_vitest_conditional_and_option_skips(self):
+        for line in ("test.if(false)('adds', () => {", "describe.if(isMac)('total', () => {",
+                     "it.runIf(isCI)('adds', () => {", "test.failing('adds', () => {",
+                     "test.skipIf(isCI)('adds', () => {", "test('adds', { skip: true }, () => {",
+                     "it('adds', {skip: true}, async () => {"):
+            with self.subTest(line=line):
+                self.assertFlags(diff("src/total.test.ts", added=[line]), "skip marker added")
+        for line in ("const options = { retry: 2, skipped: true };", "if (test.ifMatch) {"):
+            with self.subTest(line=line):
+                self.assertClean(diff("src/total.test.ts", added=[line]))
+
     def test_w4_8_flag_passes_only_with_an_accepted_reason(self):
         text = diff("src/a.py", added=["import os  # noqa"])
         result, flags = self.flags(text)

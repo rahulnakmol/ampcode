@@ -110,3 +110,13 @@ the earlier text. The PASS grade is for the run as graded, not for the current s
   `check --today YYYY-MM-DD`). The name may not be a placeholder such as TBD and needs a letter
   or digit. A result that is only "failed", or that says skipped, cancelled, errored, aborted,
   will, expected, to be run or couldn't run, fails.
+
+## Close-out note (D-13), 2026-11-22
+
+The note above that the Retest date default is UTC is out of date. Since D-13 (branch
+`wave12/m5-closeout`), `sarif_triage.py check --today` defaults to the local date
+(`datetime.date.today()`). The word list above is also out of date. Since the M5 gate
+repairs, run-state words (skipped, cancelled, errored, aborted, timed out, queued, not run,
+pending and the like) fail anywhere in the result; future words (will, expected, scheduled
+and the like) fail at the start, optionally after a run subject such as "the nightly scan";
+none, n/a, unknown, yet and failed fail only as the whole result. This note changes no grade.

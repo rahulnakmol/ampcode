@@ -10,16 +10,21 @@ RFP (`shaping-engagements` through `blueprinting`).
 
 - `missioning`: the conductor for this mission.
 - `discovering-requirements` or `specifying`: the requirements.
-- `assessing-products` (planned, wave 2). Fallback: agree criteria and weights before any
-  scoring; score each product with cited evidence; label vendor claims "claimed" until checked in
-  a sandbox or a document; recommend with conditions. Label it "manual, no skill".
-- `threat-modelling` (planned, wave 1). Fallback: check security and compliance evidence (SOC 2
-  Type II, ISO 27001, penetration test summary, data processing terms), identity (SSO, SCIM) and
-  data residency against the requirements.
-- `architecting` (planned, wave 1). Fallback: check integration (APIs, events, limits), exit
-  options and total cost against the requirements.
-- Shared fit-gap scoring in `shaping-engagements`: planned enhancement, wave 2. Fallback: score
-  in a script from the agreed weights.
+- `assessing-products`: the assessment: criteria and weights frozen before any score, scores
+  that cite evidence, the ranking and its sensitivity, and a recommendation with conditions and
+  owners. If not installed: agree criteria and weights before any scoring, score each product with
+  cited evidence, label vendor claims "claimed" until checked, recommend with conditions, and label
+  it "manual, no skill".
+- `threat-modelling`: the threat model of each shortlisted product's place in the client's data
+  flows. If not installed: check security and compliance evidence (SOC 2 Type II, ISO 27001,
+  penetration test summary, data processing terms), SSO, SCIM and data residency against the
+  requirements.
+- `architecting`: the integration design each product must fit (APIs, events, limits), with exit
+  options. If not installed: check integration, exit options and total cost against the
+  requirements.
+- Shared fit-gap scoring in `shaping-engagements`: requirements scored as a fit-gap from the frozen
+  weights with `assessing-products`' script. If not installed: score in a script from the agreed
+  weights, never by hand.
 - `reviewing-engagements` and `publishing-engagements`: review and publish the report.
 
 ## Steps

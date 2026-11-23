@@ -9,6 +9,7 @@ written by hand from the promotion model, not taken from the script.
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -258,6 +259,185 @@ class Plan(unittest.TestCase):
         self.before = self.repo.refs()
         code, out = self.snapshot_plan("--date", "2026-11-02")
         self.assertEqual(code, 0, out)
+
+    def evil_snapshot(self, message, edit):
+        """Merge dev into rolling without committing, apply edit, then commit the merge."""
+        self.repo.git("switch", "-q", "rolling")
+        self.repo.git("merge", "-q", "--no-ff", "--no-commit", "dev")
+        edit()
+        self.repo.git("commit", "-q", "-m", message)
+        merge = self.repo.git("rev-parse", "HEAD")
+        self.repo.git("switch", "-q", "dev")
+        return merge
+
+    def test_d6_clean_promotion_merge_is_not_named(self):
+        # D-6: the setUp snapshot merge (dev into rolling, nothing else) is clean.
+        self.repo.snapshot("Rolling snapshot: 2026-11-02", "rolling-2026-11-02")
+        self.repo.commit("feat: next change (#4)")
+        self.before = self.repo.refs()
+        code, out = self.snapshot_plan("--date", "2026-11-03")
+        self.assertEqual(code, 0, out)
+        self.assertIn("- feat: next change (#4)", out)
+
+    def test_d6_merge_with_an_extra_edit_is_named(self):
+        # D-6: an evil merge. Its tree differs from a clean merge of its parents, because it
+        # also edits f0.txt, a change dev does not have.
+        def edit():
+            (self.repo.path / "f0.txt").write_text("edited inside the merge\n")
+            self.repo.git("add", "f0.txt")
+        merge = self.evil_snapshot("Rolling snapshot: 2026-11-02", edit)
+        self.repo.commit("feat: next change (#4)")
+        self.before = self.repo.refs()
+        code, out = self.snapshot_plan("--date", "2026-11-03")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"{merge[:7]} Rolling snapshot: 2026-11-02", out)
+        self.assertIn("f0.txt", out)
+        self.assertNotIn("Plan digest", out)
+
+    def test_d6_merge_with_an_extra_new_file_is_named(self):
+        def edit():
+            (self.repo.path / "extra.txt").write_text("only on rolling\n")
+            self.repo.git("add", "extra.txt")
+        # D-6: the merge brings only dev commits, plus a new file of its own.
+        merge = self.evil_snapshot("Rolling snapshot: 2026-11-02", edit)
+        self.repo.commit("feat: next change (#4)")
+        self.before = self.repo.refs()
+        code, out = self.snapshot_plan("--date", "2026-11-03")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"{merge[:7]} Rolling snapshot: 2026-11-02", out)
+        self.assertIn("extra.txt", out)
+
+    def conflicting_promotion(self, resolution):
+        """Emergency path, then a promotion whose merge conflicts on f1.txt and is resolved by hand."""
+        (self.repo.path / "f1.txt").write_text("fixed\n")
+        self.repo.git("commit", "-q", "-am", "fix: urgent (#4)")
+        self.repo.git("switch", "-q", "rolling")
+        self.repo.git("cherry-pick", "-x", "dev")
+        self.repo.git("switch", "-q", "dev")
+        (self.repo.path / "f1.txt").write_text("fixed again\n")
+        self.repo.git("commit", "-q", "-am", "fix: follow-up (#5)")
+        self.repo.git("switch", "-q", "rolling")
+        merged = subprocess.run(["git", "-c", "commit.gpgsign=false", "merge", "-q", "--no-ff", "dev"],
+                                cwd=self.repo.path, env=ENV, capture_output=True, text=True)
+        self.assertNotEqual(merged.returncode, 0, "the promotion merge should conflict on f1.txt")
+        (self.repo.path / "f1.txt").write_text(resolution)
+        self.repo.git("add", "f1.txt")
+        self.repo.git("commit", "-q", "-m", "Rolling snapshot: 2026-11-02")
+        merge = self.repo.git("rev-parse", "HEAD")
+        self.repo.git("switch", "-q", "dev")
+        self.repo.commit("feat: next change (#6)")
+        self.before = self.repo.refs()
+        return merge
+
+    def test_d6_conflict_resolved_to_the_source_side_is_not_named(self):
+        # D-6: taking dev's version of the conflicting file adds nothing of the merge's own.
+        # D-21: the emergency cherry-pick of "fix: urgent (#4)" on rolling is not named either,
+        # although the later promotion already brought its twin on dev into rolling.
+        merge = self.conflicting_promotion("fixed again\n")
+        code, out = self.snapshot_plan("--date", "2026-11-03")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn(f"{merge[:7]} Rolling snapshot: 2026-11-02", out)  # it is the rollback point
+        self.assertNotIn("changes of its own", out)
+        self.assertNotIn("fix: urgent (#4)", out)
+        self.assertIn("- feat: next change (#6)", out)
+
+    def test_d21_cherry_pick_after_a_later_promotion_is_not_missing(self):
+        # D-21: emergency cherry-pick of #3 to rolling, then a normal promotion of dev (which
+        # holds the original #3), then a new commit on dev. The cherry-pick is not missing.
+        self.repo.git("switch", "-q", "rolling")
+        self.repo.git("cherry-pick", "-x", self.repo.three)
+        self.repo.git("switch", "-q", "dev")
+        self.repo.snapshot("Rolling snapshot: 2026-11-02", "rolling-2026-11-02")
+        self.repo.commit("feat: next change (#4)")
+        self.before = self.repo.refs()
+        code, out = self.snapshot_plan("--date", "2026-11-03")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("missing", out)
+        self.assertIn("- feat: next change (#4)", out)
+
+    def test_d21_rollback_revert_after_its_twin_is_promoted_is_not_missing(self):
+        # D-21: rollback by revert (reference/promotion.md), the same revert on dev, a promotion
+        # that brings the dev revert into rolling, then a new commit on dev.
+        self.repo.snapshot("Rolling snapshot: 2026-11-02", "rolling-2026-11-02")
+        snapshot = self.repo.git("rev-parse", "rolling")
+        self.repo.git("switch", "-q", "-c", "revert-snapshot", "rolling")
+        self.repo.git("revert", "--no-edit", "-m", "1", snapshot)
+        revert = self.repo.git("rev-parse", "HEAD")
+        self.repo.git("switch", "-q", "rolling")
+        self.repo.git("merge", "-q", "--no-ff", "-m", "Roll back rolling-2026-11-02", "revert-snapshot")
+        self.repo.git("branch", "-q", "-D", "revert-snapshot")
+        self.repo.git("switch", "-q", "dev")
+        self.repo.git("rm", "-q", "f2.txt", "f3.txt")  # the same diff as the revert
+        self.repo.git("commit", "-q", "-m", "revert: back out #2 and #3 (#4)")
+        self.repo.snapshot("Rolling snapshot: 2026-11-03", "rolling-2026-11-03")
+        self.repo.commit("feat: next change (#5)")
+        self.before = self.repo.refs()
+        code, out = self.snapshot_plan("--date", "2026-11-04")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn(revert[:7], out)
+        self.assertIn("- feat: next change (#5)", out)
+
+    def test_d21_target_only_commit_after_a_promotion_is_still_named(self):
+        # D-21 control: a commit made only on rolling, with no twin on dev, stays named after
+        # later promotions.
+        self.repo.git("switch", "-q", "rolling")
+        stray = self.repo.commit("hotfix: patched only on rolling")
+        self.repo.git("switch", "-q", "dev")
+        self.repo.snapshot("Rolling snapshot: 2026-11-02", "rolling-2026-11-02")
+        self.repo.commit("feat: next change (#5)")
+        self.before = self.repo.refs()
+        code, out = self.snapshot_plan("--date", "2026-11-03")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"{stray[:7]} hotfix: patched only on rolling", out)
+        self.assertNotIn("Plan digest", out)
+
+    def test_d21_reapplied_patch_the_target_already_held_is_named(self):
+        # Gate 2 F9: the twin lookup only reads source commits the target lacked when the commit
+        # was made. #5 changes f1.txt on dev and is promoted. On rolling, one commit undoes it
+        # and another re-applies the same patch. #5 was already on rolling, so it is no twin.
+        (self.repo.path / "f1.txt").write_text("changed\n")
+        self.repo.git("commit", "-q", "-am", "feat: change f1 (#5)")
+        self.repo.snapshot("Rolling snapshot: 2026-11-02", "rolling-2026-11-02")
+        self.repo.git("switch", "-q", "rolling")
+        (self.repo.path / "f1.txt").write_text("feat: add the first skill (#1)\n")
+        self.repo.git("commit", "-q", "-am", "hotfix: undo f1 on rolling")
+        undo = self.repo.git("rev-parse", "HEAD")
+        (self.repo.path / "f1.txt").write_text("changed\n")
+        self.repo.git("commit", "-q", "-am", "hotfix: redo f1 on rolling")
+        redo = self.repo.git("rev-parse", "HEAD")
+        self.repo.git("switch", "-q", "dev")
+        self.repo.commit("feat: next change (#6)")
+        self.before = self.repo.refs()
+        code, out = self.snapshot_plan("--date", "2026-11-03")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"{undo[:7]} hotfix: undo f1 on rolling", out)
+        self.assertIn(f"{redo[:7]} hotfix: redo f1 on rolling", out)
+
+    def test_d6_merge_tree_failure_is_not_checked(self):
+        # Gate 2 F10: when git merge-tree fails (exit 129, as an old git does), the setUp snapshot
+        # merge on rolling is named as not checked, never passed over.
+        bin_dir = Path(self.tmp.name) / "bin"
+        bin_dir.mkdir()
+        wrapper = bin_dir / "git"
+        wrapper.write_text(f'#!/bin/sh\nfor a in "$@"; do [ "$a" = merge-tree ] && exit 129; done\n'
+                           f'exec {shutil.which("git")} "$@"\n')
+        wrapper.chmod(0o755)
+        env = {**ENV, "PATH": f"{bin_dir}{os.pathsep}{ENV.get('PATH', '')}"}
+        proc = subprocess.run([sys.executable, str(SCRIPT), "plan", "--repo", str(self.repo.path), "--from", "dev",
+                               "--to", "rolling", "--kind", "rolling", "--date", "2026-11-02"],
+                              capture_output=True, text=True, env=env)
+        out = proc.stdout + proc.stderr
+        self.assertEqual(proc.returncode, 1, out)
+        self.assertIn("Rolling snapshot: 2026-11-01", out)
+        self.assertIn("not checked", out)
+        self.assertNotIn("Plan digest", out)
+
+    def test_d6_conflict_resolved_with_new_content_is_named(self):
+        merge = self.conflicting_promotion("fixed again, plus a rolling-only tweak\n")
+        code, out = self.snapshot_plan("--date", "2026-11-03")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"{merge[:7]} Rolling snapshot: 2026-11-02", out)
+        self.assertIn("f1.txt", out)
 
     def test_w5_9_nothing_to_promote(self):
         self.repo.snapshot("Rolling snapshot: 2026-11-02", "rolling-2026-11-02")

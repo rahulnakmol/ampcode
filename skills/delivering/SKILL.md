@@ -119,27 +119,71 @@ repository's isolation policy; preserve existing work and never reset or clean i
 1. Open the milestone PR into `dev` once all its items are done; with the plugin, record it as the
    `candidate`.
 2. Run the tests. **Wait for PR and CI results** with the host's tool in `missioning`'s
-   [reference/hosts.md](../missioning/reference/hosts.md). Red CI is fixed on the milestone branch.
-3. **Gate 1:** a fresh critic review of the whole milestone diff against the milestone's criteria
-   and the closed case list.
-4. **Gate 2:** after gate 1 passes, a second independent fresh review of the same head. Its record
-   holds the drift check against the contract and the refreshed defense.
+   [reference/hosts.md](../missioning/reference/hosts.md). On a host without Amp's GitHub events,
+   `scripts/pr_watch.py` waits; [reference/hosts-pr-watch.md](reference/hosts-pr-watch.md) gives
+   its usage. Red CI is fixed on the milestone branch.
+3. **Gate 1:** a fresh critic review with `interrogating-changes` of the whole milestone diff
+   against the milestone's criteria and the closed case list. Its findings go in a ledger that
+   `review_ledger.py check` passes.
+4. **Gate 2:** after gate 1 passes, a second independent fresh review of the same head with
+   `interrogating-changes`, in its own ledger. It runs the lowered-bar check `floor_guard.py` on
+   the whole candidate diff; a flag without an accepted reason blocks, as a finding of at least
+   Major. Its record holds the drift check against the contract and the refreshed defense.
 5. Record one evidence line per criterion and per exit criterion, bound to that head.
-6. Squash-merge into `dev` (`mission_merge`) only when the required checks are green, then read
-   the merge back (`mission_reconcile`; without the plugin, `gh` and an agent ledger row citing
-   the pre-authorized effect).
+6. Squash-merge into `dev` (`mission_merge`) under ship, only when the required checks are green,
+   then read the merge back (`mission_reconcile`; without the plugin, `gh` and an agent ledger
+   row citing the pre-authorized effect). Under stop, merge nothing (see below).
    There is no owner merge gate at any risk level. High risk means independent reviewers and the
-   full case list, not a question to the owner.
-7. Send the checkpoint report to the threads the charter names (by default, the mission thread).
+   full case list, not a question to the owner. Any promotion after `dev` (to `rolling` or `main`)
+   uses `releasing` and is an outside effect: run it only when the contract pre-authorizes that
+   exact effect; otherwise it is stop reason 2.
+7. **Record delivery evidence.** When the milestone delivered stories or bugs from a `grooming`
+   backlog, give each one `grooming`'s delivery record right after the merge read-back (under
+   stop, after its gates pass). Its evidence lists the milestone PR and the test command, and
+   each acceptance criterion is `met` or `not met`. Then run `backlog.py validate` and `trace`;
+   fix a refused record, never drop a criterion. The step is in
+   [reference/mission-record.md](reference/mission-record.md#delivery-evidence-into-backlogjson).
+8. Send the checkpoint report to the threads the charter names (by default, the mission thread).
    It asks nothing.
+
+Each gate's verdict (`review_ledger.py verdict`) binds to the candidate's patch ID. A verdict on
+another patch ID is stale and counts as no review. A gate passes while `review_ledger.py verdict`
+says `changes needed` only when every open Blocker or Major is outside the case list and the
+milestone's criteria and is filed.
+If `interrogating-changes` is not installed, use the lenses in reference/review-and-recovery.md and label the review manual.
 
 A review fails only on an open Blocker or Major inside the case list or the milestone's criteria.
 A repair makes a new head: both gates run again on it, and earlier reviews and evidence lapse.
+A repair changes the patch ID, so both gates run again. A rebase that keeps the patch ID keeps the
+gates' verdicts, because they bind to the patch ID; the tests (such as `make check`) and CI run
+again on the new head, and its evidence lines are recorded again.
+
+### Ship or stop
+
+The contract's Effects name one variant for the milestone PRs. An Effects entry that
+pre-authorizes the milestone merges into `dev` names ship. When the Effects name neither, the
+variant is stop. This "stop" is a delivery variant, not one of the five stop reasons.
+
+- **Ship:** when both gates passed and the checks are green on the head, merge into `dev` only as
+  the contract pre-authorizes that merge. A merge it does not pre-authorize is stop reason 2.
+- **Stop:** the mission never merges. After the gates, it reads the PR's auto-merge state and,
+  when the contract pre-authorizes writes to the PR, runs `gh pr merge --disable-auto` on it, so
+  a queued auto-merge cannot merge it. It leaves the PR open. The checkpoint
+  report lists the PR as ready under `Merged`, not as merged. The next milestone branch is cut
+  from this milestone's head, and its gates review the diff from that head. Close out after the
+  last milestone's gates pass.
+
+Running `gh pr merge --disable-auto` is part of choosing stop: an effect the stop variant needs,
+recorded under Effects performed. Always read the PR's auto-merge state back; that only reads.
+Without pre-authorized writes to the PR, skip the write; if auto-merge is queued, that is stop
+reason 2.
+
+Commands for both are in [reference/hosts-pr-watch.md](reference/hosts-pr-watch.md).
 
 ### The review cap: the disposition policy
 
-A gate allows 3 failed rounds, and the count survives new heads. After that the disposition
-policy decides, never the owner:
+A gate allows 3 failed rounds, and the count survives new heads; `interrogating-changes` counts
+them in its ledger. After that the disposition policy decides, never the owner:
 
 - A Blocker or Major inside the case list or the milestone's criteria is **fixed**. If it is still
   not fixed after 3 failed rounds, reopen the items concerned and re-plan and split them (**replanned**),
@@ -178,8 +222,12 @@ meet its exit criteria after its items were re-planned and split.
 
 After the last milestone merges, send the close-out report. The owner's end review is a review,
 not a gate a merge waited on. Distinguish **implemented**, **verified**, **reviewed**,
-**integrated into dev** and **released**. Release to `rolling` or `main`, deployment and
-publication happen only when the contract pre-authorizes them.
+**integrated into dev** and **released**. Release to `rolling` or `main` (with `releasing`),
+deployment and publication happen only when the contract pre-authorizes them.
+
+Before the report, check that every story or bug each milestone delivered has its delivery record
+(gate step 7), with `backlog.py trace`; record a missing one with that step. Pushing the records
+to a tracker with `syncing` is an outside effect, done only when the contract pre-authorizes it.
 
 ## Reports
 

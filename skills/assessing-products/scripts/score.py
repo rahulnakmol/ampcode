@@ -31,7 +31,8 @@ usage error or an unreadable file. Standard library only. The file formats and t
   S1  the weights are not frozen
   S2  a weight changed after the freeze, a criterion was added or removed, or the digest
       differs from the frozen one or from --expect
-  S3  a score has no evidence
+  S3  a score has no evidence, or its evidence has neither a YYYY-MM-DD date nor the word
+      "undated" (write "undated, read YYYY-MM-DD" when the source has no date)
   S4  a score is not a number from 0 to 5
   S5  a product, a missing or unknown criterion, or a status other than verified or claimed
   G1  with --fit-gap: a cell without a fit category from FIT_GAP_SCORES
@@ -93,6 +94,9 @@ NEGATED = re.compile(
 # "compliant" labelled as a claim: "claims to be SOC 2 compliant", "claimed compliant"; or "non-compliant".
 CLAIMED = re.compile(r"(?:\b(?:claim(?:s|ed)?|says|said|states|stated)\b(?:\s+\S+){0,4}\s+|\bnon-)$", re.I)
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+# Evidence needs a full date or the word "undated" (SKILL.md section 3). A borrowed date passes: only a reader
+# can catch that.
+DATED = re.compile(r"(?<!\d)\d{4}-\d{2}-\d{2}(?!\d)|\bundated\b", re.I)
 EPSILON = 1e-9
 # --fit-gap: score per fit category. The categories are defined in blueprinting's
 # reference/proposals.md; this map only scores them. Shown as a table in shaping-engagements.
@@ -231,6 +235,9 @@ def cell_score(where, cell, fit_gap=False):
         out.append(f"S4: {where} score {value!r} must be a number from 0 to {SCALE}")
     if not isinstance(evidence, str) or PLACEHOLDER.match(evidence.strip()):
         out.append(f"S3: {where} has no evidence; cite the document, test or source and its date")
+    elif not DATED.search(evidence):
+        out.append(f"S3: {where} evidence has no YYYY-MM-DD date; write the source's date, or 'undated, read "
+                   "YYYY-MM-DD' when it has none")
     if status not in STATUSES:
         out.append(f"S5: {where} status {status!r} must be 'verified' or 'claimed'")
     return value, status, evidence, out
