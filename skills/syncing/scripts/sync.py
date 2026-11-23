@@ -586,10 +586,13 @@ def _person(name):
 
 
 def approvers_named(data, name):
-    """The listed approvers with this name, with or without their '(role)', in any case."""
-    key = " ".join(name.lower().split())
-    return [a for a in data.get("approvers", []) if a.get("name") and key
-            and key in (" ".join(a["name"].lower().split()), _person(a["name"]))]
+    """The listed approvers with this name, in any case: the one whose full name it is, else
+    those whose name without the '(role)' it is (several means the name is ambiguous)."""
+    key, listed = " ".join(name.lower().split()), [a for a in data.get("approvers", []) if a.get("name")]
+    if not key:
+        return []
+    exact = [a for a in listed if " ".join(a["name"].lower().split()) == key]
+    return exact or [a for a in listed if _person(a["name"]) == key]
 
 
 def find_approver(data, name):
@@ -600,13 +603,15 @@ def find_approver(data, name):
 
 def _signer_note(item):
     """(approver name candidates, the name as written) from 'Signs off: …', or None. The name ends
-    at ',' ';' or a line break; a sentence after '. ' is tried off, so 'Dr. Elena' stays whole."""
+    at ',' ';' or a line break. Sentences after '. ' are then dropped one by one, but only down to
+    a name of two words or more, so 'Dr. Elena Petrova' is never read as 'Dr'."""
     match = SIGNS_OFF.search(item.get("notes") or "")
     if not match:
         return None
     text = match.group(1).strip().rstrip(".")
     parts = text.split(". ")
-    return [". ".join(parts[:n]) for n in range(len(parts), 0, -1)], text
+    shorter = [". ".join(parts[:n]) for n in range(len(parts) - 1, 0, -1)]
+    return [text] + [c for c in shorter if len(c.split()) >= 2], text
 
 
 def named_signer(data, item):

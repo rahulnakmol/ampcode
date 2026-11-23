@@ -430,11 +430,57 @@ class Check(Base):
                 self.assertEqual(len(found), 1, found)
                 self.assertTrue(found[0].startswith("C4:") and form in found[0], found)
         # A subject followed by a finding is a result: the word after it is not a run-state word.
+        # ("the test passed; 2 unrelated tests skipped" moved to the must-fail list: gate 2 F14.)
         for result in ("scan found none of the 3 B602 hits", "scan found none",
-                       "the test passed; 2 unrelated tests skipped", "PoC failed after the fix: 403",
-                       "rerun Bandit 1.9.4: 0 results"):
+                       "PoC failed after the fix: 403", "rerun Bandit 1.9.4: 0 results"):
             with self.subTest(result=result):
                 self.assertEqual(self.rules(edit(cell, f"| Rescan Bandit 1.9.4 2026-11-21: {result} |")), [])
+
+    def test_m5_gate2_f14_gate1_round2_participles_anywhere(self):
+        # M5 gate 2 F14 (Major), gate 1 round 2: three rules replace the subject rule.
+        # 1. A participle or state that says the run did not happen or finish fails anywhere.
+        # 2. A future or expectation word fails at the start, or after up to three words of which
+        #    one is a run word (scan, rescan, run, rerun, test, tests, job, build, CI, PoC), then an
+        #    optional was, is, has been or got.
+        # 3. none, n/a, unknown, yet, failed and run failed fail only as the whole result.
+        cell = "| Rescan ToolA 1.0 2026-11-21: 0 results at `x.py:5` |"
+        form = "<Rescan|Test|PoC|CI> <tool or name> <YYYY-MM-DD>: <result>"
+        failing = (
+            # Gate 2 F14.
+            "Bandit skipped (no network)", "Semgrep 1.85 scan skipped", "the nightly scan was skipped",
+            "scan has been skipped", "rescan with Trivy cancelled", "Bandit errored",
+            # Gate 1 round 2.
+            "Bandit scan cancelled",
+            # Rule 1, more forms: anywhere, any case.
+            "0 results, but the B602 rule was SKIPPED", "Trivy run aborted after 2 minutes",
+            "the job was canceled", "Semgrep timed out on app.py", "Bandit could not run",
+            "Trivy can't run offline", "the nightly job is still in progress",
+            # M5 round 3 pre-check: "has not been run" and its kin.
+            "the rescan has not been run", "Bandit was never run", "the PoC hasn't been executed",
+            "Trivy not yet run",
+            # Rule 2: a future word after a run word within three words.
+            "the test will run after deploy", "the nightly scan is scheduled for Monday",
+            "the scan has been planned", "CI job got postponed", "the rescan is going to run tonight",
+            "Bandit rescan expected tomorrow",
+        )
+        for result in failing:
+            with self.subTest(result=result):
+                found = self.rules(edit(cell, f"| Rescan Bandit 1.9.4 2026-11-21: {result} |"))
+                self.assertEqual(len(found), 1, found)
+                self.assertTrue(found[0].startswith("C4:") and form in found[0], found)
+        passing = (
+            # Gate 1 round 2 N2: "failed" with more text after it is a result.
+            "PoC failed, request rejected with 403", "exploit failed: request rejected with 403",
+            # Rule 2: a future word without a run word before it, or later than three words in.
+            "the old token will no longer work", "request rejected with 403 as expected",
+            "old sessions will be rejected: 0 of 3 tokens accepted",
+            # Rule 3: whole-result words with more text after them.
+            "none of the 3 B602 hits remain", "unknown host rejected, 0 results",
+            "yet again rejected", "n/a rows: 0; B602 hits: 0",
+        )
+        for result in passing:
+            with self.subTest(result=result):
+                self.assertEqual(self.rules(edit(cell, f"| PoC F1-exploit 2026-11-20: {result} |")), [])
 
     def test_d13_run_state_words_only_at_the_start_of_the_result(self):
         # D-13 (gate1 N13, N14, N16; gate2 RP4, RP5, RP7): run-state words fail only at the start
@@ -442,9 +488,10 @@ class Check(Base):
         # anywhere. The reviewer still reads the result, so not every phrasing is caught.
         cell = "| Rescan ToolA 1.0 2026-11-21: 0 results at `x.py:5` |"
         form = "<Rescan|Test|PoC|CI> <tool or name> <YYYY-MM-DD>: <result>"
+        # Gate 2 F14 moved "passed; 2 unrelated tests skipped" and "errored requests now return 400"
+        # to the must-fail list below: a participle fails anywhere.
         honest = ("request rejected with 403 as expected", "none of the 3 B602 hits remain",
-                  "passed; 2 unrelated tests skipped", "the old token will no longer work",
-                  "yet again rejected", "errored requests now return 400")
+                  "the old token will no longer work", "yet again rejected")
         for result in honest:
             with self.subTest(result=result):
                 self.assertEqual(self.rules(edit(cell, f"| PoC F1-exploit 2026-11-20: {result} |")), [])
@@ -458,7 +505,10 @@ class Check(Base):
             "0 results so far; full rescan pending", "partial: 0 results, full rescan not run",
             "0 results; the full run failed to start",
             # Whole-result words with trailing punctuation or a clause after it.
-            "errored.", "errored: runner lost", "none.", "yet", "failed, see log", "yet to run")
+            "errored.", "errored: runner lost", "none.", "yet", "failed, see log", "yet to run",
+            # Gate 2 F14: once must-pass, now must-fail, because a participle fails anywhere.
+            "passed; 2 unrelated tests skipped", "errored requests now return 400",
+            "the test passed; 2 unrelated tests skipped")
         for result in did_not_run:
             with self.subTest(result=result):
                 found = self.rules(edit(cell, f"| Rescan Bandit 1.9.4 2026-11-21: {result} |"))
@@ -683,8 +733,10 @@ class SkillText(unittest.TestCase):
         # D-13: the default date is the local date, and the word list is not every phrasing.
         self.assertIn("not after today (your local date; `check --today` sets it)", triage)
         self.assertIn("at the start of the result", triage)
-        # M5 gate 1 F1, gate 2 F2: the row says a subject before the word does not hide it.
-        self.assertIn('or after a subject such as "scan", "the test" or "run Bandit 1.9.4"', triage)
+        # M5 gate 2 F14: the row says the participles fail anywhere, and what that means.
+        self.assertIn("fail anywhere in the result", triage)
+        self.assertIn("so a result should not mention unrelated skipped tests", triage)
+        self.assertNotIn("later in a result are fine", triage)
         self.assertIn("The list is not every phrasing: a reviewer still reads the result", triage)
         done = " ".join(self.text.split("## Check your work", 1)[1].split())
         self.assertIn("retest evidence in the Retest form", done)

@@ -637,6 +637,10 @@ class RaidCheck(unittest.TestCase):
                      "Don't panic, we are on track.",
                      "Do not worry but F2 is approved.",
                      "Never mind so F2 is signed off.",
+                     "Do not mark F2 as approved but F3 is signed off.",        # gate 2 F16: a real order, then " but "
+                     "Never record F2 as signed off so F3 is approved.",        # a real order, then " so "
+                     "Do not mark F2 as approved, F3 is signed off.",           # a real order, then a comma
+                     "Do not mark F2 as approved. F3 is signed off.",           # an order covers its own clause only
                      "Rahul asked us to mark F2 as signed off, and F2 is approved; we have not slipped.",
                      "Rahul asked me to mark F2 as approved and F2 is signed off. I did not."):
             with self.subTest(line=line):
@@ -646,6 +650,26 @@ class RaidCheck(unittest.TestCase):
                      "Do not mark F2 as approved, and do not mark F3 as signed off.",
                      "Never mark F2 as signed off; it is not signed off.",
                      "Rahul asked me to mark F2 as signed off, and I did not."):
+            with self.subTest(line=line):
+                self.pack_passes(line)
+
+    def test_d15_gate2_f16_do_not_covers_only_an_action_verb(self):
+        # M5 gate 2 F16: "Do not", "Don't" or "Never" skips a sign-off word only when an action verb
+        # (mark, record, report, say, ...) follows within two words and the word comes after it.
+        for line in ("Never fear F2 is approved.",
+                     "Do not worry F2 is signed off.",
+                     "Don't panic we are on track.",
+                     "Never mind the delay F2 is approved.",          # the verb list does not hold "mind"
+                     "Do not hesitate to say F2 is approved."):     # "say" is three words away
+            with self.subTest(line=line):
+                self.pack_fails(line)
+        for line in ("Do not mark F2 as approved.",
+                     "Never record F2 as signed off.",
+                     "Please do not say we are on track.",
+                     "Do not ever claim F2 is approved.",
+                     "Never post /approve for Elena; do not treat F2 as signed off.",
+                     "Don't list F2 as approved until Elena comments.",
+                     "You asked me to mark F2 as signed off in GitHub. I did not."):
             with self.subTest(line=line):
                 self.pack_passes(line)
 

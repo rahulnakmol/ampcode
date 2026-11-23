@@ -20,8 +20,10 @@ Rules:
               evidence on the same line (a date, a percentile or a percentage); one that says
               "signed" (off) or "approved" cites its source (the /approve comment's #issuecomment
               link, /approve with its own date such as "/approve on 2026-11-24", or a written:
-              ledger row) or says "claimed". "not ..." passes; so do the words after "Do not" or
-              "Never", and a request ("asked me to mark F2 as signed off") that a later clause
+              ledger row) or says "claimed". "not ..." passes; so do the words after "Do not",
+              "Don't" or "Never" followed within two words by an action verb (mark, record,
+              report, say, claim, write, state, call, treat, sign, approve, assume, list, set,
+              post), and a request ("asked me to mark F2 as signed off") that a later clause
               refuses ("I did not"), each only up to the next comma, " and ", " but " or " so ".
               Fenced code, table header rows and headings that end with "?" are skipped; other
               headings and table body rows are read
@@ -67,7 +69,11 @@ APPROVE_DATED = re.compile(
     rf"|{DATE}\s*\((?:[\w-]+\s+)?/approve\b", re.I)
 CLAUSE = re.compile(r"[^.;:!?]+[.;:!?]*")
 PIECE = re.compile(r",|\s(?:and|but|so)\s", re.I)  # a skip ends at the first of these
-DO_NOT = re.compile(r"^(?:please\s+)?(?:do\s+not|don't|never)\b", re.I)
+ACTIONS = ("mark", "record", "report", "say", "claim", "write", "state", "call", "treat", "sign",
+           "approve", "assume", "list", "set", "post")
+# "Do not", "Don't" or "Never", then an action verb as the first or second word after it.
+DO_NOT = re.compile(rf"^(?:please\s+)?(?:do\s+not|don't|never)\s+(?:[\w'-]+\s+)?(?:{'|'.join(ACTIONS)})\b",
+                    re.I)
 REQUEST = re.compile(r"\b(?:asked|asks|wants|wanted|told)\s+(?:me|us)\s+to\b", re.I)
 REFUSAL = re.compile(r"^(?:I|we)\s+(?:did\s+not|didn't|have\s+not|haven't|will\s+not|won't)\b", re.I)
 FENCE = re.compile(r"^\s*(?:```|~~~)")
@@ -220,14 +226,15 @@ def sourced(line):
 def claims_in(line):
     """Overclaim words the line asserts. The line is cut into clauses (at . ; : ! ?) and each clause
     into pieces (at a comma, " and ", " but ", " so "). A piece that starts "Do not" or "Never"
-    asserts nothing, and neither does a piece with a reported request ("asked me to ...") when a
-    later piece refuses it ("I did not"). Each skip covers its own piece only."""
+    asserts nothing after an action verb within two words ("Do not mark F2 as approved"), and a
+    piece with a reported request ("asked me to ...") asserts nothing when a later piece refuses it
+    ("I did not"). Each skip covers its own piece only."""
     pieces = [p.strip() for c in CLAUSE.findall(line) for p in PIECE.split(c) if p.strip()]
     found = []
     for i, piece in enumerate(pieces):
-        if DO_NOT.match(piece):
-            continue
         if REQUEST.search(piece) and any(REFUSAL.match(p) for p in pieces[i + 1:]):
+            continue
+        if DO_NOT.match(piece):  # an order: what follows the verb is what not to claim
             continue
         found += [m.group(1) for m in OVERCLAIM.finditer(piece) if not NEGATED.search(piece[:m.start()])]
     return found

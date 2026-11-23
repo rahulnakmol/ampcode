@@ -588,9 +588,54 @@ class Overclaims(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertEqual(slo_check.overclaims(phrase), [], phrase)
 
+    def test_d12_round2_dash_ends_a_negation(self):
+        # D-12, gate 2 F15: " - ", " – " and " — " end a negation's reach, like ":" and ";".
+        for phrase in ("No evidence that it broke - the alert works.",
+                       "No evidence that it broke \u2013 the alert works.",
+                       "No evidence that it broke \u2014 the alert works.",
+                       "We did not change the route - the alert works."):
+            with self.subTest(phrase=phrase):
+                self.assertTrue(slo_check.overclaims(phrase), phrase)
+        # A hyphen inside a word is not a dash: the negation still reaches past "pre-release".
+        self.assertEqual(slo_check.overclaims("We have not verified ALERT-1 in pre-release."), [])
+        self.assertEqual(slo_check.overclaims("We have not, in pre-release, verified the alert."), [])
+
+    def test_d12_round2_no_proof_shape(self):
+        # D-12, gate 2 F20 and gate 1 N4. "no proof" or "no evidence" covers a claim only:
+        # - after "that", with no comma between "that" and the claim;
+        # - after one comma-bounded aside that ends right before "that";
+        # - with no "that", when only the claim's subject (an optional "the") comes between.
+        claims = (
+            "No proof needed, the alert works.",                                    # gate 2 F1
+            "No evidence required: the alert works.",
+            "We need no proof; the alert works.",
+            "No proof needed and the alert works.",
+            "There is no proof that the deploy finished, but the alert works.",
+            "There is no proof that, the alert works.",                             # F20: comma after that
+            "No evidence that the deploy finished, the alert works.",               # F20: comma guard
+            "No proof needed, really, the alert works.",                            # aside must end at "that"
+            "No proof, really, the alert works.",                                   # aside without "that"
+            "There is no proof needed now the alert works.",                        # no-that: subject only
+            "There is no proof that the deploy finished and the alert works.",      # join inside the clause
+        )
+        honest = (
+            "We have no evidence the alert works.",                                 # N4: no "that"
+            "There is no proof, as of today, that the alert works.",                # N4: one aside
+            "There is no proof yet that the alert works and pages on time.",
+            "We have no evidence that the alert works.",
+            "There is no evidence so far that ALERT-1 is verified.",
+            "There is no proof yet, as of today, that the alert works.",
+        )
+        for phrase in claims:
+            with self.subTest(claim=phrase):
+                self.assertTrue(slo_check.overclaims(phrase), phrase)
+        for phrase in honest:
+            with self.subTest(honest=phrase):
+                self.assertEqual(slo_check.overclaims(phrase), [], phrase)
+
     def test_d12_skill_text_documents_the_negation_scope(self):
         text = re.sub(r"\s+", " ", (SKILL / "SKILL.md").read_text())
-        for words in ('"and", "but", "so" or "yet"', '"not only"', '"no proof"'):
+        for words in ('"and", "but", "so" or "yet"', '"not only"', '"no proof"', "a dash"):
             self.assertIn(words, text)
         doc = re.sub(r"\s+", " ", slo_check.__doc__)
         self.assertIn("and, but, so or yet", doc)

@@ -178,6 +178,15 @@ class Designs(unittest.TestCase):
             with self.subTest(target=target):
                 self.assertEqual(design_check.check(replace("p95 under 300 ms at 50 req/s", target)), [])
 
+    def test_d4_no_number_outside_the_condition_checks_the_whole_target(self):
+        # Gate 1 N3, gate 2 F18: a condition is stripped only when a number stays outside it. With
+        # no number outside, the whole target is checked, as before D-4. Each passed at base.
+        for target in ("Handle over 500 req/s", "Support over 10,000 tenants",
+                       "At most 5 errors per 1,000 requests", "under 5 errors per 1,000 requests",
+                       "Serve at 50 req/s", "Stay up during 10,000 sessions", "Handle 500 req/s"):
+            with self.subTest(target=target):
+                self.assertEqual(design_check.check(replace("p95 under 300 ms at 50 req/s", target)), [])
+
     def test_w1_4_adr_with_one_option(self):
         # W1.4: an ADR with fewer than two options.
         self.assertEqual(rules(replace("- Queue and worker\n- Timer inside the API\n", "- Queue and worker\n")), ["D4"])

@@ -148,8 +148,8 @@ python3 $S record-signoff backlog.json --item F-1 --by "Dana Whitfield (VP Produ
 ```
 
 - `--item` is an initiative or feature. `--by` is an approver's `name` from `approvers`, with or
-  without the role in brackets, in any case; a name that fits two approvers is refused, so give
-  the role too. `--source` names the email or document; it is required. Anything else is refused with one error line, and the file is not changed.
+  without the role in brackets, in any case. An exact full name wins; otherwise the name without
+  the role must fit one approver, and a name that fits two is refused, so give the role too. `--source` names the email or document; it is required. Anything else is refused with one error line, and the file is not changed.
 - It appends `{ "tracker": "written", "by", "at", "source", "fingerprint" }` to the item's
   `approvals`. The fingerprint covers the item and its stories (or goals). The sign-off counts
   for every tracker in `backlog.py status`, also on a backlog never synced, until any of that

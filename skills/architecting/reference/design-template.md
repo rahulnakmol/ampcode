@@ -46,13 +46,16 @@ condition runs from `at`, `when`, `while`, `with`, `during`, `given` or `under .
 first number and unit, as in "at 50 req/s" or "when 10,000 users". `for`, `per`, `across` and
 `over` start a condition only before a rate or a count (a load or scope), as in "for 50 req/s"
 or "across 10,000 tenants"; "kept for 30 days" stays the target. `at most`, `at least` and a
-number with no unit ("Recall at 10") do not start a condition. So "p95 under 300 at 50 req/s"
-fails: its only unit belongs to the condition. "p95 under 300 ms at 50 req/s" passes.
+number with no unit ("Recall at 10") do not start a condition. The conditions are set aside
+only when a number stays outside them; that number then needs its unit. So "p95 under 300 at
+50 req/s" fails: its only unit belongs to the condition. "p95 under 300 ms at 50 req/s" and
+"under 5 errors per 1,000 requests" pass. When no number stays outside the conditions, the whole
+target is checked: "Handle over 500 req/s" and "Support over 10,000 tenants" pass.
 A thousands separator and a multiplier are allowed: `10,000 users`, `10k users`, `1.5 s`,
 `99.9 %`, `99.9%`, `400 USD/month`. Units are case-insensitive. To add a unit, change `UNITS`
 in the script and this line together; a test compares them.
 
-Accepted units: `ms`, `s`, `sec`, `seconds`, `min`, `minutes`, `h`, `hours`, `d`, `days`, `weeks`, `months`, `years`, `%`, `req/s`, `req/min`, `rps`, `rpm`, `qps`, `tps`, `msg/s`, `events/s`, `errors/min`, `errors/h`, `users`, `sessions`, `tenants`, `connections`, `requests`, `messages`, `events`, `records`, `rows`, `items`, `files`, `violations`, `incidents`, `findings`, `defects`, `KB`, `MB`, `GB`, `TB`, `PB`, `KiB`, `MiB`, `GiB`, `TiB`, `Mbps`, `Gbps`, `MB/s`, `GB/s`, `USD`, `EUR`, `GBP`
+Accepted units: `ms`, `s`, `sec`, `seconds`, `min`, `minutes`, `h`, `hours`, `d`, `days`, `weeks`, `months`, `years`, `%`, `req/s`, `req/min`, `rps`, `rpm`, `qps`, `tps`, `msg/s`, `events/s`, `errors/min`, `errors/h`, `users`, `sessions`, `tenants`, `connections`, `requests`, `messages`, `events`, `records`, `rows`, `items`, `files`, `violations`, `incidents`, `findings`, `defects`, `errors`, `KB`, `MB`, `GB`, `TB`, `PB`, `KiB`, `MiB`, `GiB`, `TiB`, `Mbps`, `Gbps`, `MB/s`, `GB/s`, `USD`, `EUR`, `GBP`
 
 ### ADR subsection
 

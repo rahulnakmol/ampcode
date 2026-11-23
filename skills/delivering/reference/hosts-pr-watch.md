@@ -66,6 +66,7 @@ gh pr view <number> --repo OWNER/NAME --json state,autoMergeRequest
 
 Expect `state` `OPEN` and `autoMergeRequest` `null`. This changes only the PR's auto-merge
 setting. It is part of choosing stop, whether the contract names stop or stop is the default: an
-effect the stop variant needs, recorded under Effects performed. If the contract does not
-pre-authorize writes to the PR, skip both commands: leave the PR open and report that auto-merge
-was not checked. Either way, list the PR as ready, not merged, in the checkpoint report.
+effect the stop variant needs, recorded under Effects performed. Always run the `gh pr view`
+read. If the contract does not pre-authorize writes to the PR, skip only the `--disable-auto`
+write: when `autoMergeRequest` is `null`, leave the PR open; when an auto-merge is queued, that
+is stop reason 2. Either way, list the PR as ready, not merged, in the checkpoint report.

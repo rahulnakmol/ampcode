@@ -13,7 +13,8 @@ unreadable file. Standard library only. The format, the rules and the accepted u
   D2  an NFR target has no number followed by an accepted unit outside its condition (a condition
       runs from "at", "when", "while", "with", "during", "given" or "under ... load" to its first
       number and unit, or from "for", "per", "across" or "over" to a rate or count, as in "for
-      50 req/s"): "p95 under 300 at 50 req/s" fails, "p95 under 300 ms at 50 req/s" passes
+      50 req/s"): "p95 under 300 at 50 req/s" fails, "p95 under 300 ms at 50 req/s" passes. When no
+      number stays outside the conditions, the whole target is checked: "Handle over 500 req/s" passes
   D3  an NFR has no verification test (empty, or only placeholder words such as TBD, n/a, later)
   D4  an ADR lists fewer than two options (top-level items under Options; nested bullets do not count)
   D5  an ADR has no valid Status, no Decision or no Consequences
@@ -41,7 +42,7 @@ LOAD_UNITS = (
     "req/s", "req/min", "rps", "rpm", "qps", "tps", "msg/s", "events/s", "errors/min", "errors/h",
     # count
     "users", "sessions", "tenants", "connections", "requests", "messages", "events", "records", "rows",
-    "items", "files", "violations", "incidents", "findings", "defects",
+    "items", "files", "violations", "incidents", "findings", "defects", "errors",
 )
 UNITS = (
     # time
@@ -101,6 +102,14 @@ def blank(value):
     return all(w in PLACEHOLDERS or re.fullmatch(r"-+|—|\?+|", w) for w in words)
 
 
+def target_part(target):
+    """The part of a target that needs its own unit (D2): the text outside its conditions when that
+    text holds a number ("p95 under 300 at 50 req/s"), otherwise the whole target ("Handle over
+    500 req/s")."""
+    outside = CONDITION.sub("", target)
+    return outside if re.search(NUMBER, outside) else target
+
+
 def cells(line):
     return [c.strip() for c in line.strip().strip("|").split("|")]
 
@@ -132,7 +141,7 @@ def check_nfrs(body, add):
         seen.add(nid)
         if not re.search(r"\d", target):
             add("D1", f"{nid} target '{target}' has no number")
-        elif not MEASURE.search(CONDITION.sub("", target)):
+        elif not MEASURE.search(target_part(target)):
             add("D2", f"{nid} target '{target}' has no number with an accepted unit outside its condition"
                 " (see design-template.md)")
         if blank(verification):

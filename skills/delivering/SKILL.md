@@ -159,8 +159,9 @@ again on the new head, and its evidence lines are recorded again.
 
 ### Ship or stop
 
-The contract's Effects name one variant for the milestone PRs. When it names none, the variant is
-stop. This "stop" is a delivery variant, not one of the five stop reasons.
+The contract's Effects name one variant for the milestone PRs. An Effects entry that
+pre-authorizes the milestone merges into `dev` names ship. When the Effects name neither, the
+variant is stop. This "stop" is a delivery variant, not one of the five stop reasons.
 
 - **Ship:** when both gates passed and the checks are green on the head, merge into `dev` only as
   the contract pre-authorizes that merge. A merge it does not pre-authorize is stop reason 2.
@@ -171,8 +172,9 @@ stop. This "stop" is a delivery variant, not one of the five stop reasons.
   last milestone's gates pass.
 
 Running `gh pr merge --disable-auto` is part of choosing stop: an effect the stop variant needs,
-recorded under Effects performed. If the contract does not pre-authorize writes to the PR, the
-stop variant only leaves the PR open and reports that auto-merge was not checked.
+recorded under Effects performed. Always read the PR's auto-merge state back; that only reads.
+If auto-merge is queued and the contract does not pre-authorize writes to the PR, that is stop
+reason 2.
 
 Commands for both are in [reference/hosts-pr-watch.md](reference/hosts-pr-watch.md).
 

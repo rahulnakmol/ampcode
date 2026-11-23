@@ -1246,6 +1246,49 @@ class OutsideSignOff(unittest.TestCase):
         self.assertEqual(self.record(path, "--item", "F-1", "--by", "Tom Okafor (Treasury)", "--source", "email")[0], 0)
         self.assertEqual(item(json.loads(path.read_text()), "F-1")["approvals"][-1]["by"], "Tom Okafor (Treasury)")
 
+    def test_w19_4_an_exact_full_name_wins_over_a_name_without_its_role(self):
+        # Gate 2 F17: "Tom Okafor" and "Tom Okafor (CFO)" can both be recorded.
+        data = example()
+        data["approvers"] = [{"name": "Tom Okafor", "github": "tokafor"}, {"name": "Tom Okafor (CFO)", "github": "tokafor-cfo"}]
+        path = self.write(data)
+        for by, recorded in (("Tom Okafor", "Tom Okafor"), ("Tom Okafor (CFO)", "Tom Okafor (CFO)"), ("tom  okafor", "Tom Okafor")):
+            code, out, err = self.record(path, "--item", "F-1", "--by", by, "--source", f"email {by}")
+            self.assertEqual((code, err), (0, ""), by)
+            self.assertEqual(item(json.loads(path.read_text()), "F-1")["approvals"][-1]["by"], recorded, by)
+
+    def signs_off_report(self, approvers, note):
+        data = example()
+        data["approvers"] = approvers
+        item(data, "F-1")["notes"] = note
+        run = subprocess.run([sys.executable, str(SYNC), "github", "report", str(self.write(data)), "--repo", "acme/close",
+                              "--today", "2027-01-20"], capture_output=True, text=True, timeout=60)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        return run.stdout, run.stderr
+
+    def test_w19_1_a_signer_note_that_fits_two_approvers_warns_and_shows_any_listed_approver(self):
+        # Gate 2 F19: neither Tom is chosen.
+        out, err = self.signs_off_report([{"name": "Tom Okafor (Group Controller)", "github": "tokafor"},
+                                          {"name": "Tom Okafor (Treasury)", "github": "tokafor2"}], "Signs off: Tom Okafor, due 2027-02-12.")
+        self.assertEqual(err.splitlines(), ["warning: F-1 notes say 'Signs off: Tom Okafor', which is not exactly one listed approver; "
+                                            "the status comment shows 'any listed approver'"])
+        self.assertIn("Who signs: any listed approver for I-1, F-1, F-2, F-3.", out)
+
+    def test_w19_1_a_sentence_after_the_name_is_dropped_to_find_the_signer(self):
+        # Gate 1 N4: kills a split that does not retry without the sentence after '. '.
+        out, err = self.signs_off_report([dict(ELENA), {"name": "Tom Okafor (Group Controller)", "github": "tokafor"}],
+                                         "Signs off: Elena Petrova. Tom approved verbally.")
+        self.assertEqual(err, "")
+        self.assertIn("Who signs: any listed approver for I-1, F-2, F-3; Elena Petrova (Treasury lead) for F-1.", out)
+
+    def test_w19_1_a_title_before_the_name_is_not_cut_off_at_its_dot(self):
+        # Gate 1 N4: kills a split at the first '.': "Dr. Elena Petrova" must not resolve to an approver named "Dr".
+        out, err = self.signs_off_report([dict(ELENA), {"name": "Dr (duty reviewer)", "github": "duty"}],
+                                         "Signs off: Dr. Elena Petrova")
+        self.assertEqual(err.splitlines(), ["warning: F-1 notes say 'Signs off: Dr. Elena Petrova', which is not exactly one listed "
+                                            "approver; the status comment shows 'any listed approver'"])
+        self.assertIn("Who signs: any listed approver for I-1, F-1, F-2, F-3.", out)
+        self.assertNotIn("Dr (duty reviewer) for", out)
+
     def test_w19_3_a_written_initiative_sign_off_goes_stale_when_the_prd_changes(self):
         # Gate 2 F6: the PRD is part of what an initiative's sign-off covers.
         path = self.write(json.loads((EXAMPLES / "product.json").read_text()))

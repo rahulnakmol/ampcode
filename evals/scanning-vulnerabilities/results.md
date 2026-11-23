@@ -115,7 +115,8 @@ the earlier text. The PASS grade is for the run as graded, not for the current s
 
 The note above that the Retest date default is UTC is out of date. Since D-13 (branch
 `wave12/m5-closeout`), `sarif_triage.py check --today` defaults to the local date
-(`datetime.date.today()`). The word list above is also out of date. Since D-13, "will",
-"expected", "skipped", "cancelled" and "errored" fail only at the start of the result,
-after an optional subject such as "scan" or "the test", or as the whole result; "not run",
-"pending" and "failed to start" fail anywhere. This note changes no grade.
+(`datetime.date.today()`). The word list above is also out of date. Since the M5 gate
+repairs, run-state words (skipped, cancelled, errored, aborted, timed out, queued, not run,
+pending and the like) fail anywhere in the result; future words (will, expected, scheduled
+and the like) fail at the start, optionally after a run subject such as "the nightly scan";
+none, n/a, unknown, yet and failed fail only as the whole result. This note changes no grade.

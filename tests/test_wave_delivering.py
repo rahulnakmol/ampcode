@@ -171,14 +171,20 @@ class W21ShipAndStop(unittest.TestCase):
 
     def test_W21_gate1_F9_stop_is_the_default_and_its_auto_merge_write_is_covered(self):
         text = self.variants()
-        self.assertIn("When it names none, the variant is stop.", text)
+        # M5 gate 1 N1 / gate 2 F21: a contract that pre-authorizes the merges ships.
+        self.assertIn("An Effects entry that pre-authorizes the milestone merges into `dev` names ship.", text)
+        self.assertIn("When the Effects name neither, the variant is stop.", text)
         self.assertIn("Running `gh pr merge --disable-auto` is part of choosing stop: an effect the stop "
                       "variant needs, recorded under Effects performed.", text)
-        self.assertIn("If the contract does not pre-authorize writes to the PR, the stop variant only "
-                      "leaves the PR open and reports that auto-merge was not checked.", text)
-        self.assertNotIn("a contract that pre-authorizes the milestone merges ships", text)
+        # M5 gate 2 F22: the read-only auto-merge check always runs.
+        self.assertIn("Always read the PR's auto-merge state back", text)
+        self.assertIn("If auto-merge is queued and the contract does not pre-authorize writes to the PR, "
+                      "that is stop reason 2.", text)
+        self.assertNotIn("auto-merge was not checked", text)
         ref = flat(section(WATCH_REF.read_text(), "## Stop"))
-        self.assertIn("auto-merge was not checked", ref)
+        self.assertIn("Always run the `gh pr view` read.", ref)
+        self.assertIn("when an auto-merge is queued, that is stop reason 2", ref)
+        self.assertNotIn("skip both commands", ref)
         self.assertNotIn("the contract's choice of the stop variant covers it", ref)
 
     def test_W21_6_ship_merges_when_green_only_as_pre_authorized(self):

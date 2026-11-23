@@ -30,12 +30,13 @@ exit 2 on a usage error or an unreadable file. Standard library only. The file f
       what they are
   M8  the SLO file or a runbook claims an alert works or is verified; record where and when it
       fired instead. Fine: questions; a negation earlier in the same clause, which ends at
-      . ! ? : ; or at a following and, but, so or yet ("we have not, as of today, verified the
-      alert"); "no proof" or "no evidence" before a "that" clause ("there is no proof that the
-      alert works"), but not a later clause ("no proof needed, the alert works"); a condition
-      in the same comma clause ("if the alert works, close it"); and "working hours". Claims: "nobody doubts that the
-      alert works", "we did not change it, so the alert works"; not only, not just and not
-      merely do not negate
+      . ! ? : ; a spaced dash ( - , – , — ) or a following and, but, so or yet ("we have not, as
+      of today, verified the alert"); "no proof" or "no evidence" that introduces the claim
+      ("no proof that the alert works", "no proof, as of today, that the alert works", "no
+      evidence the alert works"), but not a later clause ("no proof needed, the alert works"); a
+      condition in the same comma clause ("if the alert works, close it"); and "working hours".
+      Claims: "nobody doubts that the alert works", "we did not change it, so the alert works";
+      not only, not just and not merely do not negate
   M9  structure: invalid JSON, no SLOs, or a missing or repeated SLO or alert ID
 
 An alert counts as proven only when it has firing evidence from outside production. The check
@@ -84,10 +85,16 @@ OVERCLAIM = re.compile(
 # affirms the claim instead: "Nobody doubts that the alert works."
 NEGATION = re.compile(
     r"\bnot\b(?!\s+(?:only|just|merely)\b)|\b(?:never|nobody|no\s+one|cannot)\b|n't\b", re.I)
-# "no proof" or "no evidence" negates only the claim it introduces with "that": "There is no
-# proof yet that the alert works." It does not cover a later clause: "No proof needed, the
-# alert works." is a claim.
-NO_PROOF_THAT = re.compile(r"\bno\s+(?:proof|evidence)\s+(?:(?:yet|so\s+far)\s+)?that\b", re.I)
+# "no proof" or "no evidence" negates only the claim it introduces, at the end of the text
+# before the claim. Three shapes: "no proof (yet) that the alert works", with no comma after
+# "that"; "no proof, as of today, that the alert works", one aside that ends right before
+# "that"; "no evidence the alert works", where only the claim's subject comes between. It does
+# not cover a later clause: "No proof needed, the alert works." is a claim. The <rest> group is
+# the text the negation reaches, checked for a joining word as for other negations.
+NO_PROOF = re.compile(
+    r"\bno\s+(?:proof|evidence)(?:\s+(?:yet|so\s+far))?"
+    r"(?:\s*,[^,]*,\s*that\b|\s+that\b|(?=\s+(?:the\s+)?$))"
+    r"(?P<rest>[^,]*)$", re.I)
 # "yet" right after the negation is the adverb ("not yet shown"); "so far" is not the joining "so".
 JOIN = re.compile(r"\b(?:and|but|so(?!\s+far\b)|yet)\b", re.I)
 DOUBT = re.compile(r"\b(?:doubts?|doubted|questions?|questioned|disputes?|disputed|deny|denies|denied)\b", re.I)
@@ -95,6 +102,7 @@ DOUBT = re.compile(r"\b(?:doubts?|doubted|questions?|questioned|disputes?|disput
 # is honest; "Once deployed, the alert works." is a claim.
 CONDITION = re.compile(r"\b(?:if|whether|when|once|unless|until)\b", re.I)
 PART_ENDS = ".!?:;\n"
+DASHES = (" - ", " \u2013 ", " \u2014 ")  # a spaced hyphen, en dash or em dash also ends a part
 
 
 def number(value):
@@ -150,11 +158,13 @@ def production(environment):
 def negated(part):
     """True when the last negation in part covers what follows it. A doubt word after it undoes
     it ("nobody doubts that"), and so does a joining and, but, so or yet ("did not fail and")."""
-    proof = [m for m in NO_PROOF_THAT.finditer(part) if "," not in part[m.end():]]
-    hits = list(NEGATION.finditer(part)) + proof
-    if not hits:
+    reach = [hit.end() for hit in NEGATION.finditer(part)]
+    proof = NO_PROOF.search(part)
+    if proof:
+        reach.append(proof.start("rest"))
+    if not reach:
         return False
-    rest = part[max(hit.end() for hit in hits):]
+    rest = part[max(reach):]
     return not DOUBT.search(rest) and not JOIN.search(re.sub(r"^\s*yet\b", "", rest, flags=re.I))
 
 
@@ -163,7 +173,10 @@ def overclaims(content):
     in the same sentence part, or after a condition in the same comma clause."""
     found = []
     for match in OVERCLAIM.finditer(content):
-        part = content[max(content.rfind(mark, 0, match.start()) for mark in PART_ENDS) + 1:match.start()]
+        starts = [content.rfind(mark, 0, match.start()) + 1 for mark in PART_ENDS]
+        starts += [content.rfind(dash, 0, match.start()) + len(dash) for dash in DASHES
+                   if dash in content[:match.start()]]
+        part = content[max(starts):match.start()]
         clause = part[part.rfind(",") + 1:]
         ends = [i for i in (content.find(mark, match.end()) for mark in ".!?\n") if i != -1]
         end = min(ends) if ends else len(content)
