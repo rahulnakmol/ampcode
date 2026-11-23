@@ -280,9 +280,14 @@ class Rules(unittest.TestCase):
         two = "E1 open tracker issues in acme/payments, E2 email the report to Priya Shah."
         self.assertEqual(self.rules(edit(row, row.replace("E1", "E2"), edit("E1 open tracker issues for Critical and High findings in acme/payments.", two))), [])
         self.assertEqual(self.rules(edit("E1 open tracker issues for Critical and High findings in acme/payments.", "none: no outside effects", edit(row + "\n", ""))), [])
+        # A field that says none grants no ID, even one named in its reason.
+        self.assertRule(edit("E1 open tracker issues for Critical and High findings in acme/payments.", "none: E1 was dropped at kickoff", edit(row, done)), "R13")
         # An agent row naming an effect ID always cites a listed pre-authorization in that form.
         for gate, evidence in (("File findings (E9)", "issues filed, read back"), ("File findings", "E9 pre-authorized at kickoff"),
-                               ("File findings", "preauthorized: charter E1"), ("Share the report", "per pre-authorization E9")):
+                               ("File findings", "preauthorized: charter E1"), ("Share the report", "per pre-authorization E9"),
+                               ("Share the report", "per pre-authorizations E9"), ("Share the report", "per pre-authorizing E9"),
+                               ("Share the report", "the charter pre-authorizes E9"), ("Share the report", "E9 pre authorized at kickoff"),
+                               ("Share the report", "preauthorized at kickoff")):
             with self.subTest(gate=gate, evidence=evidence):
                 self.assertRule(edit(row, f"| {gate} | agent | open | {evidence} | - | - | - | - | - |"), "R13")
         # Error codes and stage names that look like effect IDs are ordinary evidence and gates.
@@ -298,6 +303,7 @@ class Rules(unittest.TestCase):
         # Recorded as a human gate, a pre-authorized effect would ask the owner a second time.
         self.assertRule(edit(row, "| File findings (E1) | human | open | - | - | - | - | - | - |"), "R13")
         self.assertRule(edit(row, "| File findings (e1) | human | open | - | - | - | - | - | - |"), "R13")
+        self.assertRule(edit(row, "| Report release | human | open | E1 pre-authorized at kickoff | - | - | - | - | - |"), "R13")
         as_human = PASSED.replace("Charter and criteria", "Report release").replace("| charter above |", "| pre-authorized: charter E1 |")
         self.assertRule(edit(PASSED, PASSED + "\n" + as_human), "R13")
 
