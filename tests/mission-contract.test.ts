@@ -399,6 +399,22 @@ describe('Amend: a non-digest item field keeps approval', () => {
 		c.items.push(item('W1b', 'M1b', ['W1 criterion a', 'W1 criterion b']), item('W2b', 'M1b', ['W2 criterion']))
 		expect(() => amend(failedOnce(1), c)).toThrow('failed review rounds')
 	})
+	test('Amend putting a new milestone ahead of a failed one, or moving the failed one later, is refused', () => {
+		const ahead = clone()
+		ahead.milestones.unshift({ id: 'M1b', title: 'First again', exit: ['M1 exit green'] })
+		ahead.items.push(item('W1b', 'M1b', ['W1 criterion a', 'W1 criterion b']))
+		expect(() => amend(failedOnce(1), ahead)).toThrow('earliest unmerged')
+		const later = clone(); later.milestones = [later.milestones[1], later.milestones[0], later.milestones[2]]
+		expect(() => amend(failedOnce(1), later)).toThrow('earliest unmerged')
+	})
+	test('Amend keeping the digest may not move a criterion between items, or swap items between milestones', () => {
+		const moved = clone(); moved.items[0].done = ['W1 criterion a']; moved.items[1].done = ['W2 criterion', 'W1 criterion b']
+		expect(() => amend(approved(), moved)).toThrow('Refused (items[0].done)')
+		const swapped = clone()
+		const [w3, w4] = [swapped.items[2], swapped.items[3]]
+		;[w3.milestone, w4.milestone, w3.done, w4.done] = [w4.milestone, w3.milestone, w4.done, w3.done]
+		expect(() => amend(approved(), swapped)).toThrow('Refused (items[2]')
+	})
 	test('Amend swapping milestone IDs, or renaming one and adding a decoy with its old ID, is refused', () => {
 		const swap = clone(); swap.milestones[0].id = 'M2'; swap.milestones[1].id = 'M1'
 		swap.items.forEach((i: any) => { i.milestone = i.milestone === 'M1' ? 'M2' : i.milestone === 'M2' ? 'M1' : i.milestone })

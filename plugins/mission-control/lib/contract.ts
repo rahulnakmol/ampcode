@@ -331,22 +331,27 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 			const kept = new Set([...c.milestones.map(m => m.id), ...c.items.map(i => i.id), ...s.filed.map(i => i.id)])
 			for (const stop of s.stops) for (const name of stop.blocks) if (!stop.resolved && !kept.has(name)) fail('contract', `open stop ${stop.id} names ${name}, which this amend removes; resume the stop first`)
 			const after = approvalDigest(c)
-			// With the digest kept, item IDs and outcomes may not change (section 3 lists the fields that may).
+			// With the digest kept, only the item fields section 3 lists may change: IDs, outcomes,
+			// milestones and done criteria are baseline.
 			if (after === digest) {
 				if (sorted(c.items.map(i => i.id)) !== sorted(s.contract.items.map(i => i.id))) fail('items', 'item IDs are part of the baseline; rename an item with replan, or change a criterion (a new digest)')
 				c.items.forEach((item, i) => {
-					const old = s.contract.items.find(o => o.id === item.id)
-					if (old && old.outcome !== item.outcome) fail(`items[${i}].outcome`, 'an item outcome is part of the baseline; change a criterion (a new digest) or file a new item')
+					const old = s.contract.items.find(o => o.id === item.id)!
+					if (old.outcome !== item.outcome) fail(`items[${i}].outcome`, 'an item outcome is part of the baseline; change a criterion (a new digest) or file a new item')
+					if (old.milestone !== item.milestone) fail(`items[${i}].milestone`, 'an item milestone is part of the baseline; move work with replan or a new digest')
+					if (sorted(old.done) !== sorted(item.done)) fail(`items[${i}].done`, 'item criteria are part of the baseline; split them with replan or change them with a new digest')
 				})
 			}
-			// Failed-round counters survive: a milestone that failed a review keeps its ID and every item it held.
+			// Failed-round counters survive: a milestone that failed a review stays the earliest unmerged
+			// one and keeps its ID, items and criteria. Record a "replanned" disposition first to change them.
 			for (const m of s.milestones) {
 				if (!m.failed.some(n => n > 0)) continue
 				const held = s.contract.items.filter(i => i.milestone === m.id)
-				const now = c.milestones.find(x => x.id === m.id)
+				const index = c.milestones.findIndex(x => x.id === m.id)
 				const criteria = (x: Contract) => new Set([...x.items.filter(i => i.milestone === m.id).flatMap(i => i.done), ...(x.milestones.find(y => y.id === m.id)?.exit ?? [])])
 				const kept = criteria(c), before = criteria(s.contract)
-				if (!now || held.some(i => !c.items.some(x => x.id === i.id && x.milestone === m.id)) || [...before].some(k => !kept.has(k))) fail('milestones', `${m.id} has failed review rounds; it cannot be renamed or removed, nor its items or criteria moved`)
+				if (index < 0 || held.some(i => !c.items.some(x => x.id === i.id && x.milestone === m.id)) || [...before].some(k => !kept.has(k))) fail('milestones', `${m.id} has failed review rounds; it keeps its ID, items and criteria; record a "replanned" disposition first to change them`)
+				if (c.milestones.slice(0, index).some(x => s.milestones.find(y => y.id === x.id)?.status !== 'merged')) fail('milestones', `${m.id} has failed review rounds and must stay the earliest unmerged milestone; record a "replanned" disposition first to change the order`)
 			}
 			const readinessChanged = canonical(c.readiness) !== canonical(s.contract.readiness)
 			s.items = [
