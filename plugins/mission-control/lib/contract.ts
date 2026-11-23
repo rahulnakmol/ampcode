@@ -288,16 +288,6 @@ function open(s: ContractRecord, milestoneId: string, path = 'milestoneId') {
 	if (m.status === 'merge-pending') fail(path, `reconcile the pending merge of ${m.id} first`)
 	return m
 }
-/** Whether a "replanned" disposition naming the item comes after the milestone's latest failed review. */
-function replannedSinceFailure(s: ContractRecord, milestoneId: string, itemId: string) {
-	let replanned = false
-	for (const { action: x } of s.events as { action: any }[]) {
-		if (x.milestoneId !== milestoneId) continue
-		if (x.type === 'review' && x.passed === false) replanned = false
-		else if (x.type === 'disposition' && x.outcome === 'replanned' && x.itemIds?.includes(itemId)) replanned = true
-	}
-	return replanned
-}
 function current(s: ContractRecord, m: MilestoneState, value: unknown) {
 	if (!m.candidate || value !== fingerprint(s, m.id)) fail('fingerprint', `missing or stale fingerprint for ${m.id}; read the current one from the status`)
 }
@@ -353,7 +343,7 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 				})
 			}
 			// Failed-round counters survive: a milestone that failed a review stays the earliest unmerged
-			// one and keeps its ID, items and criteria. Record a "replanned" disposition first to change them.
+			// one and keeps its ID, items, outcomes and criteria. Record a "replanned" disposition first to change them.
 			// A candidate also stays the earliest unmerged milestone, so no copy can be put ahead of it.
 			for (const m of s.milestones) {
 				const failed = m.failed.some(n => n > 0)
@@ -364,7 +354,7 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 				const held = s.contract.items.filter(i => i.milestone === m.id)
 				const criteria = (x: Contract) => new Set([...x.items.filter(i => i.milestone === m.id).flatMap(i => i.done), ...(x.milestones.find(y => y.id === m.id)?.exit ?? [])])
 				const kept = criteria(c), before = criteria(s.contract)
-				if (index < 0 || held.some(i => !c.items.some(x => x.id === i.id && x.milestone === m.id)) || [...before].some(k => !kept.has(k))) fail('milestones', `${m.id} has failed review rounds; it keeps its ID, items and criteria; record a "replanned" disposition first to change them`)
+				if (index < 0 || held.some(i => !c.items.some(x => x.id === i.id && x.milestone === m.id && x.outcome === i.outcome)) || [...before].some(k => !kept.has(k))) fail('milestones', `${m.id} has failed review rounds; it keeps its ID, items, outcomes and criteria; record a "replanned" disposition first to change them`)
 			}
 			const readinessChanged = canonical(c.readiness) !== canonical(s.contract.readiness)
 			s.items = [
@@ -384,7 +374,8 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 		case 'replan': {
 			const { def, state } = itemFor(s, a.itemId)
 			const m = open(s, def.milestone, 'itemId')
-			if (m.failed.some(n => n > 0) && !replannedSinceFailure(s, m.id, def.id)) fail('itemId', `${m.id} has failed review rounds; record a "replanned" disposition naming ${def.id} after its latest failed review first`)
+			// Only a "replanned" disposition on each failing gate resets its counter and so allows a replan.
+			if (m.failed.some(n => n > 0)) fail('itemId', `${m.id} has failed review rounds; record a "replanned" disposition on each failing gate first`)
 			if (state.status === 'done') fail('itemId', `${def.id} is done; reopen it first with a "replanned" disposition`)
 			const into = list(a.into, 'into', false).map((x, i) => parseItem(x, `into[${i}]`))
 			if (sorted(into.flatMap(i => i.done)) !== sorted(def.done) || into.some(i => i.milestone !== def.milestone)) fail('into', 'the new items must hold exactly the original criteria, verbatim, in the same milestone; put extra checks in automatedTest')

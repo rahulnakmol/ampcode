@@ -414,18 +414,26 @@ describe('Amend: a non-digest item field keeps approval', () => {
 		expect(() => amend(withCandidate(itemsDone(approved(), 'M1'), 'M1'), ahead)).toThrow('M1 is a candidate and must stay the earliest unmerged')
 		expect(amend(itemsDone(approved(), 'M1'), ahead).milestones.map(m => m.id)).toEqual(['M1b', 'M1', 'M2', 'M3'])
 	})
-	test('Replan of an item in a failed milestone needs a "replanned" disposition naming it', () => {
+	test('Replan of an item in a failed milestone needs a "replanned" disposition on each failing gate', () => {
 		const c = clone(); c.items[0].title = 'Retitled'
 		const r = amend(failedOnce(1), c)
 		expect(itemOf(r, 'W1').status).toBe('planned')
 		const into = [{ ...item('W1x', 'M1', ['W1 criterion a', 'W1 criterion b']), outcome: 'Something else entirely' }]
-		expect(() => update(r, { type: 'replan', itemId: 'W1', into })).toThrow('record a "replanned" disposition naming W1')
+		expect(() => update(r, { type: 'replan', itemId: 'W1', into })).toThrow('record a "replanned" disposition on each failing gate')
 		const reopened = update(failedOnce(1), { type: 'disposition', milestoneId: 'M1', gate: 1, outcome: 'replanned', record: 'Cap', itemIds: ['W1'] })
 		expect(update(reopened, { type: 'replan', itemId: 'W1', into }).contract.items.map(i => i.id)).toContain('W1x')
 		// A disposition from before the latest failed review does not count.
 		let later = withCandidate(done(reopened, 'W1', ['W1 criterion a', 'W1 criterion b']), 'M1', C)
 		later = amend(review(later, 'M1', 1, false), c)
-		expect(() => update(later, { type: 'replan', itemId: 'W1', into })).toThrow('after its latest failed review')
+		expect(() => update(later, { type: 'replan', itemId: 'W1', into })).toThrow('on each failing gate')
+		// A replanned disposition on the other gate does not answer gate 1's failed round.
+		const other = update(failedOnce(1), { type: 'disposition', milestoneId: 'M1', gate: 2, outcome: 'replanned', record: 'Wrong gate', itemIds: ['W1'] })
+		expect(milestoneOf(other, 'M1').failed).toEqual([1, 0])
+		expect(() => update(other, { type: 'replan', itemId: 'W1', into })).toThrow('on each failing gate')
+	})
+	test('Amend changing the digest may not rewrite an item outcome in a failed milestone', () => {
+		const c = clone(); c.items[0].outcome = 'W1 does something else'; c.spec = `${c.spec} (revised)`
+		expect(() => amend(failedOnce(1), c)).toThrow('outcomes and criteria')
 	})
 	test('Delegating a new item added to a failed milestone is accepted', () => {
 		const c = clone(); c.items.push(item('W5', 'M1', ['W5 criterion']))
