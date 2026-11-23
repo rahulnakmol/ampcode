@@ -46,10 +46,11 @@ and **reframe** for changes to customer expectations, all before the baseline.
 
 ## Hand off with a teach-back
 
-Each child or subagent gets the item's contract slice, which includes the defense. Its first
-check-in explains the outcome, approach, constraints, key risks and first check in its own words;
-correct errors before it builds. When the steering thread builds an item itself, its defense
-serves as the teach-back; do not start another agent merely to repeat it.
+Each child or subagent gets the item's contract slice, which includes the defense. Its report
+opens with a teach-back: the outcome, approach, constraints, key risks and first check in its own
+words. The child does not wait for a reply before building; the steering thread checks the
+teach-back with the evidence and sends corrections by message. When the steering thread builds an
+item itself, its defense serves as the teach-back; do not start another agent merely to repeat it.
 
 ## Keep the explanation true as the system changes
 

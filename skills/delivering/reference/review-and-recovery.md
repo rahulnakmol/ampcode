@@ -64,7 +64,7 @@ A gate allows 3 failed rounds, counted across heads. After that:
 
 | Finding | Disposition |
 | --- | --- |
-| Blocker or Major inside the case list or the milestone's criteria | `fixed`; still unfixed after 3 failed rounds: reopen and re-plan the items concerned (`replanned`), which resets the count |
+| Blocker or Major inside the case list or the milestone's criteria | `fixed`; still unfixed after 3 failed rounds: reopen and re-plan the items concerned (`replanned`), which resets the count; reaching the cap again after that is stop reason 5 |
 | Finding outside them | `filed` as an item in a later milestone, or a follow-up in the last one |
 | Nit | Fixed or declined |
 
@@ -85,12 +85,12 @@ record, never in the contract, so the approval stands.
 An M or L item goes to a child thread; an XS or S item goes to a subagent. Every brief carries:
 
 - the item's contract slice: outcome, in and out of scope, definition of done, automated and human
-  tests, trace, and the cases it touches;
+  tests, trace, the cases it touches, and the defense;
 - the repository, the milestone branch on `origin`, the item branch name, and the files it may edit;
 - the five stop reasons, copied exactly, and the rule that anything else is a recorded assumption;
 - the reply route: the steering thread's ID for `send_thread_message`, and the report it expects
-  (branch and head, each done line with its evidence, the review record, assumptions, findings
-  outside the case list);
+  (a teach-back of the outcome, approach, risks and first check; branch and head; each done line
+  with its evidence; the review record; assumptions; findings outside the case list);
 - the rules: work test-first, run the item review, push the item branch, create no threads, merge
   nothing into `dev`.
 

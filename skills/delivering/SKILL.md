@@ -97,7 +97,7 @@ repository's isolation policy; preserve existing work and never reset or clean i
 - **Executor:** M and L items go to a child thread; XS and S items go to a subagent. The steering
   thread stays the one integration owner.
 - **The brief is the item's contract slice:** its outcome, in and out of scope, definition of done,
-  automated and human tests, trace, the cases it touches, the milestone branch on `origin`, the five
+  automated and human tests, trace, the cases it touches, the defense, the milestone branch on `origin`, the five
   stop reasons, and the reply route (the steering thread's ID, for `send_thread_message`).
 - **The child** works test-first with the build loop below, runs one fresh `goldfishing` critic
   review against its definition of done and the cases it touches, pushes its item branch, and
@@ -120,10 +120,11 @@ repository's isolation policy; preserve existing work and never reset or clean i
 4. **Gate 2:** after gate 1 passes, a second independent fresh review of the same head. Its record
    holds the drift check against the contract and the refreshed defense.
 5. Record one evidence line per criterion and per exit criterion, bound to that head.
-6. Squash-merge into `dev` (`mission_merge`), then read the merge back (`mission_reconcile`).
+6. Squash-merge into `dev` (`mission_merge`), then read the merge back (`mission_reconcile`;
+   without the plugin, `gh` and an agent ledger row citing the pre-authorized effect).
    There is no owner merge gate at any risk level. High risk means independent reviewers and the
    full case list, not a question to the owner.
-7. Send the checkpoint report to the recipients the contract names. It asks nothing.
+7. Send the checkpoint report to the threads the charter or contract names. It asks nothing.
 
 A review fails only on an open Blocker or Major inside the case list or the milestone's criteria.
 A repair makes a new head: both gates run again on it, and earlier reviews and evidence lapse.
@@ -135,7 +136,8 @@ policy decides, never the owner:
 
 - A Blocker or Major inside the case list or the milestone's criteria is **fixed**. If it is still
   not fixed after 3 failed rounds, reopen the items concerned and re-plan them (**replanned**),
-  keeping their criteria verbatim. Only "replanned" resets the gate's count.
+  keeping their criteria verbatim. Only "replanned" resets the gate's count. If the re-planned
+  and split items reach the cap again, that is stop reason 5.
 - A finding outside them is **filed** as an item in a later milestone, or as a follow-up when the
   current milestone is the last. It does not fail the review.
 - A Nit is fixed or declined and never fails a review.
@@ -153,7 +155,7 @@ meet its exit criteria after its items were re-planned and split.
   An effect that is not pre-authorized is stop reason 2.
 - A check that seems to need a person is scripted where possible (for example with browser
   automation), and its human test goes in the checkpoint report.
-- Usage is reported when the host shows it. It is never a stop: there is no budget to pause on.
+- Usage is reported when the host shows it. It is never a stop.
 
 ## J4 Watch the children
 

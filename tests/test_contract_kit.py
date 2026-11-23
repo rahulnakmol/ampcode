@@ -8,6 +8,7 @@ Run: python3 -m unittest tests.test_contract_kit -v
 """
 
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -48,6 +49,11 @@ def files(paths):
         yield from sorted(p for p in path.rglob("*") if p.is_file()) if path.is_dir() else [path]
 
 
+def searchable(text):
+    """Lower-case text with line wraps and runs of spaces collapsed and Markdown `\\_` escapes removed."""
+    return " ".join(text.split()).replace("\\_", "_").lower()
+
+
 def contract_text():
     return json.loads(CONTRACT_TEXT.read_text())
 
@@ -56,7 +62,7 @@ class BannedPhrases(unittest.TestCase):
     def test_list_b_finds_nothing(self):
         for path in files(BANNED_SEARCH):
             try:
-                text = path.read_text().lower()
+                text = searchable(path.read_text())
             except UnicodeDecodeError:
                 continue  # binary files hold no instructions
             for phrase in BANNED:
@@ -81,7 +87,8 @@ class CanonicalText(unittest.TestCase):
             for number, reason in enumerate(reasons, 1):
                 with self.subTest(file=str(path.relative_to(ROOT)), reason=number):
                     line = f"{number}. {reason}"
-                    self.assertTrue(line + "\n" in text, f"missing verbatim line: {line}")
+                    pattern = rf"^[ \t>]*{re.escape(line)}[ \t]*$"
+                    self.assertTrue(re.search(pattern, text, re.M), f"missing verbatim line: {line}")
 
     def test_report_sections_verbatim(self):
         text = (ROOT / REPORT_SECTIONS_FILE).read_text()
