@@ -279,8 +279,19 @@ class Rules(unittest.TestCase):
         self.assertEqual(self.rules(none), [])
         two = "E1 open tracker issues in acme/payments, E2 email the report to Priya Shah."
         self.assertEqual(self.rules(edit(row, row.replace("E1", "E2"), edit("E1 open tracker issues for Critical and High findings in acme/payments.", two))), [])
+        self.assertEqual(self.rules(edit("E1 open tracker issues for Critical and High findings in acme/payments.", "none: no outside effects", edit(row + "\n", ""))), [])
+        # An agent row naming an effect ID always cites a listed pre-authorization in that form.
+        for gate, evidence in (("File findings (E9)", "issues filed, read back"), ("File findings", "E9 pre-authorized at kickoff"),
+                               ("File findings", "preauthorized: charter E1")):
+            with self.subTest(gate=gate, evidence=evidence):
+                self.assertRule(edit(row, f"| {gate} | agent | open | {evidence} | - | - | - | - | - |"), "R13")
+        # A waived pre-authorized effect still needs its own recorded decider and source.
+        waived = "| File findings (E1) | agent | waived | pre-authorized: charter E1; no findings to file | - | - | Rahul Nakmol | written: email 21 Nov | 2026-11-21 |"
+        self.assertEqual(self.rules(edit(row, waived)), [])
+        self.assertRule(edit(row, waived.replace("written: email 21 Nov", "-")), "R6")
         # Recorded as a human gate, a pre-authorized effect would ask the owner a second time.
         self.assertRule(edit(row, "| File findings (E1) | human | open | - | - | - | - | - | - |"), "R13")
+        self.assertRule(edit(row, "| File findings (e1) | human | open | - | - | - | - | - | - |"), "R13")
         as_human = PASSED.replace("Charter and criteria", "Report release").replace("| charter above |", "| pre-authorized: charter E1 |")
         self.assertRule(edit(PASSED, PASSED + "\n" + as_human), "R13")
 
@@ -360,7 +371,7 @@ PLANNED = (
 class Contract(unittest.TestCase):
     def test_no_budget_or_owner_merge_gate_in_the_skill(self):
         for path in sorted(p for p in SKILL.rglob("*") if p.is_file() and "__pycache__" not in p.parts):
-            text = path.read_text().lower()
+            text = " ".join(path.read_text().split()).lower()  # a phrase may wrap across lines
             for phrase in BANNED:
                 with self.subTest(file=str(path.relative_to(SKILL)), phrase=phrase):
                     self.assertNotIn(phrase, text)

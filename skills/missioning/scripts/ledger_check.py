@@ -157,7 +157,7 @@ def check(text, base):
         add("R2", f"Playbook must be a playbook name or 'none: <reason>', not '{playbook}'")
     effects = get("Pre-authorized effects").strip()
     granted = set(re.findall(r"\bE\d+\b", effects))
-    if effects and not PLACEHOLDER.search(effects) and effects.lower() != "none" and not re.match(r"E\d+\b", effects):
+    if effects and not PLACEHOLDER.search(effects) and not re.match(r"none\b|E\d+\b", effects, re.I):
         add("R13", "Pre-authorized effects must be 'none' or a list of 'E<n> <effect>' entries")
 
     owner = people(get("Decision owner"))
@@ -183,14 +183,15 @@ def check(text, base):
             continue
         if re.match(r"(?:mission )?(?:charter|kickoff)\b", gate, re.I) and kind != "human":
             add("R5", f"gate '{gate}': the charter and kickoff gates are always human gates")
+        # Effect IDs: any case in the Gate; upper case only in Evidence, where hashes are lower case.
         pre = re.match(r"pre-authori[sz]ed\b(?::(.*))?", evidence, re.I)
-        named = set(re.findall(r"\bE\d+\b", gate))
+        named = {i.upper() for i in re.findall(r"\bE\d+\b", gate, re.I)}
+        cited = named | set(re.findall(r"\bE\d+\b", evidence))
         if kind == "human" and (pre or named & granted):
             add("R13", f"gate '{gate}': a pre-authorized effect is an agent row, not a human gate; do not ask for it again")
-        elif pre:
-            source = (pre.group(1) or "").strip()
-            cited = named | set(re.findall(r"\bE\d+\b", source))
-            if not source or source.split()[0].strip(".,;").lower() in ("-", "none") or PLACEHOLDER.search(source):
+        elif kind == "agent" and (pre or cited):
+            grant = (pre.group(1) or "").strip() if pre else ""
+            if not grant or grant.split()[0].strip(".,;").lower() in ("-", "none") or PLACEHOLDER.search(grant):
                 add("R13", f"gate '{gate}': Evidence must read 'pre-authorized: <source>'")
             elif not cited or not cited <= granted:
                 add("R13", f"gate '{gate}': name the effect's ID (E<n>) from the charter's Pre-authorized effects")

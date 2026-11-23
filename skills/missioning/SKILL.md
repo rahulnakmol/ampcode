@@ -100,9 +100,9 @@ The mission file holds both; each gate is one ledger row. Every playbook uses th
   good", an earlier conversation or silence is never an approval. Write the row after the answer.
 - **Effects.** A pre-authorized effect (a release, publish, outside send or apply the charter
   lists as `E<n>`) is an `agent` row naming its `E<n>`, with Evidence `pre-authorized: <source>`;
-  never ask for it again. Any other outside effect is a human Effects gate on the exact plan (stop reason 2).
-  Merges into the integration branch under the conductor's gates are agent rows at every risk
-  level: high risk means independent reviewers and the full case list, not an owner gate.
+  never ask for it again. Any other outside effect is a human Effects gate on the exact plan
+  (stop reason 2). Merges into the integration branch under the conductor's gates are agent rows
+  at every risk level: high risk means independent reviewers and the full case list.
 - **Stakeholder sign-offs** a conductor requires from people outside the agent loop (`planning`,
   `blueprinting`'s client authorities, a risk owner) stay human rows.
 - **Decision trail.** One row per consequential decision or assumption: date, decision, why,
@@ -121,13 +121,13 @@ The mission file holds both; each gate is one ledger row. Every playbook uses th
 4. Ask the decision owner through the host's tool, and any other approver for a tracker approval
    or written record, with the brief's first lines and its link. Record the answer with the brief.
 
-A gate whose review could not run stays `pending`, never `passed`. A self-review is not a fresh
-review. Name the reviewed brief's sha256 in the review record. At any review cap (3 failed
-rounds), this disposition policy decides, never the owner: fix each Blocker or Major inside the
-closed case list or the criteria; if still open, reopen and re-plan the items; file findings
-outside the list as later items, or follow-ups in the last milestone; fix or decline a Nit, which
-never fails a review. Record `fixed`, `replanned` or `filed`. Before kickoff, the kickoff brief
-lists the last review's open findings; never ask to approve an unreviewed revision.
+A gate whose review could not run stays `pending`, never `passed`; a self-review is not fresh.
+Name the reviewed brief's sha256 in the review record. At any review cap (3 failed rounds), this
+disposition policy decides, never the owner: fix each Blocker or Major inside the closed case
+list or the criteria; if still open, reopen and re-plan the items; file findings outside the list
+as later items, or follow-ups in the last milestone, without failing the review; fix or decline a
+Nit, which never fails one. Record `fixed`, `replanned` or `filed`. Before kickoff, the kickoff
+brief lists the last review's open findings; never ask to approve an unreviewed revision.
 
 ## 7. Report usage honestly
 
