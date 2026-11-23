@@ -183,13 +183,15 @@ def check(text, base):
             continue
         if re.match(r"(?:mission )?(?:charter|kickoff)\b", gate, re.I) and kind != "human":
             add("R5", f"gate '{gate}': the charter and kickoff gates are always human gates")
-        # Effect IDs: any case in the Gate; upper case only in Evidence, where hashes are lower case.
+        # Effect IDs: '(E<n>)' in the Gate, any case; in Evidence, upper case and only when it
+        # speaks of pre-authorization, so codes such as 'E501' or 'rustc E0308' stay plain evidence.
         pre = re.match(r"pre-authori[sz]ed\b(?::(.*))?", evidence, re.I)
-        named = {i.upper() for i in re.findall(r"\bE\d+\b", gate, re.I)}
-        cited = named | set(re.findall(r"\bE\d+\b", evidence))
+        mentions = re.search(r"\bpre-?authori[sz]ed\b", evidence, re.I)
+        named = {i.upper() for i in re.findall(r"\((E\d+)\)", gate, re.I)}
+        cited = named | (set(re.findall(r"\bE\d+\b", evidence)) if mentions else set())
         if kind == "human" and (pre or named & granted):
             add("R13", f"gate '{gate}': a pre-authorized effect is an agent row, not a human gate; do not ask for it again")
-        elif kind == "agent" and (pre or cited):
+        elif kind == "agent" and (mentions or cited):
             grant = (pre.group(1) or "").strip() if pre else ""
             if not grant or grant.split()[0].strip(".,;").lower() in ("-", "none") or PLACEHOLDER.search(grant):
                 add("R13", f"gate '{gate}': Evidence must read 'pre-authorized: <source>'")
