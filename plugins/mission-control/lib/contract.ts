@@ -49,6 +49,9 @@ export type Result = { criterion: string; result: string }
 export type ItemState = {
 	id: string; origin: 'contract' | 'finding'; status: 'planned' | 'delegated' | 'done'
 	executor?: { kind: 'thread' | 'subagent'; id: string }; evidence?: Result[]; review?: { reviewer: string; record: string }
+	// The gates whose "replanned" disposition reopened the item, kept until it is delegated or done again,
+	// so a disposition on the other gate can name it too.
+	reopened?: (1 | 2)[]
 }
 export type Review = { gate: 1 | 2; fingerprint: string; passed: boolean; reviewer: string; record: string }
 export type MilestoneState = {
@@ -421,7 +424,7 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 			if (a.executor.kind === 'thread') { if (typeof a.executor.id !== 'string' || !/^T-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(a.executor.id)) fail('executor.id', 'a thread ID such as T-01a2… is required') }
 			else if (a.executor.kind === 'subagent') str(a.executor.id, 'executor.id')
 			else fail('executor.kind', 'thread or subagent is required')
-			state.status = 'delegated'; state.executor = { kind: a.executor.kind, id: a.executor.id }
+			state.status = 'delegated'; state.executor = { kind: a.executor.kind, id: a.executor.id }; delete state.reopened
 			break
 		}
 		case 'item-done': {
@@ -431,7 +434,7 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 			const evidence = results(a.evidence, 'evidence', def.done)
 			shape(a.review, 'review', ['reviewer', 'record']); str(a.review.reviewer, 'review.reviewer'); str(a.review.record, 'review.record')
 			if (a.review.reviewer === s.thread) fail('review.reviewer', 'the review must be fresh, not by the mission thread')
-			state.status = 'done'; state.evidence = evidence; state.review = { reviewer: a.review.reviewer, record: a.review.record }
+			state.status = 'done'; state.evidence = evidence; state.review = { reviewer: a.review.reviewer, record: a.review.record }; delete state.reopened
 			// Work done after a candidate (a reopened or amended item) voids the milestone's reviews and evidence.
 			if (m.candidate) { m.generation++; m.reviews = []; delete m.evidence }
 			break
@@ -476,11 +479,12 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 			else if (a.outcome === 'replanned') {
 				for (const itemId of itemIds) {
 					if (!itemsIn(s, m.id).some(i => i.id === itemId)) fail('itemIds', `${itemId} is not an item of ${m.id}`)
-					if (stateOf(s, itemId).status === 'planned') fail('itemIds', `${itemId} is not done or delegated, so there is nothing to reopen`)
+					const state = stateOf(s, itemId)
+					if (state.status === 'planned' && !(state.reopened && !state.reopened.includes(g))) fail('itemIds', `${itemId} is not done or delegated, so there is nothing to reopen`)
 				}
 				for (const itemId of itemIds) {
 					const state = stateOf(s, itemId)
-					state.status = 'planned'; delete state.executor; delete state.evidence; delete state.review
+					state.status = 'planned'; state.reopened = [...(state.reopened ?? []), g]; delete state.executor; delete state.evidence; delete state.review
 				}
 				// Reopened work voids the milestone's reviews and evidence, even on the same head.
 				m.generation++; m.reviews = []; delete m.evidence

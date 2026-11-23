@@ -261,7 +261,7 @@ describe('P13 review cap: only a replanned disposition resets a gate', () => {
 		let r = evidence(review(withCandidate(itemsDone(approved(), 'M1'), 'M1'), 'M1', 1, true), 'M1')
 		for (let i = 0; i < 3; i++) r = review(r, 'M1', 2, false)
 		r = update(r, { type: 'disposition', milestoneId: 'M1', gate: 2, outcome: 'replanned', record: 'Cap: replanned', itemIds: ['W1'] })
-		expect(itemOf(r, 'W1')).toEqual({ id: 'W1', origin: 'contract', status: 'planned' })
+		expect(itemOf(r, 'W1')).toEqual({ id: 'W1', origin: 'contract', status: 'planned', reopened: [2] })
 		expect(itemOf(r, 'W2').status).toBe('done')
 		expect(milestoneOf(r, 'M1').evidence).toBeUndefined()
 		expect(milestoneOf(r, 'M1').failed).toEqual([0, 0])
@@ -360,6 +360,17 @@ describe('Amend: a non-digest item field keeps approval', () => {
 		r = amend(r, c)
 		expect(r.preflight).toBeUndefined()
 		expect(() => advance(r, { type: 'approval-pending', kind: 'kickoff', digest })).toThrow('preflight')
+		// The same change while the kickoff dialog is open keeps the dialog but refuses its approval.
+		let open = createRecord(THREAD, contract)
+		open = advance(open, { type: 'preflight', digest, results: [{ check: 'dev exists', passed: true, detail: 'found' }] })
+		open = amend(advance(open, { type: 'approval-pending', kind: 'kickoff', digest }), c)
+		expect(open.pendingApproval?.digest).toBe(digest)
+		expect(() => advance(open, { type: 'approve', digest, responder: 'user-owner' })).toThrow('preflight')
+	})
+	test('Gate 2 must come from a reviewer other than the gate 1 reviewer', () => {
+		const r = review(withCandidate(itemsDone(approved(), 'M1'), 'M1'), 'M1', 1, true, 'TU-same')
+		expect(() => review(r, 'M1', 2, true, 'TU-same')).toThrow('independent')
+		expect(milestoneOf(review(r, 'M1', 2, true, 'TU-other'), 'M1').reviews).toHaveLength(2)
 	})
 	test('Amend renaming an item while keeping the digest is refused, so its outcome cannot change that way', () => {
 		const c = clone(); c.items[1].id = 'W2x'; c.items[1].outcome = 'W2 does something wider'
@@ -432,6 +443,20 @@ describe('Amend: a non-digest item field keeps approval', () => {
 		const other = update(failedOnce(1), { type: 'disposition', milestoneId: 'M1', gate: 2, outcome: 'replanned', record: 'Wrong gate', itemIds: ['W1'] })
 		expect(milestoneOf(other, 'M1').failed).toEqual([1, 0])
 		expect(() => update(other, { type: 'replan', itemId: 'W1', into })).toThrow('on each failing gate')
+	})
+	test('Replan after failed rounds on both gates: a replanned disposition on each gate, naming the same reopened item, allows it', () => {
+		let r = withCandidate(itemsDone(approved(), 'M1'), 'M1')
+		r = review(r, 'M1', 1, false)
+		r = review(review(r, 'M1', 1, true), 'M1', 2, false, 'TU-other')
+		expect(milestoneOf(r, 'M1').failed).toEqual([1, 1])
+		const into = [item('W1x', 'M1', ['W1 criterion a', 'W1 criterion b'])]
+		r = update(r, { type: 'disposition', milestoneId: 'M1', gate: 2, outcome: 'replanned', record: 'Gate 2', itemIds: ['W1'] })
+		expect(() => update(r, { type: 'replan', itemId: 'W1', into })).toThrow('on each failing gate')
+		r = update(r, { type: 'disposition', milestoneId: 'M1', gate: 1, outcome: 'replanned', record: 'Gate 1', itemIds: ['W1'] })
+		expect(milestoneOf(r, 'M1').failed).toEqual([0, 0])
+		expect(update(r, { type: 'replan', itemId: 'W1', into }).contract.items.map(i => i.id)).toContain('W1x')
+		// An item that was never reopened still has nothing to reopen.
+		expect(() => update(update(approved(), { type: 'file', item: item('X1', 'M2', ['X1 criterion']) }), { type: 'disposition', milestoneId: 'M1', gate: 1, outcome: 'replanned', record: 'r', itemIds: ['W1'] })).toThrow('nothing to reopen')
 	})
 	test('Amend changing the digest may not rewrite an item outcome in a failed milestone', () => {
 		const c = clone(); c.items[0].outcome = 'W1 does something else'; c.spec = `${c.spec} (revised)`
