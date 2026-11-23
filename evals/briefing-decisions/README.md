@@ -1,18 +1,17 @@
 # briefing-decisions evaluation
 
 Tests whether a non-technical reader understands a sign-off better from a decision brief than
-from mission-control's raw design dialog. Results: [results.md](results.md).
+from the raw design dialog of mission-control's retired v1 flow. Results: [results.md](results.md).
 
 ## Rerun
 
 1. Edit [brief.md](brief.md), then `python3 skills/briefing-decisions/scripts/brief_check.py evals/briefing-decisions/brief.md`.
-   Push the edit and set the brief link in `make-record.ts` to the new commit, so the stored text
-   and the linked page match.
-2. Run `bun evals/briefing-decisions/make-record.ts` from the repository root. It rebuilds
-   [record.json](record.json) and the preview fixture `plugins/mission-control/fixtures/demo-mission.json`
-   from the brief; a test checks they are byte-equal.
-3. Give each text to its own fresh reader with the `goldfishing` novice lens, using the persona
-   and four questions in [answer-key.md](answer-key.md). Then give a separate fresh judge only the
-   answer key and the answers.
-4. Record answers, grades and quotes in `results.md`. Pass: the brief reader answers all four
+2. Give each text, [brief.md](brief.md) and [todays-packet.md](todays-packet.md), to its own fresh
+   reader with the `goldfishing` novice lens, using the persona and four questions in
+   [answer-key.md](answer-key.md). Then give a separate fresh judge only the answer key and the answers.
+3. Record answers, grades and quotes in a new results file. Pass: the brief reader answers all four
    correctly.
+
+The 16 Nov 2026 run in [results.md](results.md) is kept as history. Its v1 mission record
+(`record.json`) and the script that built it (`make-record.ts`) were removed when mission-control
+retired the v1 and v2 mission schemas; both are in the Git history, for example at commit `a17e71b`.

@@ -47,7 +47,12 @@ below are allowed and ignored by the checker.
   `tracker` (an approval in the tracker, such as GitHub `/approve`), `written` (a signed document,
   email or a client decision record). Only the Decision owner answers a `dialog` or `question`:
   the session belongs to them. Other approvers sign by `tracker` or `written`. Anything else, chat
-  included, is not an approval.
+  included, is not an approval, with one exception: the Decision owner's reply to the kickoff
+  question (the message that asks the owner to approve the kickoff brief or a baseline revision
+  of it), quoted with its message ID, is recorded as `written: <thread> message <ID>` on the
+  Kickoff gate row only; each revision's reply gets its own Kickoff row (for example
+  `Kickoff r2`), and a passed row is never edited. A reply to any other message, including one
+  that links another gate's brief, is chat and never an approval. The checker cannot verify this.
 - **Decision trail:** under `## Decision trail`, a table with headers Date, Decision, Why,
   Evidence, Decider. Add rows; never rewrite them (the checker cannot verify this). A conductor
   that already keeps decision provenance adds one row that links it.
@@ -79,7 +84,7 @@ recorded assumption, taken from the open question's default or a safe, reversibl
 | R10 | A passed agent gate has Evidence that is not a placeholder |
 | R11 | A waived gate gives its reason in Evidence, not a placeholder; it is never reported as passed |
 | R12 | The decision trail table has its five headers, and every row names a Decider |
-| R13 | Pre-authorized effects is `none` or a list of `E<n> <effect>` entries. An `agent` row whose Evidence starts with "pre-authorized", whose Gate names `(E<n>)`, or whose Evidence speaks of pre-authorization and names an `E<n>` (upper case) has Evidence `pre-authorized: <source>`, and names only `E<n>` IDs the charter lists, at least one. A human row's Evidence never starts with "pre-authorized", and its Gate never names a listed `(E<n>)`. Other codes such as `E501` are plain evidence |
+| R13 | Pre-authorized effects is `none` (which grants no ID, even one named after it) or a list of `E<n> <effect>` entries. An `agent` row whose Evidence starts with "pre-authorized", whose Gate names `(E<n>)`, or whose Evidence speaks of pre-authorization and names an `E<n>` (upper case) has Evidence `pre-authorized: <source>`, and names only `E<n>` IDs the charter lists, at least one. A human row's Evidence never starts with "pre-authorized" and never speaks of pre-authorization while naming a listed `E<n>`, and its Gate never names a listed `(E<n>)`. Other codes such as `E501` are plain evidence |
 
 ## Template
 

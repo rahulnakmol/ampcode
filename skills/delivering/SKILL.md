@@ -83,8 +83,9 @@ Read [reference/mission-record.md](reference/mission-record.md) when starting or
 9. **Ask once.** With the plugin: `mission_start({ contract })`, `mission_preflight`, then
    `mission_approve`, which opens one dialog where the owner ticks each default and effect.
    Without it: one message that links the brief and asks for one reply; record the reply as a
-   human ledger row quoting the owner's words and the message ID. Changes in the reply are applied
-   to the baseline before execution starts and are not asked again.
+   human ledger row quoting the owner's words and the message ID. An answer that changes a default
+   or an effect is applied before execution starts and is not asked again; any other change is a
+   new baseline revision that needs its own kickoff reply.
 
 Until kickoff is approved, only read, research, draft, review, and publish the brief and record.
 Take no effect. A generic request to build is not approval of an unseen contract.
@@ -120,7 +121,7 @@ repository's isolation policy; preserve existing work and never reset or clean i
 2. Run the tests. **Wait for PR and CI results** with the host's tool in `missioning`'s
    [reference/hosts.md](../missioning/reference/hosts.md). On a host without Amp's GitHub events,
    `scripts/pr_watch.py` waits; [reference/hosts-pr-watch.md](reference/hosts-pr-watch.md) gives
-   its usage.
+   its usage. Red CI is fixed on the milestone branch.
 3. **Gate 1:** a fresh critic review with `interrogating-changes` of the whole milestone diff
    against the milestone's criteria and the closed case list. Its findings go in a ledger that
    `review_ledger.py check` passes.
@@ -129,9 +130,9 @@ repository's isolation policy; preserve existing work and never reset or clean i
    the whole candidate diff; a flag without an accepted reason blocks, as a finding of at least
    Major. Its record holds the drift check against the contract and the refreshed defense.
 5. Record one evidence line per criterion and per exit criterion, bound to that head.
-6. Squash-merge into `dev` (`mission_merge`) under ship, then read the merge back
-   (`mission_reconcile`; without the plugin, `gh` and an agent ledger row citing the
-   pre-authorized effect). Under stop, merge nothing (see below).
+6. Squash-merge into `dev` (`mission_merge`) under ship, only when the required checks are green,
+   then read the merge back (`mission_reconcile`; without the plugin, `gh` and an agent ledger
+   row citing the pre-authorized effect). Under stop, merge nothing (see below).
    There is no owner merge gate at any risk level. High risk means independent reviewers and the
    full case list, not a question to the owner. Any promotion after `dev` (to `rolling` or `main`)
    uses `releasing` and is an outside effect: run it only when the contract pre-authorizes that

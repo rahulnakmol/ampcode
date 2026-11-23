@@ -1,0 +1,242 @@
+{
+  "schemaVersion": 3,
+  "missionId": "one-approval-missions",
+  "repository": "rahulnakmol/ampcode",
+  "outcome": "Every mission run with the missioning and delivering skills gets one approval at kickoff, then runs milestone by milestone, merging into dev at each checkpoint, and stops only for the five stop reasons.",
+  "scope": {
+    "in": [
+      "The mission-control plugin: contract record, dialogs, reports, tools and hooks",
+      "The mission guides"
+    ],
+    "out": [
+      "Promotion to rolling or main",
+      "Deployment",
+      "Agent teams",
+      "A migration tool for old v1 or v2 records"
+    ]
+  },
+  "spec": "Vague intent becomes one baselined contract. The contract gets one approval at kickoff. Execution is autonomous, milestone by milestone. Each milestone merges into dev at a checkpoint. The steering thread waits for the owner only for one of the five stop reasons. No mission stops on token use, and there are no agent teams.",
+  "design": {
+    "high": "A schema 3 contract record replaces the v1 single-PR flow and the v2 shadow flow. It binds the kickoff approval to a digest of the baseline, tracks items, milestones and reviews, merges milestones into dev with no owner dialog, and writes checkpoint and close-out reports.",
+    "low": "lib/contract.ts holds the schema, digest and replayed reducer; lib/github.ts the readiness preflight and milestone merges; lib/brief.ts the kickoff and effect dialogs; lib/report.ts the reports; index.ts the tools, hooks and the reopen command."
+  },
+  "ux": [
+    "https://ampcode.com/artifacts/visuals/contract-mission-ux-d6ffda90-8d6a-49fd-86fe-8f77a5fa2041"
+  ],
+  "defense": "Approval is valid only for the digest it was given on. Nothing merges into dev without both reviews and evidence bound to the exact candidate and the required checks green. The plugin never records a human answer that an agent supplied. Every stop names one of the five reasons. A cap ends in a recorded fixed, replanned or filed disposition. There is one steering owner.",
+  "cases": [
+    {
+      "id": "P1",
+      "case": "An agent supplies an internal action through mission_update",
+      "mitigation": "Refused"
+    },
+    {
+      "id": "P2",
+      "case": "The contract changes while the kickoff dialog is open",
+      "mitigation": "Stale; nothing recorded"
+    },
+    {
+      "id": "P3",
+      "case": "A change after approval to any digest part",
+      "mitigation": "Approval and preflight voided; merge blocked"
+    },
+    {
+      "id": "P9",
+      "case": "An effect that is pre-authorized; one listed but not pre-authorized; one not in the contract",
+      "mitigation": "No dialog, recorded; dialog; dialog, recorded as performed, contract unchanged"
+    },
+    {
+      "id": "P11",
+      "case": "Every path other than kickoff, re-approval, a non-pre-authorized effect and their reopen command",
+      "mitigation": "0 dialogs"
+    },
+    {
+      "id": "P12",
+      "case": "Kickoff answered in each of the seven ways",
+      "mitigation": "Read in the order rule; the reopen quick action shows exactly in cases 1 to 3"
+    }
+  ],
+  "openQuestions": [
+    {
+      "id": "Q1",
+      "question": "May a milestone merge into dev without your approval once its gates pass, at any risk level?",
+      "default": "Yes, once CI and both reviews pass"
+    },
+    {
+      "id": "Q2",
+      "question": "At a review cap, follow the disposition policy instead of asking you?",
+      "default": "Yes: fix, re-plan or split, or file findings outside the case list"
+    },
+    {
+      "id": "Q3",
+      "question": "M and L items in child threads, XS and S items as subagents?",
+      "default": "Yes"
+    },
+    {
+      "id": "Q4",
+      "question": "Run this mission as the first under the new contract?",
+      "default": "Yes"
+    },
+    {
+      "id": "Q5",
+      "question": "Remove the now-obsolete gates and budget rules everywhere, including the published mission-control?",
+      "default": "Yes: delete the v1 and v2 flows; old records show a retired schema message"
+    },
+    {
+      "id": "Q6",
+      "question": "Which skills does publish when done cover?",
+      "default": "The 7 published skills this mission changes, plus mission-control"
+    }
+  ],
+  "effects": [
+    {
+      "id": "E1",
+      "effect": "Publish the changed skills and mission-control to the Personal Skills and Personal Plugins repositories at close-out, when each published copy still equals dev at the base of M1",
+      "preAuthorized": true,
+      "source": "Owner message in the wave 0 integration thread, 2026-11-22 11:52 UTC: Also publish when done, no need to ask"
+    },
+    {
+      "id": "E2",
+      "effect": "Squash-merge each milestone PR into dev when green",
+      "preAuthorized": true,
+      "source": "Owner global AGENTS.md: CI approval is sufficient and manual approval is not required"
+    },
+    {
+      "id": "E3",
+      "effect": "Push mission and item branches to origin, and delete them after merge",
+      "preAuthorized": true,
+      "source": "Owner global AGENTS.md: push the branch to origin; after merge, delete the branch locally and remotely"
+    }
+  ],
+  "readiness": [
+    {
+      "id": "R1",
+      "check": "Child threads",
+      "evidence": "create_thread, send_thread_message and wait_for_threads are available in the mission thread"
+    },
+    {
+      "id": "R2",
+      "check": "Personal Plugins repository",
+      "evidence": "Cloned and writable; its mission-control equals dev at the base of M1"
+    },
+    {
+      "id": "R3",
+      "check": "Personal Skills repository",
+      "evidence": "Cloned and writable; the 7 changed skills equal dev at the base of M1"
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M2",
+      "title": "Plugin runs contract missions",
+      "exit": [
+        "make check is green and CI is green on the PR",
+        "Gate 1 and gate 2 reviews pass against P1 to P18"
+      ]
+    },
+    {
+      "id": "M3",
+      "title": "Guides",
+      "exit": [
+        "make check is green and CI is green on the PR",
+        "Both reviews pass against K1, K2 and K4 for the guides"
+      ]
+    }
+  ],
+  "items": [
+    {
+      "outOfScope": [
+        "Tools, dialogs, GitHub calls, v1 and v2 code"
+      ],
+      "dependsOn": [],
+      "id": "W1",
+      "title": "Contract record and reducer",
+      "milestone": "M2",
+      "size": "M",
+      "outcome": "The plugin has a validated schema 3 contract, the approval digest, the milestone fingerprint, and a replayed reducer for the 12 public and 7 internal actions.",
+      "inScope": [
+        "plugins/mission-control/lib/contract.ts",
+        "tests/mission-contract.test.ts"
+      ],
+      "done": [
+        "Each of the 37 invalid contracts is refused naming the field",
+        "Each of the 13 digest parts changed voids approval",
+        "A tampered event or a differing projection is refused on reload"
+      ],
+      "automatedTest": "bun test tests/mission-contract.test.ts",
+      "humanTest": "Run bun test tests/mission-contract.test.ts and see a passing test named after each case ID",
+      "trace": [
+        "SC1",
+        "SC2",
+        "SC5",
+        "SC7"
+      ]
+    },
+    {
+      "outOfScope": [
+        "Tool wiring",
+        "The brief rules"
+      ],
+      "dependsOn": [
+        "W1"
+      ],
+      "id": "W3",
+      "title": "Dialogs and reports",
+      "milestone": "M2",
+      "size": "S",
+      "outcome": "The kickoff and effect dialogs and the checkpoint and close-out reports are built from a record.",
+      "inScope": [
+        "plugins/mission-control/lib/brief.ts",
+        "plugins/mission-control/lib/report.ts",
+        "plugins/mission-control/fixtures/contract-mission.json"
+      ],
+      "done": [
+        "The kickoff dialog has 1 brief link, 9 unticked checkboxes, 1 optional Changes field and a Submit button",
+        "The 7 kickoff answers give the results of the order rule",
+        "The checkpoint report asks nothing and lists the merged PR, evidence, assumptions, filed items and the next milestone"
+      ],
+      "automatedTest": "bun test tests/mission-contract.test.ts",
+      "humanTest": "Print the kickoff dialog options and a checkpoint report for the fixture with bun -e, then compare them with the UX states",
+      "trace": [
+        "SC1",
+        "SC2"
+      ]
+    },
+    {
+      "outOfScope": [
+        "Research and evaluation docs"
+      ],
+      "dependsOn": [
+        "W1"
+      ],
+      "id": "W12",
+      "title": "Guides",
+      "milestone": "M3",
+      "size": "M",
+      "outcome": "A reader can start and run a contract mission from the guides.",
+      "inScope": [
+        "README.md",
+        "docs/mission-control.md",
+        "docs/mission-driven-development.md",
+        "docs/using-skills.md",
+        "plugins/README.md"
+      ],
+      "done": [
+        "List B finds nothing in the 5 guide files",
+        "Each kickoff prompt names the contract, the preflight and one approval",
+        "The canonical stop text is present in each guide"
+      ],
+      "automatedTest": "python3 -m unittest tests.test_contract_kit",
+      "humanTest": "Follow the kickoff steps in docs/mission-control.md in a scratch thread, up to the kickoff dialog",
+      "trace": [
+        "SC3",
+        "SC4",
+        "SC6"
+      ]
+    }
+  ],
+  "brief": {
+    "markdown": "---\ndecision: Approve the mission contract, so missions ask you at kickoff and then stop only for the reasons in this brief.\nyes: The agent builds it in three milestones. Each merges into dev after its tests and two fresh reviews pass. You get short reports, then the result is published to your Amp.\nno: Nothing changes. Missions keep asking you at merges, review limits and budget limits.\nrisks:\n  - Milestones merge into dev without your approval, however risky, once tests and two fresh reviews pass.\n  - At a review limit the agent fixes, splits or files the problem itself.\n  - Old mission flows and budget rules are removed, also from your published plugin.\n  - Missions have no spending limit; reports show usage.\n  - A wrong rule, such as a missing stop, could reach your Amp before your end review.\nexcluded:\n  - Release to production through rolling or main, which waits until all waves are done.\n  - Removing the stakeholder sign-off steps of planning and blueprinting missions.\n---\n\n## You are deciding\n\nApprove one contract for this mission. It changes your mission skills and plugin, the tools that run your missions. Afterwards, a mission asks you once, at kickoff, and then runs on its own. Your last three missions stopped for you again and again: for merges, review limits, budgets and live checks. This is the only planned stop in this mission.\n\nTo approve, reply in the mission thread with \"Approve the mission contract\". You can change any of the defaults below in the same reply.\n\n### Defaults you accept by approving\n\n- Finished milestones merge into dev without asking you, however risky the change.\n- When reviews keep failing, the agent fixes, splits or files the problem itself. A milestone merges only when no serious problem inside the checks this contract sets is open. Problems outside those checks become later work and appear in the report.\n- Big work items run in child threads, and small ones as helper agents inside the mission thread.\n- This mission is the first one run under the new contract.\n- The old mission flows, the merge approval and all budget rules are removed, also from your published plugin.\n- Publishing updates the seven skills and the plugin you already published. It adds nothing new.\n\n### When a mission will still stop and ask you\n\n1. Something you approved turns out to be wrong or in conflict.\n2. It needs an outside action you did not approve in advance, such as a release.\n3. It needs a fact only a person knows, and there is no safe default.\n4. It meets a security, legal or safety line.\n5. A milestone cannot be finished, even after the work was re-planned.\n\nPlanning and blueprinting missions still stop for their stakeholder sign-offs, as today.\n\n## If you say yes\n\n- The agent changes the skills first, so the next missions can build on them. Then it changes the plugin, then the guides.\n- Each of these three milestones merges into dev when its tests and two fresh reviews pass.\n- After each merge you get a short report. It asks nothing.\n- At the end, the agent publishes the changed skills and plugin to your Amp. You said this needs no further approval. To withdraw that, add \"ask me before publishing\" to your reply.\n- Publishing to your Amp at the end is not held. You confirmed that only releases to rolling and main wait for all waves.\n- You then review the result when it suits you.\n\n**What it costs you:** this approval, three short reports to read, and an end review. Agent usage is billed to your Amp account as usual, with no limit, as you asked. We cannot estimate the money in advance; each report shows the usage so far. This also applies to later missions. Our guess, not a measure, is one to three days of agent work.\n\n## If you say no\n\nNothing changes. Missions keep stopping for merge approvals, review limits and budget limits. You can change a default in your reply instead of saying no.\n\n## What changes\n\n1. Future missions ask you once, at kickoff, in one dialog with a box to tick for each default. This mission uses your reply instead, because it builds that dialog.\n2. Work is split into small items and milestones. Each milestone merges into dev, and you get a report.\n3. The agent stops only for the five reasons above, or a stakeholder sign-off.\n4. Budgets, the merge approval and the review-limit question are gone.\n5. Before kickoff, the agent checks that GitHub, the automatic tests and every place the work will go are ready. Live checks run as scripted tests, and you get a script to try yourself.\n6. The mission thread restarts child threads that stop, so none waits idle.\n\n## What done looks like\n\n1. A test mission with two milestones opens exactly one dialog and merges twice.\n2. No skill or plugin text asks for a budget or a merge approval in dev.\n3. A fresh agent, given 16 past situations, asks you only at kickoff and in the one conflict with something you approved.\n4. Your published copies match the merged work, and the report names the commits.\n\n## What we checked and what we did not\n\n**Checked:** GitHub access, the protected dev branch, the automatic tests and both of your publishing repositories are ready. Your published copies match today's dev exactly. Fresh reviewers checked the contract and this brief three times. We fixed what they found; the last fixes were not checked again. A fourth reviewer checked the new milestone order.\n\n**Not checked:** how the new dialog looks inside Amp itself. The mockups show it. After the second report, reply \"show me the preview\" to see the real dialog. The preview records nothing.\n\n## Risks you accept\n\n- Milestones merge into dev without your approval, however risky, once tests and two fresh reviews pass.\n- At a review limit the agent fixes, splits or files the problem itself.\n- Old mission flows and budget rules are removed, also from your published plugin.\n- Missions have no spending limit; reports show usage.\n- A wrong rule, such as a missing stop, could reach your Amp before your end review.\n\n## Not included\n\n- Release to production through rolling or main, which waits until all waves are done.\n- Removing the stakeholder sign-off steps of planning and blueprinting missions.\n\n## How to undo it\n\nReply in the mission thread at any time. Say \"revert milestone 2\", for example, and the agent reverts that merge in a few minutes. Reply \"restore the published versions\", and it restores your previous skills and plugin in about ten minutes. After publishing, also say \"restore the published versions\" if your Amp should drop the change too. To stop the mission at any point, reply \"stop the mission\"; the agent stops after the current step and reports. Undo does not reverse what other missions did under the new rules in the meantime.\n\n## Words you may not know\n\n- **dev:** the shared branch where finished work lands before any release.\n- **Milestone:** a group of work items that merge together and end with a report.\n- **Review limit:** the number of review rounds allowed before the agent must decide what to do with an open problem.\n- **Fresh review:** a check by a new agent that has not seen the author's work notes.\n- **Child thread:** a separate Amp thread that does one big work item and reports back to the mission thread.\n- **Helper agent:** a short-lived agent inside the mission thread that does one small work item.\n- **Branch:** a separate line of changes that does not affect others until it is merged.\n- **Merge:** adding a branch's changes into another branch, here into dev.\n- **Mission thread:** the Amp thread where this mission runs and where you reply.\n\n<details><summary>Technical record</summary>\n\n- Contract: https://ampcode.com/artifacts/mission-contract-one-approval-missions-a27099d0-8c70-4792-b6a0-241adf976dd1, baseline revision 5, sha256 2fb2266a2371fd52d59fc64fac0a515adbdf133f772a406f5fb65c65d0cb167c.\n- UX mockups: https://ampcode.com/artifacts/visuals/contract-mission-ux-d6ffda90-8d6a-49fd-86fe-8f77a5fa2041.\n- Analysis: https://ampcode.com/artifacts/wave-0-interruptions-root-causes-and-the-one-approval-missio-bf3074f2-591d-45b6-b7d6-bc89f8d4233e revision 2.\n- The last three missions: wave 0 missions 1 and 2, and the CERN Global Grants demo.\n- Base: rahulnakmol/ampcode origin/dev 3974ceb (was 0fe5e12; waves 1 and 2 milestones since). Published copies rechecked equal: plugins 91da57f, skills 197a84b.\n- Defaults map to contract section 7: Q1 dev merge, Q2 cap disposition, Q3 child threads for M and L items and subagents for XS and S, Q4 first mission, Q5 remove v1 and v2 flows and budget rules, Q6 publish scope.\n- Pre-authorized effects: E1 publish (owner message, wave 0 integration thread, 2026-11-22 11:52 UTC, \"Also publish when done, no need to ask\"); E2 squash-merge milestones into dev; E3 push and delete mission branches.\n- Estimate of one to three days is the agent's own, not measured.\n\n</details>\n",
+    "url": "https://ampcode.com/artifacts/mission-contract-one-approval-missions-a27099d0-8c70-4792-b6a0-241adf976dd1"
+  }
+}

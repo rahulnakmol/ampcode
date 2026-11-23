@@ -14,16 +14,17 @@ The contract is the baseline the owner approves once. Its fields:
 
 | Field | Holds |
 | --- | --- |
-| Outcome, scope (in, out), spec | What changes for whom, and what does not |
-| Design (high, low), UX links | The technical design and the rendered UX states |
-| Defense | The whiteboard defense record |
-| Cases | The closed case list: ID, case, expected result. Adversarial review covers exactly these |
-| Open questions | ID, question, default. Each default is taken unless the owner changes it |
-| Effects | ID, effect, pre-authorized or not, source. Every outside effect the mission needs |
-| Readiness | ID, check, evidence: the preflight results, including targets outside GitHub |
-| Milestones | ID, title, exit criteria; they merge in this order |
-| Items | ID, title, milestone, size (XS, S, M or L), outcome, in scope, out of scope, dependencies, done, automated test, human test, trace |
-| Brief | The kickoff brief's text and link |
+| `schemaVersion`, `missionId`, `repository` | The contract version (3), the mission's ID and the repository (`owner/name`) |
+| `outcome`, `scope` (`in`, `out`), `spec` | What changes for whom, and what does not |
+| `design` (`high`, `low`), `ux` | The technical design and the rendered UX states (https links) |
+| `defense` | The whiteboard defense record |
+| `cases` | The closed case list: `id`, `case`, `mitigation`. Adversarial review covers exactly these |
+| `openQuestions` | `id`, `question`, `default`. Each default is taken unless the owner changes it |
+| `effects` | `id`, `effect`, `preAuthorized`, `source`. Every outside effect the mission needs |
+| `readiness` | `id`, `check`, `evidence`: the preflight results, including targets outside GitHub |
+| `milestones` | `id`, `title`, `exit` (the exit criteria); they merge in this order |
+| `items` | `id`, `title`, `milestone`, `size` (XS, S, M or L), `outcome`, `inScope`, `outOfScope`, `dependsOn`, `done`, `automatedTest`, `humanTest`, `trace` |
+| `brief` | `markdown` and `url`: the kickoff brief's text and link |
 
 An item depends only on items in the same or an earlier milestone, and no item is larger than L.
 Re-planning or splitting an item keeps its done criteria verbatim in the same milestone. Any other
