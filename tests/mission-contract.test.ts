@@ -160,6 +160,21 @@ describe('P3 P4 P5 approval: a baseline change voids it, a re-plan and a filed i
 		const d = clone(); d.milestones[1].title = 'Second, renamed'
 		expect(amend(approved(), d).approval).toBeUndefined()
 	})
+	test('P3.13c editing the brief text voids approval; re-sending the same contract with its keys in another order keeps it', () => {
+		const c = clone(); c.brief.markdown = c.brief.markdown.replace('<details>', 'This line is new.\n\n<details>')
+		expect(c.brief.markdown).not.toBe(contract.brief.markdown)
+		expect(amend(approved(), c).approval).toBeUndefined()
+		const reversed = (v: any): any => Array.isArray(v) ? v.map(reversed) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).reverse().map(([k, x]) => [k, reversed(x)])) : v
+		expect(Object.keys(reversed(contract))[0]).toBe('brief')
+		expect(isApproved(amend(approved(), reversed(contract)))).toBe(true)
+	})
+	test('P3.13d a merged milestone and its items cannot be amended', () => {
+		const r = merged(approved(), 'M1')
+		const c = clone(); c.milestones[0].exit = ['M1 exit green', 'Docs updated']
+		expect(() => amend(r, c)).toThrow('M1 is merged and cannot change')
+		const d = clone(); d.items[1].humanTest = 'Another human test'
+		expect(() => amend(r, d)).toThrow('M1 is merged and cannot change')
+	})
 	test('P4.1 a re-plan that keeps the criteria in the same milestone keeps approval', () => {
 		const r0 = approved()
 		const r = update(r0, { type: 'replan', itemId: 'W1', into: [item('W1a', 'M1', ['W1 criterion b']), item('W1b', 'M1', ['W1 criterion a'])] })
@@ -366,6 +381,11 @@ describe('Amend: a non-digest item field keeps approval', () => {
 		open = amend(advance(open, { type: 'approval-pending', kind: 'kickoff', digest }), c)
 		expect(open.pendingApproval?.digest).toBe(digest)
 		expect(() => advance(open, { type: 'approve', digest, responder: 'user-owner' })).toThrow('preflight')
+	})
+	test('A milestone review by the mission thread is refused, and a candidate needs every earlier milestone merged', () => {
+		const r = withCandidate(itemsDone(approved(), 'M1'), 'M1')
+		expect(() => review(r, 'M1', 1, true, THREAD)).toThrow('must not be the mission thread')
+		expect(() => withCandidate(itemsDone(approved(), 'M2'), 'M2')).toThrow('earlier milestones are not merged: M1')
 	})
 	test('Gate 2 must come from a reviewer other than the gate 1 reviewer', () => {
 		const r = review(withCandidate(itemsDone(approved(), 'M1'), 'M1'), 'M1', 1, true, 'TU-same')
