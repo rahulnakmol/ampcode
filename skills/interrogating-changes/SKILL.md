@@ -147,9 +147,14 @@ git diff <base>...<head> | python3 scripts/floor_guard.py
 
 It flags a removed assertion with no replacement, an added skip or focus marker, an added or
 widened checker silencer (`noqa`, `eslint-disable`, `@ts-ignore`, `type: ignore`, `nosec`,
-`nolint`), a lowered, removed or commented-out threshold, and an ignored failure in CI. Input
-with no diff prints "not run", never `pass`. It reads text patterns for common Python,
-JavaScript/TypeScript, Go and CI files, and may miss other languages' forms. Accept a flag only
+`nolint`), a lowered, removed or commented-out threshold (also a JaCoCo `<minimum>` in a pom or
+Gradle file), and an ignored failure in CI. It knows the skip forms of pytest, Jest, Vitest and
+bun (`test.if`, `describe.if`, `it.runIf`, `test.failing`, `{ skip: true }`) and XCTest
+(`XCTSkip`, `XCTSkipIf`). A line commented out with `#`, `//`, `;`, `/*`, `<!--` or `--` holds
+no assertion and no threshold. Input with no diff prints "not run", never `pass`. It reads text
+patterns for common Python, JavaScript/TypeScript, Go, Swift, Java build, SQL, Lua, Haskell and
+CI files, and may miss other forms: for example a skip option set from a variable
+(`{ skip: isCI }`) or an assertion in a framework it does not know. Accept a flag only
 with a reason the reviewer agrees with: `--accept <id>="<reason>"`. The reason prints in the
 output; copy it to the report. `review_ledger.py` does not read this output, so the reviewer
 records each flag without an accepted reason in the ledger as a finding under the tests lens, at

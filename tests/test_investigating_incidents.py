@@ -612,6 +612,43 @@ class Bugs(Case):
         self.assertEqual(code, 0, out)
         self.assertEqual((review.stat().st_mode & 0o777, backlog.stat().st_mode & 0o777), (0o644, 0o644))
 
+    # D-17: a review or backlog path that is a symbolic link. bugs writes the link's target, keeps
+    # the link and the target's mode, and leaves no temporary file in either folder.
+    def symlinked(self, which):
+        real = self.tmp / "real"
+        real.mkdir()
+        review, backlog = self.write(UNFILED), self.backlog()
+        target = real / (review.name if which == "review" else backlog.name)
+        (review if which == "review" else backlog).rename(target)
+        link = self.tmp / target.name
+        link.symlink_to(target)
+        target.chmod(0o640)
+        return review, backlog, link, target
+
+    def test_d17_review_symlink_updates_its_target(self):
+        review, backlog, link, target = self.symlinked("review")
+        code, out = run("bugs", link, "--backlog", backlog, "--feature", "F-2")
+        self.assertEqual(code, 0, out)
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(Path(os.readlink(link)), target)
+        self.assertEqual(target.read_text(), FILED)
+        self.assertEqual(target.stat().st_mode & 0o777, 0o640)
+        ids = [i["id"] for i in json.loads(backlog.read_text())["items"]]
+        self.assertEqual(ids[6:], ["B-4", "B-5"])
+        self.assertEqual(sorted(p.name for p in self.tmp.rglob(".pir-*")), [])
+
+    def test_d17_backlog_symlink_updates_its_target(self):
+        review, backlog, link, target = self.symlinked("backlog")
+        code, out = run("bugs", review, "--backlog", link, "--feature", "F-2")
+        self.assertEqual(code, 0, out)
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(Path(os.readlink(link)), target)
+        ids = [i["id"] for i in json.loads(target.read_text())["items"]]
+        self.assertEqual(ids[6:], ["B-4", "B-5"])
+        self.assertEqual(target.stat().st_mode & 0o777, 0o640)
+        self.assertEqual(review.read_text(), FILED)
+        self.assertEqual(sorted(p.name for p in self.tmp.rglob(".pir-*")), [])
+
     # Gate 2 F4: when the review cannot be written, the backlog is not written either.
     @unittest.skipIf(hasattr(os, "geteuid") and os.geteuid() == 0, "root ignores folder permissions")
     def test_gate2_f4_unwritable_review_leaves_backlog_unchanged(self):
@@ -627,6 +664,99 @@ class Bugs(Case):
         self.assertNotEqual(code, 0, out)
         self.assertEqual((review.read_text(), backlog.read_text()), before)
         self.assertEqual(sorted(p.name for p in self.tmp.iterdir()), ["backlog.json", "locked"])
+
+    # D-18: a "then" with no measurable quantity fails P7 (the rule grooming's backlog.py applies
+    # to a "then"), so bugs files nothing that validate would warn about.
+    VAGUE_THEN = ("  - Given the same load, when the run ends, then the pool reports at least 20 free connections.",
+                  "  - Given the same load, when the run ends, then the PDF generation step fails and the "
+                  "release does not deploy.")
+
+    def test_d18_then_without_a_quantity_fails_check_and_bugs_writes_nothing(self):
+        vague = UNFILED.replace(*self.VAGUE_THEN)
+        code, out = self.check(vague.replace("- Backlog: to file", "- Backlog: B-9"))
+        self.assertEqual((code, codes(out)), (1, ["P7"]), out)
+        lines = [line for line in out.splitlines() if line.startswith("P7:")]
+        self.assertEqual(len(lines), 1, out)
+        self.assertIn("A1", lines[0])
+        review, backlog = self.write(vague), self.backlog()
+        before = (review.read_text(), backlog.read_text())
+        code, out = run("bugs", review, "--backlog", backlog, "--feature", "F-2")
+        self.assertEqual((code, codes(out)), (1, ["P7"]), out)
+        self.assertEqual((review.read_text(), backlog.read_text()), before)
+
+    def test_d18_then_with_a_number_passes(self):
+        counted = UNFILED.replace(
+            self.VAGUE_THEN[0],
+            "  - Given the same load, when the run ends, then the step reports 0 of 20 sample invoice PDFs "
+            "generated and the release does not deploy.")
+        self.assertRules(counted.replace("- Backlog: to file", "- Backlog: B-9"), [])
+        review, backlog = self.write(counted), self.backlog()
+        code, out = run("bugs", review, "--backlog", backlog, "--feature", "F-2")
+        self.assertEqual(code, 0, out)
+        proc = subprocess.run([sys.executable, str(BACKLOG), "validate", str(backlog)],
+                              capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertNotIn("measurable quantity", proc.stdout + proc.stderr)
+
+    def test_d18_quantity_rule_matches_grooming(self):
+        """The copied QUANTITY and ANY_ID patterns (D-18, D-22) and the digit test (D-22) equal
+        grooming's, read from both sources without importing them."""
+        import ast
+
+        def pattern(path, name):
+            tree = ast.parse(path.read_text())
+            node = next(n for n in tree.body if isinstance(n, ast.Assign)
+                        and getattr(n.targets[0], "id", "") == name)
+            return ast.literal_eval(node.value.args[0]), [ast.unparse(a) for a in node.value.args[1:]]
+
+        for name in ("QUANTITY", "ANY_ID"):
+            with self.subTest(pattern=name):
+                self.assertEqual(pattern(SCRIPT, name), pattern(BACKLOG, name))
+        digit_test = 're.search(r"\\d", ANY_ID.sub(" ", then))'
+        for path in (SCRIPT, BACKLOG):
+            self.assertIn(digit_test, path.read_text())
+
+    # D-22: grooming also warns when no criterion of an item has a digit outside an ID. P7 applies
+    # the same rule per action, and bugs refuses as for any P7 finding.
+    A1_CRITERIA = (
+        "  - Given the payment stub returns HTTP 503, when 50 checkouts per second run for 5 minutes, "
+        "then each request makes at most 3 retries.\n"
+        "  - Given the same load, when the run ends, then the pool reports at least 20 free connections.\n")
+
+    def with_a1_criteria(self, *thens):
+        lines = "".join(f"  - Given a malformed payment call, when the client sends it, then {then}.\n"
+                        for then in thens)
+        return UNFILED.replace(self.A1_CRITERIA, lines)
+
+    def test_d22_no_number_in_any_criterion_fails_and_bugs_writes_nothing(self):
+        for thens in (("each request returns a bad-request error",),
+                      ("each request is logged under S-2.1",)):  # a digit inside an ID does not count
+            with self.subTest(thens=thens):
+                text = self.with_a1_criteria(*thens)
+                code, out = self.check(text.replace("- Backlog: to file", "- Backlog: B-9"))
+                self.assertEqual((code, codes(out)), (1, ["P7"]), out)
+                lines = [line for line in out.splitlines() if line.startswith("P7:")]
+                self.assertEqual(len(lines), 1, out)
+                self.assertIn("A1", lines[0])
+                review, backlog = self.write(text), self.backlog()
+                before = (review.read_text(), backlog.read_text())
+                code, out = run("bugs", review, "--backlog", backlog, "--feature", "F-2")
+                self.assertEqual((code, codes(out)), (1, ["P7"]), out)
+                self.assertEqual((review.read_text(), backlog.read_text()), before)
+
+    def test_d22_a_number_in_one_criterion_passes(self):
+        for thens in (("each request returns a bad-request error", "the client logs 1 error per request"),
+                      ("each request returns 400",)):  # grooming counts 400 as a number
+            with self.subTest(thens=thens):
+                text = self.with_a1_criteria(*thens)
+                self.assertRules(text.replace("- Backlog: to file", "- Backlog: B-9"), [])
+                review, backlog = self.write(text), self.backlog()
+                code, out = run("bugs", review, "--backlog", backlog, "--feature", "F-2")
+                self.assertEqual(code, 0, out)
+                proc = subprocess.run([sys.executable, str(BACKLOG), "validate", str(backlog)],
+                                      capture_output=True, text=True)
+                self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+                self.assertNotIn("contains a number", proc.stdout + proc.stderr)
 
     def test_w13_6_duplicate_action_ids_write_nothing(self):
         duplicate = UNFILED.replace("### A2:", "### A1:")

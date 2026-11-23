@@ -1,7 +1,9 @@
 # Review, delegation, and recovery
 
 Run every fresh review with the `goldfishing` skill, which owns what a reviewer gets and never
-gets, severity, finding outcomes, failed reviewers and the review record. In a contract mission,
+gets, severity, finding outcomes, failed reviewers and the review record. The milestone gates
+review code with `interrogating-changes`, which uses the same severity words and `goldfishing`'s
+host guide to start a fresh reviewer. In a contract mission,
 the contract's disposition policy decides at a review cap (below), not the owner. Inspect
 referenced source; documents can be stale.
 
@@ -37,6 +39,45 @@ Give each gate reviewer the milestone's criteria and exit criteria, the closed c
 and head, the actual diff, and the test, CI and journey evidence. Push the head first; a branch name
 alone does not transfer unpushed work. Do not tell the reviewer which conclusion to reach.
 
+### With `interrogating-changes`
+
+Both gates run it. `<ic>` below is that skill's directory.
+
+1. **Freeze the candidate.** Name the base and head as commit hashes and get the patch ID:
+   `python3 <ic>/scripts/review_ledger.py verdict --repo . --base <base> --head <head>`.
+2. **Keep a ledger per gate.** The reviewer runs the five lenses and writes each finding in the
+   ledger with a run or a quote. Run `python3 <ic>/scripts/review_ledger.py check ledger.json --repo .`
+   after every round, and fix the ledger until it prints `pass`.
+3. **Bind the verdict.** Run `review_ledger.py verdict` with `--ledger ledger.json`; it prints
+   the patch ID with the verdict. A verdict on another patch ID is stale: it counts as no review,
+   so review the candidate again. A repair changes the patch ID, so both gates run again. A
+   rebase that keeps the patch ID keeps the gates' verdicts, because they bind to the patch ID;
+   the tests and CI run again on the new head, and its evidence lines are recorded again. With
+   `mission-control`, the new head is a new candidate: record the kept reviews for it with
+   `mission_update` `review`, citing the unchanged patch ID. The gate fails on an open Blocker or Major inside the case list or the milestone's
+   criteria. One outside them is filed (see "Both ways") and named in the review record, even when
+   it makes the ledger verdict `changes needed`.
+4. **Gate 2 runs the lowered-bar check** on the whole candidate diff (gate 1 runs it too when the
+   diff touches tests, CI files or checker configs):
+
+   ```bash
+   git diff <base>...<head> | python3 <ic>/scripts/floor_guard.py
+   ```
+
+   Accept a flag only with a reason the reviewer agrees with: `--accept <id>="<reason>"`, and
+   copy the reason to the review record. A flag without an accepted reason is a finding under the
+   tests lens, at least a Major, in the ledger. It weakens the checks that prove the milestone's
+   criteria, so it counts as inside them: the gate blocks until the flag is fixed or accepted with
+   a reason. Input with no diff prints "not run", never a pass.
+
+### Without `interrogating-changes`
+
+Run the lenses below in a fresh reviewer and label the review manual. A manual review names the
+base and head commits and has no ledger check, no patch-bound verdict and no lowered-bar script.
+The reviewer then reads the diff for removed assertions, added skip markers, added checker
+silencers (`noqa`, `eslint-disable`, `@ts-ignore`) and lowered thresholds, and records each as a
+finding unless it has an accepted reason. Report what the manual review did not run.
+
 | Lens | Evidence to seek |
 | --- | --- |
 | Correctness | Public contract, nonempty expected outputs, boundary controls, preserved behavior |
@@ -46,6 +87,8 @@ alone does not transfer unpushed work. Do not tell the reviewer which conclusion
 | Data preservation | Partial failure, interrupted writes, migration compatibility, restore/recovery |
 | Operations | Timeouts, retry/idempotency, resource limits, user-visible diagnosis and safe rollback |
 
+### Both ways
+
 - Each finding needs a location or reproduction, its consequence, a severity, the smallest useful
   fix and a verification. A clean scan does not replace semantic review.
 - A review fails only on an open Blocker or Major inside the case list or the milestone's criteria.
@@ -53,8 +96,11 @@ alone does not transfer unpushed work. Do not tell the reviewer which conclusion
 - **Gate 2** is a second independent review of the same head, after gate 1 passed on it. It checks
   that gate 1's findings are closed, looks for problems the repairs introduced, and holds the drift
   check and the refreshed defense in its record.
-- Bind both reviews and the evidence to the exact head and base. A new head voids them; the failed
-  round counts stay. High risk means independent reviewers and the full case list.
+- Bind both reviews to the patch ID, and the evidence to the exact head and base. A repair
+  changes the patch ID and voids both reviews; the failed round counts stay. A rebase that keeps
+  the patch ID keeps the gates' verdicts, but the checks run again on the new head. A manual
+  review has no patch-bound verdict, so any new head voids it. High risk means independent
+  reviewers and the full case list.
 - Independent means another context able to challenge the work; a different model brand is neither
   needed nor enough. Self-review is not a fresh review.
 
@@ -68,8 +114,10 @@ A gate allows 3 failed rounds, counted across heads. After that:
 | Finding outside them | `filed` as an item in a later milestone, or a follow-up in the last one |
 | Nit | Fixed or declined |
 
-Record each disposition with the review. Never ask the owner at a cap. Stop reason 5 applies only
-when the milestone still cannot meet its exit criteria after re-planning and splitting.
+Record each disposition with the review; with `interrogating-changes`, also in the ledger's
+`disposition` field on every failed round past the cap. Never ask the owner at a cap. Stop
+reason 5 applies only when the milestone still cannot meet its exit criteria after re-planning
+and splitting.
 
 ## Drift check at gate 2 and on resume
 

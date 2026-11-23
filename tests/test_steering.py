@@ -597,6 +597,132 @@ class RaidCheck(unittest.TestCase):
         honest = ("\n## Full pack\n\n### Flow\n\n" + "Not on track: the 85th percentile date is 2027-03-03.\n" * 8)
         self.assertEqual(self.check(GOOD_STATUS + honest, "status.md"), (0, "pass\n"))  # no line limit
 
+    # D-15: the full-pack overclaim check reads clauses, the date of a /approve comment, and prose only.
+    def pack(self, *lines):
+        return GOOD_STATUS + "\n## Full pack\n\n" + "\n".join(lines) + "\n"
+
+    def pack_passes(self, *lines):
+        self.assertEqual(self.check(self.pack(*lines), "status.md"), (0, "pass\n"))
+
+    def pack_fails(self, *lines):
+        return self.fails(self.pack(*lines), "overclaim", "Full pack", name="status.md")
+
+    def test_d15_honest_refusals_pass(self):
+        for line in ("Do not mark F2 as approved.",
+                     "Never mark F2 as signed off without its /approve comment.",
+                     "Rule: do not report F2 as on track until the forecast says so.",
+                     "You asked me to mark F2 as signed off in GitHub. I did not.",
+                     "Rahul asked me to mark F2 as signed off in GitHub. I did not, for these reasons:",
+                     "You asked me to record F2 as approved; I have not.",
+                     "Rahul wants me to mark F2 as approved. I will not, because the charter says always ask."):
+            with self.subTest(line=line):
+                self.pack_passes(line)
+
+    def test_d15_requests_without_a_refusal_and_other_clauses_still_fail(self):
+        for line in ("You asked me to mark F2 as signed off in GitHub. I did.",
+                     "Rahul asked me to mark F2 as approved.",
+                     "I did not wait: F2 is signed off.",                  # the refusal comes first
+                     "I did not object. Rahul asked me to mark F2 as signed off.",  # a refusal must follow the request
+                     "Do not worry. F2 is approved.",                      # the negation covers its own clause only
+                     "Overall: not blocked, on track."):                   # a plain "not" does not cover the clause
+            with self.subTest(line=line):
+                self.pack_fails(line)
+
+    def test_d15_gate_f3_a_skip_stops_at_the_next_comma_or_conjunction(self):
+        # M5 gate 2 F3 (Major) and gate 1 F3: "Do not", "Never" and a refused request cover only the
+        # words up to the first comma, " and ", " but " or " so "; a claim after that is read.
+        for line in ("Do not worry, F2 is signed off.",
+                     "Never fear, F2 is approved.",
+                     "Never mind the delay, F-2 is signed off.",
+                     "Don't panic, we are on track.",
+                     "Do not worry but F2 is approved.",
+                     "Never mind so F2 is signed off.",
+                     "Do not mark F2 as approved but F3 is signed off.",        # gate 2 F16: a real order, then " but "
+                     "Never record F2 as signed off so F3 is approved.",        # a real order, then " so "
+                     "Do not mark F2 as approved, F3 is signed off.",           # a real order, then a comma
+                     "Do not mark F2 as approved. F3 is signed off.",           # an order covers its own clause only
+                     "Rahul asked us to mark F2 as signed off, and F2 is approved; we have not slipped.",
+                     "Rahul asked me to mark F2 as approved and F2 is signed off. I did not."):
+            with self.subTest(line=line):
+                self.pack_fails(line)
+        for line in ("Do not mark F2 as approved.",
+                     "You asked me to mark F2 as signed off in GitHub. I did not.",
+                     "Do not mark F2 as approved, and do not mark F3 as signed off.",
+                     "Never mark F2 as signed off; it is not signed off.",
+                     "Rahul asked me to mark F2 as signed off, and I did not."):
+            with self.subTest(line=line):
+                self.pack_passes(line)
+
+    def test_d15_gate2_f16_do_not_covers_only_an_action_verb(self):
+        # M5 gate 2 F16: "Do not", "Don't" or "Never" skips a sign-off word only when an action verb
+        # (mark, record, report, say, ...) follows within two words and the word comes after it.
+        for line in ("Never fear F2 is approved.",
+                     "Do not worry F2 is signed off.",
+                     "Don't panic we are on track.",
+                     "Never mind the delay F2 is approved.",          # the verb list does not hold "mind"
+                     "Do not hesitate to say F2 is approved."):     # "say" is three words away
+            with self.subTest(line=line):
+                self.pack_fails(line)
+        for line in ("Do not mark F2 as approved.",
+                     "Never record F2 as signed off.",
+                     "Please do not say we are on track.",
+                     "Do not ever claim F2 is approved.",
+                     "Never post /approve for Elena; do not treat F2 as signed off.",
+                     "Don't list F2 as approved until Elena comments.",
+                     "You asked me to mark F2 as signed off in GitHub. I did not."):
+            with self.subTest(line=line):
+                self.pack_passes(line)
+
+    def test_d15_gate_f3_headings_are_read_unless_they_ask(self):
+        # M5 gate 1 F3: a heading that claims a sign-off fails; a question heading does not.
+        self.pack_fails("### F-2 signed off by Dana")
+        self.pack_fails("### We are on track")
+        self.pack_passes("### Are we on track?", "### Is F2 approved?")
+        code, out = run(RAID, str(SKILL / "templates" / "status.md"), "--today", "2026-11-25")
+        self.assertEqual((code, out), (0, "pass\n"))
+
+    def test_d15_a_date_counts_only_as_the_date_of_the_approve_comment(self):
+        for line in ("F2 signed off: Elena will /approve by 2026-12-01.",
+                     "By 2026-12-01 Elena will /approve F2; it is signed off.",
+                     "F2 approved; Elena will /approve later, see the plan of 2026-11-20."):
+            with self.subTest(line=line):
+                self.pack_fails(line)
+        for line in ("F2 signed off by Elena Petrova, /approve on 2026-11-24.",
+                     "F2 signed off by Elena Petrova, /approve 2026-11-24.",
+                     "F2 signed off by Elena Petrova on 2026-11-24 (tracker /approve).",
+                     "F2 approved by Elena Petrova: https://github.com/acme/pilot/issues/12#issuecomment-99 (2026-12-01)."):
+            with self.subTest(line=line):
+                self.pack_passes(line)
+
+    def test_d15_structure_is_not_read_as_prose(self):
+        self.pack_passes(
+            "### Are we on track?",
+            "",
+            "| Feature | Approved by | Signed off on | Source |",
+            "| --- | --- | --- | --- |",
+            "| F1 | Priya Raman | 2026-11-24 | /approve on 2026-11-24 |",
+            "",
+            "```",
+            "F1  approved  [priya-r current]  signed off",
+            "verified: on track",
+            "```",
+        )
+
+    def test_d15_a_table_body_row_without_a_source_still_fails(self):
+        self.pack_fails(
+            "| Feature | Approved by | Source |",
+            "| --- | --- | --- |",
+            "| F2 | signed off by Elena Petrova | email |",
+        )
+
+    def test_d15_approved_with_a_date_but_no_source_fails(self):
+        for line in ("F1 Approved by Priya on 2026-11-24 (email).", "Priya approved F1 on 2026-11-24."):
+            with self.subTest(line=line):
+                self.pack_fails(line)
+                status = GOOD_STATUS.replace(
+                    "Overall: amber. The pilot date holds; work in progress is above its limit.", line)
+                self.fails(status, "overclaim", "Status", name="status.md")
+
     DECISIONS = ("\n## {title}\n\n| ID | Decision needed | Decider | Deadline | Default | Outcome |\n"
                  "| --- | --- | --- | --- | --- | --- |\n| D3 | Hire a contractor? |  | 2026-11-01 |  | open |\n")
 
@@ -693,6 +819,13 @@ class SkillText(unittest.TestCase):
     def test_gate_n5_sign_off_is_pulled_from_any_tracker(self):
         self.assertIn("sync.py <tracker> pull", self.text())
         self.assertNotIn("sync.py github pull", self.text())
+
+    def test_d15_skill_text_matches_the_checker(self):
+        text = " ".join(self.text().split())
+        for phrase in ("`raid_check.py` reads the status and the full pack",
+                       '"signed" and "approved" as sign-off words',
+                       "`/approve` with its date", "comment link"):
+            self.assertIn(phrase, text)
 
     def test_gate_n3_help_says_the_full_pack_is_checked(self):
         code, out = run(RAID, "--help")

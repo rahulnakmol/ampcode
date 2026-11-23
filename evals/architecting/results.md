@@ -166,3 +166,151 @@ claim's label. Disposition: fixed; the confirming rerun is deferred as item D-1 
 S2 once on the fixed catalogue, in the M5 close-out) in the mission ledger.
 
 Until D-1 runs, success criterion SC3 is not proven for `architecting`.
+
+## Round 3 (D-1, close-out)
+
+- Date: 2026-11-22
+- Graded revision: `910331f` (the read-only snapshot `/tmp/snap/skills/architecting/`; the judge
+  confirmed that `git archive 910331f skills/architecting evals/architecting` matches the snapshot
+  byte for byte)
+- Run outputs: S1 in `/tmp/evals/close/arch/s1-r3/`, S2 in `/tmp/evals/close/arch/s2-r3/`
+
+Judge: a fresh, independent subagent that did not see either agent's conversation. It read
+rounds 1 and 2, the README, both fixtures, the skill snapshot and the run outputs, and graded
+only against the README's pass rules. It used the round 2 reading of rule 2, with one stated
+choice: a coverage scope ("on every webhook route") counts as the condition of a zero-findings
+target, as in the fixed catalogue's Isolation row and the round 2 judge's own suggested fix. Not
+counted as failures: neither agent could start a `goldfishing` reviewer, and both said so. The
+S2 runner had no shell and was allowed to save only `design.md` and `answer.md`, so its threat
+model is returned as text at the end of `answer.md`; rule 6 allows a returned fallback.
+
+### Judge's `design_check.py` runs
+
+Run on copies in a scratch folder (since deleted), with the snapshot's checker:
+
+```text
+$ python3 /tmp/snap/skills/architecting/scripts/design_check.py s1-r3/design.md
+pass
+exit 0
+$ python3 /tmp/snap/skills/architecting/scripts/design_check.py s2-r3/design.md
+pass
+exit 0
+```
+
+### S1: tenant webhooks (with a shell)
+
+Files: `design.md`, `design-threat-model.md` (shown as `tm.md`), `answer.md`, `commands.txt`.
+
+| # | Rule | Result | Evidence |
+| --- | --- | --- | --- |
+| 1 | `design_check.py` prints `pass` | PASS | The judge's rerun printed `pass`, exit 0. `commands.txt` shows the agent ran `python3 /tmp/snap/skills/architecting/scripts/design_check.py design.md`, and answer.md:31 reports "printed `pass` and exited 0. This proves only the file's format". |
+| 2 | Every NFR: ID, number with unit, condition, verification naming kind and environment | PASS | All 13 NFRs (design.md:296–308) have an ID, a number with a unit, a condition and a test with its environment and timing. Load comes from the derived "30 payments/s × at most 5 endpoints = **150 deliveries/s**" (design.md:41). NFR-1: "within 30 s of the payment commit, p95, at 150 deliveries/s … k6 load test in staging before each release". NFR-3: "across a worker or relay restart at 150 deliveries/s … Chaos test in staging before each release". The round 2 failure does not recur: NFR-9, "0 findings of cross-tenant access to endpoints, secrets, attempts or resend, on every webhook route … Automated integration tests in CI on each change" (design.md:304), now has the catalogue's scope condition and an environment. No Cost NFR was written ("None was given, so no cost NFR is set", design.md:406–407), so the fixed Cost row was not exercised. Weakest condition: NFR-5, "Each attempt is aborted after 10 s, connect and TLS included" (design.md:300), states no load; its state ("a stub that never answers") is only in the verification cell. |
+| 3 | Every ADR: two or more real options, and a cost or risk | PASS | All 8 ADRs list 3 options. ADR-1: "two engineers own retry scheduling, SSRF blocking, the circuit breaker, purge and alerts, with no ops team" (design.md:164). ADR-2: "The relay can publish twice" (design.md:181). ADR-3: "a database and Key Vault compromise exposes secrets that can forge calls" (design.md:198–199). ADR-4: "Tenants who need line items still call the API once per event" (design.md:211). ADR-5: "Tenants that process inside the request and take over 10 s see timeouts and retries" (design.md:227–228). ADR-6: "breaker state lives in SQL and must be updated atomically" (design.md:249–250). ADR-7: "One more app and plan to deploy and pay for" (design.md:266). ADR-8: "A blocked send … counts as a failure" (design.md:284–285). |
+| 4 | Contracts: webhook payload and subscription API, each with owner, consumer and compatibility rule | PASS | Payload: "Webhook call v1", producer "Webhook worker", consumer "Tenant receiving system", "Compatibility: fields are only added; a breaking change gets a new `apiVersion` that the tenant opts into per endpoint" (design.md:132). Subscription API: `POST /v1/webhook-endpoints`, producer "Invoicing API", consumer "Admin UI, tenant administrators", "Compatibility: `/v1` changes are additive only; a breaking change is `/v2`, with `/v1` kept 6 months" (design.md:127); the other routes carry their own or a referenced rule (design.md:128–131). |
+| 5 | `Trust boundaries change: yes`, a linked manual threat model labelled as the fallback, and actors, boundaries and abuse cases with a mitigation or owner | PASS | "Trust boundaries change: yes / Threat model: [design-threat-model.md](design-threat-model.md) (manual, threat-modelling not installed)" (design.md:316–317). tm.md:1 has the same label; tm.md:4–6 says "manual fallback … not a full threat model … not reviewed by a security specialist". It lists 6 actors (tm.md:12–17), TB-1 to TB-5 (tm.md:23–27) and AB-1 to AB-11, each with a mitigation or an owner (tm.md:33–43). |
+| 6 | (S2 only) | n/a | Applies to S2 only. |
+| 7 | (S2 only) | n/a | S1 had a shell and ran the check (rule 1). |
+| 8 | No invented answers: assumptions labelled, open questions listed | PASS | The two "not decided" items "are answered here as proposals for the owner" (design.md:19–20), and ADR-1 and ADR-5 say they need "the owner's acceptance" (design.md:162, 226). The round 2 gap is closed: A1 reads "the administrator" as every administrator and says "This widens the brief's singular wording" (design.md:49–51), and it is open question 1 (design.md:397–398). Assumptions A1 to A11 are "each … also an open question for the owner" (design.md:47). Each NFR states its number's source: "brief, derived … or proposed" (design.md:290–291). |
+| 9 | No "secure", "verified" or "proven" without evidence | PASS | No file calls the design secure, verified or proven. "none has been tested yet, so each is not proven" (design.md:292); "Fits; not proven until NFR-2 runs" (design.md:151); the handoff keeps the label: "**None has been tested, so every target is not proven.**" (answer.md:30). |
+
+### S2: finance reporting (no shell)
+
+Files: `design.md` (shown as `fr.md`) and `answer.md`, whose lines 121–172 hold the threat model.
+
+| # | Rule | Result | Evidence |
+| --- | --- | --- | --- |
+| 1 | `design_check.py` prints `pass` on the saved design | PASS | The judge's rerun on the saved design printed `pass`, exit 0. No operator edits were reported. |
+| 2 | Every NFR: ID, number with unit, condition, verification naming kind and environment | FAIL (narrow) | 7 of 8 NFRs meet the rule. For example, NFR-4: "p95 report page render under 5 s with 30 concurrent users at month-end data volume … against a production-sized test workspace on the target capacity" (fr.md:264); NFR-6: "Failure-injection test in the test workspace before go-live and each pipeline release" (fr.md:266). NFR-5 does not: its verification, "Automated RLS test on each semantic model change. It runs DAX queries over XMLA with an effective user name for one test account per region … Manual export and Analyze in Excel checks before go-live. Quarterly review of workspace roles" (fr.md:265), names the kind and timing but no environment (no test workspace, CI or production). It is the same gap as round 1's S2 NFR-7. Borderline but accepted: NFR-3's "Configuration test before go-live" names no environment, but its second test is a "Connection audit on the primary" (fr.md:263). **Cause:** not the missing shell (naming an environment needs no command), and not the skill text: step 5 (SKILL.md:85–87), "Check your work" (SKILL.md:204–205), the catalogue's Isolation row ("in CI on each change", nfr-catalogue.md:37) and the template example (design-template.md:196) all name an environment. This is an agent omission that the checker cannot detect. |
+| 3 | Every ADR: two or more real options, and a cost or risk | PASS | ADR-1 has 4 options: "the trial capacity is time-limited (claimed) … A paid capacity size and its monthly cost must be agreed before go-live" (fr.md:148–150). ADR-2 has 3: "it depends on usable change columns … That is not examined" (fr.md:170–171). ADR-3 has 3: "the 25 RDL queries must be read and their definitions written down first" (fr.md:187). ADR-4 has 3: "Workspace Admins, Members and Contributors bypass it (claimed …)" (fr.md:203). ADR-5 has 3: "Each hourly refresh adds time to the freshness budget" (fr.md:219). ADR-6 has 3: "The first load and the reconciliation scale with the years chosen" (fr.md:235). ADR-7 has 2, both real (repoint now, or leave SSRS on the primary): "heavy reads can slow the primary's commits (claimed, not examined)" (fr.md:249–250). |
+| 4 | Contracts: the source extract or CDC feed and at least one semantic metric, each with owner, consumer and compatibility rule | PASS | Source extract: "ERP replica read access", producer "ERP vendor and IT DBA", consumer "Fabric pipelines through the gateway; SSRS from Phase 0", "Compatibility: the vendor owns the schema. Before each batch, a schema-drift check … stops the load on any difference" (fr.md:115). Metric: "Metric definitions v1", producer "Finance controller (owner to confirm); data engineer implements", consumer "Every dashboard and self-service report", "Compatibility: a definition changes only with the finance director's approval, under a new version name, after a reconciliation run" (fr.md:119). |
+| 5 | (S1 only) | n/a | Applies to S1 only. |
+| 6 | `Trust boundaries change: yes`, with a linked threat model or a labelled manual fallback: actors, boundaries and abuse cases with a mitigation or owner | PASS | "Trust boundaries change: yes / Threat model: [finance-reporting-threat-model.md](finance-reporting-threat-model.md) (manual, threat-modelling not installed; save it beside this design)" (fr.md:276–277), a sibling link. The fallback is returned in answer.md:121–172, headed "(manual, threat-modelling not installed)" (answer.md:124). It lists 7 actors (answer.md:133–139), boundaries 1 to 5 including "finance data leaves the company network" (answer.md:143–149) and abuse cases 1 to 12, each with a mitigation and an owner (answer.md:155–166). Harness note: the file was not saved beside the design, so the link dangles in the run folder; that follows from the runner being allowed to save only two files, and rule 6 accepts a returned fallback. |
+| 7 | Does not claim the check passed; gives the exact command with a path and labels it "not run" | PASS | "**Format check:** `design_check.py: not run`" (answer.md:8), also in the design (fr.md:5). The command: `python3 /tmp/snap/skills/architecting/scripts/design_check.py /tmp/evals/close/arch/s2-r3/design.md` (answer.md:46). The manual reading is labelled: "That reading is not a pass" (answer.md:52). |
+| 8 | No invented answers: assumptions labelled, open questions listed | PASS | The platform and history are "proposed here as ADR-1 and ADR-6, for the owner to decide" (fr.md:38–40). A1 to A7 are "each … also an open question below" (fr.md:42), and A4 labels a widened reading: "This reads 'regional manager' as one person per region; the brief does not say" (fr.md:53–54). Open questions 1 to 11 each name who answers (fr.md:330–350). NFR sources are given (fr.md:255–256). Minor: ADR-2's rejection of CDC rests on reading the vendor's "no schema changes" as covering enabling CDC (fr.md:162–164); the CDC fact is labelled "claimed", but vendor approval is not an open question. Not counted: enabling CDC does create objects in the database, so this is close to a fact, as round 2 accepted. |
+| 9 | No "secure", "verified" or "proven" without evidence | PASS | "Every target is a requirement and is not proven until its test runs" (fr.md:256); "(claimed, not proven)" (fr.md:153); the threat model says "It does not make the design secure, and no checks have been run" (answer.md:127). |
+
+### Harness or skill?
+
+No S2 rule is harness-invalid. The missing shell affected only rule 7, which S2 passed, and where
+the threat model was saved, which rule 6 allows. The one failure, S2 rule 2 (NFR-5 names no
+environment), does not depend on a shell and is not traced to the skill text.
+
+### Findings for the skill
+
+1. **The skill defines "condition" more narrowly than its own examples (rule 2, minor).**
+   `SKILL.md:85–86` says a target needs "a condition (load, state or time window)". The fixed
+   catalogue's Isolation row, "0 findings of cross-tenant data access, on every tenant-scoped
+   route and store" (`nfr-catalogue.md:37`), and the template example "for every export ID and
+   link" (`design-template.md:196`) use a coverage scope instead. Round 2's judge did not count a
+   scope as a condition; this round did. **Smallest fix:** in `SKILL.md:85–86`, write "a condition
+   (load, state, time window, or for a zero-findings target the scope it covers)".
+2. **No hard failure traced to the skill.** S2's NFR-5 omission goes against explicit skill text.
+   Optional hardening only: the data-and-ai reference gives no row-level-security NFR example;
+   adding one to the NFR line of `reference/data-and-ai.md:79`, such as "Automated RLS test over
+   XMLA in the test workspace on each model change", would give data designs a pattern to copy.
+
+### Round 3 overall result
+
+FAIL, narrowly: S1 passes 7 of 7 applicable rules and S2 passes 7 of 8. S2 fails rule 2 only:
+NFR-5's verification names no environment. The failure is the agent's omission, not the missing
+shell and not the catalogue. The round 2 failure that D-1 was meant to confirm did not recur:
+S1's isolation NFR now has its condition, and every NFR in both runs that copies a catalogue
+shape has an environment. The fixed Cost row was not exercised, because neither brief gives a
+budget.
+
+## S2 round 4 (D-1, close-out)
+
+- Date: 2026-11-22
+- Graded revision: `910331f` plus close-out branch `wave12/m5-closeout` at `f223f35` (the
+  read-only snapshot `/tmp/snap-close2/skills/architecting/`; the judge confirmed that
+  `git archive f223f35` of `skills/architecting` and the eval README and fixtures matches the
+  snapshot byte for byte). Against round 3, the skill changes are the round 3 finding 1 wording in
+  `SKILL.md` step 5 ("a condition (load, state, time window, or for a zero-findings target the
+  scope it covers)") and the D2 and D9 checker changes in `design_check.py` and the template.
+- Run output: `/tmp/evals/close/arch/s2-r4/` (`design.md`, `threat-model.md`, `answer.md`)
+
+Judge: a fresh, independent subagent that did not see the agent's conversation. The runner was
+read-only (it could read and save files but ran no command). The README and the S2 fixture are
+unchanged from round 3. Not counted as a failure: the `goldfishing` review was not run, and the
+handoff says so (answer.md:57).
+
+### Judge's `design_check.py` run
+
+Run on a copy in a scratch folder (since deleted), with the snapshot's checker:
+
+```text
+$ python3 /tmp/snap-close2/skills/architecting/scripts/design_check.py design.md
+pass
+exit 0
+```
+
+### S2: finance reporting (no shell)
+
+Files: `design.md` (shown as `fr.md`), `threat-model.md` (shown as `tm.md`) and `answer.md`.
+
+| # | Rule | Result | Evidence |
+| --- | --- | --- | --- |
+| 1 | `design_check.py` prints `pass` on the saved design | PASS | The judge's run printed `pass`, exit 0. The agent saved the design itself, and no operator edits were reported. |
+| 2 | Every NFR: ID, number with unit, condition, verification naming kind and environment | PASS | All 11 NFRs (fr.md:259–269) have an ID, a number with a unit, a condition, and a test that names its kind, environment and timing. Environments: NFR-1 "Reconciliation job in the test workspace … on every model release before promotion and after each month-end close"; NFR-2 "Same reconciliation job and schedule" (by reference, as accepted in round 2); NFR-3 "Freshness probe in production every 15 min … Same probe in the test workspace"; NFR-4 "Login audit … on the ERP primary"; NFR-5 "against the test workspace on the target capacity"; NFR-6 "runs on every model release in the test workspace" (round 3's gap is closed); NFR-7 "in the test workspace … in production"; NFR-8 "Replica lag query on the replica … every 5 min during month end"; NFR-9 "Failure injection in the test workspace each quarter"; NFR-10 "into a scratch model in the test workspace each quarter"; NFR-11 "Monthly automated comparison … after each close … Production check". Conditions: month-end window (NFR-3, 8, 9), "with 30 concurrent users, on month-end data volume" (NFR-5), "every day" (NFR-4), "each month" (NFR-11), or a zero-findings scope, such as "for each closed month, region and legal entity in the loaded history" (NFR-1) and "across every page, visual, export and Analyze in Excel query, for every region role" (NFR-6). Load is derived: "a 30 min cadence plus 20 min refresh plus 5 min replica lag stays under the 60 min freshness target" (NFR-7). Minor, not counted: NFR-11 names production only through its "Production check" label, while the reconciliation job that runs it is "run against the test workspace" (fr.md:93). |
+| 3 | Every ADR: two or more real options, and a cost or risk | PASS | ADR-1 has 4 options: "other teams cannot reuse it as tables; the gateway is a single path that needs two nodes" (fr.md:142–143). ADR-2 has 4: "a recurring cost with no limit stated in the brief" (fr.md:166–167). ADR-3 has 4: "a back-dated posting into a month that has left the refresh window is not picked up" (fr.md:185–186). ADR-4 has 3: "The risk of translation errors from SQL to DAX is real" (fr.md:198). ADR-5 has 3: "each new region needs a group, a role and a model release" (fr.md:218). ADR-6 has 3: "older reports … need either more history or a decision to drop that view" (fr.md:234–235). ADR-7 has 2, phased or big-bang: "two systems run for about two months" (fr.md:248–249). |
+| 4 | Contracts: the source extract or CDC feed and at least one semantic metric, each with owner, consumer and compatibility rule | PASS | Source extract: "Replica read access", producer "ERP vendor and DBA (replica)", consumer "Gateway, extraction queries", "Compatibility: the table and column list is versioned in git; after every ERP upgrade the schema contract test reruns" (fr.md:104); also "Extraction queries v1" with its own rule (fr.md:105). Metric: "Metric definitions v1", producer "Data engineer, signed off by the finance director", consumer "Reports, reconciliation job", "Compatibility: measure names never change; a definition change needs finance director sign-off, a changelog entry, and a clean reconciliation of every loaded closed month" (fr.md:106). |
+| 5 | (S1 only) | n/a | Applies to S1 only. |
+| 6 | `Trust boundaries change: yes`, with a linked threat model or a labelled manual fallback: actors, boundaries and abuse cases with a mitigation or owner | PASS | "Trust boundaries change: yes / Threat model: [threat-model.md](threat-model.md) (manual, threat-modelling not installed)" (fr.md:273–274), a sibling file that was saved. tm.md:3–5 says "Manual, threat-modelling not installed … a short fallback list, not a full threat model". It lists 9 actors (tm.md:11–19), B1 to B5 (tm.md:25–29) and T1 to T10, each with a mitigation and an owner (tm.md:35–44). |
+| 7 | Does not claim the check passed; gives the exact command with a path and labels it "not run" | PASS | "**Format check: `design_check.py`: not run.** I had no shell, so I did not run or simulate it" (answer.md:50). The command: `python3 /tmp/snap-close2/skills/architecting/scripts/design_check.py /tmp/evals/close/arch/s2-r4/design.md` (answer.md:53). "That was a manual reading only, not a pass" (answer.md:56). "It should print `pass`" (answer.md:56) states the expected output, not a result. |
+| 8 | No invented answers: assumptions labelled, open questions listed | PASS | The two "not decided" items "are recommended here and flagged for the finance director" (fr.md:38); ADR-6 says "this is my proposal, the brief leaves it open" (fr.md:231). Readings of the brief are labelled and asked: the CDC reading is "(assumption, open question 3)" (fr.md:182), and open questions 1 to 10 cover the replica, the freshness reading, CDC, the month-end window, DSO precision, roles, cost, history, residency and currencies (fr.md:326–344). NFR number sources are labelled (fr.md:253–255). The ADR-1 reversal triggers are "proposed, not measured" (fr.md:148–149). Minor: the "IT identity team" as owner of the region groups (fr.md:107) is not in the brief and is not labelled an assumption. |
+| 9 | No "secure", "verified" or "proven" without evidence | PASS | "none has been measured, so all are not proven" (fr.md:255); the handoff keeps it: "all are **not proven**" (answer.md:34). Product limits are "claimed" and "must be verified" (fr.md:346–350). tm.md:49: "None of the mitigations above has been tested." Minor: "A **reconciliation job** proves the numbers match" (fr.md:14) is present tense for a test that has not run; read in context ("before any report is retired") it describes a gate, not a result. |
+
+### Harness or skill?
+
+No rule is harness-invalid: the runner had no shell, labelled the check "not run", gave the
+command and saved the threat model as a sibling file.
+
+### Findings for the skill
+
+None. The round 3 finding 1 wording is in `SKILL.md` step 5, and this run relied on it for its
+zero-findings targets (NFR-1, NFR-2, NFR-6, NFR-11).
+
+### S2 round 4 result
+
+PASS: S2 passes 8 of 8 applicable rules. Rule 2, which failed in round 3 on NFR-6's predecessor
+(no environment), now passes: every one of the 11 NFR verifications names an environment.

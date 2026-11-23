@@ -869,6 +869,56 @@ class ReviewShared(unittest.TestCase):
             sync.secret("LINEAR_API_KEY", "a key")
         self.assertNotIn("abc", str(caught.exception))
 
+    def test_d16_a_token_pasted_with_a_trailing_newline_is_used_without_it(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        path = Path(tmp.name, "backlog.json")
+        path.write_text(json.dumps(example()))
+        Path(tmp.name, "prd.md").write_text("**R-1** x")
+        cases = ((azure, FakeAzure, ["azure", "plan", str(path), "--org", "acme", "--project", "close"], "AZURE_DEVOPS_EXT_PAT", "patSECRET"),
+                 (linear, FakeLinear, ["linear", "plan", str(path), "--team", "FIN", "--project", "Month-end close"], "LINEAR_API_KEY", "lin_api_SECRET"))
+        for module, fake_class, args, variable, token in cases:
+            for pasted in (token + "\n", token + "\r\n"):
+                seen, out, err, fake = [], io.StringIO(), io.StringIO(), fake_class()
+                with mock.patch.object(module, "transport", lambda secret: seen.append(secret) or fake.call), \
+                        mock.patch.dict(os.environ, {variable: pasted}), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                    code = sync.main(args)
+                self.assertEqual((code, err.getvalue()), (0, ""), repr(pasted))
+                self.assertEqual(seen, [token], repr(pasted))  # the adapter gets the token without the newline
+                self.assertNotIn(token, out.getvalue())
+
+    def test_d16_line_breaks_inside_del_nel_and_line_separator_are_refused_in_one_line(self):
+        linear_args = ["linear", "--team", "FIN", "--project", "Month-end close"]
+        azure_args = ["azure", "--org", "acme", "--project", "close"]
+        values = ("lin_api_SECRETPART1\nSECRETPART2",   # a line break inside
+                  "lin_api_SECRETPART1\rSECRETPART2",   # a carriage return inside
+                  "lin_api_SECRETPART1\x7fSECRETPART2",  # DEL
+                  "lin_api_SECRETPART1\x85SECRETPART2",  # U+0085 next line (NEL)
+                  "lin_api_SECRETPART1\u2028SECRETPART2",  # U+2028 line separator
+                  "lin_api_SECRETPART1\r\n\r\n")         # only one trailing newline is forgiven
+        out = ""
+        for value in values:
+            out += self.secret_run(linear_args, "LINEAR_API_KEY", value)
+            out += self.secret_run(azure_args, "AZURE_DEVOPS_EXT_PAT", value.replace("lin_api_", "pat"))
+        for part in ("SECRETPART", "lin_api_", "patSECRET", "Traceback"):
+            self.assertNotIn(part, out)
+
+    def test_d19_a_non_ascii_token_is_refused_in_one_line(self):
+        linear_args = ["linear", "--team", "FIN", "--project", "Month-end close"]
+        azure_args = ["azure", "--org", "acme", "--project", "close"]
+        values = ("lin_api_SECRETPART1\u20acSECRETPART2",   # euro sign: not Latin-1, crashed the Linear header
+                  "lin_api_SECRETPART1\u00e9SECRETPART2",   # e acute: Latin-1, but not ASCII
+                  "lin_api_SECRETPART1\u00a0SECRETPART2",   # no-break space
+                  "lin_api_SECRETPART1\u201cSECRETPART2")   # a curly quote, as editors paste
+        out = ""
+        for value in values:
+            for args, variable, token in ((linear_args, "LINEAR_API_KEY", value), (azure_args, "AZURE_DEVOPS_EXT_PAT", value.replace("lin_api_", "pat"))):
+                text = self.secret_run(args, variable, token)
+                self.assertIn("non-ASCII", text)
+                out += text
+        for part in ("SECRETPART", "lin_api_", "patSECRET", "Traceback", "UnicodeEncodeError"):
+            self.assertNotIn(part, out)
+
     def test_m3_github_digest_is_unchanged_without_a_target(self):
         actions = [{"do": "create", "id": "S-1", "title": "x"}]
         import hashlib
@@ -1026,6 +1076,271 @@ class SkillText(unittest.TestCase):
         for name in ("azure.py", "linear.py", "sync.py"):
             run = subprocess.run([sys.executable, str(SKILL / "scripts" / name), "--help"], capture_output=True, text=True, timeout=60)
             self.assertEqual(run.returncode, 0, name)
+
+
+# W19: one signer per feature, and sign-off given outside the tracker ---------------------------
+
+BACKLOG = ROOT / "skills" / "grooming" / "scripts" / "backlog.py"
+ELENA = {"name": "Elena Petrova (Treasury lead)", "github": "epetrova"}
+
+
+def planning_module():
+    """tests/test_planning.py, for its GitHub fake (the file itself is left unchanged)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("test_planning_for_w19", ROOT / "tests" / "test_planning.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class OutsideSignOff(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.base = self.tmp.name
+        Path(self.base, "prd.md").write_text((ROOT / "skills/planning/reference/worked-example/prd.md").read_text())
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def write(self, data, name="backlog.json"):
+        path = Path(self.base, name)
+        path.write_text(json.dumps(data, indent=2))
+        return path
+
+    def record(self, path, *args):
+        run = subprocess.run([sys.executable, str(SYNC), "record-signoff", str(path), *args], capture_output=True, text=True, timeout=60)
+        return run.returncode, run.stdout, run.stderr
+
+    def status(self, path, iid, tracker="github"):
+        run = subprocess.run([sys.executable, str(BACKLOG), "status", str(path), "--tracker", tracker], capture_output=True, text=True, timeout=60)
+        return next(line for line in run.stdout.splitlines() if line.split()[1:2] == [iid])
+
+    def signed_line(self, data, tracker="github"):
+        body = sync.report_comment(data, self.base, "2027-01-20", tracker)
+        return next(l for l in body.splitlines() if l.startswith("- **Not yet signed by:**"))
+
+    def test_w19_1_a_named_signer_is_the_only_one_listed_for_that_feature(self):
+        data = example()
+        data["approvers"].append(dict(ELENA))  # three approvers
+        item(data, "F-1")["notes"] = "Signs off: Elena Petrova, due 2027-02-12."
+        line = self.signed_line(data)
+        self.assertIn("Elena Petrova (Treasury lead) on I-1, F-1, F-2, F-3", line)
+        self.assertIn("Priya Raman (Finance Operations lead) on I-1, F-2, F-3", line)
+        self.assertIn("Tom Okafor (Group Controller) on I-1, F-2, F-3", line)
+        self.assertIn("Who signs: any listed approver for I-1, F-2, F-3; Elena Petrova (Treasury lead) for F-1.", line)  # in gate order
+
+    def test_w19_1_the_named_signer_does_not_change_the_gate(self):
+        data = example()  # Q14: any listed approver still passes the gate
+        data["approvers"].append(dict(ELENA))
+        item(data, "F-1")["notes"] = "Signs off: Elena Petrova, due 2027-02-12."
+        path = self.write(data)
+        self.assertEqual(self.record(path, "--item", "F-1", "--by", "Tom Okafor (Group Controller)", "--source", "email, 2027-01-19")[0], 0)
+        self.assertIn(" approved ", self.status(path, "F-1"))
+
+    def test_w19_2_a_feature_without_a_signer_note_lists_any_listed_approver(self):
+        line = self.signed_line(example())
+        self.assertIn("Priya Raman (Finance Operations lead) on I-1, F-1, F-2, F-3", line)
+        self.assertIn("Who signs: any listed approver for I-1, F-1, F-2, F-3.", line)
+
+    def test_w19_3_record_signoff_approves_a_never_synced_feature_until_its_content_changes(self):
+        path = self.write(json.loads((EXAMPLES / "product.json").read_text()))
+        code, out, err = self.record(path, "--item", "F-1", "--by", "Dana Whitfield (VP Product)", "--source", "email from Dana, 2027-01-20")
+        self.assertEqual((code, err), (0, ""))
+        self.assertIn("F-1", out)
+        entry = item(json.loads(path.read_text()), "F-1")["approvals"][-1]
+        self.assertEqual((entry["tracker"], entry["by"], entry["source"]), ("written", "Dana Whitfield (VP Product)", "email from Dana, 2027-01-20"))
+        self.assertTrue(entry["fingerprint"].startswith("sha256:") and entry["at"])
+        line = self.status(path, "F-1")
+        self.assertIn(" approved ", line)
+        self.assertIn("dwhitfield current", line)
+        self.assertIn(" not synced ", self.status(path, "F-2"))  # nothing else changes
+        data = json.loads(path.read_text())
+        item(data, "S-2")["title"] += " (edited)"  # a story the sign-off covers
+        self.write(data)
+        line = self.status(path, "F-1")
+        self.assertIn(" stale ", line)
+        self.assertIn("dwhitfield stale", line)
+
+    def test_w19_3_record_signoff_counts_on_a_synced_backlog_and_goes_stale_on_any_change(self):
+        planning = planning_module()
+        fake, data = planning.FakeGitHub(), example()
+        gh = sync.GitHub("acme/close", call=fake.call)
+        sync.apply(data, self.base, gh)
+        path = self.write(data)
+        self.assertEqual(self.record(path, "--item", "F-2", "--by", "priya raman (finance operations lead)", "--source", "minutes, steering 2027-01-21")[0], 0)
+        self.assertIn("priya-r current", self.status(path, "F-2"))
+        self.assertIn(" approved ", self.status(path, "F-2"))
+        data = json.loads(path.read_text())
+        item(data, "S-4")["title"] += " (edited)"  # not synced: the written sign-off is stale anyway
+        self.write(data)
+        self.assertIn("priya-r stale", self.status(path, "F-2"))
+        self.assertNotIn(" approved ", self.status(path, "F-2"))
+
+    def test_w19_3b_an_approved_feature_leaves_the_not_yet_signed_line_whoever_signed(self):
+        planning = planning_module()
+        fake, data = planning.FakeGitHub(), example()
+        gh = sync.GitHub("acme/close", call=fake.call)
+        sync.apply(data, self.base, gh)
+        fake.comment(item(data, "F-2")["external"]["github"]["number"], "tokafor", "/approve")
+        sync.pull(data, gh)  # Tom signs F-2 in GitHub
+        path = self.write(data)
+        self.assertEqual(self.record(path, "--item", "F-3", "--by", "Priya Raman", "--source", "email, 2027-01-22")[0], 0)  # Priya signs F-3 by email
+        line = self.signed_line(json.loads(path.read_text()))
+        self.assertIn("Priya Raman (Finance Operations lead) on I-1, F-1;", line)
+        self.assertIn("Tom Okafor (Group Controller) on I-1, F-1.", line)
+        self.assertNotIn("F-2", line)
+        self.assertNotIn("F-3", line)
+        self.assertIn("Who signs: any listed approver for I-1, F-1.", line)
+
+    def test_w19_4_a_sign_off_by_someone_not_in_approvers_is_refused(self):
+        path = self.write(json.loads((EXAMPLES / "product.json").read_text()))
+        before = path.read_text()
+        for who in ("Mallory Smith", "dwhitfield"):  # not a listed name; a handle is not a name
+            code, out, err = self.record(path, "--item", "F-1", "--by", who, "--source", "email")
+            self.assertEqual((code, out), (2, ""), who)
+            self.assertEqual(len(err.splitlines()), 1, err)
+            self.assertIn("not a listed approver", err)
+        self.assertEqual(path.read_text(), before)
+
+    def test_w19_5_a_sign_off_without_a_source_is_refused(self):
+        path = self.write(json.loads((EXAMPLES / "product.json").read_text()))
+        before = path.read_text()
+        for source in ([], ["--source", ""], ["--source", "   "]):
+            code, out, err = self.record(path, "--item", "F-1", "--by", "Dana Whitfield (VP Product)", *source)
+            self.assertEqual((code, out), (2, ""), source)
+            self.assertEqual(len(err.splitlines()), 1, err)
+            self.assertIn("--source", err)
+        self.assertEqual(path.read_text(), before)
+
+    def test_w19_5_only_an_initiative_or_feature_can_be_signed(self):
+        path = self.write(json.loads((EXAMPLES / "product.json").read_text()))
+        for iid in ("S-1", "F-9"):
+            code, _, err = self.record(path, "--item", iid, "--by", "Dana Whitfield (VP Product)", "--source", "email")
+            self.assertEqual(code, 2, iid)
+            self.assertEqual(len(err.splitlines()), 1, err)
+
+    def test_w19_rule_a_written_entry_by_someone_not_listed_is_ignored_by_the_gate(self):
+        # Gate 1 F6, gate 2 F4: a hand-edited entry by "Mallory" with the right fingerprint must not count.
+        data = json.loads((EXAMPLES / "product.json").read_text())
+        f1 = item(data, "F-1")
+        f1["approvals"] = [{"tracker": "written", "by": "Mallory", "at": "2027-01-20T09:00:00Z", "source": "email",
+                            "fingerprint": sync.signoff_fingerprint(data, f1, self.base)}]
+        state, per = backlog.approval_detail(data, f1, "github", self.base)
+        self.assertEqual((state, per), ("not synced", {"dwhitfield": "none", "msilva-cs": "none"}))
+        path = self.write(data)
+        line = self.status(path, "F-1")
+        self.assertIn(" not synced ", line)
+        self.assertNotIn("Mallory", line)
+
+    def test_w19_4_a_name_that_matches_two_approvers_is_refused(self):
+        # Gate 2 F5: "Tom Okafor" matches both entries, so nobody is recorded; the full name works.
+        data = example()
+        data["approvers"].append({"name": "Tom Okafor (Treasury)", "github": "tokafor2"})
+        path = self.write(data)
+        before = path.read_text()
+        code, out, err = self.record(path, "--item", "F-1", "--by", "Tom Okafor", "--source", "email")
+        self.assertEqual((code, out), (2, ""))
+        self.assertEqual(len(err.splitlines()), 1, err)
+        self.assertIn("matches 2 listed approvers", err)
+        self.assertEqual(path.read_text(), before)
+        self.assertEqual(self.record(path, "--item", "F-1", "--by", "Tom Okafor (Treasury)", "--source", "email")[0], 0)
+        self.assertEqual(item(json.loads(path.read_text()), "F-1")["approvals"][-1]["by"], "Tom Okafor (Treasury)")
+
+    def test_w19_4_an_exact_full_name_wins_over_a_name_without_its_role(self):
+        # Gate 2 F17: "Tom Okafor" and "Tom Okafor (CFO)" can both be recorded.
+        data = example()
+        data["approvers"] = [{"name": "Tom Okafor", "github": "tokafor"}, {"name": "Tom Okafor (CFO)", "github": "tokafor-cfo"}]
+        path = self.write(data)
+        for by, recorded in (("Tom Okafor", "Tom Okafor"), ("Tom Okafor (CFO)", "Tom Okafor (CFO)"), ("tom  okafor", "Tom Okafor")):
+            code, out, err = self.record(path, "--item", "F-1", "--by", by, "--source", f"email {by}")
+            self.assertEqual((code, err), (0, ""), by)
+            self.assertEqual(item(json.loads(path.read_text()), "F-1")["approvals"][-1]["by"], recorded, by)
+
+    def signs_off_report(self, approvers, note):
+        data = example()
+        data["approvers"] = approvers
+        item(data, "F-1")["notes"] = note
+        run = subprocess.run([sys.executable, str(SYNC), "github", "report", str(self.write(data)), "--repo", "acme/close",
+                              "--today", "2027-01-20"], capture_output=True, text=True, timeout=60)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        return run.stdout, run.stderr
+
+    def test_w19_1_a_signer_note_that_fits_two_approvers_warns_and_shows_any_listed_approver(self):
+        # Gate 2 F19: neither Tom is chosen.
+        out, err = self.signs_off_report([{"name": "Tom Okafor (Group Controller)", "github": "tokafor"},
+                                          {"name": "Tom Okafor (Treasury)", "github": "tokafor2"}], "Signs off: Tom Okafor, due 2027-02-12.")
+        self.assertEqual(err.splitlines(), ["warning: F-1 notes say 'Signs off: Tom Okafor', which is not exactly one listed approver; "
+                                            "the status comment shows 'any listed approver'"])
+        self.assertIn("Who signs: any listed approver for I-1, F-1, F-2, F-3.", out)
+
+    def test_w19_1_a_sentence_after_the_name_is_dropped_to_find_the_signer(self):
+        # Gate 1 N4: kills a split that does not retry without the sentence after '. '.
+        out, err = self.signs_off_report([dict(ELENA), {"name": "Tom Okafor (Group Controller)", "github": "tokafor"}],
+                                         "Signs off: Elena Petrova. Tom approved verbally.")
+        self.assertEqual(err, "")
+        self.assertIn("Who signs: any listed approver for I-1, F-2, F-3; Elena Petrova (Treasury lead) for F-1.", out)
+
+    def test_w19_1_a_title_before_the_name_is_not_cut_off_at_its_dot(self):
+        # Gate 1 N4: kills a split at the first '.': "Dr. Elena Petrova" must not resolve to an approver named "Dr".
+        out, err = self.signs_off_report([dict(ELENA), {"name": "Dr (duty reviewer)", "github": "duty"}],
+                                         "Signs off: Dr. Elena Petrova")
+        self.assertEqual(err.splitlines(), ["warning: F-1 notes say 'Signs off: Dr. Elena Petrova', which is not exactly one listed "
+                                            "approver; the status comment shows 'any listed approver'"])
+        self.assertIn("Who signs: any listed approver for I-1, F-1, F-2, F-3.", out)
+        self.assertNotIn("Dr (duty reviewer) for", out)
+
+    def test_w19_3_a_written_initiative_sign_off_goes_stale_when_the_prd_changes(self):
+        # Gate 2 F6: the PRD is part of what an initiative's sign-off covers.
+        path = self.write(json.loads((EXAMPLES / "product.json").read_text()))
+        self.assertEqual(self.record(path, "--item", "I-1", "--by", "Marco Silva", "--source", "steering minutes, 2027-01-21")[0], 0)
+        line = self.status(path, "I-1")
+        self.assertIn(" approved ", line)
+        self.assertIn("msilva-cs current", line)
+        prd = Path(self.base, "prd.md")
+        prd.write_text(prd.read_text() + "\nOne more requirement.\n")
+        line = self.status(path, "I-1")
+        self.assertIn(" stale ", line)
+        self.assertIn("msilva-cs stale", line)
+
+    def test_w19_1_a_signer_note_that_matches_no_approver_warns_in_plan_and_report(self):
+        # Gate 1 F7: the comment still falls back to "any listed approver", but plan and report say why.
+        data = example()
+        data["approvers"].append(dict(ELENA))
+        item(data, "F-1")["notes"] = "Signs off: Dr. Elena Petrova, due 2027-02-12."
+        item(data, "F-2")["notes"] = "Signs off: Elena Petrov."
+        item(data, "F-3")["notes"] = "Signs off: Elena Petrova. Sign-off by Tom is not needed."  # matches: no warning
+        path = self.write(data)
+        expected = ["warning: F-1 notes say 'Signs off: Dr. Elena Petrova', which is not exactly one listed approver; "
+                    "the status comment shows 'any listed approver'",
+                    "warning: F-2 notes say 'Signs off: Elena Petrov', which is not exactly one listed approver; "
+                    "the status comment shows 'any listed approver'"]
+        report = subprocess.run([sys.executable, str(SYNC), "github", "report", str(path), "--repo", "acme/close", "--today", "2027-01-20"],
+                                capture_output=True, text=True, timeout=60)
+        self.assertEqual((report.returncode, report.stderr.splitlines()), (0, expected))
+        self.assertIn("Who signs: any listed approver for I-1, F-1, F-2; Elena Petrova (Treasury lead) for F-3.", report.stdout)
+        code, out, err = run_main(["azure", "plan", str(path), "--org", "acme", "--project", "close"], azure, FakeAzure().call)
+        self.assertEqual((code, err.splitlines()), (0, expected))
+        self.assertNotIn("warning", out)
+        code, out, err = run_main(["linear", "plan", str(path), "--team", "FIN", "--project", "Month-end close"], linear, FakeLinear().call)
+        self.assertEqual((code, err.splitlines()), (0, expected))
+        item(data, "F-1")["notes"] = item(data, "F-2")["notes"] = ""
+        code, _, err = run_main(["azure", "plan", str(self.write(data)), "--org", "acme", "--project", "close"], azure, FakeAzure().call)
+        self.assertEqual((code, err), (0, ""))
+
+    def test_w19_6_the_grooming_examples_stay_valid_with_a_written_sign_off(self):
+        for name in ("operations", "product", "marketing"):
+            data = json.loads((EXAMPLES / f"{name}.json").read_text())
+            self.assertEqual(backlog.validate(data)[0], [], name)
+            path = self.write(data, f"{name}.json")
+            approver = data["approvers"][0]["name"]
+            self.assertEqual(self.record(path, "--item", "F-1", "--by", approver, "--source", "email")[0], 0, name)
+            self.assertEqual(backlog.validate(json.loads(path.read_text()))[0], [], name)
+
+    def test_w19_6_the_planning_tests_pass_unchanged(self):
+        result = unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(
+            unittest.defaultTestLoader.loadTestsFromModule(planning_module()))
+        self.assertTrue(result.wasSuccessful(), result.failures + result.errors)
+        self.assertGreaterEqual(result.testsRun, 44)
 
 
 if __name__ == "__main__":

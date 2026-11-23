@@ -39,6 +39,15 @@ KINDS = ("durable fix", "missing alert", "prevention")
 NO_EVIDENCE = {"", "-", "—", "none", "n/a", "na", "tbd", "unknown"}
 TIME = re.compile(r"(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)\s*(Z|UTC|[+-]\d{2}:?\d{2})", re.I)
 BACKLOG_ID = re.compile(r"\b[BS]-\d+\b")
+# A measurable "then": the same tests as QUANTITY, ANY_ID and the digit check in grooming's
+# backlog.py, so a filed bug's criteria pass `backlog.py validate`. Keep them in step; a test
+# compares them.
+QUANTITY = re.compile(
+    r"\d|\b(every|each|all|none|no|exactly|at least|at most|within|zero|one|two|three|four|five|six|"
+    r"seven|eight|nine|ten|eleven|twelve)\b",
+    re.I,
+)
+ANY_ID = re.compile(r"\b(?:[IGFSBDR]|AC|FB)-\d+(?:\.\d+)?\b|\bE\d+\b")
 GWT = re.compile(r"(?i)^given\s+(.+?),?\s+when\s+(.+?),?\s+then\s+(.+?)\.?$")
 # The exact "not established" line; beside it, only lines that start with "Open:".
 NOT_ESTABLISHED = re.compile(r"(?:root cause\s*:\s*)?not established\.?\s*", re.I)
@@ -270,9 +279,21 @@ def findings(text):
             out.append(f"P7: {aid} has no numbered '- Steps:' list")
         if not action["acceptance"]:
             out.append(f"P7: {aid} has no '- Acceptance:' criteria")
+        has_digit, parsed = False, True
         for criterion in action["acceptance"]:
-            if not GWT.match(criterion):
+            parts = GWT.match(criterion)
+            if not parts:
                 out.append(f"P7: {aid} criterion {criterion!r} is not 'Given …, when …, then …'")
+                parsed = False
+                continue
+            then = parts.group(3)
+            has_digit = has_digit or bool(re.search(r"\d", ANY_ID.sub(" ", then)))
+            if not QUANTITY.search(then):
+                out.append(f"P7: {aid} criterion {criterion!r} has no measurable quantity after 'then': "
+                           "give a number or a word such as each, all, none, at least, at most or within")
+        if action["acceptance"] and parsed and not has_digit:
+            out.append(f"P7: {aid} has no criterion with a number after 'then' (a digit inside an ID "
+                       "such as S-2.1 does not count): give at least one a real number, time or amount")
         if not BACKLOG_ID.search(fields.get("backlog", "")):
             out.append(f"P8: {aid} has no backlog ID: run `pir_check.py bugs` or write '- Backlog: B-n'")
     if listed and not any(a["fields"].get("kind", "").lower() == "durable fix" for a in listed):
@@ -330,7 +351,9 @@ def write_back(text, action_id, bug_id):
 def replace_all(pairs):
     """Write each (path, content) to a temporary file beside its path, then replace the paths.
     When any temporary file cannot be written, no path is replaced and the temporary files go.
-    Each temporary file takes the mode of the file it replaces (mkstemp creates it 0600)."""
+    Each temporary file takes the mode of the file it replaces (mkstemp creates it 0600).
+    A path that is a symbolic link is resolved first, so the target is written and the link stays."""
+    pairs = [(os.path.realpath(path), content) for path, content in pairs]
     temps = []
     try:
         for path, content in pairs:

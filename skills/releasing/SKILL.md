@@ -47,7 +47,8 @@ not an approval. An approval of an earlier digest does not cover a new plan.
 3. **Fix refusals, do not route around them.** A dirty tree, an existing tag, a version not
    above the last release, or a commit on the target that the source lacks each stops the plan.
    A commit on the target that the source lacks means someone skipped the model: bring the
-   change into the source first, or ask the owner.
+   change into the source first, or ask the owner. This includes a merge on the target whose
+   tree differs from a clean `git merge-tree` of its parents (a merge with changes of its own).
 4. **Write the rollback plan** to a file outside the checkout, for example `../rollback.md`.
    A file inside the checkout makes the tree dirty, and `go` then answers NO-GO. Name the
    rollback point the plan printed (the target commit) and the exact steps: see
@@ -98,7 +99,8 @@ summary: what changed for users, what was checked, and what did not change.
 A fix never starts on `rolling` or `main`. Merge it into `dev` first through a pull request.
 Then cherry-pick that commit to `rolling` (or `main`) with `git cherry-pick -x`. Run the gate for
 that branch, and write the reason in the cherry-pick message and the report. The planner
-recognizes a cherry-pick with the same patch, so the next normal promotion is not blocked.
+recognizes a cherry-pick with the same patch, so the next normal promotion is not blocked, nor
+any promotion after it.
 Details: [reference/promotion.md](reference/promotion.md#emergency-path).
 
 ## Verify on the target

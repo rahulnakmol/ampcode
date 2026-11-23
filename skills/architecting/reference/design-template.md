@@ -24,14 +24,14 @@ Do not use Mermaid: the check rejects a `mermaid` code fence (D9).
 | Rule | Fails when |
 | --- | --- |
 | D1 | An NFR target has no number |
-| D2 | An NFR target has no number followed by an accepted unit |
+| D2 | An NFR target has no number followed by an accepted unit outside its condition |
 | D3 | An NFR verification cell is empty, a `<...>` placeholder, or only placeholder words (`-`, `TBD`, `TODO`, `TBC`, `n/a`, `none`, `later`, `not yet`), even with `*`, backticks, `/` or trailing punctuation |
 | D4 | An ADR lists fewer than two options under `Options:`. Only the shallowest list items count; nested pro and con bullets do not |
 | D5 | An ADR has no `Status:` from the list below, no `Decision:` or no `Consequences:` |
 | D6 | There is no `## Contracts` section, or it is empty |
 | D7 | An NFR ID or an ADR ID appears twice |
 | D8 | The `Trust boundaries change:` line is missing or not `yes`/`no`; or it says `yes` and `Threat model:` is a placeholder (as in D3) or has no path or link |
-| D9 | A required section is missing or repeated, the NFR table or an ADR heading is malformed, there are no NFRs or ADRs, a line after the first NFR table, inside the Non-functional requirements section, starts with `\|` or names an `NFR-n`, or a Mermaid fence is used |
+| D9 | A required section is missing or repeated, the NFR table or an ADR heading is malformed, there are no NFRs or ADRs, a line that starts with an `NFR-n` ID (after any `\|`, list marker, heading mark or emphasis) sits anywhere outside the first NFR table, above or below it, a line after the first NFR table, inside the Non-functional requirements section, starts with `\|` or names an `NFR-n`, or a Mermaid fence is used. An `NFR-n` cited inside a sentence elsewhere, such as "to meet NFR-1", is allowed |
 
 ### NFR table
 
@@ -41,12 +41,29 @@ Do not use Mermaid: the check rejects a `mermaid` code fence (D9).
 - **Target:** a number with a unit, and the condition: "p95 under 300 ms at 200 req/s".
 - **Verification:** the test that proves it: the kind, the tool or method, where and when.
 
-A target passes D2 when a number is followed by an accepted unit. A thousands separator and a
-multiplier are allowed: `10,000 users`, `10k users`, `1.5 s`, `99.9 %`, `99.9%`, `400 USD/month`.
-Units are case-insensitive. To add a unit, change `UNITS` in the script and this line together;
-a test compares them.
+A target passes D2 when a number is followed by an accepted unit outside its condition. The
+condition runs from `at`, `when`, `while`, `with`, `during`, `given` or `under ... load` to its
+first number and unit, as in "at 50 req/s" or "when 10,000 users". `for`, `per`, `across` and
+`over` start a condition only before a rate or a count (a load or scope), as in "for 50 req/s"
+or "across 10,000 tenants"; "kept for 30 days" stays the target. `at most`, `at least` and a
+number with no unit ("Recall at 10") do not start a condition.
 
-Accepted units: `ms`, `s`, `sec`, `seconds`, `min`, `minutes`, `h`, `hours`, `d`, `days`, `weeks`, `months`, `years`, `%`, `req/s`, `req/min`, `rps`, `rpm`, `qps`, `tps`, `msg/s`, `events/s`, `errors/min`, `errors/h`, `users`, `sessions`, `tenants`, `connections`, `requests`, `messages`, `events`, `records`, `rows`, `items`, `files`, `violations`, `incidents`, `findings`, `defects`, `KB`, `MB`, `GB`, `TB`, `PB`, `KiB`, `MiB`, `GiB`, `TiB`, `Mbps`, `Gbps`, `MB/s`, `GB/s`, `USD`, `EUR`, `GBP`
+- A condition from `at`, `when`, `while`, `with`, `during`, `given` or `under ... load` is
+  always set aside. So "p95 under 300 at 50 req/s" fails: its only unit belongs to the
+  condition. A load-only target such as "Serve at 50 req/s" or "Latency acceptable at
+  50 req/s" fails too: write the target with its own unit, for example "Serve 50 req/s".
+  "p95 under 300 ms at 50 req/s" passes.
+- A condition from `for`, `per`, `across` or `over` is set aside only when a number stays
+  outside it; that number then needs its unit. So "p95 under 300 for 50 req/s" fails and
+  "under 5 errors per 1,000 requests" passes. When no number stays outside it, the target is
+  checked whole: "Handle over 500 req/s" and "Support over 10,000 tenants" pass. This also lets
+  "Fast for 50 req/s" pass; that trade-off is accepted for these four words.
+
+A thousands separator and a multiplier are allowed: `10,000 users`, `10k users`, `1.5 s`,
+`99.9 %`, `99.9%`, `400 USD/month`. Units are case-insensitive. To add a unit, change `UNITS`
+in the script and this line together; a test compares them.
+
+Accepted units: `ms`, `s`, `sec`, `seconds`, `min`, `minutes`, `h`, `hours`, `d`, `days`, `weeks`, `months`, `years`, `%`, `req/s`, `req/min`, `rps`, `rpm`, `qps`, `tps`, `msg/s`, `events/s`, `errors/min`, `errors/h`, `users`, `sessions`, `tenants`, `connections`, `requests`, `messages`, `events`, `records`, `rows`, `items`, `files`, `violations`, `incidents`, `findings`, `defects`, `errors`, `KB`, `MB`, `GB`, `TB`, `PB`, `KiB`, `MiB`, `GiB`, `TiB`, `Mbps`, `Gbps`, `MB/s`, `GB/s`, `USD`, `EUR`, `GBP`
 
 ### ADR subsection
 

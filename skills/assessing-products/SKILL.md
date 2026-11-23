@@ -64,9 +64,10 @@ For each product and criterion, find the evidence that
 [reference/criteria.md](reference/criteria.md) names under "Proves it". Cite the document, test or
 source and its date as YYYY-MM-DD. If the source has no date, write `undated` and the date you
 read it, for example `Order form (undated), read 2026-11-22`. Never guess a date or shorten it to
-a month. Name who read a document, and when, only where the source says so; otherwise write
-`undated`, `read <date>`. A statement you did not check is `"status": "claimed"`; a document you
-read or a test you ran is `"verified"`. A cell without a status counts as claimed.
+a month. Never borrow a date from another line of the source. Name who read a document, and
+when, only where the source says so; otherwise write `undated`, `read <date>`. A statement you did
+not check is `"status": "claimed"`; a document you read or a test you ran is `"verified"`. A cell
+without a status counts as claimed.
 
 - Where the agreed bands do not define a score (for example only 5 and 0 are defined), say in
   the evidence line which band you applied and why, and list it for the decider in the
@@ -89,8 +90,10 @@ follow. Never ask for or repeat secret values or credentials.
 python3 scripts/score.py score criteria.json scores.json --expect sha256:<recorded digest>
 ```
 
-It refuses to score before a freeze, after a changed weight, a score without evidence or a score
-outside 0 to 5, and names each problem. Fix the input, not the rule. On success it prints:
+It refuses to score before a freeze, after a changed weight, a score without evidence,
+evidence with neither a YYYY-MM-DD date nor the word `undated`, or a score outside 0 to 5, and
+names each problem. Fix the input, not the rule: add the source's date, or `undated, read <date>`.
+It cannot tell a borrowed date; that is yours to check. On success it prints:
 
 - the total out of 100 per product (sum of weight times score, divided by 5) and the ranks;
 - every claimed score, listed as unverified;
@@ -119,7 +122,11 @@ category is refused, and the report lists every unresolved fit as a gap.
   not the result". Never edit the frozen files, and never compute a what-if outside the script.
   State only the ranks a what-if run printed. Before you say what it would take for a claim to
   change the rank, run the best case for each option the evidence allows, for example each plan
-  quoted or offered.
+  quoted or offered. To say which claims a rank change needs, run the case without each claim
+  twice: once with the leader as scored, and once with the leader's open items one band lower.
+  Otherwise say only what the runs printed. State what it would take in each case, or only the
+  weakest one; never merge the cases into one condition. "None of these changes the rank" also
+  needs a run.
 
 ## 6. Write the recommendation
 

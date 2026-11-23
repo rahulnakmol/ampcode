@@ -154,15 +154,44 @@ class Scoring(Workspace):
                 self.score_cell("Beta", "fit", cell)
                 self.refused(run("score", self.criteria, self.scores), "S3", "Beta", "'fit'")
 
+    def test_d23_r5_2_refuses_evidence_without_a_date_or_undated(self):
+        # D-23, eval round 5, R5-2: evidence lines had no date and no "undated" (expected by hand from §3).
+        self.freeze()
+        for evidence in ("SCIM: create and change tested; deactivate not tested yet",
+                         "Entra ID app gallery listing; not tested", "Quote CQ-0091, packet 2026-11",
+                         "Read on 22 November 2026", "Ticket 20261122"):
+            with self.subTest(evidence=evidence):
+                self.score_cell("Beta", "exit", {"score": 3, "evidence": evidence, "status": "claimed"})
+                out = self.refused(run("score", self.criteria, self.scores), "S3", "Beta 'exit'", "undated")
+                self.assertNotIn("Totals", out)
+        for evidence in ("Order form (undated), read 2026-11-22", "undated, read 2026-11-22",
+                         "Plan sheet, Undated", "Written quote CQ-0091, 2026-11-12"):
+            with self.subTest(evidence=evidence):
+                self.score_cell("Beta", "exit", {"score": 3, "evidence": evidence, "status": "claimed"})
+                result = run("score", self.criteria, self.scores)
+                self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_d23_r5_2_the_example_and_fixtures_are_dated(self):
+        # D-23: the skill's own example and the fit-gap fixture must still pass the date rule.
+        self.freeze()
+        self.assertEqual(run("score", self.criteria, self.scores).returncode, 0)
+        fit_gap = ROOT / "tests" / "fixtures" / "fit-gap"
+        shutil.copy(fit_gap / "criteria.json", self.tmp / "fg-criteria.json")
+        self.assertEqual(run("freeze", self.tmp / "fg-criteria.json").returncode, 0)
+        result = run("score", self.tmp / "fg-criteria.json", fit_gap / "fitgap.json", "--fit-gap")
+        self.assertEqual(result.returncode, 0, result.stdout)
+
     def test_w8_5_refuses_a_score_outside_0_to_5(self):
         self.freeze()
         for value in (6, -1, 5.5, "4", True, None):
             with self.subTest(score=value):
-                self.score_cell("Gamma", "exit", {"score": value, "evidence": "Sandbox export test", "status": "verified"})
+                self.score_cell("Gamma", "exit", {"score": value, "evidence": "Sandbox export test 2026-11-05",
+                                                  "status": "verified"})
                 self.refused(run("score", self.criteria, self.scores), "S4", "Gamma", "'exit'")
         for value in (0, 5, 2.5):
             with self.subTest(score=value):
-                self.score_cell("Gamma", "exit", {"score": value, "evidence": "Sandbox export test", "status": "verified"})
+                self.score_cell("Gamma", "exit", {"score": value, "evidence": "Sandbox export test 2026-11-05",
+                                                  "status": "verified"})
                 self.assertEqual(run("score", self.criteria, self.scores).returncode, 0)
 
     def test_missing_unknown_and_badly_labelled_cells_are_refused(self):
@@ -170,7 +199,7 @@ class Scoring(Workspace):
         self.edit(self.scores, lambda d: d["products"][0]["scores"].pop("cost"))
         self.refused(run("score", self.criteria, self.scores), "S5", "Alpha", "'cost'")
         self.edit(self.scores, lambda d: d["products"][0]["scores"].update(
-            cost={"score": 3, "evidence": "Quote Q-17", "status": "verified"}, sso={"score": 3, "evidence": "x"}))
+            cost={"score": 3, "evidence": "Quote Q-17, 2026-11-07", "status": "verified"}, sso={"score": 3, "evidence": "x"}))
         self.refused(run("score", self.criteria, self.scores), "S5", "'sso'")
         self.edit(self.scores, lambda d: d["products"][0]["scores"].pop("sso"))
         self.score_cell("Alpha", "fit", {"score": 5, "evidence": "Demo", "status": "probably"})
@@ -562,6 +591,34 @@ class SkillText(unittest.TestCase):
         self.assertIn("Before you say what it would take for a claim to change the rank, run the best case "
                       "for each option the evidence allows", part)
         self.assertIn("each plan quoted or offered", part)
+
+    def test_eval_r3_1_which_claims_a_rank_change_needs_comes_from_runs(self):
+        # D-8, eval round 3, R3-1: "Calyx needs all five" was drawn from best-case runs alone.
+        part = self.section("## 5. Read the result")
+        # D-23, eval round 5, R5-1: the sentence now asks for both leader cases for every left-out claim.
+        self.assertIn("To say which claims a rank change needs, run the case without each claim twice: once "
+                      "with the leader as scored, and once with the leader's open items one band lower. "
+                      "Otherwise say only what the runs printed", part)
+
+    def test_eval_r4_1_differing_what_if_cases_are_not_merged(self):
+        # D-8, eval round 4, R4-1: "only if all of these" merged a case where fewer claims sufficed.
+        part = self.section("## 5. Read the result")
+        # D-23, eval round 5, R5-1: "in each case" now names the two leader cases.
+        self.assertIn("State what it would take in each case, or only the weakest one; never merge the cases "
+                      "into one condition", part)
+        self.assertIn('"None of these changes the rank" also needs a run', part)
+
+    def test_d23_r5_1_leave_one_out_is_not_split_from_the_leader_lower_case(self):
+        # D-23, eval round 5, R5-1: the old wording read as two separate sets of runs.
+        part = self.section("## 5. Read the result")
+        self.assertNotIn("run the case without each one, and with the leader's open items", part)
+
+    def test_d23_r5_2_never_borrow_a_date(self):
+        # D-23, eval round 5, R5-2: a date was borrowed from another line; the script cannot catch that.
+        part = self.section("## 3. Gather evidence")
+        self.assertIn("Never borrow a date from another line of the source.", part)
+        score_part = self.section("## 4. Score with the script")
+        self.assertIn("evidence with neither a YYYY-MM-DD date nor the word `undated`", score_part)
 
     def test_eval_r2_2_claims_need_a_condition_for_a_product_not_recommended(self):
         # Eval round 2, R2-2: a not-recommended product's rank-changing claims and its unproven gate got no owner.

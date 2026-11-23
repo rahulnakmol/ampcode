@@ -9,18 +9,24 @@ and incident response. Not for application code alone (`software-delivery`).
 
 - `missioning`: the conductor for this mission. Pipeline and application code go through
   `delivering`.
-- `architecting` (planned, wave 1). Fallback: write the target design with decisions as short
-  ADRs, including the IaC tool choice, and measurable non-functional requirements.
-- `provisioning` (planned, wave 2). Fallback: preview the exact change (Terraform `plan -out`,
-  Bicep `what-if`, a CloudFormation change set), run the policy and cost checks the stack uses,
-  apply only the approved plan, read the resources back, then run a drift check.
-- `scanning-vulnerabilities` (planned, wave 2). Fallback: run the IaC and container scanners the
-  repository allows; attach their output.
-- `monitoring` (planned, wave 2). Fallback: write each SLO with its alert and runbook as code;
-  inject the failure in a non-production environment and observe the notification.
-- `releasing` (planned, wave 1). Fallback: follow the repository's promotion rules; write the
-  rollback plan before asking.
-- `investigating-incidents` (planned, wave 2). Fallback: on Amp, the Opsci mode; elsewhere, keep
+- `architecting`: the target design, with ADRs (the IaC tool choice among them) and measurable
+  non-functional requirements. If not installed: write the decisions as short ADRs, including the
+  IaC tool choice, and each non-functional requirement with a number and a test.
+- `provisioning`: each IaC change from module tests, preview, policy and cost checks to an apply
+  bound to the plan's digest, a read-back and a drift check. If not installed: preview the exact
+  change (Terraform `plan -out`, Bicep `what-if`, a CloudFormation change set), run the policy and
+  cost checks, apply only that plan, read the resources back and check drift.
+- `scanning-vulnerabilities`: the IaC and container scans, triaged, with coverage stated. If not
+  installed: run the IaC and container scanners the repository allows and attach their output.
+- `monitoring`: SLOs, error budgets, burn-rate alerts, runbooks and dashboards as code, each alert
+  shown to fire outside production. If not installed: write each SLO with its alert and runbook as
+  code, inject the failure outside production and observe the notification.
+- `releasing`: each promotion, with notes, a rollback plan, a GO or NO-GO and a read-back on the
+  target. A promotion is an outside effect: it runs when the mission contract pre-authorizes it,
+  otherwise it is stop reason 2. If not installed: follow the repository's promotion rules, with
+  the rollback plan written first.
+- `investigating-incidents`: the read-only investigation, the post-incident review, and its fixes
+  and missing alerts as backlog bugs. If not installed: on Amp, the Opsci mode; elsewhere, keep
   competing hypotheses, correlate telemetry with the deployed revision, and separate mitigation
   from the durable fix.
 

@@ -141,7 +141,8 @@ plan.
 ## Red flags
 
 - A flow between two zones with `n/a` in most STRIDE categories and thin reasons.
-- An `n/a` reason that depends on a bound or control the sources do not state.
+- An `n/a` reason that depends on a bound or control the sources do not state, or that is only
+  planned.
 - Personal data on a flow marked `personal_data: false`.
 - An accepted risk whose owner is a role, a team or the author, or an `accepted` field filled
   before the owner confirmed.
@@ -153,8 +154,9 @@ plan.
   fails). "Secure Shell", "Secure Boot", "the Secure flag" and "No vulnerability scan ran" are
   not claims. Write a control name in backticks (`` `Secure` ``): the check skips only backtick
   spans. Quotes do not hide a claim in any field; only a third party's words pass, right after
-  "calls it", "claims", "says" or "states", and not when "we", "our review" or "this model" says
-  them. In a mitigation, "verified with HMAC" passes; "the system is verified" fails.
+  "calls it", "claims", "says" or "states", and not when the author says them ("I", "we", "my
+  review", "our assessment", "this threat model", "the author"). In a mitigation, "verified with
+  HMAC" or "verified by semgrep 1.85" passes; "verified by AWS" and "the system is verified" fail.
 - A claim inside backticks or a third party's quote. Backticks are an escape for names, not
   proof: the reviewer reads backticked text and quotes for hidden claims.
 - Threat IDs renumbered after a backlog item, a test or a brief cites them.

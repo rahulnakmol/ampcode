@@ -5,13 +5,15 @@
   python3 floor_guard.py change.diff [--accept <id>=<reason> ...]
 
 It flags, per file in the diff:
-  assert-  an assertion removed with no added assertion to replace it
+  assert-  an assertion removed with no added assertion to replace it (a commented-out line, with
+           #, //, ;, /*, <!-- or --, is no assertion); also XCTAssert..., pgTAP, tSQLt, HUnit, hspec
   skip-    an added skip, ignore or focus marker (pytest.mark.skip, pytestmark, @skip(, it.skip,
-           test.skipIf, test.concurrent.skip, it.only, fit, fdescribe, t.Skip, ...)
+           test.skipIf, test.if, describe.if, it.runIf, test.failing, test.concurrent.skip, it.only,
+           fit, fdescribe, { skip: true }, t.Skip, XCTSkip, XCTSkipIf, ...)
   silence- an added or widened checker silencer (noqa, eslint-disable, @ts-ignore, type: ignore,
            nosec, nolint, ...): '# noqa: F401' to '# noqa' is widened
   floor-   a lowered, removed or commented-out number on a coverage, threshold, min, minimum, fail_under,
-           lines, branches, functions or statements key
+           lines, branches, functions or statements key, also as XML (JaCoCo <minimum>0.80</minimum>)
   ci-      an added continue-on-error: true or allow_failure: true, or || true in a CI file
 
 Each flag prints as "<id>: <path>:<line>: <what>". Exits 0 and prints "pass" when there is no
@@ -30,13 +32,16 @@ from collections import Counter
 
 ASSERTION = re.compile(
     r"^\s*(?:await\s+|with\s+)?(?:assert\b|(?:self\.|this\.|t\.|s\.)?assert\w*!?\s*\(|expect\s*\("
-    r"|pytest\.raises\s*\(|require\.\w+\s*\(|t\.(?:Error|Fatal)f?\s*\()|\.should\b")
+    r"|pytest\.raises\s*\(|require\.\w+\s*\(|t\.(?:Error|Fatal)f?\s*\(|XCTAssert\w*\s*\(|assert[A-Z]\w*\s+[\"(\[\w]"
+    r"|(?i:select)\s+(?:ok|is|isnt|matches|cmp_ok|results_eq|set_eq|bag_eq|throws_ok|lives_ok|is_empty)\s*\("
+    r"|(?i:exec(?:ute)?)\s+tSQLt\.(?:Assert|Fail)\w*)|\.should\b|`should\w*`")
 SKIP = re.compile(
     r"(?:@|\bpytestmark\s*=\s*\[?\s*)?\bpytest\.mark\.(?:skip|skipif|xfail)\b|\bunittest\.skip\w*|\.skipTest\s*\("
     r"|\bpytest\.(?:skip|xfail)\s*\(|^\s*@skip(?:If|Unless)?\s*\("
-    r"|\b(?:it|test|describe|context)(?:\.(?:concurrent|sequential|serial))*\.(?:skip(?:If|Unless)?|only|todo(?:If)?)\b"
+    r"|\b(?:it|test|describe|context)(?:\.(?:concurrent|sequential|serial))*"
+    r"\.(?:skip(?:If|Unless)?|only|todo(?:If)?|if|runIf|failing)\b"
     r"|\b(?:xit|xtest|xdescribe)\s*\(|(?<![\w.$])(?<!def )(?:fit|fdescribe)\s*\("
-    r"|\bt\.Skip\w*\s*\(|#\[ignore\]|@(?:Disabled|Ignore)\b")
+    r"|\bt\.Skip\w*\s*\(|#\[ignore\]|@(?:Disabled|Ignore)\b|\bXCTSkip(?:If|Unless)?\s*\(|[{,]\s*skip\s*:\s*true\b")
 SILENCER = re.compile(
     r"\bnoqa\b|eslint-disable(?:-next-line|-line)?|@ts-(?:ignore|nocheck|expect-error)\b|\btype:\s*ignore\b|\bnosec\b"
     r"|\bnolint\b|pylint:\s*disable", re.I)
@@ -45,11 +50,13 @@ OR_TRUE = re.compile(r"\|\|\s*(?:true|:)(?![\w-])")
 CI_PATHS = re.compile(
     r"(?:^|/)(?:\.github/(?:workflows|actions)/|\.gitlab-ci\.ya?ml$|\.gitlab/|\.circleci/|azure-pipelines[^/]*\.ya?ml$"
     r"|\.azure-pipelines/|Jenkinsfile$|\.buildkite/|bitbucket-pipelines\.ya?ml$|\.travis\.ya?ml$)")
-COMMENT = re.compile(r"^\s*(?:#|//|;|/\*)")
+COMMENT = re.compile(r"^\s*(?:#|//|;|/\*|<!--|--(?=\s|$))")
 BAR_WORDS = {"coverage", "threshold", "min", "minimum", "lines", "branches", "functions", "statements"}
 NUMBER = r"(?P<num>-?\d+(?:\.\d+)?)"
-KEY_VALUE = re.compile(r"""(?P<key>[A-Za-z_][\w.\-]*)["']?\s*(?::=|[:=])\s*["']?""" + NUMBER)
+KEY_VALUE = re.compile(
+    r"""(?P<key>[A-Za-z_][\w.\-]*)["']?\s*(?::=|[:=])\s*(?:BigDecimal(?:\.valueOf)?\(\s*)?["']?""" + NUMBER)
 FLAG_VALUE = re.compile(r"--(?P<key>[\w\-]+)\s+" + NUMBER)
+XML_VALUE = re.compile(r"<(?P<key>[A-Za-z_][\w.\-]*)>\s*" + NUMBER + r"%?\s*</")
 
 
 def parse(text):
@@ -98,7 +105,7 @@ def bar_key(key):
 def bars(text):
     """[(key, number)] for each bar key with a number on the line."""
     found = []
-    for pattern in (KEY_VALUE, FLAG_VALUE):
+    for pattern in (KEY_VALUE, FLAG_VALUE, XML_VALUE):
         for match in pattern.finditer(text):
             if bar_key(match["key"]):
                 found.append((match["key"], float(match["num"])))
@@ -133,9 +140,10 @@ def scan(text):
         rows = [row for hunk in hunks for row in hunk]
         removed = [r for r in rows if r[0] == "-"]
         added = [r for r in rows if r[0] == "+"]
-        # Assertions: a removed assertion needs an added one in the same file.
-        gone = [r for r in removed if ASSERTION.search(r[3])]
-        spare = len([r for r in added if ASSERTION.search(r[3])])
+        # Assertions: a removed assertion needs an added one in the same file. A commented-out line
+        # holds no assertion.
+        gone = [r for r in removed if ASSERTION.search(r[3]) and not COMMENT.match(r[3])]
+        spare = len([r for r in added if ASSERTION.search(r[3]) and not COMMENT.match(r[3])])
         for row in gone[spare:] if len(gone) > spare else []:
             flags.append(("assert", path, row[1], f"assertion removed with no replacement: {row[3].strip()}"))
         # Markers: an added marker counts only when the file did not lose the same marker.

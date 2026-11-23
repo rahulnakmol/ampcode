@@ -132,3 +132,61 @@ otherwise a human Effects gate), close-out>
 
 Store large artifacts outside the record and link them. A path to a deleted worktree is not a
 usable handoff. If the record lives only locally, say so in the handoff.
+
+## Delivery evidence into backlog.json
+
+When a milestone delivers stories or bugs from a `grooming` backlog, record each one right after
+the milestone merges into `dev` (under stop, after its gates pass), so `backlog.py trace` and
+`steering`'s forecast count it as delivered from then on. Use `grooming`'s delivery record:
+`{ at, evidence, criteria }`, as its `reference/contract.md` says. Do not change that format. Only
+a `ready` item takes a record.
+
+1. For each acceptance criterion of the item, decide `met` or `not met` from the evidence: the
+   test that proves it and the milestone PR. A green PR is not a met criterion on its own. List every
+   criterion; a partial delivery stays visible.
+2. Set the variables. `<grooming>` is the `grooming` skill's directory.
+
+   ```bash
+   export BACKLOG=path/to/backlog.json ITEM=S-1 AT=2026-11-23 \
+     PR=https://github.com/OWNER/NAME/pull/N TEST="python3 -m unittest tests.test_x -v" \
+     CRITERIA='{"S-1.1": "met", "S-1.2": "met", "S-1.3": "not met"}'
+   ```
+
+3. Write the record. It replaces any earlier record on the item.
+
+   ```bash
+   python3 - <<'EOF'
+   import json, os
+   path = os.environ["BACKLOG"]
+   with open(path, encoding="utf-8") as f:
+       data = json.load(f)
+   item = next(i for i in data["items"] if i["id"] == os.environ["ITEM"])
+   item["delivery"] = {"at": os.environ["AT"],
+                       "evidence": [os.environ["PR"], "Test command: " + os.environ["TEST"]],
+                       "criteria": json.loads(os.environ["CRITERIA"])}
+   with open(path, "w", encoding="utf-8") as f:
+       json.dump(data, f, indent=2, ensure_ascii=False)
+       f.write("\n")
+   EOF
+   ```
+
+4. Check it.
+
+   ```bash
+   python3 <grooming>/scripts/backlog.py validate "$BACKLOG"
+   python3 <grooming>/scripts/backlog.py trace "$BACKLOG"
+   ```
+
+   `validate` must print `0 errors`. A record that misses a criterion, adds one, or uses another
+   value is refused (for example `delivery criteria must list exactly [...]`): fix the record,
+   never drop the criterion. In `trace`, the item's row reads `delivered`, or `partial: <IDs> not
+   met`. `trace` exits 1 while other gaps remain, such as features not yet signed off; those are
+   not this step's to close.
+
+5. List each record in the checkpoint report under `Done`. The backlog file is local; copying the
+   records to a tracker with `syncing` is an outside effect, done only when the contract
+   pre-authorizes it.
+
+At close-out, only check: every story or bug each milestone delivered has a record, and `trace`
+shows it. Record a missing one with the steps above, and list the records under `Criteria and
+evidence`.

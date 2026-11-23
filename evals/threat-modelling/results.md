@@ -159,3 +159,108 @@ These checker changes came from the M2 gate reviews, after both graded runs. Nei
 - **`unexamined` is rejected.** M3 and M4 now fail an `n/a` reason that says "unexamined", as
   they already did for "not examined", unless it names a threat ID.
 - **`not_examined` must be a list of texts** (M1).
+
+## S1 round 3 (D-7, close-out)
+
+Date: 2026-11-22
+Skill revision: `910331f`, graded from the read-only snapshot `/tmp/snap/skills/threat-modelling/`. Each of its seven files is identical to `git show 910331f:skills/threat-modelling/<file>`. The worktree's uncommitted `skills/threat-modelling/` changes (D-11, D-14) were not graded.
+Judge: a fresh, independent judge that did not see the agent's conversation. It graded only against the S1 pass rules of `/tmp/snap/evals/threat-modelling/README.md`.
+- The run is in `/tmp/evals/close/tm/s1-r3/`. Its `s1-reminders-design.md` is identical to the fixture.
+- The judge reran the snapshot's `check` and `render` on a copy of the model in a scratch folder under `/tmp`, then deleted the folder.
+- The judge read all 57 `n/a` reasons (19 STRIDE, 38 LINDDUN) against rule 3.
+
+Judge's checker output:
+
+```text
+$ python3 /tmp/snap/skills/threat-modelling/scripts/threat_check.py check docs/threat-models/sms-reminders.json
+pass
+exit 0
+$ python3 /tmp/snap/skills/threat-modelling/scripts/threat_check.py render docs/threat-models/sms-reminders.json > render.md
+render exit 0 lines 160
+$ cmp render.md /tmp/evals/close/tm/s1-r3/docs/threat-models/sms-reminders.md
+(no output: byte-identical)
+```
+
+### S1 round 3: SMS reminders design (agent had a shell)
+
+| # | Rule | Result | Evidence |
+| --- | --- | --- | --- |
+| 1 | Check passes, render prints tables | PASS | The judge's rerun prints `pass` (exit 0), and `render` exits 0 with 160 lines. The output is byte-identical to the agent's `docs/threat-models/sms-reminders.md`, the path on the design's `Threat model:` line. `commands.txt` shows that the agent ran `check` twice and rendered after the last check. |
+| 2 | Flow for each data movement | PASS | Scheduler to SMS provider is `F2` (line 46). SMS provider to the reply webhook is `F7` (line 147). Receptionist to the Booking API is `F9`, with `F10` for the responses. The database reads and writes are `F1`, `F4`, `F8`, `F11` and `F12`. |
+| 3 | Six STRIDE entries, specific `n/a` | PASS | All 12 flows cross zones and each has 6 STRIDE keys. No `n/a` reason points to "Not examined". The staff cells that failed round 2 now give a specific reason or a threat ID. `F9.stride.repudiation` (line 197): "n/a: in this design staff only read replies; staff edits to appointments are outside this model and carried by T17". T17 is a backlog item (B-47) for the parts not examined, as `reference/stride.md` asks. `F9.stride.denial_of_service` (line 199): "n/a: requests come from signed-in clinic staff; floods on the shared Booking API are T14". The other 17 STRIDE `n/a` reasons each name a property of their flow or a threat ID, for example `F3.stride.information_disclosure`: "n/a: a message ID and a status only, with no patient data". The 38 LINDDUN `n/a` reasons are specific too. See the round 3 findings for two weak reasons that still meet the rule. |
+| 4 | Personal-data flows: `personal_data: true` and 7 LINDDUN entries | PASS | `F2` ("patient mobile number and 'Reminder: <clinic> on <date> at <time>…'") has `"personal_data": true` and 7 LINDDUN keys (lines 46-64). 11 flows are personal and each has 7 keys. `F9` (the staff single sign-on session) is personal. Only `F3`, which carries "provider message ID and accepted or rejected status", is false. |
+| 5 | Fixture facts named as threats | PASS | Forged webhook: T1 (line 280), "Anyone who finds the webhook URL posts unsigned or wrongly signed replies…". Its verification reads "Integration test in CI (none exists yet, design Known facts) … not run". Data shared with the provider: T7 (line 301), "The SMS provider receives and keeps patient mobile numbers with clinic and appointment times (ADR-1)…". |
+| 6 | Each threat has a disposition. No `accepted` field. IDs follow the scheme and are listed as proposed | PASS | 14 threats are `mitigate`, each with a `verification` that ends "not run". One is `accept`: T20, with owner "Tom Becker (Head of Engineering)" and the reason "…Proposed by this model; Tom Becker has not accepted it" (lines 348-351). Nine are `backlog`, B-40 to B-48, continuing from "the next free bug ID is B-40". No object has an `accepted` key (`jq` count 0). `answer.md` says: "9 backlog items, B-40 to B-48. They are proposed, not filed." |
+| 7 | At least 2 abuse cases with actor, goal and threats | PASS | `abuse_cases` AC1 to AC7. For example, AC2 has the actor "An internet attacker who finds the webhook URL", the goal "Cancel many appointments or take the booking system down" and the threats T1, T2 and T14. |
+| 8 | ASVS 4.0.3 review: `met` backed by fixture evidence, gaps name threats, unknowns not examined, no false quotes | **FAIL** | `standard` is "OWASP ASVS 4.0.3" (line 4). There are no `met` rows and no quotes. But all 12 review rows are `{"result": "not examined"}` (lines 399-410), and there is no `gap` row at all. The fixture names an untested control: "No test of the webhook signature check exists yet". It appears as threat T1, but no review row is a `gap` naming T1, which this rule requires. The agent followed `reference/asvs.md`: "Before you cite any requirement, here or not, read its full text in the source… When you cannot read the source, list the chapter or section as `not examined`." The eval setup allows reading only the skill and the fixture, so a compliant agent cannot write a `gap` row (finding 9). |
+| 9 | No-shell handling (S2 only) | n/a | S1 had a shell. |
+| 10 | No "secure" or "verified" claim; no assumption shown as fixture fact | PASS | A grep of the JSON, render and `answer.md` for secure, verified, vulnerab, safe and risk-free finds only "insecure direct object reference" (T16) and "Dependency and container vulnerabilities … (run scanning-vulnerabilities)". Each `Existing` mitigation cites a design section and says "not built", for example T1: "Existing (design, Contracts: Reply webhook, HMAC-SHA256 signature header; not built)". The summary says "the system is not built, so no control is in place yet". `answer.md` lists assumptions under "Assumptions". One minor point: the summary's "ASVS 4.0.3 level 2 is the intended level" is the agent's choice, not stated in the fixture. |
+
+S1 round 3 result: 8 PASS, 1 FAIL, 1 n/a.
+
+The round 2 failure is fixed. No `n/a` reason defers to "Not examined", and the area that was not examined is now threat T17 (backlog B-47).
+
+### Findings for the skill (round 3)
+
+9. **Under the eval's setup, the skill forbids every `gap` row.** This caused the round 3 failure of rule 8. `reference/asvs.md` says: "Before you cite any requirement, here or not, read its full text in the source; do not quote a requirement from memory. When you cannot read the source, list the chapter or section as `not examined`." The eval agent may read only the skill and the fixture. So the review cannot record the untested signature check as a `gap`, which `SKILL.md` §4 ("a planned control is a `gap` that names its threat") and rule 8 both require. The same table says its subjects were "read in the v4.0.3 source". Earlier rounds cited table rows as `gap` and passed.
+   Smallest fix: in `reference/asvs.md`, replace "Before you cite any requirement, here or not, read its full text in the source" with: "You may cite a requirement in this table as `gap` or `not examined` by its subject, without quoting it. Read its full text in the source before you mark it `met`, quote it, or cite a requirement that is not in this table." Alternatively, give the eval agent the ASVS 4.0.3 source.
+10. **Two denial-of-service `n/a` reasons on staff flows are still thin.** This was minor and rule 3 still passed. `F9.stride.denial_of_service` points to T14, but T14 covers "A flood of webhook calls", not staff requests. Its other reason, signed-in staff, limits who can send but not how much. `F10.stride.denial_of_service` ("response volume follows staff requests on F9") ignores the size of an unbounded appointment list.
+    Smallest fix: add one row to the pitfalls in `reference/stride.md`: "A cited threat must cover this flow's sender. A threat about another sender does not cover it."
+
+### Overall (after round 3)
+
+FAIL. S1 round 3 passes 8 of its 9 applicable rules. The D-7 target, rule 3, now passes. The one failure is rule 8: every review row is `not examined` and none is a `gap`. `reference/asvs.md` requires that when the ASVS source cannot be read, and the eval setup does not allow reading it (finding 9). S2's round 1 grade (10 of 10) stands.
+
+## S1 round 4 (D-7, close-out)
+
+Date: 2026-11-22
+Skill revision: `910331f` plus close-out branch `wave12/m5-closeout` at `f223f35`, graded from the read-only snapshot `/tmp/snap-close2/skills/threat-modelling/`. Each of its seven files, and the eval README, is identical to `git show f223f35:<path>`. This snapshot includes both round 3 fixes (`asvs.md`: "A row of this table may be cited as `gap` or `not examined` by its subject alone"; `stride.md`: "A cited threat must cover this flow's sender") and the D-11 and D-14 M12 changes.
+Judge: a fresh, independent judge that did not see the agent's conversation. It graded only against the S1 pass rules of `/tmp/snap-close2/evals/threat-modelling/README.md`.
+- The run is in `/tmp/evals/close/tm/s1-r4/`. Its `s1-reminders-design.md` is identical to the fixture.
+- The judge reran the snapshot's `check` and `render` on a copy of the model in a scratch folder under `/tmp`, then deleted the folder.
+- The judge read all 51 `n/a` reasons (18 STRIDE, 33 LINDDUN) and all 14 review rows.
+
+Judge's checker output:
+
+```text
+$ python3 /tmp/snap-close2/skills/threat-modelling/scripts/threat_check.py check docs/threat-models/sms-reminders.json
+pass
+exit 0
+$ python3 /tmp/snap-close2/skills/threat-modelling/scripts/threat_check.py render docs/threat-models/sms-reminders.json > render.md
+render exit 0 lines 150
+$ cmp render.md /tmp/evals/close/tm/s1-r4/docs/threat-models/sms-reminders.md
+(no output: byte-identical)
+```
+
+### S1 round 4: SMS reminders design (agent had a shell)
+
+| # | Rule | Result | Evidence |
+| --- | --- | --- | --- |
+| 1 | Check passes, render prints tables | PASS | The judge's rerun prints `pass` (exit 0), and `render` exits 0 with 150 lines. The output is byte-identical to the agent's `docs/threat-models/sms-reminders.md`, the path on the design's `Threat model:` line. `commands.txt` step 8: "md matches json". |
+| 2 | Flow for each data movement | PASS | Scheduler to SMS provider is `F2` (line 45). SMS provider to the reply webhook is `F5` (line 111), to `booking-api`, which the agent models as one element with the webhook ("Booking API with the reply webhook endpoint"). Receptionist to the Booking API is `F10` (line 221). The database reads and writes are `F6`, `F7`, `F8` and `F9`. The webhook's lookup read before it writes is not a flow of its own. `F6` reads "Reply write…", so this is minor. |
+| 3 | Six STRIDE entries, specific `n/a` | PASS | All 11 flows cross zones and each has 6 STRIDE keys. None of the 18 STRIDE `n/a` reasons says "not examined", and each names a property of its flow or a threat ID. Examples: `F3.stride.information_disclosure`: "n/a: the response holds a message ID and a status, no number or text; the request's content is F2". `F7.stride.denial_of_service`: "n/a: the scheduler alone reads this, once per run every 5 minutes (design, Containers); duplicate sends are T19 and a stalled run is T25". `F11.stride.denial_of_service` (line 251): "n/a: pages answer the requests on F10, whose limits are T18". T18 is the staff-side backlog item, and it covers the requesting staff. One weak reason, `F9.stride.denial_of_service` (line 207), is in finding 12. |
+| 4 | Personal-data flows: `personal_data: true` and 7 LINDDUN entries | PASS | `F2` ("patient mobile number, clinic name, appointment date and time") has `"personal_data": true` (line 47) and 7 LINDDUN keys. All 11 flows are personal, each with 7 keys. `F3` (provider message ID) is personal too, and `answer.md` gives the reason under "Assumptions". |
+| 5 | Fixture facts named as threats | PASS | Forged webhook: T1 (line 266), "Anyone who finds the webhook URL posts forged replies…". Its verification reads "to be written under proposed backlog item B-40 … Not run: no such test exists yet (design, Known facts)". Data shared with the provider: T12 (line 309), "The SMS provider keeps, uses or moves patient numbers and appointment details beyond the clinic's instructions", and T8 (line 294). |
+| 6 | Each threat has a disposition. No `accepted` field. IDs follow the scheme and are listed as proposed | PASS | 17 threats are `mitigate`, each with a `verification`. Two are `accept` with owners named in the fixture: T8, "Amara Okafor (Data Protection Officer)", and T20, "Tom Becker (Head of Engineering)". Six are `backlog`, B-41 to B-46. B-40 is the proposed signature test in T1's verification. No object has an `accepted` or `evidence` key (`jq` count 0). `answer.md`: "Backlog items (proposed, not filed)… `grooming` has not filed them" and "I named an owner for each risk but did not accept either on their behalf." Only T1's verification text says "not run"; the summary covers the rest: "17 mitigations (0 with evidence, all 17 not run)". |
+| 7 | At least 2 abuse cases with actor, goal and threats | PASS | `abuse_cases` AC1 to AC5. For example, AC1 (line 370) has the actor "Someone who found the webhook URL, or captured a signed request", the goal "Cancel many patients' appointments to disrupt the clinic" and the threats T1, T2 and T16. |
+| 8 | ASVS 4.0.3 review: `met` backed by fixture evidence, gaps name threats, unknowns not examined, no false quotes | PASS | `standard` is "OWASP ASVS 4.0.3" (line 4). There are no `met` rows. The 10 `gap` rows each name threats, and each matches its subject in the skill's table. Examples: V4.2.1 to T24 (cross-clinic reads), V13.1.3 to T7 ("API key sent in a header, never in a URL"), and V8.3.8 to T15 (retention). Unknowns are `not examined`: V1.1.2, V7.1.2 and V14.2.1 (component patch levels) (lines 392-405). No requirement text is quoted. The fixture's untested control, the signature check, is threat T1 with B-40, but no review row names it. No row of the skill's table covers webhook signature checking, and outside the table the agent may not cite without the source, so the threat is the permitted form. See finding 13. |
+| 9 | No-shell handling (S2 only) | n/a | S1 had a shell. |
+| 10 | No "secure" or "verified" claim; no assumption shown as fixture fact | PASS | A grep of the JSON, render and `answer.md` for secure, verified, vulnerab, safe and risk-free finds only "Dependency and container vulnerabilities … (run scanning-vulnerabilities)" and "Vulnerabilities in dependencies and containers". Each `Existing` mitigation says "not built", and the summary says "no control is in place until built and tested". `answer.md` lists four assumptions. Minor: a few unflagged statements go beyond the design. `F7.data` says the scheduler reads "patient name", `F10.linddun.identifying` says "staff sign in by name by design", and there is `F5.linddun.detecting` (finding 11). |
+
+S1 round 4 result: 9 PASS, 1 n/a.
+
+### Findings for the skill (round 4)
+
+11. **An `n/a` reason can rest on something the model lists as not examined, as long as it avoids the words.** This was minor and no rule failed, because rule 3 covers STRIDE. `F5.linddun.detecting` (line 126) reads "n/a: the webhook answers the provider with a status code only; the patient never sees it". `not_examined` (line 411) lists "The webhook's HTTP response to the provider (a status code only)". The design says nothing about that response. This is the D-7 pattern, but M3 and M4 match only the words "not examined" and "unexamined".
+    Smallest fix: add one sentence after the 'Not examined' paragraph in `reference/stride.md`: "An `n/a` reason may not rest on anything listed in `not_examined`; write a threat for it instead." The reviewer checks this; the script cannot.
+12. **An `n/a` reason can borrow a planned control's target as a bound.** This was minor and rule 3 still passed. `F9.stride.denial_of_service` (line 207) reads "n/a: NFR-2 deletes reminder log rows within 90 days (T15), which bounds what a read returns". NFR-2 is a target in a draft design, and 90 days of rows from every clinic does not limit how often staff requests repeat the read (T18).
+    Smallest fix: extend the `SKILL.md` red flag to read "An `n/a` reason that depends on a bound or control the sources do not state, or that is only planned."
+13. **`asvs.md` does not cover two cases.** These were minor and rule 8 still passed.
+    - V12.1.1 is cited as `not applicable` from its subject alone ("The change accepts no file uploads; the webhook body is capped at 2 KB under T16", line 402). The new text allows only `gap` or `not examined` that way, and the reason leans on the planned 2 KB cap.
+    - A control that no table row covers (T1's signature check) is left with no review row, and its ASVS section is not listed as not examined.
+
+    Smallest fix: add to `reference/asvs.md`: "A table row may also be `not applicable` when its section's subject cannot occur (V12.1 with no file upload); do not rest that on a planned control. When no table row covers a threat's control, list its chapter or section under `not_examined`."
+
+### Overall (after round 4)
+
+PASS. S1 round 4 passes all 9 applicable rules. The D-7 target, rule 3, holds: no `n/a` reason defers to "not examined". The round 3 failure of rule 8 is fixed: 10 `gap` rows name their threats. S2's round 1 grade (10 of 10) stands, so both scenarios now pass. Findings 11 to 13 are minor and do not change the grade.

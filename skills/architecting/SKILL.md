@@ -83,9 +83,9 @@ microservices.
 4. **Decisions:** one ADR per consequential decision, with at least two real options, a status
    and consequences. See [reference/adr.md](reference/adr.md).
 5. **NFRs:** each with an ID, a quality, a target with a number, a unit and a condition (load,
-   state or time window), and a verification test that names its kind, tool, environment and
-   when it runs. Say where each number came from: the brief, derived from it, or proposed for
-   the owner to confirm. Pick qualities from
+   state, time window, or for a zero-findings target the scope it covers), and a verification
+   test that names its kind, tool, environment and when it runs. Say where each number came
+   from: the brief, derived from it, or proposed for the owner to confirm. Pick qualities from
    [reference/nfr-catalogue.md](reference/nfr-catalogue.md). IDs are stable (`NFR-1`, `NFR-2` …):
    never renumber or reuse one, because `monitoring` turns them into SLOs and tests and briefs
    cite them.

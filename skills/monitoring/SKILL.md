@@ -134,7 +134,13 @@ from production (rule M7). When it calls a test environment production (for exam
 `prod-like`), rename the environment; do not weaken the rule. An alert without evidence is "not
 proven"; say so. Never write that an alert "works" or is "verified": write where and when it
 fired. The check rejects such claims in the SLO file and the runbooks (rule M8); "not verified"
-and "not proven" are fine.
+and "not proven" are fine. A negation ("not", "never", "nobody") covers a claim later in its
+own clause only: "and", "but", "so" or "yet" after it, or a dash (" - ", " – ", " — "), starts
+a new clause, so "We did not change the threshold, and the alert works." is a claim. "not only",
+"not just" and "not merely" do not negate. "no proof" or "no evidence" covers only the claim it
+introduces: "There is no proof yet that the alert works.", "There is no proof, as of today,
+that the alert works." and "We have no evidence the alert works." are fine; "No proof needed,
+the alert works." is a claim.
 
 ## 7. Check the SLO file
 
