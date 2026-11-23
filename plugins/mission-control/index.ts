@@ -123,10 +123,12 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		ctx.signal.throwIfAborted()
 		return readAnswer(dialog, answer, amp.system.user?.id ?? '')
 	}
-	// After an approving answer: the record is read again, and the contract must be the one the dialog showed.
-	const unchanged = (thread: string, digest: string, what: string) => {
+	// After an approving answer: the record is read again. The contract must be the one the dialog showed,
+	// and no amend since this dialog opened (event `from` on) changed it, even one that was changed back.
+	const unchanged = (thread: string, digest: string, what: string, from: number) => {
 		const now = contract(thread)
-		if (approvalDigest(now.contract) !== digest) throw new Error(`Stale: the contract changed while the ${what} dialog was open; nothing was recorded. Open it again.`)
+		const amended = now.events.slice(from).some(e => e.action.type === 'amend' && approvalDigest(e.action.contract) !== digest)
+		if (approvalDigest(now.contract) !== digest || amended) throw new Error(`Stale: the contract changed while the ${what} dialog was open; nothing was recorded. Open it again.`)
 		return now
 	}
 	function write(s: Mission, action: Action): Mission
@@ -197,7 +199,7 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 			const opened = saveContract(advanceContract(s, { type: 'approval-pending', kind: 'kickoff', digest }))
 			const reading = await ask(ctx, kickoffDialog(opened))
 			if (reading.outcome !== 'approved') return notApproved(reading)
-			const approved = saveContract(advanceContract(unchanged(s.thread, digest, 'kickoff'), { type: 'approve', digest, responder: reading.responder }))
+			const approved = saveContract(advanceContract(unchanged(s.thread, digest, 'kickoff', opened.events.length), { type: 'approve', digest, responder: reading.responder }))
 			return `Kickoff approved by the owner.\n\n${status(approved)}`
 		}
 		if (input.stage !== 'design' && input.stage !== 'merge') throw new Error('Invalid approval stage')
@@ -350,7 +352,7 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		const opened = saveContract(advanceContract(s, { type: 'approval-pending', kind: 'effect', digest, ...target }))
 		const reading = await ask(ctx, effectDialog(opened, opened.pendingApproval!))
 		if (reading.outcome !== 'approved') return notApproved(reading)
-		const done = saveContract(advanceContract(unchanged(s.thread, digest, 'effect'), { type: 'effect', ...target, responder: reading.responder }))
+		const done = saveContract(advanceContract(unchanged(s.thread, digest, 'effect', opened.events.length), { type: 'effect', ...target, responder: reading.responder }))
 		return `The owner approved this effect once, and it is recorded as performed. Perform it now, exactly as described.\n\n${status(done)}`
 	}, [])
 	tool('mission_report', 'Contract missions: write the checkpoint report for a merged milestone (kind checkpoint; milestoneId defaults to the latest merged) or the close-out report once every milestone is merged (kind close-out). Reports ask nothing; post them where the contract says.', { kind: { type: 'string', enum: ['checkpoint', 'close-out'] }, milestoneId: { type: 'string' } }, async (input, ctx) => {

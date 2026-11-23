@@ -638,6 +638,51 @@ test('P2: a contract change while the kickoff dialog is open is stale, and nothi
 	} finally { rmSync(h.root, { recursive: true, force: true }) }
 })
 
+test('P2: a contract changed and changed back while the kickoff dialog is open is still stale', async () => {
+	const h = contractHarness(fakeGitHub().github)
+	try {
+		await h.call('mission_start', { contract: CONTRACT })
+		await h.call('mission_preflight')
+		h.answer(async d => {
+			await h.act({ type: 'amend', contract: { ...CONTRACT, outcome: 'A different outcome.' }, reason: 'Changed' })
+			await h.act({ type: 'amend', contract: CONTRACT, reason: 'Changed back' })
+			await h.call('mission_preflight')
+			return { values: ticked(d) }
+		})
+		await expect(h.call('mission_approve')).rejects.toThrow('Stale')
+		expect((await h.status()).approval).toBeNull()
+		// A dialog opened on the restored contract approves.
+		h.answer(d => ({ values: ticked(d) }))
+		expect(await h.call('mission_approve')).toStartWith('Kickoff approved by the owner.')
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('P2: a second dialog opened after the change does not make the first one current', async () => {
+	const h = contractHarness(fakeGitHub().github)
+	const contract = structuredClone(CONTRACT)
+	contract.effects.push({ id: 'E4', effect: 'Promote dev to rolling', preAuthorized: false, source: 'Held by the owner' })
+	const changed = { ...contract, outcome: 'A different outcome.' }
+	try {
+		await h.call('mission_start', { contract })
+		await h.call('mission_preflight')
+		for (const [tool, input] of [['mission_approve', {}], ['mission_effect', { effectId: 'E4' }]] as const) {
+			let first = true
+			h.answer(async d => {
+				if (!first) return { values: undefined }
+				first = false
+				await h.act({ type: 'amend', contract: changed, reason: 'Changed' })
+				await h.act({ type: 'amend', contract, reason: 'Changed back' })
+				await h.call('mission_preflight')
+				expect(await h.call(tool, input)).toBe(NOTHING)
+				return { values: ticked(d) }
+			})
+			await expect(h.call(tool, input)).rejects.toThrow('Stale')
+		}
+		const s = await h.status()
+		expect([s.approval, s.performed]).toEqual([null, []])
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
 // One case per merge blocker in section 3: each refusal names it, and no merge is requested.
 const P6: [string, typeof STAGES[number], string, (h: ContractHarness, gh: ReturnType<typeof fakeGitHub>) => Promise<unknown>][] = [
 	['kickoff approval on the current digest', 'evidence', 'Kickoff approval on the current contract required', h => h.act({ type: 'amend', contract: { ...CONTRACT, outcome: 'A different outcome.' }, reason: 'Changed outcome' })],
