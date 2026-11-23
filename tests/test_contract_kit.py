@@ -36,7 +36,7 @@ BANNED = (
 
 # Files searched with list B (part of file set F).
 BANNED_SEARCH = ("skills/delivering", "skills/missioning", "skills/goldfishing/SKILL.md", "skills/briefing-decisions/SKILL.md",
-                 "skills/grilling/SKILL.md", "skills/crafting/SKILL.md")
+                 "skills/grilling/SKILL.md", "skills/crafting/SKILL.md", "plugins/mission-control")
 # List L: files that list the five stop reasons.
 STOP_TEXT_FILES = ("skills/delivering/SKILL.md", "skills/missioning/SKILL.md", "skills/missioning/reference/charter.md")
 # Files that must name the disposition policy for a review cap (K3).

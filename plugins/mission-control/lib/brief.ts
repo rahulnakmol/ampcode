@@ -1,4 +1,3 @@
-import type { Mission } from './mission'
 import type { ContractRecord, Pending } from './contract'
 
 // The decision-brief rules from skills/briefing-decisions/scripts/brief_check.py, except reading
@@ -60,10 +59,6 @@ const HEADING = /^## (.+?)[ \t]*$/
 const WORD = /[A-Za-z][A-Za-z'-]*|[0-9][0-9,.%]*/g
 
 export type BriefData = { decision: string; yes: string; no: string; risks: string[]; excluded: string[]; picture?: string }
-export type Brief = { markdown: string; url: string }
-// title and message are Markdown in Amp, so they hold only fixed text. Agent and record text goes
-// in details, a read-only field: "line breaks are kept and Markdown is not rendered".
-export type Dialog = { title: string; message: string; link?: { name: string; label: string; value: string }; details?: string }
 
 class BriefError extends Error {
 	constructor(rule: string, detail: string) { super(`Decision brief rejected (${rule}): ${detail}. See the briefing-decisions skill.`) }
@@ -208,86 +203,6 @@ export function validateBrief(markdown: unknown): BriefData {
 	const long = sentences(prose).filter(s => (s.match(WORD) ?? []).length > 25)
 	if (long.length) throw new BriefError('sentence-length', `${long.length} sentence(s) over 25 words, first: ${long[0].slice(0, 80)}`)
 	return data
-}
-
-const briefOf = (s: Mission) => s.design?.bundle.brief
-const numbered = (items: string[]) => items.map((item, i) => `${i + 1}. ${item}`).join('\n')
-const NOTE = 'Only the thread owner can approve. The owner field restricts this dialog to the owner; APPROVE is not a password.'
-
-/** Today's raw v1 details, kept for records designed before decision briefs. */
-export function rawDetails(s: Mission) {
-	const c = s.candidate
-	return [
-		`Mission requirements: ${s.requirements}`, `Design: ${s.design?.digest}`, JSON.stringify(s.design?.bundle, null, 2),
-		c ? `Candidate: https://github.com/${c.repo}/pull/${c.pr}\nHead: ${c.head}\nBase: ${c.base}\nRisk: ${c.risk}` : '',
-		...(s.design?.criteria ?? []).map((criterion, i) => `${i + 1}. ${criterion}\n${s.evidence?.results[i] ?? 'Not yet verified'}`),
-		`Try it: ${s.evidence?.tryIt ?? 'Not yet supplied'}`, `Customer value: ${s.evidence?.value ?? 'Not yet established'}`,
-		`Merge preference: ${s.mode}; high risk always requires owner acknowledgment.`,
-		'Approvals and evidence are local workflow gates, not a hostile-shell security boundary. Required CI and protected dev must also permit integration.',
-	].filter(Boolean).join('\n\n')
-}
-const LEGACY = 'This mission was designed before decision briefs. The raw design record is in Details.'
-
-export function designDialog(s: Mission): Dialog {
-	const brief = briefOf(s)
-	if (!brief) return { title: 'Approve the design', message: LEGACY, details: rawDetails(s) }
-	// Stored briefs were validated when the design was recorded; they are not revalidated here.
-	const decision = frontMatter(brief.markdown).data.decision as string
-	const b = s.design!.bundle
-	return {
-		title: 'Approve the design',
-		message: 'Open the brief, then type APPROVE. You approve the brief as it reads now. If the stored brief text or its link changes, this approval no longer counts. Edits to the page after you approve do not cancel it.',
-		link: { name: 'brief', label: 'Open the brief you are approving', value: brief.url },
-		details: [
-			`You are deciding: ${decision}`, `Brief: ${brief.url}`,
-			`What you approve as done:\n${numbered(s.design!.criteria)}`,
-			`Technical record\n\nRequirements: ${s.requirements}\n\nSpec: ${b.spec}\n\nPlan: ${b.plan}\n\nTechnical design: ${b.technical}\n\nUX design: ${b.ux}`,
-		].join('\n\n'),
-	}
-}
-
-export function mergeDialog(s: Mission): Dialog {
-	const brief = briefOf(s)
-	const c = s.candidate!
-	const url = `https://github.com/${c.repo}/pull/${c.pr}`
-	const link = { name: 'pull-request', label: 'Open the pull request', value: url }
-	if (!brief) return { title: 'Merge into dev', message: LEGACY, link, details: rawDetails(s) }
-	const decision = frontMatter(brief.markdown).data.decision as string
-	return {
-		title: 'Merge into dev',
-		// The number and risk are validated values, not free text.
-		message: `Open the pull request, then type APPROVE to merge it into dev. Pull request number ${c.pr}, risk level ${c.risk}.`,
-		link,
-		details: [
-			`You are deciding: ${decision}`, `Try it: ${s.evidence?.tryIt ?? 'Not supplied yet'}`,
-			`What was approved as done, and the result:\n${s.design!.criteria.map((criterion, i) => `${i + 1}. ${criterion}\n   Result: ${s.evidence?.results[i] ?? 'Not checked yet'}`).join('\n')}`,
-			`Customer value: ${s.evidence?.value ?? 'Not established yet'}`,
-			`Pull request: ${url}\nHead: ${c.head}\nBase: ${c.base}`,
-			`Merge preference: ${s.mode}; high risk always requires owner acknowledgment.`,
-			'Approvals are local workflow gates. Required checks and the protected dev branch must also allow the merge.',
-		].join('\n\n'),
-	}
-}
-
-/** Every approval dialog: owner-only (the secret field), human-only, and the turn ends on decline.
- * A link before the owner field shows as numbered steps; details come last and never block. */
-export function confirmOptions(d: Dialog) {
-	return {
-		title: d.title, message: `${d.message}\n\n${NOTE}`,
-		requireHuman: true, endTurnOnDecline: true,
-		fields: [
-			...(d.link ? [{ type: 'link' as const, ...d.link }] : []),
-			{ name: 'acknowledgment', label: 'Type APPROVE to confirm you are the mission owner (owner-only check, not a password)', value: '', secret: true },
-			...(d.details ? [{ name: 'details', label: 'Details', value: d.details, readOnly: true, multiline: true, optional: true }] : []),
-		],
-	}
-}
-
-/** Why an answer does not approve, or undefined when it does. */
-export function refusal(result: Record<string, string> | undefined): string | undefined {
-	if (!result) return 'Not approved. The dialog was closed without approval; the mission remains blocked.'
-	if (result.acknowledgment !== 'APPROVE') return 'Not approved. Type APPROVE in the owner field.'
-	return undefined
 }
 
 // Schema 3 contract dialogs. The owner ticks a box for each default and pre-authorized effect,
