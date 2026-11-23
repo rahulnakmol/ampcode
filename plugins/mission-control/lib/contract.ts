@@ -288,6 +288,16 @@ function open(s: ContractRecord, milestoneId: string, path = 'milestoneId') {
 	if (m.status === 'merge-pending') fail(path, `reconcile the pending merge of ${m.id} first`)
 	return m
 }
+/** Whether a "replanned" disposition naming the item comes after the milestone's latest failed review. */
+function replannedSinceFailure(s: ContractRecord, milestoneId: string, itemId: string) {
+	let replanned = false
+	for (const { action: x } of s.events as { action: any }[]) {
+		if (x.milestoneId !== milestoneId) continue
+		if (x.type === 'review' && x.passed === false) replanned = false
+		else if (x.type === 'disposition' && x.outcome === 'replanned' && x.itemIds?.includes(itemId)) replanned = true
+	}
+	return replanned
+}
 function current(s: ContractRecord, m: MilestoneState, value: unknown) {
 	if (!m.candidate || value !== fingerprint(s, m.id)) fail('fingerprint', `missing or stale fingerprint for ${m.id}; read the current one from the status`)
 }
@@ -374,7 +384,7 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 		case 'replan': {
 			const { def, state } = itemFor(s, a.itemId)
 			const m = open(s, def.milestone, 'itemId')
-			if (m.failed.some(n => n > 0) && !m.dispositions.some(d => d.outcome === 'replanned' && d.itemIds.includes(def.id))) fail('itemId', `${m.id} has failed review rounds; record a "replanned" disposition naming ${def.id} first`)
+			if (m.failed.some(n => n > 0) && !replannedSinceFailure(s, m.id, def.id)) fail('itemId', `${m.id} has failed review rounds; record a "replanned" disposition naming ${def.id} after its latest failed review first`)
 			if (state.status === 'done') fail('itemId', `${def.id} is done; reopen it first with a "replanned" disposition`)
 			const into = list(a.into, 'into', false).map((x, i) => parseItem(x, `into[${i}]`))
 			if (sorted(into.flatMap(i => i.done)) !== sorted(def.done) || into.some(i => i.milestone !== def.milestone)) fail('into', 'the new items must hold exactly the original criteria, verbatim, in the same milestone; put extra checks in automatedTest')
@@ -414,8 +424,7 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 		}
 		case 'delegate': {
 			const { def, state } = itemFor(s, a.itemId)
-			const m = open(s, def.milestone, 'itemId')
-			if (m.failed.some(n => n > 0) && !m.dispositions.some(d => d.outcome === 'replanned' && d.itemIds.includes(def.id))) fail('itemId', `${m.id} has failed review rounds; record a "replanned" disposition naming ${def.id} first`)
+			open(s, def.milestone, 'itemId')
 			if (state.status === 'done') fail('itemId', `${def.id} is done`)
 			shape(a.executor, 'executor', ['kind', 'id'])
 			if (a.executor.kind === 'thread') { if (typeof a.executor.id !== 'string' || !/^T-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(a.executor.id)) fail('executor.id', 'a thread ID such as T-01a2… is required') }

@@ -422,6 +422,18 @@ describe('Amend: a non-digest item field keeps approval', () => {
 		expect(() => update(r, { type: 'replan', itemId: 'W1', into })).toThrow('record a "replanned" disposition naming W1')
 		const reopened = update(failedOnce(1), { type: 'disposition', milestoneId: 'M1', gate: 1, outcome: 'replanned', record: 'Cap', itemIds: ['W1'] })
 		expect(update(reopened, { type: 'replan', itemId: 'W1', into }).contract.items.map(i => i.id)).toContain('W1x')
+		// A disposition from before the latest failed review does not count.
+		let later = withCandidate(done(reopened, 'W1', ['W1 criterion a', 'W1 criterion b']), 'M1', C)
+		later = amend(review(later, 'M1', 1, false), c)
+		expect(() => update(later, { type: 'replan', itemId: 'W1', into })).toThrow('after its latest failed review')
+	})
+	test('Delegating a new item added to a failed milestone is accepted', () => {
+		const c = clone(); c.items.push(item('W5', 'M1', ['W5 criterion']))
+		let r = amend(failedOnce(1), c)
+		const digest = approvalDigest(r.contract)
+		r = advance(r, { type: 'preflight', digest, results: [{ check: 'dev exists', passed: true, detail: 'found' }] })
+		r = advance(advance(r, { type: 'approval-pending', kind: 'kickoff', digest }), { type: 'approve', digest, responder: 'user-owner' })
+		expect(itemOf(update(r, { type: 'delegate', itemId: 'W5', executor: { kind: 'subagent', id: 'TU-x' } }), 'W5').status).toBe('delegated')
 	})
 	test('Amend keeping the digest may not move a criterion between items, or swap items between milestones', () => {
 		const moved = clone(); moved.items[0].done = ['W1 criterion a']; moved.items[1].done = ['W2 criterion', 'W1 criterion b']
