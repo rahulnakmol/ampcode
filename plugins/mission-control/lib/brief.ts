@@ -28,13 +28,13 @@ export const LINK = /^https:\/\/(ampcode\.com|github\.com)(\/[\x21-\x7e]*)?$/
 // ignorable characters (variation selectors, fillers) are invisible or reorder text. Right-to-left
 // letters, punctuation and digits (the blocks that hold every Bidi_Class R, AL and AN character)
 // reorder the text around them, even text that looks like plain ASCII.
-const CONTROL = /[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029\u034f\u115f\u1160\u17b4\u17b5\u180b-\u180f\u2065\u3164\ufe00-\ufe0f\uffa0\ufff0-\ufff8\u{1bca0}-\u{1bca3}\u{1d173}-\u{1d17a}\u{e0000}-\u{e0fff}\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff\u{10800}-\u{10fff}\u{1e800}-\u{1efff}]|\p{Cf}/u
+export const CONTROL = /[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029\u034f\u115f\u1160\u17b4\u17b5\u180b-\u180f\u2065\u3164\ufe00-\ufe0f\uffa0\ufff0-\ufff8\u{1bca0}-\u{1bca3}\u{1d173}-\u{1d17a}\u{e0000}-\u{e0fff}\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff\u{10800}-\u{10fff}\u{1e800}-\u{1efff}]|\p{Cf}/u
 // Raw HTML (tags, comments, <!DOCTYPE, <![CDATA[, <?...?>), HTML character references and Markdown
 // link reference definitions all render as hidden text; GitHub decodes a reference before math, so it
 // can also become an invisible character or a math command.
 // A reference definition hides text even inside a list item or block quote, with an escaped ],
 // or with a label that continues on the next line after a backslash.
-const HIDDEN = /<(?:[!?]|[A-Za-z/])|&(?:#[0-9]+|#[xX][0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:/m
+export const HIDDEN = /<(?:[!?]|[A-Za-z/])|&(?:#[0-9]+|#[xX][0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);|^[ \t>*+\-0-9.)]*\[(?:\\[\s\S]|[^\\\]])*\]:/m
 // Markdown that renders some of its text invisibly. Links and fences are allowlisted: a link is
 // [text](destination) with text and a plain destination (no spaces, parentheses, backslashes or
 // quotes) closed at once, so it has no title; a fence line holds only the fence. Images, empty link

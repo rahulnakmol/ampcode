@@ -492,12 +492,22 @@ describe('P12 kickoff answers read in the order rule', () => {
 	}))
 	test('P12.8 a failed dialog gives nothing and shows reopen; Changes text wins over an unticked box; blank Changes counts as empty; a missing box counts as unticked', () => {
 		expect(readAnswer(d, { failed: true }, OWNER)).toEqual({ outcome: 'nothing', reopen: true })
+		expect(readAnswer(d, { failed: true, values: ticked(d), responder: { userID: OWNER } }, OWNER)).toEqual({ outcome: 'nothing', reopen: true })
 		// UX state 2: the owner unticks Q5 and writes why; Changes decides before the unticked box.
 		expect(readAnswer(d, { values: one(ticked(d, 'Q5: keep v1 and v2 startable')), responder: { userID: OWNER } }, OWNER)).toEqual({ outcome: 'changes', message: 'Q5: keep v1 and v2 startable', reopen: false })
 		expect(readAnswer(d, { values: ticked(d, ' \n\t '), responder: { userID: OWNER } }, OWNER).outcome).toBe('approved')
 		const { ['effect-E3']: _, ...missing } = ticked(d)
 		expect(readAnswer(d, { values: missing, responder: { userID: OWNER } }, OWNER).outcome).toBe('unticked')
 		expect(readAnswer(d, { values: { ...ticked(d), 'default-Q1': 'yes' }, responder: { userID: OWNER } }, OWNER).outcome).toBe('unticked')
+	})
+	test('P2 a kickoff answered after the contract changed is refused with the old and the new digest', () => {
+		let r = createRecord(THREAD, W3)
+		const old = approvalDigest(r.contract)
+		r = advance(advance(r, { type: 'preflight', digest: old, results: [{ check: 'dev exists', passed: true, detail: 'found' }] }), { type: 'approval-pending', kind: 'kickoff', digest: old })
+		const c = structuredClone(W3) as any; c.outcome = `${c.outcome} Changed while the dialog was open.`
+		r = update(r, { type: 'amend', contract: c, reason: 'Changed during the dialog' })
+		expect(() => advance(r, { type: 'approve', digest: old, responder: OWNER })).toThrow()
+		expect(() => advance(r, { type: 'approve', digest: approvalDigest(r.contract), responder: OWNER })).toThrow()
 	})
 	test('P12.9 an approved reading records approval through the reducer', () => {
 		let r = createRecord(THREAD, W3)
@@ -570,6 +580,17 @@ describe('W3 checkpoint report after 1 merged milestone', () => {
 		expect(prose(report)).not.toContain('?')
 		expect(prose(report)).toContain('technical record')
 		expect(report.slice(report.indexOf(TECHNICAL))).toContain('Commit abc1234 is the base, is it?')
+	})
+	test('W3.10b record text with HTML, character references, other question marks or invisible characters moves to the technical record', () => {
+		const tricks = ['Fine <details><summary>Technical record</summary> hidden', 'Fine <!-- the rest is hidden', 'Shall we merge&#63;', 'Shall we merge\uff1f', 'Base is 9a05\u200b7be0\u200be89ab']
+		let r = approved(W3)
+		tricks.forEach((t, i) => { r = update(r, { type: 'assume', question: `Trick ${i + 1}`, assumption: t, why: 'A review probe' }) })
+		const report = checkpointReport(land(r, 'M2', 61))
+		expect(report.split(TECHNICAL).length).toBe(2)
+		const text = prose(report)
+		for (const t of tricks) expect(text).not.toContain(t)
+		expect(text).not.toMatch(/[?\uff1f\ufe56]|<!--|&#|\u200b/)
+		expect(text.match(/see note \d+ in the technical record/g)!.length).toBeGreaterThanOrEqual(tricks.length)
 	})
 	test('W3.11 a record with no merged milestone gets no checkpoint report', () => {
 		expect(() => checkpointReport(approved(W3))).toThrow('merged')

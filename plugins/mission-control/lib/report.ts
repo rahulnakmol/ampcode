@@ -1,4 +1,4 @@
-import { banned } from './brief'
+import { banned, CONTROL, HIDDEN } from './brief'
 import { STOP_REASONS, approvalDigest, type ContractRecord, type Item, type MilestoneState } from './contract'
 import contractText from './contract-text.json'
 
@@ -14,6 +14,10 @@ const one = (text: string) => (text.match(/[^ \t\n]+/g) ?? []).join(' ')
 // Technical record text keeps its words; < and & are escaped so it cannot close the block.
 const sentence = (text: string) => /[.!?]$/.test(text) ? text : `${text}.`
 const raw = (text: string) => one(text).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+// Prose must pass every briefing-decisions rule: no banned code, no question in any script, and
+// no raw HTML, character reference or control or invisible character.
+const QUESTION = /[?\uff1f\ufe56\u037e\u061f]/
+const unsafe = (text: string) => banned(text)[0] ?? (QUESTION.test(text) ? 'a question' : HIDDEN.test(text) ? 'raw HTML or a character reference' : CONTROL.test(text) ? 'a control or invisible character' : undefined)
 
 class Report {
 	private prose: string[] = []
@@ -23,7 +27,7 @@ class Report {
 	/** Record text for the prose, or a pointer to the note that holds it. */
 	say(text: string) {
 		const t = one(text)
-		if (!banned(t).length && !t.includes('?')) return t
+		if (!unsafe(t)) return t
 		this.notes.push(t)
 		return `see note ${this.notes.length} in the technical record`
 	}
@@ -34,8 +38,8 @@ class Report {
 	done(): string {
 		const prose = this.prose.join('\n')
 		// Every fragment was checked; this guards the joins between them.
-		const found = banned(prose)
-		if (found.length || prose.includes('?')) throw new Error(`Report rejected: ${found[0] ?? 'a question'} outside the technical record`)
+		const found = unsafe(prose)
+		if (found) throw new Error(`Report rejected: ${found} outside the technical record`)
 		const notes = this.notes.map((n, i) => `- Note ${i + 1}: ${raw(n)}`)
 		return [prose, '', OPEN, '', ...this.record, ...notes, '', CLOSE, ''].join('\n')
 	}
