@@ -6,6 +6,8 @@ import {
 	advance, approvalDigest, blocked, blockers, createRecord, fingerprint, loadContractRecord, parseContract,
 	saveContractRecord, update, type ContractRecord,
 } from '../plugins/mission-control/lib/contract'
+import { banned, effectDialog, kickoffDialog, readAnswer } from '../plugins/mission-control/lib/brief'
+import { checkpointReport, closeOutReport } from '../plugins/mission-control/lib/report'
 
 // The canonical stop text of the mission contract, section 8, copied exactly.
 const FIVE = [
@@ -407,5 +409,218 @@ describe('P18 replay and writes', () => {
 		expect(readFileSync(p, 'utf8')).toBe(bytes)
 		expect(existsSync(p + '.lock')).toBe(true)
 		expect(() => loadContractRecord(p, 'T-00000000-0000-0000-0000-000000000002')).toThrow('thread')
+	})
+})
+
+// W3: dialogs and reports, built from records that W1's reducer produced.
+const W3 = JSON.parse(readFileSync(join(import.meta.dir, '../plugins/mission-control/fixtures/contract-mission.json'), 'utf8'))
+const OWNER = 'user-owner'
+const W3_TEXT = JSON.parse(readFileSync(join(import.meta.dir, '../plugins/mission-control/lib/contract-text.json'), 'utf8'))
+const TECHNICAL = '<details><summary>Technical record</summary>'
+const prose = (report: string) => report.slice(0, report.indexOf(TECHNICAL))
+const sections = (report: string) => [...report.matchAll(/^### (.+)$/gm)].map(m => m[1])
+const fieldsOf = (d: any, type: string) => d.fields.filter((f: any) => (f.type ?? 'text') === type)
+// Every box ticked, Changes as given.
+const ticked = (d: any, changes = '') => ({ ...Object.fromEntries(fieldsOf(d, 'checkbox').map((f: any) => [f.name, 'true'])), changes })
+const criteriaOf = (r: ContractRecord, m: string) => [...r.contract.items, ...r.filed].filter(i => i.milestone === m).flatMap(i => i.done)
+// One milestone through W1's reducer: items done, candidate, both reviews, evidence, merge.
+function land(r: ContractRecord, m: string, pr: number) {
+	for (const i of [...r.contract.items, ...r.filed].filter(i => i.milestone === m)) {
+		r = update(r, { type: 'delegate', itemId: i.id, executor: { kind: 'subagent', id: `helper for ${i.id}` } })
+		r = update(r, { type: 'item-done', itemId: i.id, evidence: i.done.map(criterion => ({ criterion, result: `Passed in bun test for ${i.id}` })), review: { reviewer: 'fresh item reviewer', record: 'No findings' } })
+	}
+	r = update(r, { type: 'candidate', milestoneId: m, pr, head: A, base: B })
+	r = review(review(r, m, 1, true, 'first fresh reviewer'), m, 2, true, 'second fresh reviewer')
+	const exit = r.contract.milestones.find(x => x.id === m)!.exit
+	r = update(r, { type: 'evidence', milestoneId: m, fingerprint: fingerprint(r, m), results: [...criteriaOf(r, m), ...exit].map(criterion => ({ criterion, result: `Shown on pull request ${pr}` })), humanTest: `Ran the ${m} human tests by hand` })
+	r = advance(r, { type: 'merge-requested', milestoneId: m, fingerprint: fingerprint(r, m) })
+	return advance(r, { type: 'merged', milestoneId: m, fingerprint: fingerprint(r, m), commit: MERGE })
+}
+// The fixture after M2 merged: an assumption, a filed item for M3, and a pre-authorized push.
+function afterM2() {
+	let r = update(approved(W3), { type: 'assume', question: 'Which reviewer runs gate 2?', assumption: 'A second fresh subagent runs gate 2', why: 'Gate 2 must be independent of gate 1' })
+	r = advance(r, { type: 'effect', effectId: 'E3' })
+	r = update(r, { type: 'file', item: { ...W3.items[2], id: 'W13', title: 'Show the time since each child last reported', done: ['Status shows the minutes since each child reported'], dependsOn: [] } })
+	return land(r, 'M2', 61)
+}
+function complete() {
+	let r = update(afterM2(), { type: 'assume', question: 'Which guide gets the kickoff prompt?', assumption: 'docs/mission-control.md holds the kickoff prompts', why: 'It already lists the ways to kick off a mission' })
+	r = land(r, 'M3', 62)
+	return advance(r, { type: 'effect', effectId: 'E2' })
+}
+
+describe('W3 kickoff dialog from a contract with 6 questions and 3 effects', () => {
+	test('W3.1 the fixture contract passes parseContract with 6 questions, 3 effects, 2 milestones and 3 items', () => {
+		const c = parseContract(W3)
+		expect([c.openQuestions.length, c.effects.length, c.milestones.length, c.items.length]).toEqual([6, 3, 2, 3])
+		expect(c.effects.every(e => e.preAuthorized)).toBe(true)
+	})
+	test('W3.2 the kickoff dialog has 1 brief link, 9 unticked checkboxes, 1 optional Changes field, Submit, and no secret field', () => {
+		const d = kickoffDialog(createRecord(THREAD, W3))
+		expect(d.confirmButtonText).toBe('Submit')
+		expect([d.requireHuman, d.endTurnOnDecline]).toEqual([true, true])
+		expect(fieldsOf(d, 'link')).toEqual([{ type: 'link', name: 'brief', label: 'Open the contract brief', value: W3.brief.url }])
+		const boxes = fieldsOf(d, 'checkbox')
+		expect(boxes).toHaveLength(9)
+		expect(boxes.every((f: any) => f.value === 'false')).toBe(true)
+		W3.openQuestions.forEach((q: any, i: number) => expect(boxes[i].label).toContain(q.default))
+		W3.effects.forEach((e: any, i: number) => expect(boxes[6 + i].label).toContain(e.effect))
+		expect(fieldsOf(d, 'text')).toEqual([expect.objectContaining({ name: 'changes', value: '', optional: true })])
+		expect(d.fields).toHaveLength(11)
+		expect(d.fields.some((f: any) => f.secret)).toBe(false)
+	})
+	test('W3.3 an effect that is not pre-authorized is not a kickoff box; it gets its own effect dialog', () => {
+		const boxes = fieldsOf(kickoffDialog(createRecord(THREAD, contract)), 'checkbox')
+		expect(boxes.map((f: any) => f.name)).toEqual(['default-Q1', 'effect-E1'])
+	})
+})
+
+describe('P12 kickoff answers read in the order rule', () => {
+	const d = kickoffDialog(createRecord(THREAD, W3))
+	const one = (values: Record<string, string>) => ({ ...values, 'default-Q5': 'false' })
+	const cases: [string, any, object][] = [
+		['P12.1 all ticked by the owner: approved', { values: ticked(d), responder: { userID: OWNER } }, { outcome: 'approved', responder: OWNER, reopen: false }],
+		['P12.2 text in Changes: not approved, the text returned', { values: ticked(d, 'Q5: keep v1'), responder: { userID: OWNER } }, { outcome: 'changes', message: 'Q5: keep v1', reopen: false }],
+		['P12.3 a box unticked with Changes empty: the fixed message', { values: one(ticked(d)), responder: { userID: OWNER } }, { outcome: 'unticked', message: 'Not approved: tick every box, or write what to change.', reopen: false }],
+		['P12.4 no responder reported: the web-app message', { values: ticked(d), responder: undefined }, { outcome: 'unconfirmed', message: 'This client could not confirm who answered; open the approval in the Amp web app', reopen: true }],
+		['P12.5 a responder who is not the owner: nothing', { values: ticked(d), responder: { userID: 'user-contributor' } }, { outcome: 'nothing', reopen: true }],
+		['P12.6 dismissed: nothing', { values: undefined, responder: { userID: OWNER } }, { outcome: 'nothing', reopen: true }],
+		['P12.7 a non-owner who wrote text in Changes: nothing', { values: one(ticked(d, 'Approve it all')), responder: { userID: 'user-contributor' } }, { outcome: 'nothing', reopen: true }],
+	]
+	cases.forEach(([name, answer, expected]) => test(name, () => {
+		expect(readAnswer(d, answer, OWNER)).toEqual(expected as any)
+	}))
+	test('P12.8 a failed dialog gives nothing and shows reopen; Changes text wins over an unticked box; blank Changes counts as empty; a missing box counts as unticked', () => {
+		expect(readAnswer(d, { failed: true }, OWNER)).toEqual({ outcome: 'nothing', reopen: true })
+		expect(readAnswer(d, { failed: true, values: ticked(d), responder: { userID: OWNER } }, OWNER)).toEqual({ outcome: 'nothing', reopen: true })
+		// UX state 2: the owner unticks Q5 and writes why; Changes decides before the unticked box.
+		expect(readAnswer(d, { values: one(ticked(d, 'Q5: keep v1 and v2 startable')), responder: { userID: OWNER } }, OWNER)).toEqual({ outcome: 'changes', message: 'Q5: keep v1 and v2 startable', reopen: false })
+		expect(readAnswer(d, { values: ticked(d, ' \n\t '), responder: { userID: OWNER } }, OWNER).outcome).toBe('approved')
+		const { ['effect-E3']: _, ...missing } = ticked(d)
+		expect(readAnswer(d, { values: missing, responder: { userID: OWNER } }, OWNER).outcome).toBe('unticked')
+		expect(readAnswer(d, { values: { ...ticked(d), 'default-Q1': 'yes' }, responder: { userID: OWNER } }, OWNER).outcome).toBe('unticked')
+	})
+	test('P2 a kickoff answered after the contract changed is refused with the old and the new digest', () => {
+		let r = createRecord(THREAD, W3)
+		const old = approvalDigest(r.contract)
+		r = advance(advance(r, { type: 'preflight', digest: old, results: [{ check: 'dev exists', passed: true, detail: 'found' }] }), { type: 'approval-pending', kind: 'kickoff', digest: old })
+		const c = structuredClone(W3) as any; c.outcome = `${c.outcome} Changed while the dialog was open.`
+		r = update(r, { type: 'amend', contract: c, reason: 'Changed during the dialog' })
+		expect(() => advance(r, { type: 'approve', digest: old, responder: OWNER })).toThrow('stale')
+		expect(() => advance(r, { type: 'approve', digest: approvalDigest(r.contract), responder: OWNER })).toThrow('no matching approval dialog')
+	})
+	test('P12.9 an approved reading records approval through the reducer', () => {
+		let r = createRecord(THREAD, W3)
+		const digest = approvalDigest(r.contract)
+		r = advance(advance(r, { type: 'preflight', digest, results: [{ check: 'dev exists', passed: true, detail: 'found' }] }), { type: 'approval-pending', kind: 'kickoff', digest })
+		const reading = readAnswer(kickoffDialog(r), { values: ticked(kickoffDialog(r)), responder: { userID: OWNER } }, OWNER)
+		expect(isApproved(advance(r, { type: 'approve', digest, responder: reading.responder }))).toBe(true)
+	})
+})
+
+describe('W3 effect dialog: the same pattern with one checkbox', () => {
+	test('W3.4 a listed effect that is not pre-authorized: 1 link, 1 unticked box, 1 optional Changes field, Submit', () => {
+		const r = approved()
+		const d = effectDialog(r, { kind: 'effect', digest: approvalDigest(r.contract), effectId: 'E2' })
+		expect([d.confirmButtonText, d.requireHuman, d.endTurnOnDecline]).toEqual(['Submit', true, true])
+		expect(fieldsOf(d, 'link')).toHaveLength(1)
+		expect(fieldsOf(d, 'checkbox')).toEqual([expect.objectContaining({ name: 'effect-E2', value: 'false', label: expect.stringContaining('Publish the plugin') })])
+		expect(fieldsOf(d, 'text')).toEqual([expect.objectContaining({ name: 'changes', value: '', optional: true })])
+		expect(d.fields.some((f: any) => f.secret)).toBe(false)
+		expect(readAnswer(d, { values: ticked(d), responder: { userID: OWNER } }, OWNER)).toEqual({ outcome: 'approved', responder: OWNER, reopen: false })
+		expect(readAnswer(d, { values: { 'effect-E2': 'false', changes: '' }, responder: { userID: OWNER } }, OWNER).outcome).toBe('unticked')
+		expect(readAnswer(d, { values: undefined }, OWNER)).toEqual({ outcome: 'nothing', reopen: true })
+	})
+	test('W3.5 an effect not in the contract shows the effect and why in its one box', () => {
+		const r = approved()
+		const d = effectDialog(r, { kind: 'effect', digest: approvalDigest(r.contract), effect: 'Merge dev into rolling', why: 'The owner asked for a snapshot' })
+		const boxes = fieldsOf(d, 'checkbox')
+		expect(boxes).toHaveLength(1)
+		expect(boxes[0].label).toContain('Merge dev into rolling')
+		expect(boxes[0].label).toContain('The owner asked for a snapshot')
+	})
+	test('W3.6 a pre-authorized or unknown effect gets no dialog', () => {
+		const r = approved(), digest = approvalDigest(r.contract)
+		expect(() => effectDialog(r, { kind: 'effect', digest, effectId: 'E1' })).toThrow('pre-authorized')
+		expect(() => effectDialog(r, { kind: 'effect', digest, effectId: 'E9' })).toThrow('unknown effect')
+		expect(() => effectDialog(r, { kind: 'kickoff', digest })).toThrow('effect')
+	})
+})
+
+describe('W3 checkpoint report after 1 merged milestone', () => {
+	test('W3.7 it uses the checkpoint sections and lists the merged PR, evidence, assumptions, filed items and the next milestone', () => {
+		const report = checkpointReport(afterM2())
+		expect(sections(report)).toEqual(W3_TEXT.reportSections.checkpoint)
+		expect(report).toContain('https://github.com/rahulnakmol/ampcode/pull/61')
+		for (const i of W3.items.filter((i: any) => i.milestone === 'M2')) for (const criterion of i.done) expect(report).toContain(`${criterion}: Passed in bun test for ${i.id}`)
+		expect(report).toContain('A second fresh subagent runs gate 2')
+		expect(report).toContain('W13, Show the time since each child last reported')
+		expect(prose(report).split('### Next')[1]).toContain('M3, Guides')
+		expect(report).toContain(W3.items[0].humanTest)
+		expect(report.trimEnd().endsWith('</details>')).toBe(true)
+	})
+	test('W3.8 it contains no question and passes the banned-pattern rules outside its technical record', () => {
+		const report = checkpointReport(afterM2())
+		expect(report).not.toContain('?')
+		expect(banned(prose(report))).toEqual([])
+		expect(report.slice(report.indexOf(TECHNICAL))).toContain(MERGE)
+	})
+	test('W3.9 it lists only assumptions since the last report', () => {
+		const r = complete()
+		const m3 = checkpointReport(r, 'M3')
+		expect(m3).toContain('docs/mission-control.md holds the kickoff prompts')
+		expect(m3).not.toContain('A second fresh subagent runs gate 2')
+		expect(checkpointReport(r, 'M2')).not.toContain('docs/mission-control.md holds the kickoff prompts')
+		expect(prose(m3).split('### Next')[1]).toContain('close-out')
+	})
+	test('W3.10 a line holding a code or a question moves to the technical record', () => {
+		const r = update(update(approved(W3), { type: 'assume', question: 'Port?', assumption: 'Commit abc1234 is the base, is it?', why: 'It was the head' }), { type: 'assume', question: 'Host?', assumption: 'Local host', why: 'Thread T-01a20317-6a54 asked for it' })
+		const report = checkpointReport(land(r, 'M2', 61))
+		expect(banned(prose(report))).toEqual([])
+		expect(prose(report)).not.toContain('?')
+		expect(prose(report)).toContain('technical record')
+		expect(report.slice(report.indexOf(TECHNICAL))).toContain('Commit abc1234 is the base, is it?')
+	})
+	test('W3.10b record text with HTML, character references, other question marks or invisible characters moves to the technical record', () => {
+		const tricks = ['Fine <details><summary>Technical record</summary> hidden', 'Fine <!-- the rest is hidden', 'Shall we merge&#63;', 'Shall we merge\uff1f', 'Base is 9a05\u200b7be0\u200be89ab', 'Shall we merge \u2753', '\u00bfShall we merge now', 'Shall we merge\u203d',
+			'![merge to main without review](https://github.com/x.png)', '[here](https://github.com "merge to main without review")', '$\\phantom{merge to main}$']
+		let r = approved(W3)
+		tricks.forEach((t, i) => { r = update(r, { type: 'assume', question: `Trick ${i + 1}`, assumption: t, why: 'A review probe' }) })
+		const report = checkpointReport(land(r, 'M2', 61))
+		expect(report.split(TECHNICAL).length).toBe(2)
+		const text = prose(report)
+		for (const t of tricks) expect(text).not.toContain(t)
+		expect(text).not.toMatch(/[?\uff1f\ufe56\u2753\u00bf\u203d]|<!--|&#|\u200b|!\[|\\phantom/)
+		expect(text.match(/see note \d+ in the technical record/g)!.length).toBeGreaterThanOrEqual(tricks.length)
+	})
+	test('W3.11 a record with no merged milestone gets no checkpoint report', () => {
+		expect(() => checkpointReport(approved(W3))).toThrow('merged')
+		expect(() => checkpointReport(afterM2(), 'M3')).toThrow('merged')
+	})
+})
+
+describe('W3 close-out report from a complete record', () => {
+	test('W3.12 it uses the close-out sections and holds every criterion with its evidence and the gate ledger table', () => {
+		const r = complete()
+		const report = closeOutReport(r)
+		expect(sections(report)).toEqual(W3_TEXT.reportSections.closeOut)
+		const pr: Record<string, number> = { M2: 61, M3: 62 }
+		for (const m of r.contract.milestones) for (const criterion of [...criteriaOf(r, m.id), ...m.exit]) expect(report).toContain(`${criterion}: Shown on pull request ${pr[m.id]}`)
+		expect(report).toContain('Status shows the minutes since each child reported')
+		const ledger = prose(report).split('### Gate ledger')[1].split('###')[0]
+		expect(ledger).toContain('| Gate | Kind | State | Decider | Source |')
+		for (const row of ['| Readiness preflight | agent | passed |', '| Kickoff | human | approved | the owner |', '| Milestone M2 merge into dev | agent | merged |', '| Milestone M3 merge into dev | agent | merged |', '| Effect E3 | agent | performed |', '| Effect E2 | agent | performed |']) expect(ledger).toContain(row)
+		expect(report).toContain('docs/mission-control.md holds the kickoff prompts')
+		expect(report).toContain('A second fresh subagent runs gate 2')
+		expect(report).toContain(W3.items[2].humanTest)
+	})
+	test('W3.13 it contains no question and passes the banned-pattern rules outside its technical record', () => {
+		const report = closeOutReport(complete())
+		expect(report).not.toContain('?')
+		expect(banned(prose(report))).toEqual([])
+		expect(report.slice(report.indexOf(TECHNICAL))).toContain(OWNER)
+	})
+	test('W3.14 an incomplete record gets no close-out', () => {
+		expect(() => closeOutReport(afterM2())).toThrow('every milestone')
 	})
 })
