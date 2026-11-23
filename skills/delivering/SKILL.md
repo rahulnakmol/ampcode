@@ -161,8 +161,10 @@ again on the new head, and its evidence lines are recorded again.
 ### Ship or stop
 
 The contract's Effects name one variant for the milestone PRs. An Effects entry that
-pre-authorizes the milestone merges into `dev` names ship. When the Effects name neither, the
-variant is stop. This "stop" is a delivery variant, not one of the five stop reasons.
+pre-authorizes the milestone merges into `dev` names ship. Give that entry `"kind": "dev-merge"`
+so `mission-control` reads the variant from it (one such entry at most). When the Effects name
+neither, the variant is stop. This "stop" is a delivery variant, not one of the five stop reasons.
+The variant is part of the approved contract and cannot change once a milestone is merged or ready.
 
 - **Ship:** when both gates passed and the checks are green on the head, merge into `dev` only as
   the contract pre-authorizes that merge. A merge it does not pre-authorize is stop reason 2.
@@ -171,7 +173,9 @@ variant is stop. This "stop" is a delivery variant, not one of the five stop rea
   a queued auto-merge cannot merge it. It leaves the PR open. The checkpoint
   report lists the PR as ready under `Merged`, not as merged. The next milestone branch is cut
   from this milestone's head, and its gates review the diff from that head. Close out after the
-  last milestone's gates pass.
+  last milestone's gates pass. With `mission-control`, `mission_merge` records the milestone as
+  ready instead of merging, after reading that the PR is still open on the reviewed head with no
+  auto-merge or merge queue entry. The next candidate's `base` must be that reviewed head.
 
 Running `gh pr merge --disable-auto` is part of choosing stop: an effect the stop variant needs,
 recorded under Effects performed. Always read the PR's auto-merge state back; that only reads.

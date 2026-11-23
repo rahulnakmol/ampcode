@@ -99,7 +99,8 @@
       "id": "E2",
       "effect": "Squash-merge each milestone PR into dev when green",
       "preAuthorized": true,
-      "source": "Owner global AGENTS.md: CI approval is sufficient and manual approval is not required"
+      "source": "Owner global AGENTS.md: CI approval is sufficient and manual approval is not required",
+      "kind": "dev-merge"
     },
     {
       "id": "E3",

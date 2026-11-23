@@ -27,7 +27,7 @@ const INTERNAL: Record<string, [string[], string[]?]> = {
 	'approval-pending': [['kind', 'digest'], ['effectId', 'effect', 'why']], approve: [['digest', 'responder']],
 	preflight: [['digest', 'results']], effect: [[], ['effectId', 'effect', 'why', 'responder']],
 	'merge-requested': [['milestoneId', 'fingerprint']], merged: [['milestoneId', 'fingerprint', 'commit']],
-	recover: [['milestoneId', 'fingerprint']],
+	recover: [['milestoneId', 'fingerprint']], ready: [['milestoneId', 'fingerprint']],
 }
 
 export type Item = {
@@ -39,7 +39,8 @@ export type Contract = {
 	design: { high: string; low: string }; ux: string[]; defense: string
 	cases: { id: string; case: string; mitigation: string }[]
 	openQuestions: { id: string; question: string; default: string }[]
-	effects: { id: string; effect: string; preAuthorized: boolean; source: string }[]
+	// kind "dev-merge" marks the effect that pre-authorizes the milestone merges into dev.
+	effects: { id: string; effect: string; preAuthorized: boolean; source: string; kind?: 'dev-merge' }[]
 	readiness: { id: string; check: string; evidence: string }[]
 	milestones: { id: string; title: string; exit: string[] }[]
 	items: Item[]; brief: { markdown: string; url: string }
@@ -55,7 +56,8 @@ export type ItemState = {
 }
 export type Review = { gate: 1 | 2; fingerprint: string; passed: boolean; reviewer: string; record: string }
 export type MilestoneState = {
-	id: string; status: 'open' | 'candidate' | 'merge-pending' | 'merged'; generation: number; failed: [number, number]
+	// "ready" is the stop variant's end state: both gates passed and its PR stays open, unmerged.
+	id: string; status: 'open' | 'candidate' | 'merge-pending' | 'merged' | 'ready'; generation: number; failed: [number, number]
 	reviews: Review[]; dispositions: { gate: 1 | 2; outcome: 'fixed' | 'replanned' | 'filed'; record: string; itemIds: string[]; at: string }[]
 	candidate?: Candidate; evidence?: { fingerprint: string; results: Result[]; humanTest: string }; mergeCommit?: string
 }
@@ -72,6 +74,9 @@ export type ContractRecord = {
 	approval?: { digest: string; responder: string; at: string }
 	preflight?: { digest: string; results: { check: string; passed: boolean; detail: string }[]; passed: boolean; at: string }
 	pendingApproval?: Pending
+	// Set on records started since the stop variant: they read the variant from the dev-merge
+	// effect. An older record has no such marker and keeps the ship behaviour it was approved under.
+	variants?: true
 	events: { sequence: number; at: string; action: Action }[]
 }
 export type Action = { type: string; [field: string]: any }
@@ -170,9 +175,13 @@ export function parseContract(value: unknown): Contract {
 	rows('openQuestions', ['question', 'default'], true)
 	list(c.effects, 'effects', true).forEach((e, i) => {
 		const path = `effects[${i}]`
-		shape(e, path, ['id', 'effect', 'preAuthorized', 'source']); unique(e.id, `${path}.id`)
+		shape(e, path, ['id', 'effect', 'preAuthorized', 'source'], ['kind']); unique(e.id, `${path}.id`)
 		str(e.effect, `${path}.effect`); str(e.source, `${path}.source`)
 		if (typeof e.preAuthorized !== 'boolean') fail(`${path}.preAuthorized`, 'true or false is required')
+		if (Object.hasOwn(e, 'kind')) {
+			if (e.kind !== 'dev-merge') fail(`${path}.kind`, '"dev-merge" is the only kind')
+			if (c.effects.slice(0, i).some((x: any) => x.kind === 'dev-merge')) fail(`${path}.kind`, 'only one effect may be the dev-merge effect')
+		}
 	})
 	rows('readiness', ['check', 'evidence'], true)
 	list(c.milestones, 'milestones', false).forEach((m, i) => {
@@ -195,6 +204,15 @@ export function approvalDigest(c: Contract): string {
 	const milestones = c.milestones.map(m => ({ id: m.id, title: m.title, exit: m.exit, criteria: c.items.filter(i => i.milestone === m.id).flatMap(i => i.done).sort() }))
 	return intentDigest({ missionId, repository, outcome, scope, spec, design, ux, defense, cases, openQuestions, effects, brief: { markdown: brief.markdown, url: brief.url }, milestones })
 }
+/** Ship merges each milestone into dev; stop never merges and chains each milestone on the
+ * previous one's reviewed head. Ship needs a pre-authorized effect of kind "dev-merge"; a record
+ * started before kinds existed is always ship. `c` is the record's contract or an amended one. */
+export function variant(r: ContractRecord, c = r.contract): 'ship' | 'stop' {
+	return !r.variants || c.effects.some(e => e.kind === 'dev-merge' && e.preAuthorized) ? 'ship' : 'stop'
+}
+/** Merged under ship, ready under stop: the milestone is finished and frozen. */
+export const settled = (m: MilestoneState) => m.status === 'merged' || m.status === 'ready'
+const unsettledWord = (r: ContractRecord) => variant(r) === 'ship' ? 'merged' : 'ready'
 function milestoneOf(s: ContractRecord, milestoneId: unknown, path = 'milestoneId'): MilestoneState {
 	const m = s.milestones.find(m => m.id === milestoneId)
 	if (!m) fail(path, `unknown milestone ${milestoneId}`)
@@ -221,6 +239,7 @@ export function blocked(record: ContractRecord, milestoneId: string): boolean {
 export function blockers(record: ContractRecord, milestoneId: string): string[] {
 	const m = milestoneOf(record, milestoneId)
 	if (m.status === 'merged') return ['Milestone is merged']
+	if (m.status === 'ready') return ['Milestone is ready; its pull request stays open']
 	const out: string[] = []
 	if (m.status === 'merge-pending') out.push('Merge already requested; reconcile it')
 	if (record.approval?.digest !== approvalDigest(record.contract)) out.push('Kickoff approval on the current contract required')
@@ -229,8 +248,8 @@ export function blockers(record: ContractRecord, milestoneId: string): string[] 
 	const open = itemsIn(record, milestoneId).filter(i => stateOf(record, i.id).status !== 'done')
 	if (open.length) out.push(`Items not done: ${open.map(i => i.id).join(', ')}`)
 	const index = record.milestones.indexOf(m)
-	const earlier = record.milestones.slice(0, index).filter(e => e.status !== 'merged')
-	if (earlier.length) out.push(`Earlier milestones not merged: ${earlier.map(e => e.id).join(', ')}`)
+	const earlier = record.milestones.slice(0, index).filter(e => !settled(e))
+	if (earlier.length) out.push(`Earlier milestones not ${unsettledWord(record)}: ${earlier.map(e => e.id).join(', ')}`)
 	if (!m.candidate) out.push('Candidate required')
 	else {
 		const fp = fingerprint(record, milestoneId)
@@ -248,7 +267,7 @@ const fresh = (milestoneId: string): MilestoneState => ({ id: milestoneId, statu
 
 export function createRecord(thread: string, contract: unknown, time = now()): ContractRecord {
 	str(thread, 'thread')
-	return apply(initial(thread), { type: 'start', contract }, time)
+	return apply(initial(thread), { type: 'start', contract, variants: true }, time)
 }
 /** The public dispatch behind mission_update: the 12 public actions only. */
 export function update(record: ContractRecord, action: Action, time = now()): ContractRecord {
@@ -287,7 +306,7 @@ function itemFor(s: ContractRecord, itemId: unknown) {
 }
 function open(s: ContractRecord, milestoneId: string, path = 'milestoneId') {
 	const m = milestoneOf(s, milestoneId, path)
-	if (m.status === 'merged') fail(path, `${m.id} is merged`)
+	if (settled(m)) fail(path, `${m.id} is ${m.status}`)
 	if (m.status === 'merge-pending') fail(path, `reconcile the pending merge of ${m.id} first`)
 	return m
 }
@@ -309,7 +328,7 @@ function pending(s: ContractRecord, match: Partial<Pending>) {
 
 // Replay calls apply on its own accumulator; public transitions pass a clone.
 function apply(s: ContractRecord, action: Action, time: string): ContractRecord {
-	const fields = action?.type === 'start' ? [['contract']] : (PUBLIC[action?.type] ?? INTERNAL[action?.type])
+	const fields = action?.type === 'start' ? [['contract'], ['variants']] : (PUBLIC[action?.type] ?? INTERNAL[action?.type])
 	if (!fields) fail('type', 'unknown action')
 	shape(action, '', ['type', ...fields[0]], fields[1])
 	const a = action as any
@@ -318,6 +337,7 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 		case 'start': {
 			if (s.events.length) fail('type', 'start only creates a record')
 			s.contract = parseContract(a.contract)
+			if (Object.hasOwn(a, 'variants')) { if (a.variants !== true) fail('variants', 'true or absent'); s.variants = true }
 			s.items = s.contract.items.map(i => ({ id: i.id, origin: 'contract', status: 'planned' }))
 			s.milestones = s.contract.milestones.map(m => fresh(m.id))
 			break
@@ -326,9 +346,10 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 			str(a.reason, 'reason')
 			const c = parseContract(a.contract)
 			if (s.milestones.some(m => m.status === 'merge-pending')) fail('contract', 'reconcile the pending merge first')
-			s.milestones.filter(m => m.status === 'merged').forEach((m, i) => {
+			if (s.milestones.some(settled) && variant(s, c) !== variant(s)) fail('effects', 'the merge variant (the dev-merge effect) cannot change once a milestone is merged or ready')
+			s.milestones.filter(settled).forEach((m, i) => {
 				const items = (x: Contract) => canonical(x.items.filter(item => item.milestone === m.id))
-				if (canonical(c.milestones[i]) !== canonical(s.contract.milestones[i]) || items(c) !== items(s.contract)) fail(`milestones[${i}]`, `${m.id} is merged and cannot change`)
+				if (canonical(c.milestones[i]) !== canonical(s.contract.milestones[i]) || items(c) !== items(s.contract)) fail(`milestones[${i}]`, `${m.id} is ${m.status} and cannot change`)
 			})
 			plan(c, s.filed, s.followUps)
 			const kept = new Set([...c.milestones.map(m => m.id), ...c.items.map(i => i.id), ...s.filed.map(i => i.id)])
@@ -345,14 +366,14 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 					if (sorted(old.done) !== sorted(item.done)) fail(`items[${i}].done`, 'item criteria are part of the baseline; split them with replan or change them with a new digest')
 				})
 			}
-			// Failed-round counters survive: a milestone that failed a review stays the earliest unmerged
+			// Failed-round counters survive: a milestone that failed a review stays the earliest unfinished
 			// one and keeps its ID, items, outcomes and criteria. Record a "replanned" disposition first to change them.
-			// A candidate also stays the earliest unmerged milestone, so no copy can be put ahead of it.
+			// A candidate also stays the earliest unfinished milestone, so no copy can be put ahead of it.
 			for (const m of s.milestones) {
 				const failed = m.failed.some(n => n > 0)
 				if (!failed && m.status !== 'candidate') continue
 				const index = c.milestones.findIndex(x => x.id === m.id)
-				if (index > 0 && c.milestones.slice(0, index).some(x => s.milestones.find(y => y.id === x.id)?.status !== 'merged')) fail('milestones', failed ? `${m.id} has failed review rounds and must stay the earliest unmerged milestone; record a "replanned" disposition first to change the order` : `${m.id} is a candidate and must stay the earliest unmerged milestone`)
+				if (index > 0 && c.milestones.slice(0, index).some(x => { const y = s.milestones.find(y => y.id === x.id); return !y || !settled(y) })) fail('milestones', failed ? `${m.id} has failed review rounds and must stay the earliest unfinished milestone; record a "replanned" disposition first to change the order` : `${m.id} is a candidate and must stay the earliest unfinished milestone`)
 				if (!failed) continue
 				const held = s.contract.items.filter(i => i.milestone === m.id)
 				const criteria = (x: Contract) => new Set([...x.items.filter(i => i.milestone === m.id).flatMap(i => i.done), ...(x.milestones.find(y => y.id === m.id)?.exit ?? [])])
@@ -397,19 +418,19 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 		case 'file': {
 			const keys = ['item', 'followUp'].filter(k => Object.hasOwn(a, k))
 			if (keys.length !== 1) fail('file', 'give exactly one of item or followUp')
-			const first = s.milestones.findIndex(m => m.status !== 'merged')
+			const first = s.milestones.findIndex(m => !settled(m))
 			if (first < 0) fail('file', 'the mission is complete')
 			const taken = new Set([...contractIds(s.contract), ...s.filed.map(i => i.id), ...s.followUps.map(f => f.id)])
 			if (keys[0] === 'followUp') {
 				shape(a.followUp, 'followUp', ['id', 'text']); id(a.followUp.id, 'followUp.id'); str(a.followUp.text, 'followUp.text')
-				if (first !== s.milestones.length - 1) fail('followUp', 'a follow-up is filed only when the earliest unmerged milestone is the last one; file an item in a later milestone instead')
+				if (first !== s.milestones.length - 1) fail('followUp', 'a follow-up is filed only when the earliest unfinished milestone is the last one; file an item in a later milestone instead')
 				if (taken.has(a.followUp.id)) fail('followUp.id', `duplicate ID ${a.followUp.id}`)
 				s.followUps.push({ id: a.followUp.id, text: a.followUp.text })
 			} else {
 				const item = parseItem(a.item, 'item')
 				const index = s.milestones.findIndex(m => m.id === item.milestone)
 				if (index < 0) fail('item.milestone', `unknown milestone ${item.milestone}`)
-				if (index <= first) fail('item.milestone', `file into a milestone after the earliest unmerged milestone (${s.milestones[first].id}), so a current candidate is never voided`)
+				if (index <= first) fail('item.milestone', `file into a milestone after the earliest unfinished milestone (${s.milestones[first].id}), so a current candidate is never voided`)
 				if (taken.has(item.id)) fail('item.id', `duplicate ID ${item.id}`)
 				plan(s.contract, [...s.filed, item], s.followUps)
 				s.filed.push(item); s.items.push({ id: item.id, origin: 'finding', status: 'planned' })
@@ -441,12 +462,16 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 		}
 		case 'candidate': {
 			const m = open(s, a.milestoneId)
-			const earlier = s.milestones.slice(0, s.milestones.indexOf(m)).filter(e => e.status !== 'merged')
-			if (earlier.length) fail('milestoneId', `earlier milestones are not merged: ${earlier.map(e => e.id).join(', ')}`)
+			const index = s.milestones.indexOf(m)
+			const earlier = s.milestones.slice(0, index).filter(e => !settled(e))
+			if (earlier.length) fail('milestoneId', `earlier milestones are not ${unsettledWord(s)}: ${earlier.map(e => e.id).join(', ')}`)
 			const notDone = itemsIn(s, m.id).filter(i => stateOf(s, i.id).status !== 'done')
 			if (notDone.length) fail('milestoneId', `items not done: ${notDone.map(i => i.id).join(', ')}`)
 			if (!Number.isSafeInteger(a.pr) || a.pr <= 0) fail('pr', 'a pull request number is required')
 			const c: Candidate = { repo: s.contract.repository, pr: a.pr, head: gitSha(a.head, 'head'), base: gitSha(a.base, 'base') }
+			// Stop: nothing merges, so each milestone builds on the previous one's reviewed head.
+			const previous = s.milestones[index - 1]
+			if (variant(s) === 'stop' && previous && c.base !== previous.candidate!.head) fail('base', `under the stop variant the base must be ${previous.candidate!.head}, the reviewed head of ${previous.id}`)
 			// A new candidate voids reviews and evidence; failed-round counters survive.
 			if (!m.candidate || canonical(m.candidate) !== canonical(c)) { m.reviews = []; delete m.evidence }
 			m.candidate = c; m.status = 'candidate'
@@ -581,12 +606,14 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 			}
 			break
 		}
-		case 'merge-requested': {
+		case 'merge-requested': case 'ready': {
 			const m = open(s, a.milestoneId)
+			if (a.type === 'merge-requested' && variant(s) === 'stop') fail('milestoneId', 'no pre-authorized effect has kind "dev-merge" (stop variant); record the milestone as ready instead')
+			if (a.type === 'ready' && variant(s) === 'ship') fail('milestoneId', 'the contract pre-authorizes merges into dev (ship variant); merge the milestone instead')
 			current(s, m, a.fingerprint)
 			const missing = blockers(s, m.id)
 			if (missing.length) fail('milestoneId', missing.join('; '))
-			m.status = 'merge-pending'
+			m.status = a.type === 'ready' ? 'ready' : 'merge-pending'
 			break
 		}
 		case 'merged': case 'recover': {

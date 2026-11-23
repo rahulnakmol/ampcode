@@ -20,9 +20,9 @@ The contract is the baseline the owner approves once. Its fields:
 | `defense` | The whiteboard defense record |
 | `cases` | The closed case list: `id`, `case`, `mitigation`. Adversarial review covers exactly these |
 | `openQuestions` | `id`, `question`, `default`. Each default is taken unless the owner changes it |
-| `effects` | `id`, `effect`, `preAuthorized`, `source`. Every outside effect the mission needs |
+| `effects` | `id`, `effect`, `preAuthorized`, `source`, optional `kind`. Every outside effect the mission needs. `kind: "dev-merge"` marks the one entry for the milestone merges into `dev`; pre-authorized, it picks ship, otherwise the variant is stop |
 | `readiness` | `id`, `check`, `evidence`: the preflight results, including targets outside GitHub |
-| `milestones` | `id`, `title`, `exit` (the exit criteria); they merge in this order |
+| `milestones` | `id`, `title`, `exit` (the exit criteria); they finish (merge, or are ready under stop) in this order |
 | `items` | `id`, `title`, `milestone`, `size` (XS, S, M or L), `outcome`, `inScope`, `outOfScope`, `dependsOn`, `done`, `automatedTest`, `humanTest`, `trace` |
 | `brief` | `markdown` and `url`: the kickoff brief's text and link |
 
@@ -46,7 +46,7 @@ with its old behaviour; with it, or with no plugin, use the manual path below.
 | `mission_preflight` | Run the GitHub readiness checks and bind the result to the contract |
 | `mission_approve` | Open the one kickoff dialog |
 | `mission_effect` | Record a pre-authorized effect with no dialog; otherwise open the effect dialog (stop reason 2) |
-| `mission_merge({ milestoneId })` | Squash-merge the milestone's exact head into `dev` |
+| `mission_merge({ milestoneId })` | Ship: squash-merge the milestone's exact head into `dev`. Stop: merge nothing, check the PR is still open on the reviewed head and not set to merge, and record the milestone as ready |
 | `mission_reconcile({ milestoneId })` | Read back the merge after an interruption or a pending request |
 | `mission_recover({ milestoneId })` | After a settled, unqueued attempt, void the candidate's evidence and return to review; never retry blindly |
 | `mission_report({ kind })` | Write the `checkpoint` or `close-out` report |

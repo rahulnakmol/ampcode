@@ -1,4 +1,4 @@
-import type { ContractRecord, Pending } from './contract'
+import { variant, type ContractRecord, type Pending } from './contract'
 
 // The decision-brief rules from skills/briefing-decisions/scripts/brief_check.py, except reading
 // ease, which stays in the Python checker. Keep both in step: tests compare BANNED with
@@ -237,7 +237,7 @@ function contractDialog(record: ContractRecord, title: string, message: string, 
 export function kickoffDialog(record: ContractRecord): ContractDialog {
 	const c = record.contract
 	return contractDialog(record, 'Approve the mission contract',
-		'One approval starts the whole mission. Open the contract brief, tick each default you accept, and submit. To change something, untick it or write it in Changes; nothing is approved then.',
+		`One approval starts the whole mission. ${variant(record) === 'ship' ? 'Each milestone merges into dev once its gates pass.' : 'No milestone merges: each pull request stays open for you, and the next milestone builds on it.'} Open the contract brief, tick each default you accept, and submit. To change something, untick it or write it in Changes; nothing is approved then.`,
 		[
 			...c.openQuestions.map(q => ({ name: `default-${q.id}`, label: `${q.id}. ${q.question} Default: ${q.default}` })),
 			...c.effects.filter(e => e.preAuthorized).map(e => ({ name: `effect-${e.id}`, label: `${e.id}. ${sentence(e.effect)} Pre-authorized: ${e.source}` })),

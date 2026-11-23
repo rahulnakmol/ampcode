@@ -136,6 +136,12 @@ export class GitHub {
 		// and head precondition still govern the race after this read.
 		assertMergeReady(s, await this.pull(s), protection, checks.check_runs)
 	}
+	// Stop variant: whether the head builds on the recorded base (GitHub's compare of base...head).
+	async builds(s: MilestoneCandidate) {
+		const c = candidateOf(s)
+		const r = await this.api(`repos/${c.repo}/compare/${c.base}...${c.head}?per_page=1`)
+		return (r.status === 'ahead' || r.status === 'identical') && r.behind_by === 0
+	}
 	async request(s: MilestoneCandidate) {
 		const c = candidateOf(s)
 		// Automatic workflow, not persistent GitHub auto-merge authorization:

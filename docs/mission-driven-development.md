@@ -92,8 +92,9 @@ illustration, not a claim that the kit implements or has tested a document edito
 
 End every phrase above that writes a contract (not New idea or Interrupted work) with the effects
 you pre-authorize, usually "Pre-authorize the milestone merges into dev and pushing mission
-branches." With mission-control, keep the merge entry: without it the mission stops after the
-first milestone's gates and leaves that PR open for you.
+branches." Leave out the merges to review them yourself: mission-control then merges nothing,
+records each milestone as ready with its PR left open, and builds the next milestone on that
+reviewed head.
 
 ## Know which component does what
 
