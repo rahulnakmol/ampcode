@@ -494,7 +494,7 @@ function contractHarness(github: any, root = mkdtempSync(join(tmpdir(), 'mission
 		registerCommand: (id: string, options: any, handler: any) => { commands[id] = { options, handler } },
 	}
 	register(amp as any, github)
-	const call = (name: string, input: any = {}) => tools[name](input, ctx)
+	const call = (name: string, input: any = {}, signal = ctx.signal) => tools[name](input, { ...ctx, signal })
 	return {
 		root, dialogs, call, answer: (f: typeof answer) => { answer = f }, commands, notes, posted,
 		quickActions: () => quick.map(q => q.definition),
@@ -1015,6 +1015,46 @@ test.each(KINDS)("Reopen (%s): Changes written by the owner in the reopened dial
 		expect(h.quickActions()).toEqual([])
 		const s = await h.status()
 		expect([s.approval?.digest, s.performed]).toEqual([recorded.approval?.digest, recorded.performed])
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test.each(KINDS)('Reopen (%s): a dialog that ends because the turn was stopped still leaves the pending entry, the quick action and the reminder', async (kind, setup, open) => {
+	const h = contractHarness(fakeGitHub().github)
+	try {
+		await setup(h)
+		const stop = new AbortController()
+		h.answer(() => { stop.abort(); return { failed: true } })
+		const name = kind === 'kickoff' ? 'mission_approve' : 'mission_effect'
+		await expect(h.call(name, kind === 'kickoff' ? {} : NEW_EFFECT, stop.signal)).rejects.toThrow()
+		expect((await h.status()).pendingApproval).toMatchObject({ kind })
+		expect(h.quickActions()).toEqual([quickAction(kind)])
+		expect(await startContent(h)).toContain(REMINDER)
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('Reopen: an answer from a dialog the contract changed under offers no quick action and posts no Changes', async () => {
+	const h = contractHarness(fakeGitHub().github)
+	try {
+		await h.call('mission_start', { contract: CONTRACT })
+		await h.call('mission_preflight')
+		h.answer(() => ({ values: undefined }))
+		await h.call('mission_approve')
+		let n = 0
+		const amendThen = (answer: (d: any) => Answer) => async (d: any) => {
+			await h.act({ type: 'amend', contract: { ...CONTRACT, outcome: `Changed outcome ${++n}.` }, reason: 'Changed outcome' })
+			await h.call('mission_preflight')
+			return answer(d)
+		}
+		h.answer(amendThen(d => ({ values: ticked(d, 'Use a smaller first milestone') })))
+		await h.command(REOPEN_COMMAND)
+		expect(h.posted).toEqual([])
+		expect(h.notes.at(-1)).toContain('Stale')
+		expect(h.quickActions()).toEqual([])
+		// The same for a dismissed answer through the tool.
+		h.answer(amendThen(() => ({ values: undefined })))
+		await h.call('mission_approve')
+		expect(h.quickActions()).toEqual([])
+		expect((await h.status()).approval).toBeNull()
 	} finally { rmSync(h.root, { recursive: true, force: true }) }
 })
 

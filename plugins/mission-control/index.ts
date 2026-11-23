@@ -145,13 +145,11 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 	}
 	const saveContract = (s: ContractRecord) => { saveContractRecord(pathFor(s.thread), s); return s }
 	// A kickoff or effect dialog. Who answered comes from onAnswered and is compared with the signed-in user.
-	// A command has no abort signal.
-	const ask = async (ui: PluginUI, dialog: ContractDialog, signal?: AbortSignal) => {
+	const ask = async (ui: PluginUI, dialog: ContractDialog) => {
 		const answer: DialogAnswer = {}
 		try {
 			answer.values = await ui.confirm({ ...dialog, onAnswered: ({ responder }) => { if (responder) answer.responder = { userID: responder.userID } } } as any)
 		} catch { answer.failed = true }
-		signal?.throwIfAborted()
 		return readAnswer(dialog, answer, amp.system.user?.id ?? '')
 	}
 	// Reopen: after cases 1 to 3 of the order rule, the thread shows a quick action that runs
@@ -178,9 +176,14 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		const digest = approvalDigest(s.contract)
 		dropReopen(s.thread)
 		const opened = saveContract(advanceContract(s, { type: 'approval-pending', digest, ...target }))
-		const reading = await ask(ui, target.kind === 'kickoff' ? kickoffDialog(opened) : effectDialog(opened, opened.pendingApproval!), signal)
-		if (reading.reopen) offerReopen(thread, opened.pendingApproval!)
-		if (reading.outcome !== 'approved') return { reading }
+		const reading = await ask(ui, target.kind === 'kickoff' ? kickoffDialog(opened) : effectDialog(opened, opened.pendingApproval!))
+		// An amend while the dialog was open voids its pending entry: no quick action and no posted answer for it.
+		const latest = read(s.thread)
+		const stale = !latest || !isContract(latest) || !latest.pendingApproval || canonical(latest.pendingApproval) !== canonical(opened.pendingApproval)
+		if (reading.reopen && !stale) offerReopen(thread, opened.pendingApproval!)
+		// A stopped turn still leaves the quick action; a command has no abort signal.
+		signal?.throwIfAborted()
+		if (reading.outcome !== 'approved') return { reading, stale }
 		const now = unchanged(s.thread, digest, target.kind, opened.events.length)
 		const { kind: _kind, ...effect } = target
 		return { reading, record: saveContract(advanceContract(now, target.kind === 'kickoff' ? { type: 'approve', digest, responder: reading.responder } : { type: 'effect', ...effect, responder: reading.responder })) }
@@ -430,12 +433,13 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 				return await ctx.ui.notify('No mission approval is pending in this thread.')
 			}
 			const { digest: _digest, ...target } = p
-			const { reading, record } = await approval(thread, ctx.ui, s, target)
+			const { reading, record, stale } = await approval(thread, ctx.ui, s, target)
 			if (record) {
 				const effect = p.effectId ?? p.effect
 				reopened.set(thread.id, p.kind === 'kickoff' ? 'The owner approved the kickoff in the reopened approval dialog.' : `${EFFECT_APPROVED} It was approved in the reopened approval dialog: ${effect}. Perform it now, exactly as described.`)
 				return await ctx.ui.notify(p.kind === 'kickoff' ? 'Kickoff approved by the owner and recorded. Send a message to continue the mission.' : `${EFFECT_APPROVED} Send a message so the agent performs it.`)
 			}
+			if (stale) return await ctx.ui.notify('Stale: the contract changed while the approval dialog was open; nothing was recorded or posted.')
 			if (reading.outcome === 'changes') return await thread.appendUserMessage({ type: 'user-message', content: `The mission owner answered the ${p.kind} approval dialog: not approved. The owner wrote in Changes:\n${reading.message}` })
 			await ctx.ui.notify(notApproved(reading))
 		} catch (error) { await ctx.ui.notify((error as Error).message) }
