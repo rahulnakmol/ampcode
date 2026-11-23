@@ -1,0 +1,13 @@
+{
+  "stopReasons": [
+    "Change to the baseline: a criterion, scope item or design decision is wrong or conflicts, and no reading inside the contract works.",
+    "Outside effect not in the contract: an irreversible or outside effect that the contract does not pre-authorize.",
+    "A fact only a person holds, with no safe, reversible default.",
+    "A red line: security, legal or safety.",
+    "A milestone cannot meet its exit criteria after the work was re-planned and split."
+  ],
+  "reportSections": {
+    "checkpoint": ["Merged", "Done", "Assumptions taken", "Filed for later", "Try it yourself", "Next"],
+    "closeOut": ["Outcome", "Criteria and evidence", "Assumptions", "Filed items and follow-ups", "Effects performed", "Gate ledger", "Human tests"]
+  }
+}

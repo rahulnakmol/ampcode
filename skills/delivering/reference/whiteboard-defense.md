@@ -1,19 +1,18 @@
 # Own the outcome, not every line
 
-Use the whiteboard defense after grilling, a concrete spec/plan/technical design plus relevant
-crafting UX design, and initiator acknowledgment of that package. It precedes implementation
-handoff; defense is not a substitute for acknowledgment. The initiator must be the thread owner
-or the owner must adopt the mission in version one. It tests whether the integration owner can
-explain and justify the proposed system. Before final delivery, refresh it against the
-actual system and evidence. No memorization of function names, code trivia, or exhaustive design
-document is required. A small, low-risk slice can use a short explanation; consequential designs
-need challenge from a separate reviewer context or person.
+Run the whiteboard defense after grilling, the design (spec, plan, technical design and rendered
+UX) and the fresh-context design review, and **before kickoff**. The defense record becomes part
+of the contract, so the owner approves a design its integration owner has already defended. It
+tests whether the integration owner can explain and justify the proposed system. No memorization
+of function names, code trivia or an exhaustive design document is required. A small, low-risk
+item can use a short explanation; consequential designs need challenge from a separate reviewer
+context or person.
 
 ## Explain six things in simple terms
 
 | Challenge | A defensible answer |
 | --- | --- |
-| What is done, and why does it matter? | Customer problem, observable benefit, acceptance IDs, non-goals, and a result that would disprove success |
+| What is done, and why does it matter? | Customer problem, observable benefit, criteria IDs, non-goals, and a result that would disprove success |
 | How does it work? | Main journey, components, data movement, owners, dependencies, and trust boundaries; use a small diagram if useful |
 | Why X instead of Y? | A credible alternative, constraints, costs and benefits, why the simpler option is or is not enough, and when to revisit the choice |
 | Why this data model or structure? | Operations it supports, invariants, access patterns, ordering/consistency and scale assumptions; no invented performance claims |
@@ -22,61 +21,62 @@ need challenge from a separate reviewer context or person.
 
 Ground statements in inspected contracts, measurements, or the confirmed brief. Label design
 proposals as proposals and assumptions as assumptions. Do not pass by reciting headings. A claim
-such as “exactly once” needs a mechanism that survives the relevant partial failures, not confidence
-or a test count. If a dimension is inapplicable, state why; do not manufacture a threat or tradeoff.
+such as "exactly once" needs a mechanism that survives the relevant partial failures, not
+confidence or a test count. If a dimension is inapplicable, state why; do not manufacture a threat
+or tradeoff.
 
-## Challenge the design before handing it off
+## Challenge the design before the baseline
 
-The owner gives the explanation. A challenger probes the consequential decisions with concrete
-counterexamples. For low-risk work, explicit self-challenge is sufficient; for consequential work,
-use an independent context or person. The owner retains responsibility for resolving findings.
-The challenger reports gaps, not a preferred implementation to copy without thought.
+The owner of the outcome gives the explanation. A challenger probes the consequential decisions
+with concrete counterexamples. For low-risk work, explicit self-challenge is sufficient; for
+consequential work, use an independent context or person. The integration owner resolves the
+findings; the challenger reports gaps, not a preferred implementation.
 
-Record **ready for implementation** only when:
-- The current design package has initiator acknowledgment, recorded before this defense.
-- Each applicable challenge has a grounded answer and the acceptance criteria are falsifiable.
-- No unresolved contradiction or unknown mechanism blocks the first useful slice.
-- Remaining assumptions have handling and revisit triggers; required experiments/tests have owners.
-- The receiving agent has the actual brief, defense, relevant evidence, and accessible candidate
-  materials, then explains the outcome, approach, constraints, key risks, and first check back in
-  its own words. Correct errors before handoff. If the owner will implement, its defense serves
-  as the teach-back; do not spawn another agent merely to repeat it.
+Record **ready for kickoff** only when:
 
-A proposed design need not already have passed its future runtime tests. Readiness permits the
-bounded harness/implementation step; it does not mean verified, shipped, or safe in production.
-Use **blocked** for missing understanding or materials, **investigate** for discoverable facts or
-bounded empirical questions, and **reframe** for changes to customer expectations. Preserve completed
-work while resolving the gap. Do not demand another user approval for unchanged approved scope.
+- each applicable challenge has a grounded answer and every criterion is falsifiable, with a
+  finite list of cases;
+- no unresolved contradiction or unknown mechanism blocks the first milestone;
+- remaining assumptions are open questions with defaults, or have handling and revisit triggers;
+- required experiments and tests are items with owners.
+
+A proposed design need not already have passed its future runtime tests. Use **blocked** for
+missing understanding or materials, **investigate** for discoverable facts or bounded experiments,
+and **reframe** for changes to customer expectations, all before the baseline.
+
+## Hand off with a teach-back
+
+Each child or subagent gets the item's contract slice, which includes the defense. Its first
+check-in explains the outcome, approach, constraints, key risks and first check in its own words;
+correct errors before it builds. When the steering thread builds an item itself, its defense
+serves as the teach-back; do not start another agent merely to repeat it.
 
 ## Keep the explanation true as the system changes
 
-Reopen the affected defense when a change alters a decision, ownership, data semantics, trust
-boundary, or failure behavior. Material changes to requirements, scope, technical design, UX, or
-acceptance criteria first reopen initiator acknowledgment; do not defend or build the changed
-package before that acknowledgment. Invalidate affected reviews/evidence. Transfer the revised record and obtain an updated recipient
-teach-back when handing off. Do not reuse an old explanation merely because the tests passed.
-At delivery, explain the implemented system from its inspected artifacts and current evidence.
-Keep the original two build-review gates; this defense is neither of them.
+Refresh the defense against the implemented system at each milestone's gate 2 and record the
+refresh in that gate's review record, never in the contract, so the approval stands. A refresh
+that finds a decision, data semantics, trust boundary or failure behavior no longer holds, with no
+reading of the contract that works, is stop reason 1. Do not reuse an old explanation merely because
+the tests passed. At close-out, explain the implemented system from its inspected artifacts and
+current evidence.
 
 ## Record only what another owner needs
 
-Add this block to the mission record; link existing evidence rather than copy it:
+Put this block in the contract's defense field; link existing evidence rather than copy it:
 
 ```markdown
 ## Ownership defense
-- Brief/candidate revision and owner:
-- Design package revision and preceding initiator acknowledgment:
-- State: ready for implementation | blocked | investigate | reframe
-- Customer outcome and acceptance IDs:
+- Package revision and integration owner:
+- State: ready for kickoff | blocked | investigate | reframe
+- Customer outcome and criteria IDs:
 - System/data flow and trust boundaries:
 - Decisions: choice / alternative / rationale / evidence or proposal / revisit trigger
 - Data structures and invariants:
 - Malicious actor and failure/recovery cases:
-- Assumptions and missing evidence: impact / owner / next check
+- Assumptions and missing evidence: open question and default, or owner and next check
 - Challenge: reviewer / counterexample / disposition
-- Teach-back: recipient / transferred materials / explanation / corrected gaps
-- Freshness: changes since defense / affected decisions / updated evidence
 ```
 
-Use standard/formal mode for this record unless the user chooses otherwise. Editorial explanations
-can accompany it; ELI5 summaries cannot omit blockers or replace the underlying evidence.
+Use standard/formal mode for this record unless the user chooses otherwise. Editorial
+explanations can accompany it; ELI5 summaries cannot omit blockers or replace the underlying
+evidence.
