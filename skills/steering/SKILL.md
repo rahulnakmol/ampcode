@@ -83,9 +83,9 @@ A missing input is not a reason to guess. Write "not examined" for what it would
    outside the tracker (an email, a letter), do one of these:
    - ask the approver to comment `/approve` on the tracker item; `syncing`'s `pull` records it;
    - record the written sign-off with `syncing`'s `record-signoff` (the item, the approver, the
-     email or document as the source) when your `syncing` has it. Until then, record it as a
-     `written:` row in the mission ledger with the email or document, as the `missioning`
-     product-operations playbook says.
+     email or document as the source); `backlog.py status` then shows the gate approved until
+     the item changes. If the installed `syncing` has no `record-signoff`, record a `written:`
+     row in the mission ledger with the email or document instead.
 
    Never post `/approve` for someone else: `pull` records the comment as their sign-off.
    Record a sign-off only when the mission contract pre-authorizes that exact effect, or the

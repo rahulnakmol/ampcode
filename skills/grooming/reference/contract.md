@@ -287,6 +287,13 @@ initiative or feature. Comments by handles not in `approvers` never count as sig
   the feature's tracker item lists its stories, so adding or removing one also changes the
   feature. Bugs need no sign-off and do not make it stale: they restore behavior already agreed.
 
+A sign-off given outside the tracker (an email, a document) is recorded with `syncing`'s
+`record-signoff` as an approval with `"tracker": "written"`. It is matched to an approver by
+`name` and counts for every tracker. It is current while its `fingerprint` (of the item and the
+goals or stories it covers) equals the fingerprint now, whether or not the backlog was ever
+synced, and stale after any content change. A feature's "Signs off: <name>" note changes only
+what the status comment shows; any listed approver still passes the gate.
+
 One current approval from a listed approver passes a gate. When every approver must sign, run
 `status --all-approvers`; `status` always lists each approver as `current`, `stale`, or `none`.
 Handles match case-insensitively.
@@ -308,7 +315,9 @@ synced to every item it covers (`synced_at`, GitHub's own timestamp). A gate rea
                           "hash": "sha256:…", "fingerprint": "sha256:…", "labels": ["backlog", "type:feature"],
                           "milestone": "PI 27.1: pilot UK01", "synced_at": "2027-01-12T09:30:00Z", "state": "open" } },
 "approvals": [{ "tracker": "github", "by": "priya-r", "at": "2027-01-13T05:02:11Z",
-                "url": "https://github.com/acme/close/issues/41#issuecomment-1" }]
+                "url": "https://github.com/acme/close/issues/41#issuecomment-1" },
+              { "tracker": "written", "by": "Tom Okafor (Group Controller)", "at": "2027-01-14T09:00:00Z",
+                "source": "email from Tom, 2027-01-14", "fingerprint": "sha256:…" }]
 ```
 
 `hash`, `labels`, and `milestone` are what syncing last wrote, so it notices edits made in the

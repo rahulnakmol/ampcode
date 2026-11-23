@@ -6,6 +6,7 @@
   sync.py github pull   backlog.json --repo OWNER/NAME [--since YYYY-MM-DD]       sign-offs, feedback, closed state
   sync.py github report backlog.json --repo OWNER/NAME [--post]                   status comment for stakeholders
   sync.py excel backlog.json --out backlog.xlsx                                   spreadsheet export
+  sync.py record-signoff backlog.json --item F-1 --by "NAME" --source "email or document"   sign-off outside the tracker
   sync.py azure  plan|apply|pull|report backlog.json --org ORG --project NAME [--process agile|scrum|basic]
   sync.py linear plan|apply|pull|report backlog.json --team KEY --project NAME
 
@@ -542,13 +543,21 @@ def report_comment(data, base, today, tracker="github"):
                     held.setdefault(d, []).append(i["id"])
     blocked += [f"{', '.join(ids)} {'waits' if len(ids) == 1 else 'wait'} on {named(seen[d])}" for d, ids in held.items()]
 
-    waiting = {}
-    for _, item, _, per in backlog.gates(data, tracker, base=base):
-        for handle, mine in per.items():
+    # An approved gate is left out, whoever signed. A feature whose notes name its signer lists only
+    # that approver; that changes what the comment shows, not who can pass the gate (Q14).
+    waiting, who_signs = {}, {}
+    for _, item, state, per in backlog.gates(data, tracker, base=base):
+        if state == "approved":
+            continue
+        signer = named_signer(data, item) if item["type"] == "feature" else None
+        key = signer and (signer.get(tracker) or signer["name"])
+        for handle, mine in (per.items() if not signer else [(key, per.get(key, "none"))]):
             if mine != "current":
                 waiting.setdefault(handle, []).append(item["id"])
-    names = {a[tracker]: a["name"] for a in data.get("approvers", []) if a.get(tracker)}
+        who_signs.setdefault(signer["name"] if signer else "any listed approver", []).append(item["id"])
+    names = {a.get(tracker) or a["name"]: a["name"] for a in data.get("approvers", [])}
     signoff = [f"{names.get(h, h)} on {', '.join(ids)}" for h, ids in waiting.items()]
+    who = "; ".join(f"{name} for {', '.join(ids)}" for name, ids in who_signs.items())
 
     feedback = [f"{fb.get('id')} on {fb.get('feature')} from {fb.get('from')}: {fb.get('summary', '')}"
                 for fb in data.get("feedback", []) if fb.get("disposition") == "open"]
@@ -561,11 +570,57 @@ def report_comment(data, base, today, tracker="github"):
         "- **Goals:**" + ("".join(f"\n  - {g}." for g in goals) if goals else " none yet."),
         f"- **Next dates:** {few(dates, 'nothing scheduled is still open', 3)}.",
         f"- **Blocked:** {few(blocked, 'nothing')}.",
-        f"- **Not yet signed by:** {few(signoff, 'nobody: every approver has signed everything')}.",
+        f"- **Not yet signed by:** {few(signoff, 'nobody: every gate has a current sign-off')}." + (f" Who signs: {who}." if who else ""),
         f"- **Open feedback:** {few(feedback, 'none')}.",
     ]
     text = "\n".join(lines) + "\n"
     return f"{REPORT_MARKER}\n_{STATUS}, updated {today}. Edits here are overwritten._\n\n{text}"
+
+
+SIGNS_OFF = re.compile(r"\bSigns off:\s*([^,;.\n]+)", re.I)
+
+
+def _person(name):
+    """A name to compare: lower case, single spaces, without a trailing '(role)'."""
+    return " ".join(re.sub(r"\s*\([^)]*\)\s*$", "", str(name)).lower().split())
+
+
+def find_approver(data, name):
+    """The listed approver with this name, with or without their '(role)'; None if not one."""
+    found = [a for a in data.get("approvers", []) if a.get("name") and name.strip()
+             and " ".join(name.lower().split()) in (" ".join(a["name"].lower().split()), _person(a["name"]))]
+    return found[0] if len(found) == 1 else None
+
+
+def named_signer(data, item):
+    """The approver a feature's notes name ("Signs off: Elena Petrova, due 30 May"), else None."""
+    match = SIGNS_OFF.search(item.get("notes") or "")
+    return find_approver(data, match.group(1)) if match else None
+
+
+def signoff_fingerprint(data, item, base):
+    """What a written sign-off covers: the item and its goals or stories, as backlog.py hashes them."""
+    covered = backlog._covered(data, item)
+    return "sha256:" + hashlib.sha256("\n".join(backlog.fingerprint(k, base) for k in covered).encode()).hexdigest()
+
+
+def record_signoff(data, base, iid, by, source):
+    """Append a written sign-off to an initiative or feature. Returns the entry, or None if already there."""
+    item = backlog.items_by_id(data).get(iid)
+    if not item or item.get("type") not in ("initiative", "feature"):
+        raise RuntimeError(f"{iid} is not an initiative or feature in this file; only those have a sign-off gate")
+    approver = find_approver(data, by or "")
+    if not approver:
+        raise RuntimeError(f"{by!r} is not a listed approver; use a name from 'approvers': {[a['name'] for a in data.get('approvers', [])]}")
+    if not (source or "").strip():
+        raise RuntimeError("record-signoff needs --source: the email or document where the approver signed")
+    entry = {"tracker": "written", "by": approver["name"], "at": now(), "source": source.strip(),
+             "fingerprint": signoff_fingerprint(data, item, base)}
+    if any({k: a.get(k) for k in ("tracker", "by", "source", "fingerprint")} == {k: entry[k] for k in ("tracker", "by", "source", "fingerprint")}
+           for a in item.get("approvals", [])):
+        return None
+    item.setdefault("approvals", []).append(entry)
+    return entry
 
 
 def post_report(data, base, gh, today):
@@ -1288,6 +1343,11 @@ def main(argv=None, prog=None):
         t.add_argument("--since", help="pull: only comments created on or after YYYY-MM-DD")
         t.add_argument("--post", action="store_true", help="report: post or update the comment instead of printing it")
         t.add_argument("--today", default=datetime.now().date().isoformat(), help="report: date to judge goals against and stamp")
+    r = sub.add_parser("record-signoff", help="record a sign-off given outside the tracker (an email or a document)")
+    r.add_argument("file")
+    r.add_argument("--item", required=True, help="the initiative or feature signed, such as F-1")
+    r.add_argument("--by", required=True, help="the approver's name as in 'approvers'")
+    r.add_argument("--source", help="the email or document where they signed (required)")
     x = sub.add_parser("excel", help="export to .xlsx")
     x.add_argument("file")
     x.add_argument("--out", required=True)
@@ -1296,6 +1356,15 @@ def main(argv=None, prog=None):
     base = Path(args.file).resolve().parent
 
     try:
+        if args.adapter == "record-signoff":
+            data = _load_valid(args.file)
+            entry = record_signoff(data, base, args.item, args.by, args.source)
+            if entry is None:
+                print(f"already recorded: {args.item} signed by {find_approver(data, args.by)['name']} (written), source {args.source.strip()}")
+                return 0
+            _save(args.file, data)
+            print(f"recorded: {args.item} signed by {entry['by']} (written), source {entry['source']}; commit {args.file}")
+            return 0
         if args.adapter == "excel":
             data = _load_valid(args.file)
             write_xlsx(args.out, excel_rows(data, base, args.today))
