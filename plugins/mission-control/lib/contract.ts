@@ -331,6 +331,32 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 			const kept = new Set([...c.milestones.map(m => m.id), ...c.items.map(i => i.id), ...s.filed.map(i => i.id)])
 			for (const stop of s.stops) for (const name of stop.blocks) if (!stop.resolved && !kept.has(name)) fail('contract', `open stop ${stop.id} names ${name}, which this amend removes; resume the stop first`)
 			const after = approvalDigest(c)
+			// With the digest kept, only the item fields section 3 lists may change: IDs, outcomes,
+			// milestones and done criteria are baseline.
+			if (after === digest) {
+				if (sorted(c.items.map(i => i.id)) !== sorted(s.contract.items.map(i => i.id))) fail('items', 'item IDs are part of the baseline; rename an item with replan, or change a criterion (a new digest)')
+				c.items.forEach((item, i) => {
+					const old = s.contract.items.find(o => o.id === item.id)!
+					if (old.outcome !== item.outcome) fail(`items[${i}].outcome`, 'an item outcome is part of the baseline; change a criterion (a new digest) or file a new item')
+					if (old.milestone !== item.milestone) fail(`items[${i}].milestone`, 'an item milestone is part of the baseline; move work with replan or a new digest')
+					if (sorted(old.done) !== sorted(item.done)) fail(`items[${i}].done`, 'item criteria are part of the baseline; split them with replan or change them with a new digest')
+				})
+			}
+			// Failed-round counters survive: a milestone that failed a review stays the earliest unmerged
+			// one and keeps its ID, items, outcomes and criteria. Record a "replanned" disposition first to change them.
+			// A candidate also stays the earliest unmerged milestone, so no copy can be put ahead of it.
+			for (const m of s.milestones) {
+				const failed = m.failed.some(n => n > 0)
+				if (!failed && m.status !== 'candidate') continue
+				const index = c.milestones.findIndex(x => x.id === m.id)
+				if (index > 0 && c.milestones.slice(0, index).some(x => s.milestones.find(y => y.id === x.id)?.status !== 'merged')) fail('milestones', failed ? `${m.id} has failed review rounds and must stay the earliest unmerged milestone; record a "replanned" disposition first to change the order` : `${m.id} is a candidate and must stay the earliest unmerged milestone`)
+				if (!failed) continue
+				const held = s.contract.items.filter(i => i.milestone === m.id)
+				const criteria = (x: Contract) => new Set([...x.items.filter(i => i.milestone === m.id).flatMap(i => i.done), ...(x.milestones.find(y => y.id === m.id)?.exit ?? [])])
+				const kept = criteria(c), before = criteria(s.contract)
+				if (index < 0 || held.some(i => !c.items.some(x => x.id === i.id && x.milestone === m.id && x.outcome === i.outcome)) || [...before].some(k => !kept.has(k))) fail('milestones', `${m.id} has failed review rounds; it keeps its ID, items, outcomes and criteria; record a "replanned" disposition first to change them`)
+			}
+			const readinessChanged = canonical(c.readiness) !== canonical(s.contract.readiness)
 			s.items = [
 				...c.items.map(item => {
 					const old = s.contract.items.find(o => o.id === item.id)
@@ -340,13 +366,16 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 			]
 			s.milestones = c.milestones.map(m => s.milestones.find(x => x.id === m.id) ?? fresh(m.id))
 			s.contract = c
-			if (after !== digest) { delete s.approval; delete s.preflight }
+			if (after !== digest) { delete s.approval; delete s.preflight; delete s.pendingApproval }
+			else if (readinessChanged) delete s.preflight
 			s.amendments.push({ reason: a.reason, digest: after, approvalKept: after === digest, at: time })
 			break
 		}
 		case 'replan': {
 			const { def, state } = itemFor(s, a.itemId)
-			open(s, def.milestone, 'itemId')
+			const m = open(s, def.milestone, 'itemId')
+			// Only a "replanned" disposition on each failing gate resets its counter and so allows a replan.
+			if (m.failed.some(n => n > 0)) fail('itemId', `${m.id} has failed review rounds; record a "replanned" disposition on each failing gate first`)
 			if (state.status === 'done') fail('itemId', `${def.id} is done; reopen it first with a "replanned" disposition`)
 			const into = list(a.into, 'into', false).map((x, i) => parseItem(x, `into[${i}]`))
 			if (sorted(into.flatMap(i => i.done)) !== sorted(def.done) || into.some(i => i.milestone !== def.milestone)) fail('into', 'the new items must hold exactly the original criteria, verbatim, in the same milestone; put extra checks in automatedTest')
