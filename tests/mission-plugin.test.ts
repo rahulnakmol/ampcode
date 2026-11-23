@@ -9,6 +9,8 @@ import { GitHub } from '../plugins/mission-control/lib/github'
 import { createMission, digest, parseMission } from '../plugins/mission-control/lib/mission'
 import { previewMigration } from '../plugins/mission-control/lib/migration'
 import { intentDigest } from '../plugins/mission-control/lib/contracts'
+import { NOT_APPROVED, UNCONFIRMED } from '../plugins/mission-control/lib/brief'
+import contractText from '../plugins/mission-control/lib/contract-text.json'
 
 // Every approval dialog in every test: owner-only, human-only, turn ends on decline, word APPROVE.
 function assertApprovalDialog(dialog: any) {
@@ -407,4 +409,372 @@ test('the preview plugin shows both dialogs for the synthetic AC-5 mission and r
 	for (const d of dialogs) expect(d.message).toStartWith('Preview only: nothing is recorded or approved.')
 	expect(dialogs[0].fields[0]).toMatchObject({ type: 'link', name: 'brief', value: record.design!.bundle.brief!.url })
 	expect(notes).toEqual(['Design preview: this answer would approve. Nothing was recorded.', 'Merge preview: this answer would approve. Nothing was recorded.'])
+})
+
+// Schema 3 contract missions through the plugin's tools (W4). The fixture is this mission's own
+// contract: 2 milestones (M2 with W1 and W3, M3 with W12), 6 open questions, 3 pre-authorized effects.
+const OWNER = 'user-owner'
+const CONTRACT = JSON.parse(readFileSync(join(import.meta.dir, '../plugins/mission-control/fixtures/contract-mission.json'), 'utf8'))
+const REPO: string = CONTRACT.repository
+const DEV = 'e'.repeat(40)
+const HEAD = (pr: number) => pr.toString(16).padStart(40, 'f')
+const MERGED = (pr: number) => pr.toString(16).padStart(40, 'c')
+const CHILD = 'T-01a20729-43d7-73f7-be26-386150ddf086'
+// The canonical stop text of the mission contract, section 8, copied exactly.
+const FIVE = [
+	'Change to the baseline: a criterion, scope item or design decision is wrong or conflicts, and no reading inside the contract works.',
+	'Outside effect not in the contract: an irreversible or outside effect that the contract does not pre-authorize.',
+	'A fact only a person holds, with no safe, reversible default.',
+	'A red line: security, legal or safety.',
+	'A milestone cannot meet its exit criteria after the work was re-planned and split.',
+]
+const NOTHING = 'No approval was recorded.'
+
+// A fake gh for the real GitHub adapter: readiness reads, PR reads, the merge queue query and
+// `pr merge`. Every merge request is recorded; loseNextMerge drops one response after sending it.
+function fakeGitHub() {
+	const state = {
+		prs: new Map<number, { head: string; base: string; merged: boolean; queued: boolean }>(),
+		merges: [] as string[][], ciPassing: true, push: true, loseNextMerge: false, during: undefined as undefined | (() => Promise<void>),
+	}
+	const protection = { enforce_admins: { enabled: true }, required_pull_request_reviews: { required_approving_review_count: 0 }, required_status_checks: { strict: true, contexts: ['Extension checks'], checks: [{ context: 'Extension checks', app_id: 15368 }] } }
+	const github = new GitHub(async args => {
+		if (args[0] === 'pr') {
+			state.merges.push(args)
+			const pr = state.prs.get(Number(args[2]))!
+			if (state.during) await state.during()
+			if (state.loseNextMerge) { state.loseNextMerge = false; throw new Error('Response lost') }
+			pr.merged = true
+			return ''
+		}
+		const path = args[1]
+		if (path === 'graphql') {
+			const pr = state.prs.get(Number(args.at(-1)!.split('=')[1]))!
+			return JSON.stringify({ data: { repository: { pullRequest: { isMergeQueueEnabled: false, isInMergeQueue: pr.queued, mergeQueueEntry: null } } } })
+		}
+		if (path === `repos/${REPO}`) return JSON.stringify({ permissions: { push: state.push } })
+		if (path === `repos/${REPO}/branches/dev`) return JSON.stringify({ name: 'dev', protected: true, commit: { sha: DEV } })
+		if (path === `repos/${REPO}/branches/dev/protection`) return JSON.stringify(protection)
+		const runs = /^repos\/[^/]+\/[^/]+\/commits\/([a-f0-9]{40})\/check-runs/.exec(path)
+		if (runs) return JSON.stringify({ total_count: 1, check_runs: [{ name: 'Extension checks', app: { id: 15368 }, head_sha: runs[1], status: 'completed', conclusion: state.ciPassing ? 'success' : 'failure' }] })
+		const pull = /^repos\/[^/]+\/[^/]+\/pulls\/(\d+)$/.exec(path)
+		if (pull) {
+			const n = Number(pull[1]), pr = state.prs.get(n)!
+			return JSON.stringify({ number: n, state: pr.merged ? 'closed' : 'open', merged: pr.merged, auto_merge: null, head: { sha: pr.head }, base: { sha: pr.base, ref: 'dev', repo: { full_name: REPO } }, merge_commit_sha: pr.merged ? MERGED(n) : null })
+		}
+		throw new Error(`unexpected gh call: ${args.join(' ')}`)
+	})
+	return { github, state }
+}
+
+// What the fake client answers: the dialog's values (undefined when dismissed), who answered
+// (null when the client cannot tell), or a failed dialog.
+type Answer = { values?: Record<string, string>; responder?: string | null; failed?: boolean }
+const ticked = (d: any, changes = '') => ({ ...Object.fromEntries(d.fields.filter((f: any) => f.type === 'checkbox').map((f: any) => [f.name, 'true'])), changes })
+function contractHarness(github: any, root = mkdtempSync(join(tmpdir(), 'mission-contract-plugin-'))) {
+	execFileSync('git', ['init', '-q', root])
+	const tools: Record<string, any> = {}, hooks: Record<string, any> = {}, dialogs: any[] = []
+	let answer: (dialog: any) => Answer | Promise<Answer> = d => ({ values: ticked(d) })
+	const ctx = { thread: { id: 'T-test' }, signal: new AbortController().signal, ui: {
+		confirm: async (dialog: any) => {
+			dialogs.push(dialog)
+			const a = await answer(dialog)
+			if (a.failed) throw new Error('Dialog failed')
+			await dialog.onAnswered?.({ responder: a.responder === null ? undefined : { userID: a.responder ?? OWNER } })
+			return a.values
+		},
+		notify: async () => {},
+	} }
+	const amp = { system: { workspaceRoot: root, user: { id: OWNER, email: 'owner@example.com' } }, helpers: { filePathFromURI: (p: string) => p }, configuration: { get: async () => ({}) },
+		registerTool: (tool: any) => { tools[tool.name] = tool.execute }, on: (event: string, handler: any) => { hooks[event] = handler },
+	}
+	register(amp as any, github)
+	const call = (name: string, input: any = {}) => tools[name](input, ctx)
+	return {
+		root, dialogs, call, answer: (f: typeof answer) => { answer = f },
+		act: (action: any) => call('mission_update', { action }),
+		status: async () => JSON.parse(await call('mission_status')),
+		file: () => JSON.parse(readFileSync(join(root, '.amp/in/missions', digest('T-test'), 'state.json'), 'utf8')),
+	}
+}
+type ContractHarness = ReturnType<typeof contractHarness>
+const itemsOf = (milestone: string) => CONTRACT.items.filter((i: any) => i.milestone === milestone)
+const criteriaOf = (milestone: string) => [...itemsOf(milestone).flatMap((i: any) => i.done), ...CONTRACT.milestones.find((m: any) => m.id === milestone).exit]
+const results = (criteria: string[]) => criteria.map(criterion => ({ criterion, result: `${criterion}: passed` }))
+const fingerprintOf = async (h: ContractHarness, milestone: string) => (await h.status()).milestones.find((m: any) => m.id === milestone).fingerprint
+async function kickoff(h: ContractHarness, contract = CONTRACT) {
+	await h.call('mission_start', { contract })
+	await h.call('mission_preflight')
+	await h.call('mission_approve')
+}
+const STAGES = ['items', 'candidate', 'gate1', 'gate2', 'evidence'] as const
+// Delegate and finish the milestone's items, then candidate, both reviews and evidence, stopping after `until`.
+async function prepare(h: ContractHarness, gh: ReturnType<typeof fakeGitHub>, milestone: string, pr: number, until: typeof STAGES[number] = 'evidence') {
+	for (const item of itemsOf(milestone)) {
+		await h.act({ type: 'delegate', itemId: item.id, executor: { kind: 'thread', id: CHILD } })
+		await h.act({ type: 'item-done', itemId: item.id, evidence: results(item.done), review: { reviewer: 'TU-item-review', record: 'No findings' } })
+	}
+	if (until === 'items') return
+	gh.state.prs.set(pr, { head: HEAD(pr), base: DEV, merged: false, queued: false })
+	await h.act({ type: 'candidate', milestoneId: milestone, pr, head: HEAD(pr), base: DEV })
+	if (until === 'candidate') return
+	const fp = await fingerprintOf(h, milestone)
+	await h.act({ type: 'review', milestoneId: milestone, gate: 1, fingerprint: fp, passed: true, reviewer: 'TU-gate-1', record: 'No Blocker or Major inside section 6' })
+	if (until === 'gate1') return
+	await h.act({ type: 'review', milestoneId: milestone, gate: 2, fingerprint: fp, passed: true, reviewer: 'TU-gate-2', record: 'Second independent review; drift check clean' })
+	if (until === 'gate2') return
+	await h.act({ type: 'evidence', milestoneId: milestone, fingerprint: fp, results: results(criteriaOf(milestone)), humanTest: 'Ran the human tests by hand' })
+}
+const mergeArgs = (pr: number) => ['pr', 'merge', String(pr), '--repo', REPO, '--squash', '--match-head-commit', HEAD(pr)]
+
+test('journey (SC1): start, preflight, approve, then 2 milestones delegated, reviewed, merged and reported: 1 dialog, 2 merges', async () => {
+	const gh = fakeGitHub(), h = contractHarness(gh.github)
+	try {
+		await kickoff(h)
+		const reports: string[] = []
+		for (const [milestone, pr] of [['M2', 10], ['M3', 11]] as const) {
+			await prepare(h, gh, milestone, pr)
+			expect(await h.call('mission_merge', { milestoneId: milestone })).toContain('not confirmed merged')
+			await h.call('mission_reconcile', { milestoneId: milestone })
+			reports.push(await h.call('mission_report', { kind: 'checkpoint', milestoneId: milestone }))
+		}
+		expect(h.dialogs).toHaveLength(1)
+		expect(h.dialogs[0].title).toBe('Approve the mission contract')
+		expect(gh.state.merges).toEqual([mergeArgs(10), mergeArgs(11)])
+		const s = await h.status()
+		expect(s.milestones.map((m: any) => [m.id, m.status, m.mergeCommit])).toEqual([['M2', 'merged', MERGED(10)], ['M3', 'merged', MERGED(11)]])
+		expect(s.approval).toMatchObject({ responder: OWNER, current: true })
+		expect(reports[0]).toContain('## Checkpoint: milestone M2 merged into dev')
+		expect(reports[1]).toContain('## Checkpoint: milestone M3 merged into dev')
+		expect(await h.call('mission_report', { kind: 'close-out' })).toContain('## Close-out: every milestone merged into dev')
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('P11: the 20 tool paths (12 mission_update actions and 8 tools) open 0 dialogs', async () => {
+	const gh = fakeGitHub(), h = contractHarness(gh.github)
+	const covered = new Set<string>()
+	const quiet = async (path: string, name: string, input: any = {}) => {
+		const before = h.dialogs.length
+		const out = await h.call(name, input)
+		expect(h.dialogs.length).toBe(before)
+		covered.add(path)
+		return out
+	}
+	const act = (action: any) => quiet(action.type, 'mission_update', { action })
+	try {
+		await quiet('mission_start', 'mission_start', { contract: CONTRACT })
+		await quiet('mission_status', 'mission_status')
+		await quiet('mission_preflight', 'mission_preflight')
+		await h.call('mission_approve')
+		expect(h.dialogs).toHaveLength(1)
+		await quiet('mission_effect', 'mission_effect', { effectId: 'E3' })
+		await act({ type: 'assume', question: 'Which branch name?', assumption: 'mission/m2-plugin', why: 'The contract names it' })
+		const changed = structuredClone(CONTRACT)
+		changed.items[2].humanTest = 'Read the guides in a browser'
+		await act({ type: 'amend', contract: changed, reason: 'A clearer human test' })
+		const W12 = changed.items[2]
+		await act({ type: 'file', item: { ...W12, id: 'F1', title: 'Filed finding', done: ['The filed finding is fixed'], dependsOn: [] } })
+		await act({ type: 'replan', itemId: 'W12', into: [{ ...W12, id: 'W12a', done: W12.done.slice(0, 2) }, { ...W12, id: 'W12b', done: W12.done.slice(2) }] })
+		await act({ type: 'stop', reason: 3, question: 'Which guide comes first?', options: ['Mission control', 'Using skills'], recommendation: 'Mission control', blocks: ['M3'] })
+		await act({ type: 'resume', stopId: 'S-1', answer: 'Mission control', source: 'Owner reply in the mission thread' })
+		await act({ type: 'delegate', itemId: 'W1', executor: { kind: 'thread', id: CHILD } })
+		for (const item of itemsOf('M2')) await act({ type: 'item-done', itemId: item.id, evidence: results(item.done), review: { reviewer: 'TU-item-review', record: 'No findings' } })
+		gh.state.prs.set(10, { head: HEAD(10), base: DEV, merged: false, queued: false })
+		await act({ type: 'candidate', milestoneId: 'M2', pr: 10, head: HEAD(10), base: DEV })
+		const reviewed = async () => {
+			const fp = await fingerprintOf(h, 'M2')
+			await act({ type: 'review', milestoneId: 'M2', gate: 1, fingerprint: fp, passed: true, reviewer: 'TU-gate-1', record: 'No findings' })
+			await act({ type: 'review', milestoneId: 'M2', gate: 2, fingerprint: fp, passed: true, reviewer: 'TU-gate-2', record: 'No findings' })
+			await act({ type: 'evidence', milestoneId: 'M2', fingerprint: fp, results: results(criteriaOf('M2')), humanTest: 'Ran it by hand' })
+		}
+		await act({ type: 'review', milestoneId: 'M2', gate: 1, fingerprint: await fingerprintOf(h, 'M2'), passed: false, reviewer: 'TU-gate-1', record: 'Major inside section 6: P6' })
+		await act({ type: 'disposition', milestoneId: 'M2', gate: 1, outcome: 'fixed', record: 'Fixed on the same head' })
+		await reviewed()
+		gh.state.loseNextMerge = true
+		await expect(h.call('mission_merge', { milestoneId: 'M2' })).rejects.toThrow('Response lost')
+		expect(h.dialogs).toHaveLength(1)
+		covered.add('mission_merge')
+		await quiet('mission_recover', 'mission_recover', { milestoneId: 'M2' })
+		await reviewed()
+		await quiet('mission_merge', 'mission_merge', { milestoneId: 'M2' })
+		await quiet('mission_reconcile', 'mission_reconcile', { milestoneId: 'M2' })
+		await quiet('mission_report', 'mission_report', { kind: 'checkpoint' })
+		expect([...covered].sort()).toEqual([
+			'amend', 'assume', 'candidate', 'delegate', 'disposition', 'evidence', 'file', 'item-done', 'replan', 'resume', 'review', 'stop',
+			'mission_effect', 'mission_merge', 'mission_preflight', 'mission_reconcile', 'mission_recover', 'mission_report', 'mission_start', 'mission_status',
+		].sort())
+		expect(h.dialogs).toHaveLength(1)
+		expect(gh.state.merges).toEqual([mergeArgs(10), mergeArgs(10)])
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('P1 through the tool: mission_update refuses each internal action', async () => {
+	const h = contractHarness(fakeGitHub().github)
+	try {
+		await h.call('mission_start', { contract: CONTRACT })
+		for (const type of ['approval-pending', 'approve', 'preflight', 'effect', 'merge-requested', 'merged', 'recover']) await expect(h.act({ type })).rejects.toThrow('internal action')
+		expect(h.file().events).toHaveLength(1)
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('P2: a contract change while the kickoff dialog is open is stale, and nothing is recorded', async () => {
+	const h = contractHarness(fakeGitHub().github)
+	try {
+		await h.call('mission_start', { contract: CONTRACT })
+		await h.call('mission_preflight')
+		h.answer(async d => {
+			const changed = structuredClone(CONTRACT)
+			changed.outcome = 'A different outcome.'
+			await h.act({ type: 'amend', contract: changed, reason: 'The owner changed the outcome' })
+			return { values: ticked(d) }
+		})
+		await expect(h.call('mission_approve')).rejects.toThrow('Stale')
+		expect(h.dialogs).toHaveLength(1)
+		const s = await h.status()
+		expect(s.approval).toBeNull()
+		expect(h.file().events.map((e: any) => e.action.type)).toEqual(['start', 'preflight', 'approval-pending', 'amend'])
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+// One case per merge blocker in section 3: each refusal names it, and no merge is requested.
+const P6: [string, typeof STAGES[number], string, (h: ContractHarness, gh: ReturnType<typeof fakeGitHub>) => Promise<unknown>][] = [
+	['kickoff approval on the current digest', 'evidence', 'Kickoff approval on the current contract required', h => h.act({ type: 'amend', contract: { ...CONTRACT, outcome: 'A different outcome.' }, reason: 'Changed outcome' })],
+	['the milestone is not blocked', 'evidence', 'Blocked by stop S-1', h => h.act({ type: 'stop', reason: 4, question: 'Ship a secret?', options: ['No'], recommendation: 'No', blocks: ['W3'] })],
+	['all its items are done', 'evidence', 'Items not done: W3', h => h.act({ type: 'disposition', milestoneId: 'M2', gate: 1, outcome: 'replanned', record: 'Reopened W3', itemIds: ['W3'] })],
+	['earlier milestones are merged', 'evidence', 'Earlier milestones not merged: M2', async () => {}],
+	['a current candidate', 'items', 'Candidate required', async () => {}],
+	['gate 1 review on the fingerprint', 'candidate', 'Review 1 must pass on the current fingerprint', async () => {}],
+	['gate 2 review on the fingerprint', 'gate1', 'Review 2 must pass on the current fingerprint', async () => {}],
+	['evidence on the fingerprint', 'gate2', 'Evidence required on the current fingerprint', async () => {}],
+	["GitHub's merge readiness", 'evidence', 'Required check not successful: Extension checks', async (_h, gh) => { gh.state.ciPassing = false }],
+]
+test.each(P6)('P6: a merge missing %s is refused, naming the blocker', async (name, until, blocker, perturb) => {
+	const gh = fakeGitHub(), h = contractHarness(gh.github)
+	try {
+		await kickoff(h)
+		await prepare(h, gh, 'M2', 10, until)
+		await perturb(h, gh)
+		const milestone = name === 'earlier milestones are merged' ? 'M3' : 'M2'
+		await expect(h.call('mission_merge', { milestoneId: milestone })).rejects.toThrow(blocker)
+		expect(gh.state.merges).toEqual([])
+		expect((await h.status()).milestones.map((m: any) => m.status)).not.toContain('merge-pending')
+		expect(h.dialogs).toHaveLength(1)
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('P8: a lost merge response is pending first, reconciled, never repeated, and recovered with no dialog only when settled and unqueued', async () => {
+	const gh = fakeGitHub(), h = contractHarness(gh.github)
+	try {
+		await kickoff(h)
+		await prepare(h, gh, 'M2', 10)
+		const before = await fingerprintOf(h, 'M2')
+		gh.state.during = async () => {
+			// While the request is in flight, the pending state is already saved and recovery is refused.
+			expect(h.file().milestones[0].status).toBe('merge-pending')
+			await expect(h.call('mission_recover', { milestoneId: 'M2' })).rejects.toThrow('settled')
+		}
+		gh.state.loseNextMerge = true
+		await expect(h.call('mission_merge', { milestoneId: 'M2' })).rejects.toThrow('Response lost')
+		gh.state.during = undefined
+		const again = contractHarness(gh.github, h.root)
+		expect((await again.status()).milestones[0].status).toBe('merge-pending')
+		await expect(again.call('mission_merge', { milestoneId: 'M2' })).rejects.toThrow('reconcile')
+		expect(await again.call('mission_reconcile', { milestoneId: 'M2' })).toContain('not confirmed merged')
+		gh.state.prs.get(10)!.queued = true
+		await expect(again.call('mission_recover', { milestoneId: 'M2' })).rejects.toThrow('unqueued')
+		gh.state.prs.get(10)!.queued = false
+		expect(await again.call('mission_recover', { milestoneId: 'M2' })).toContain('the merge was not retried')
+		const s = await again.status()
+		expect(s.milestones[0]).toMatchObject({ status: 'candidate', generation: 1, reviews: [], evidence: null })
+		expect(s.milestones[0].fingerprint).not.toBe(before)
+		await expect(again.call('mission_merge', { milestoneId: 'M2' })).rejects.toThrow('Review 1')
+		expect(gh.state.merges).toEqual([mergeArgs(10)])
+		expect(h.dialogs.length + again.dialogs.length).toBe(1)
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('P9: a pre-authorized effect is recorded with no dialog; a listed one that is not pre-authorized and one not in the contract open the effect dialog', async () => {
+	const gh = fakeGitHub(), h = contractHarness(gh.github)
+	const contract = structuredClone(CONTRACT)
+	contract.effects.push({ id: 'E4', effect: 'Promote dev to rolling', preAuthorized: false, source: 'Held by the owner until all waves are done' })
+	try {
+		await kickoff(h, contract)
+		const digest = (await h.status()).digest
+		expect(await h.call('mission_effect', { effectId: 'E1' })).toContain('no dialog')
+		expect(h.dialogs).toHaveLength(1)
+		h.answer(d => ({ values: { ...ticked(d), [d.fields.find((f: any) => f.type === 'checkbox').name]: 'false' } }))
+		expect(await h.call('mission_effect', { effectId: 'E4' })).toBe(NOT_APPROVED)
+		expect((await h.status()).performed).toHaveLength(1)
+		h.answer(d => ({ values: ticked(d) }))
+		await h.call('mission_effect', { effectId: 'E4' })
+		await h.call('mission_effect', { effect: 'Post the release notes to the team channel', why: 'The owner asked for an announcement' })
+		expect(h.dialogs.map(d => d.title)).toEqual(['Approve the mission contract', 'Approve an outside effect', 'Approve an outside effect', 'Approve an outside effect'])
+		const s = await h.status()
+		expect(s.performed.map((e: any) => [e.effectId ?? e.effect, e.preAuthorized, e.responder])).toEqual([
+			['E1', true, undefined], ['E4', false, OWNER], ['Post the release notes to the team channel', false, OWNER],
+		])
+		expect(s.digest).toBe(digest)
+		expect(h.file().contract).toEqual(contract)
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+const firstBox = (d: any) => d.fields.find((f: any) => f.type === 'checkbox').name
+const P12: [string, (d: any) => Answer, string | undefined][] = [
+	['all ticked by the owner', d => ({ values: ticked(d) }), undefined],
+	['text in Changes', d => ({ values: ticked(d, 'Q5: keep v1') }), 'Not approved. The owner wrote in Changes:\nQ5: keep v1'],
+	['a box unticked with Changes empty', d => ({ values: { ...ticked(d), [firstBox(d)]: 'false' } }), NOT_APPROVED],
+	['no responder reported', d => ({ values: ticked(d), responder: null }), UNCONFIRMED],
+	['a responder who is not the owner', d => ({ values: ticked(d), responder: 'user-other' }), NOTHING],
+	['dismissed', () => ({ values: undefined }), NOTHING],
+	['failed', () => ({ failed: true }), NOTHING],
+	['a non-owner who wrote text in Changes', d => ({ values: ticked(d, 'Release to main now'), responder: 'user-other' }), NOTHING],
+]
+test.each(P12)('P12 through the tool: kickoff answered with %s', async (_name, answer, expected) => {
+	const h = contractHarness(fakeGitHub().github)
+	try {
+		await h.call('mission_start', { contract: CONTRACT })
+		await h.call('mission_preflight')
+		h.answer(answer)
+		const out = await h.call('mission_approve')
+		const s = await h.status()
+		expect(h.dialogs).toHaveLength(1)
+		if (expected === undefined) {
+			expect(out).toStartWith('Kickoff approved by the owner.')
+			expect(s.approval).toMatchObject({ responder: OWNER, current: true })
+			expect(s.pendingApproval).toBeNull()
+		} else {
+			expect(out).toBe(expected)
+			expect(s.approval).toBeNull()
+			expect(s.pendingApproval).toMatchObject({ kind: 'kickoff', digest: s.digest })
+		}
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('P15: kickoff is refused before a preflight, after a failed one, and after a baseline change since it', async () => {
+	const gh = fakeGitHub(), h = contractHarness(gh.github)
+	try {
+		await h.call('mission_start', { contract: CONTRACT })
+		await expect(h.call('mission_approve')).rejects.toThrow('run the readiness preflight on the current contract first')
+		gh.state.push = false
+		expect(await h.call('mission_preflight')).toContain('FAIL 1. repository visible with push permission: repository visible without push permission')
+		await expect(h.call('mission_approve')).rejects.toThrow('the readiness preflight failed')
+		gh.state.push = true
+		await h.call('mission_preflight')
+		await h.act({ type: 'amend', contract: { ...CONTRACT, outcome: 'A different outcome.' }, reason: 'Changed outcome' })
+		await expect(h.call('mission_approve')).rejects.toThrow('run the readiness preflight on the current contract first')
+		expect(h.dialogs).toEqual([])
+		expect((await h.status()).approval).toBeNull()
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('stop text (SC6, plugin part): a refused stop reason lists the five texts from contract-text.json', async () => {
+	const h = contractHarness(fakeGitHub().github)
+	try {
+		expect(contractText.stopReasons).toEqual(FIVE)
+		await h.call('mission_start', { contract: CONTRACT })
+		const error = await h.act({ type: 'stop', reason: 'Out of tokens', question: 'Continue?', options: ['Yes'], recommendation: 'Yes', blocks: ['M2'] }).catch((e: Error) => e)
+		expect(error).toBeInstanceOf(Error)
+		for (const [i, reason] of FIVE.entries()) expect(error.message).toContain(`${i + 1}. ${reason}`)
+		expect(h.dialogs).toEqual([])
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
 })

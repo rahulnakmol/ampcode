@@ -7,13 +7,65 @@ import { advanceV2, blockersV2, createMissionV2, fingerprintV2, evidenceDigestV2
 import { intentDigest } from './lib/contracts'
 import { migrateMission, previewMigration, sourceDigest } from './lib/migration'
 import { GitHub } from './lib/github'
-import { confirmOptions, designDialog, mergeDialog, rawDetails, refusal, type Dialog } from './lib/brief'
+import { confirmOptions, designDialog, effectDialog, kickoffDialog, mergeDialog, rawDetails, readAnswer, refusal, type AnswerReading, type ContractDialog, type Dialog, type DialogAnswer } from './lib/brief'
+import { advance as advanceContract, approvalDigest, blockers as contractBlockers, createRecord, fingerprint as contractFingerprint, loadContractRecord, saveContractRecord, update as updateContract, type ContractRecord, type MilestoneState } from './lib/contract'
+import { checkpointReport, closeOutReport } from './lib/report'
 import { createHash } from 'node:crypto'
 
 export const description = 'Coordinates owner-approved software missions, revision-bound evidence and protected dev integration using existing GitHub credentials.'
 
-type RecordState = Mission | MissionV2
-function isV2(s: RecordState): s is MissionV2 { return 'schemaVersion' in s }
+// Until W6 retires v1 and v2, the record's schema picks the handlers: schema 3 records and
+// mission_start { contract } use the contract handlers, v1 and v2 keep theirs.
+type RecordState = Mission | MissionV2 | ContractRecord
+function isV2(s: RecordState): s is MissionV2 { return (s as any).schemaVersion === 2 }
+function isContract(s: RecordState): s is ContractRecord { return (s as any).schemaVersion === 3 }
+const CONTRACT_ACTIONS = ['amend', 'replan', 'file', 'delegate', 'item-done', 'candidate', 'review', 'disposition', 'evidence', 'assume', 'stop', 'resume']
+const NOTHING = 'No approval was recorded.'
+// What the agent gets when a kickoff or effect dialog does not approve (the order rule in brief.ts).
+function notApproved(reading: AnswerReading) {
+	if (reading.outcome === 'changes') return `Not approved. The owner wrote in Changes:\n${reading.message}`
+	if (reading.outcome === 'unticked' || reading.outcome === 'unconfirmed') return reading.message
+	return NOTHING
+}
+const milestoneOf = (s: ContractRecord, milestoneId: unknown): MilestoneState => {
+	const m = s.milestones.find(m => m.id === milestoneId)
+	if (!m) throw new Error(`Refused (milestoneId): unknown milestone ${milestoneId}`)
+	return m
+}
+// The compact status: approval, preflight, items, milestones with their fingerprints and blockers, and the next action.
+function contractStatus(s: ContractRecord) {
+	const digest = approvalDigest(s.contract)
+	const milestones = s.milestones.map(m => {
+		const fp = m.candidate ? contractFingerprint(s, m.id) : null
+		return {
+			id: m.id, status: m.status, candidate: m.candidate ?? null, generation: m.generation, fingerprint: fp, failedRounds: m.failed,
+			reviews: m.reviews.filter(r => r.fingerprint === fp).map(({ gate, passed, reviewer }) => ({ gate, passed, reviewer })),
+			evidence: m.evidence ? { current: m.evidence.fingerprint === fp } : null, mergeCommit: m.mergeCommit ?? null,
+			blockers: m.status === 'merged' ? [] : contractBlockers(s, m.id),
+		}
+	})
+	const defs = [...s.contract.items, ...s.filed]
+	const next = (() => {
+		if (s.preflight?.digest !== digest) return 'Run mission_preflight on the current contract'
+		if (!s.preflight.passed) return 'Fix the failing readiness checks, then run mission_preflight again'
+		if (s.approval?.digest !== digest) return 'Open the kickoff approval with mission_approve'
+		const m = milestones.find(m => m.status !== 'merged')
+		if (!m) return 'Every milestone is merged: write the close-out report with mission_report'
+		if (m.status === 'merge-pending') return `Reconcile the merge of ${m.id} with mission_reconcile`
+		return m.blockers.length ? `${m.id}: ${m.blockers[0]}` : `Merge ${m.id} with mission_merge`
+	})()
+	return JSON.stringify({
+		schemaVersion: 3, missionId: s.contract.missionId, repository: s.contract.repository, digest,
+		approval: s.approval ? { ...s.approval, current: s.approval.digest === digest } : null,
+		preflight: s.preflight ? { current: s.preflight.digest === digest, passed: s.preflight.passed, failed: s.preflight.results.filter(r => !r.passed).map(r => `${r.check}: ${r.detail}`) } : null,
+		pendingApproval: s.pendingApproval ?? null,
+		items: s.items.map(i => ({ id: i.id, milestone: defs.find(d => d.id === i.id)!.milestone, origin: i.origin, status: i.status, executor: i.executor ?? null })),
+		milestones, stops: s.stops.filter(x => !x.resolved), assumptions: s.assumptions.length,
+		filed: s.filed.map(i => i.id), followUps: s.followUps.map(f => f.id), performed: s.performed, next,
+	}, null, 2)
+}
+// Recovery reads: an open, unmerged, unqueued PR into dev with full SHAs.
+const unqueued = (p: any, repo: string) => p.state === 'open' && p.merged === false && p.auto_merge === null && p.isMergeQueueEnabled === false && p.isInMergeQueue === false && p.mergeQueueEntry === null && p.base?.ref === 'dev' && p.base?.repo?.full_name === repo && /^[a-f0-9]{40}$/.test(p.head?.sha) && /^[a-f0-9]{40}$/.test(p.base?.sha)
 function packet(s: RecordState) {
 	if (isV2(s)) return [
 		'V2 shadow mission. Intent authority: local-reported. Remote verification is unqualified; merges are disabled.',
@@ -40,11 +92,42 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		return path
 	}
 	const pathFor = (thread: string) => join(root(), '.amp/in/missions', digest(thread), 'state.json')
-	const read = (thread: string) => amp.system.workspaceRoot ? loadRecord(pathFor(thread), thread) : undefined
+	const read = (thread: string): RecordState | undefined => {
+		if (!amp.system.workspaceRoot) return undefined
+		const path = pathFor(thread), raw = readRecordBytes(path)
+		if (raw === undefined) return undefined
+		return JSON.parse(raw)?.schemaVersion === 3 ? loadContractRecord(path, thread) : loadRecord(path, thread)
+	}
 	const required = (thread: string) => {
 		const s = read(thread)
 		if (!s) throw new Error('Start a mission explicitly with mission_start')
 		return s
+	}
+	const legacy = (thread: string) => {
+		const s = required(thread)
+		if (isContract(s)) throw new Error('This tool is not part of contract missions; mission_status shows the next action')
+		return s
+	}
+	const contract = (thread: string) => {
+		const s = required(thread)
+		if (!isContract(s)) throw new Error('This tool needs a contract mission, started with mission_start { contract }')
+		return s
+	}
+	const saveContract = (s: ContractRecord) => { saveContractRecord(pathFor(s.thread), s); return s }
+	// A kickoff or effect dialog. Who answered comes from onAnswered and is compared with the signed-in user.
+	const ask = async (ctx: PluginToolContext, dialog: ContractDialog) => {
+		const answer: DialogAnswer = {}
+		try {
+			answer.values = await ctx.ui.confirm({ ...dialog, onAnswered: ({ responder }) => { if (responder) answer.responder = { userID: responder.userID } } } as any)
+		} catch { answer.failed = true }
+		ctx.signal.throwIfAborted()
+		return readAnswer(dialog, answer, amp.system.user?.id ?? '')
+	}
+	// After an approving answer: the record is read again, and the contract must be the one the dialog showed.
+	const unchanged = (thread: string, digest: string, what: string) => {
+		const now = contract(thread)
+		if (approvalDigest(now.contract) !== digest) throw new Error(`Stale: the contract changed while the ${what} dialog was open; nothing was recorded. Open it again.`)
+		return now
 	}
 	function write(s: Mission, action: Action): Mission
 	function write(s: MissionV2, action: ActionV2): MissionV2
@@ -54,7 +137,7 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		saveRecord(pathFor(s.thread), next)
 		return next
 	}
-	const status = (s: RecordState) => JSON.stringify(isV2(s) ? {
+	const status = (s: RecordState) => isContract(s) ? contractStatus(s) : JSON.stringify(isV2(s) ? {
 		...s, ...(s.legacy ? { legacy: compact(s.legacy) } : {}),
 		events: s.events.map(e => e.action.type === 'import-v1' ? { ...e, action: { ...e.action, record: compact(e.action.record) } } : e),
 		designDigest: intentDigest(s.manifest), evidenceClass: 'reported', blockers: blockersV2(s),
@@ -73,36 +156,50 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 	function tool(name: string, description: string, properties: Record<string, any>, execute: (input: any, ctx: PluginToolContext) => Promise<string>, required = Object.keys(properties)) {
 		amp.registerTool({ name, description, inputSchema: { type: 'object', properties, required, additionalProperties: false }, execute })
 	}
-	tool('mission_start', 'Start v1 from requirements (default), or explicitly opt into v2 shadow traceability with schemaVersion:2 and a complete manifest. V2 never sends merges. Load grilling/delivering; obtain native owner design acknowledgment before defense/build. Uses native Amp specialists, not a separate runtime.', { requirements: { type: 'string' }, schemaVersion: { type: 'integer', enum: [1, 2] }, manifest: { type: 'object', additionalProperties: true } }, async (input, ctx) => {
+	tool('mission_start', 'Start a contract mission with { contract }: the schema 3 contract (16 fields; see the delivering skill) that gets one kickoff approval, then merges milestone by milestone. Until they are retired: v1 from requirements, or v2 shadow traceability with schemaVersion:2 and a complete manifest; v2 never sends merges. Uses native Amp specialists, not a separate runtime.', { contract: { type: 'object', additionalProperties: true }, requirements: { type: 'string' }, schemaVersion: { type: 'integer', enum: [1, 2] }, manifest: { type: 'object', additionalProperties: true } }, async (input, ctx) => {
 		ctx.signal.throwIfAborted()
 		if (read(ctx.thread.id)) throw new Error('Mission already exists; use mission_status')
+		if (input.contract !== undefined && ['requirements', 'schemaVersion', 'manifest'].some(k => input[k] !== undefined)) throw new Error('A contract mission takes only { contract }')
 		if (input.schemaVersion !== undefined && ![1, 2].includes(input.schemaVersion)) throw new Error('Unsupported mission schema')
 		if (input.schemaVersion !== 2 && input.manifest !== undefined) throw new Error('Manifest requires explicit schemaVersion:2')
 		if (input.schemaVersion === 2 && input.requirements !== undefined) throw new Error('V2 requirements belong in the manifest')
-		const s = input.schemaVersion === 2 ? createMissionV2(ctx.thread.id, input.manifest) : createMission(ctx.thread.id, input.requirements)
+		const s = input.contract !== undefined ? createRecord(ctx.thread.id, input.contract) : input.schemaVersion === 2 ? createMissionV2(ctx.thread.id, input.manifest) : createMission(ctx.thread.id, input.requirements)
 		const cwd = root()
 		const gitRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], { cwd, encoding: 'utf8' }).trim()
 		if (realpathSync(cwd) !== realpathSync(gitRoot)) throw new Error('Open the dedicated worktree root before starting a mission')
 		const exclude = resolve(cwd, execFileSync('git', ['rev-parse', '--git-path', 'info/exclude'], { cwd, encoding: 'utf8' }).trim())
 		const rules = existsSync(exclude) ? readFileSync(exclude, 'utf8') : ''
 		if (!rules.split('\n').includes('/.amp/in/')) appendFileSync(exclude, '\n/.amp/in/\n')
-		saveRecord(pathFor(ctx.thread.id), s)
+		if (isContract(s)) saveContract(s)
+		else saveRecord(pathFor(ctx.thread.id), s)
 		return status(s)
 	}, [])
 	tool('mission_status', 'Reload mission checkpoints and blockers. A merge request is not a completed mission.', {}, async (_input, ctx) => status(required(ctx.thread.id)))
 	const publicActions = ['design', 'defense', 'build', 'candidate', 'review', 'evidence', 'report', 'finding', 'post-report', 'disposition', 'post-delivery', 'closure-report', 'pause', 'resume']
-	tool('mission_update', 'V1: design {bundle:{spec,plan,technical,ux,brief:{markdown,url}},criteria}, where markdown is the decision brief written with briefing-decisions and checked by brief_check.py, and url is the https ampcode.com or github.com document where the owner reads it, published from that text; defense {digest,record}; build; candidate {candidate}; review {gate,fingerprint,passed,reviewer,record}; evidence {fingerprint,results,tryIt,value}; pause {reason}; resume. V2: design {manifest}; build {unitId}; candidate {unitId,attemptId,candidate,manifest}; report {unitId,attemptId,fingerprint,evidence:{id,criterionIds,outcome,record}}; review adds unitId,attemptId,evidenceDigest,findingIds. finding {unitId,attemptId,fingerprint,finding:{id,criterionIds,severity,confidence,location,record,owner}}. post-report {evidence:{id,baseline,designDigest,policyDigest,unitIds,results:[{criterionId,outcome,record}],record}}. post-delivery {unitId,package} / closure-report {package}: package replaces post-report id with evidenceIds and findings. disposition {disposition:{findingId,outcome:fixed|rejected|deferred,evidenceIds,owner,reviewer,record,correctiveUnitId?}}. V2 results/dispositions are reported only; references must resolve. No internal approval/import/execution/integration actions.', { action: { type: 'object', properties: { type: { type: 'string', enum: publicActions } }, required: ['type'], additionalProperties: true } }, async (input, ctx) => {
+	tool('mission_update', 'Contract missions (schema 3): amend {contract,reason}; replan {itemId,into[]}; file {item} or {followUp:{id,text}}; delegate {itemId,executor:{kind:thread|subagent,id}}; item-done {itemId,evidence[{criterion,result}],review:{reviewer,record}}; candidate {milestoneId,pr,head,base}; review {milestoneId,gate:1|2,fingerprint,passed,reviewer,record}; disposition {milestoneId,gate,outcome:fixed|replanned|filed,record,itemIds?}; evidence {milestoneId,fingerprint,results[{criterion,result}],humanTest}; assume {question,assumption,why}; stop {reason:1-5,question,options[],recommendation,blocks[]}; resume {stopId,answer,source}. Read fingerprints from mission_status. V1: design {bundle:{spec,plan,technical,ux,brief:{markdown,url}},criteria}, where markdown is the decision brief written with briefing-decisions and checked by brief_check.py, and url is the https ampcode.com or github.com document where the owner reads it, published from that text; defense {digest,record}; build; candidate {candidate}; review {gate,fingerprint,passed,reviewer,record}; evidence {fingerprint,results,tryIt,value}; pause {reason}; resume. V2: design {manifest}; build {unitId}; candidate {unitId,attemptId,candidate,manifest}; report {unitId,attemptId,fingerprint,evidence:{id,criterionIds,outcome,record}}; review adds unitId,attemptId,evidenceDigest,findingIds. finding {unitId,attemptId,fingerprint,finding:{id,criterionIds,severity,confidence,location,record,owner}}. post-report {evidence:{id,baseline,designDigest,policyDigest,unitIds,results:[{criterionId,outcome,record}],record}}. post-delivery {unitId,package} / closure-report {package}: package replaces post-report id with evidenceIds and findings. disposition {disposition:{findingId,outcome:fixed|rejected|deferred,evidenceIds,owner,reviewer,record,correctiveUnitId?}}. V2 results/dispositions are reported only; references must resolve. No internal approval/import/execution/integration actions.', { action: { type: 'object', properties: { type: { type: 'string', enum: [...new Set([...CONTRACT_ACTIONS, ...publicActions])] } }, required: ['type'], additionalProperties: true } }, async (input, ctx) => {
 		ctx.signal.throwIfAborted()
-		if (!publicActions.includes(input.action?.type)) throw new Error('Internal approval and integration actions cannot be supplied by agents')
 		const s = required(ctx.thread.id)
+		// The public dispatch refuses the internal actions (P1).
+		if (isContract(s)) return status(saveContract(updateContract(s, input.action)))
+		if (!publicActions.includes(input.action?.type)) throw new Error('Internal approval and integration actions cannot be supplied by agents')
 		if (!isV2(s) && input.action.type === 'build') {
 			await ctx.ui.notify('Build entry: low/medium risk defaults to automatic merge into dev after evidence and all gates. No response is needed. For ask-before-merge, use mission_merge_mode with mode ask; high risk always requires owner acknowledgment.')
 			ctx.signal.throwIfAborted()
 		}
 		return status(write(s, input.action))
 	})
-	tool('mission_approve', 'Request an owner-restricted acknowledgment of the exact design bundle or presented merge candidate. Never accepts an agent-supplied approval.', { stage: { type: 'string', enum: ['design', 'merge'] } }, async (input, ctx) => {
+	tool('mission_approve', 'Contract missions: open the kickoff dialog, the one owner approval, after a passing mission_preflight on the current contract; no stage. V1 and v2: request an owner-restricted acknowledgment of the exact design bundle or presented merge candidate (stage design or merge). Never accepts an agent-supplied approval.', { stage: { type: 'string', enum: ['design', 'merge'] } }, async (input, ctx) => {
 		const s = required(ctx.thread.id)
+		if (isContract(s)) {
+			if (input.stage !== undefined) throw new Error('A contract mission has one approval, at kickoff, and no stage; milestones merge without an owner dialog')
+			const digest = approvalDigest(s.contract)
+			// Recorded first, so a dismissed dialog can be reopened; refused before a passing preflight (P15).
+			const opened = saveContract(advanceContract(s, { type: 'approval-pending', kind: 'kickoff', digest }))
+			const reading = await ask(ctx, kickoffDialog(opened))
+			if (reading.outcome !== 'approved') return notApproved(reading)
+			const approved = saveContract(advanceContract(unchanged(s.thread, digest, 'kickoff'), { type: 'approve', digest, responder: reading.responder }))
+			return `Kickoff approved by the owner.\n\n${status(approved)}`
+		}
 		if (input.stage !== 'design' && input.stage !== 'merge') throw new Error('Invalid approval stage')
 		if (isV2(s)) {
 			if (input.stage === 'merge') throw new Error('remote-verification-unqualified: v2 cannot authorize merges')
@@ -118,13 +215,13 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 	})
 	tool('mission_merge_mode', 'Owner-controlled override of default automatic low/medium integration. Changing mode invalidates presented evidence and merge acknowledgment, not code reviews. High risk still requires acknowledgment.', { mode: { type: 'string', enum: ['auto', 'ask'] } }, async (input, ctx) => {
 		if (!['auto', 'ask'].includes(input.mode)) throw new Error('Invalid merge mode')
-		const s = required(ctx.thread.id)
+		const s = legacy(ctx.thread.id)
 		if (isV2(s)) throw new Error('remote-verification-unqualified: v2 merge mode is disabled')
 		await acknowledge(ctx, `Set this mission's merge preference to ${input.mode}. High-risk acknowledgment remains mandatory.`)
 		return status(write(s, { type: 'mode', mode: input.mode }))
 	})
 	tool('mission_present', 'Show the owner implementation locations, criterion evidence, design, candidate and try-it instructions before any merge request. Also publish the packet on the PR for reviewers; this tool shows it in Amp only.', {}, async (_input, ctx) => {
-		const s = required(ctx.thread.id)
+		const s = legacy(ctx.thread.id)
 		if (isV2(s)) { await ctx.ui.notify(packet(s) + '\n\n' + status(s)); return status(s) }
 		if (!s.evidence) throw new Error('Acceptance evidence required')
 		const merge = mergeDialog(s)
@@ -133,8 +230,21 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		ctx.signal.throwIfAborted()
 		return status(write(s, { type: 'presented', fingerprint: fingerprint(s) }))
 	})
-	tool('mission_merge', 'Request an immediate exact-head squash merge into dev with existing GitHub credentials only after local gates, required pinned CI and branch protection pass. Never queues authorization for a future head or authorizes release/deployment.', {}, async (_input, ctx) => {
+	tool('mission_merge', 'Request an immediate exact-head squash merge into dev with existing GitHub credentials only after local gates, required pinned CI and branch protection pass; contract missions name the milestoneId and open no dialog. Never queues authorization for a future head or authorizes release/deployment.', { milestoneId: { type: 'string' } }, async (input, ctx) => {
 		const s = required(ctx.thread.id)
+		if (isContract(s)) {
+			const missing = contractBlockers(s, input.milestoneId)
+			if (missing.length) throw new Error(`Refused: ${missing.join('; ')}`)
+			const m = milestoneOf(s, input.milestoneId)
+			await github.preflight(m.candidate!)
+			ctx.signal.throwIfAborted()
+			// Saved before the request: an unknown outcome is reconciled, never repeated.
+			const pending = saveContract(advanceContract(s, { type: 'merge-requested', milestoneId: m.id, fingerprint: contractFingerprint(s, m.id) }))
+			const key = `${s.thread} ${m.id}`
+			inFlight.add(key)
+			try { await github.request(m.candidate!) } finally { inFlight.delete(key) }
+			return status(pending) + `\nRequest issued for ${m.id}, not confirmed merged. Use mission_reconcile.`
+		}
 		if (isV2(s)) throw new Error('remote-verification-unqualified: v2 remote effects are disabled')
 		const missing = blockers(s)
 		if (missing.length) throw new Error(missing.join('; '))
@@ -147,9 +257,20 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		inFlight.add(s.thread)
 		try { await github.request(pending) } finally { inFlight.delete(s.thread) }
 		return status(pending) + '\nRequest issued, not confirmed merged. Use mission_reconcile.'
-	})
-	tool('mission_reconcile', 'Read GitHub after restart or uncertain merge outcome. Never repeats a merge. V2 requires unitId/attemptId and records only exact-head dev integration; prior missing gates remain missing.', { unitId: { type: 'string' }, attemptId: { type: 'string' } }, async (input, ctx) => {
+	}, [])
+	tool('mission_reconcile', 'Read GitHub after restart or uncertain merge outcome. Never repeats a merge. Contract missions name the milestoneId. V2 requires unitId/attemptId and records only exact-head dev integration; prior missing gates remain missing.', { milestoneId: { type: 'string' }, unitId: { type: 'string' }, attemptId: { type: 'string' } }, async (input, ctx) => {
 		const s = required(ctx.thread.id)
+		if (isContract(s)) {
+			const m = milestoneOf(s, input.milestoneId)
+			if (m.status !== 'merge-pending') return status(s)
+			const c = m.candidate!
+			const pr = await github.pull(c)
+			ctx.signal.throwIfAborted()
+			if (pr.merged === true && pr.head?.sha === c.head && pr.base?.ref === 'dev' && pr.base?.repo?.full_name === c.repo) {
+				return status(saveContract(advanceContract(s, { type: 'merged', milestoneId: m.id, fingerprint: contractFingerprint(s, m.id), commit: pr.merge_commit_sha })))
+			}
+			return status(s) + `\n${m.id} is not confirmed merged. Inspect the PR, CI and any uncertain request; do not repeat the merge.`
+		}
 		if (isV2(s)) {
 			const unit = s.units.find(u => u.id === input.unitId)
 			const a = unit?.attempts.at(-1)
@@ -170,22 +291,33 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		}
 		return status(s) + '\nNot confirmed integrated. Inspect current PR/CI and any uncertain request; do not repeat blindly.'
 	}, [])
-	tool('mission_recover', 'Owner-only recovery after investigating a settled, unqueued merge attempt. Reads GitHub twice, advances the recovery generation, invalidates all candidate evidence and approval, and returns to review without issuing another merge. Never use while a request may still be in flight.', {}, async (_input, ctx) => {
+	tool('mission_recover', 'Recovery after investigating a settled, unqueued merge attempt. Reads GitHub twice, advances the recovery generation, invalidates candidate reviews and evidence, and returns to review without issuing another merge. Contract missions name the milestoneId and open no dialog; v1 asks the owner. Never use while a request may still be in flight.', { milestoneId: { type: 'string' } }, async (input, ctx) => {
 		const s = required(ctx.thread.id)
+		if (isContract(s)) {
+			const m = milestoneOf(s, input.milestoneId)
+			const key = `${s.thread} ${m.id}`
+			if (m.status !== 'merge-pending' || inFlight.has(key)) throw new Error('Recovery requires a settled pending request')
+			const c = m.candidate!
+			const pr = await github.pull(c)
+			if (!unqueued(pr, c.repo)) throw new Error('Recovery requires an open, unmerged, unqueued dev PR; investigate remote state first')
+			const live = await github.pull(c)
+			ctx.signal.throwIfAborted()
+			if (!unqueued(live, c.repo) || live.head.sha !== pr.head.sha || live.base.sha !== pr.base.sha || inFlight.has(key)) throw new Error('Remote changed during recovery; reconcile again')
+			return status(saveContract(advanceContract(s, { type: 'recover', milestoneId: m.id, fingerprint: contractFingerprint(s, m.id) }))) + `\nRecovered ${m.id}: its reviews and evidence are void, and the merge was not retried.`
+		}
 		if (isV2(s)) throw new Error('remote-verification-unqualified: v2 creates no pending remote effects to recover')
 		if (s.phase !== 'merge-pending' || inFlight.has(s.thread)) throw new Error('Recovery requires a settled pending request')
 		const pr = await github.pull(s)
-		const unqueued = (p: any) => p.state === 'open' && p.merged === false && p.auto_merge === null && p.isMergeQueueEnabled === false && p.isInMergeQueue === false && p.mergeQueueEntry === null && p.base?.ref === 'dev' && p.base?.repo?.full_name === s.candidate!.repo && /^[a-f0-9]{40}$/.test(p.head?.sha) && /^[a-f0-9]{40}$/.test(p.base?.sha)
-		if (!unqueued(pr)) throw new Error('Recovery requires an open, unmerged, unqueued dev PR; investigate remote state first')
+		if (!unqueued(pr, s.candidate!.repo)) throw new Error('Recovery requires an open, unmerged, unqueued dev PR; investigate remote state first')
 		await acknowledge(ctx, `Recover https://github.com/${s.candidate!.repo}/pull/${s.candidate!.pr} at remote head ${pr.head.sha}, base ${pr.base.sha}. Confirm the previous request has settled and no executor is still sending it. This invalidates reviews/evidence and merge acknowledgment; it does NOT retry the merge.`)
 		const live = await github.pull(s)
 		ctx.signal.throwIfAborted()
-		if (!unqueued(live) || live.head.sha !== pr.head.sha || live.base.sha !== pr.base.sha || inFlight.has(s.thread)) throw new Error('Remote changed during recovery; reconcile again')
+		if (!unqueued(live, s.candidate!.repo) || live.head.sha !== pr.head.sha || live.base.sha !== pr.base.sha || inFlight.has(s.thread)) throw new Error('Remote changed during recovery; reconcile again')
 		return status(write(s, { type: 'recover', fingerprint: fingerprint(s) }))
-	})
+	}, [])
 	tool('mission_migrate', 'Preview a v1-to-v2 shadow migration without writes. adopt:true requires expectedDigest from preview and an owner dialog, then backs up exact original bytes under a lock. Pending effects must reconcile under v1 first. Migration is not v2 design approval. For unbound v1 missions supply repository owner/name.', { adopt: { type: 'boolean' }, expectedDigest: { type: 'string' }, repository: { type: 'string' } }, async (input, ctx) => {
 		ctx.signal.throwIfAborted()
-		const s = required(ctx.thread.id)
+		const s = legacy(ctx.thread.id)
 		if (isV2(s)) throw new Error('Mission is already v2')
 		if (typeof input.adopt !== 'boolean') throw new Error('Explicit adopt boolean required')
 		const raw = readRecordBytes(pathFor(s.thread))!
@@ -196,6 +328,38 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		await acknowledge(ctx, 'Adopt v2 shadow storage. Preserve a read-only byte backup; new v2 design needs separate acknowledgment. V1 merges will no longer be available for this record.\n\n' + packet(preview))
 		return status(migrateMission(pathFor(s.thread), s.thread, hash, input.repository))
 	}, ['adopt'])
+	tool('mission_preflight', "Contract missions: run the GitHub readiness checks (repository and push permission, dev, readable and enforced protection, required checks pinned to apps, green CI on dev) and bind the result to the current contract digest. Kickoff needs a passing preflight on the current contract. Also lists the contract's agent-reported readiness entries.", {}, async (_input, ctx) => {
+		const s = contract(ctx.thread.id)
+		const checks = await github.readiness(s.contract.repository)
+		ctx.signal.throwIfAborted()
+		const next = saveContract(advanceContract(s, { type: 'preflight', digest: approvalDigest(s.contract), results: checks.map(r => ({ check: r.name, passed: r.pass, detail: r.reason })) }))
+		return [
+			`Readiness preflight ${next.preflight!.passed ? 'passed' : 'failed'} on the current contract:`,
+			...checks.map(r => `${r.pass ? 'PASS' : 'FAIL'} ${r.id}. ${r.name}: ${r.reason}`),
+			'Agent-reported readiness (from the contract, not checked by the plugin):',
+			...(s.contract.readiness.length ? s.contract.readiness.map(r => `- ${r.id}. ${r.check}: ${r.evidence}`) : ['- None.']),
+			'', status(next),
+		].join('\n')
+	})
+	tool('mission_effect', 'Contract missions: call right before an outside effect. Name a contract effect {effectId}, or describe one that is not in the contract {effect, why}. A pre-authorized effect is recorded with no dialog. Any other effect opens the owner effect dialog and is recorded only when the owner approves it once. Records the performed effect; never changes the contract.', { effectId: { type: 'string' }, effect: { type: 'string' }, why: { type: 'string' } }, async (input, ctx) => {
+		const s = contract(ctx.thread.id)
+		const target = Object.fromEntries(['effectId', 'effect', 'why'].filter(k => Object.hasOwn(input, k)).map(k => [k, input[k]]))
+		const listed = s.contract.effects.find(e => e.id === target.effectId)
+		if (listed?.preAuthorized) return `Recorded ${listed.id} as performed. It is pre-authorized, so no dialog opened.\n\n${status(saveContract(advanceContract(s, { type: 'effect', ...target })))}`
+		const digest = approvalDigest(s.contract)
+		const opened = saveContract(advanceContract(s, { type: 'approval-pending', kind: 'effect', digest, ...target }))
+		const reading = await ask(ctx, effectDialog(opened, opened.pendingApproval!))
+		if (reading.outcome !== 'approved') return notApproved(reading)
+		const done = saveContract(advanceContract(unchanged(s.thread, digest, 'effect'), { type: 'effect', ...target, responder: reading.responder }))
+		return `The owner approved this effect once, and it is recorded as performed. Perform it now, exactly as described.\n\n${status(done)}`
+	}, [])
+	tool('mission_report', 'Contract missions: write the checkpoint report for a merged milestone (kind checkpoint; milestoneId defaults to the latest merged) or the close-out report once every milestone is merged (kind close-out). Reports ask nothing; post them where the contract says.', { kind: { type: 'string', enum: ['checkpoint', 'close-out'] }, milestoneId: { type: 'string' } }, async (input, ctx) => {
+		const s = contract(ctx.thread.id)
+		if (input.kind === 'checkpoint') return checkpointReport(s, input.milestoneId)
+		if (input.kind !== 'close-out') throw new Error('Refused (kind): checkpoint or close-out is required')
+		if (input.milestoneId !== undefined) throw new Error('Refused (milestoneId): the close-out covers every milestone')
+		return closeOutReport(s)
+	}, ['kind'])
 	amp.on('session.start', async (event, ctx) => {
 		const s = read(event.thread.id)
 		if (s) await ctx.ui.notify(isV2(s) ? `V2 shadow mission resumed at ${s.status}. Use mission_status. Remote verification remains unqualified; do not retry merges.` : `Mission resumed at ${s.phase}. Use mission_status${s.phase === 'merge-pending' ? ' and mission_reconcile' : ''}.`)
