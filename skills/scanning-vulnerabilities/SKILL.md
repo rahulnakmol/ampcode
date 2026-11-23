@@ -67,7 +67,7 @@ Outside a contract mission, the owner approves the exact plan.
 | Column | Values | Rule |
 | --- | --- | --- |
 | Reachable | yes, no, not proven | Yes only with a path from an entry point to the code, or proof the vulnerable package function is called |
-| Exploitable | yes, no, not proven | Yes only when attacker-controlled input reaches it under realistic preconditions |
+| Exploitable | yes, no, not proven | Yes only when attacker-controlled input reaches it under realistic preconditions. This skill runs no live test: yes needs a quoted `file:line` trace showing the input is attacker-controlled and no guard on the path stops it; keep exploit code and payloads out of the report |
 | Disposition | to fix, fixed, accepted, false positive | Every finding has one |
 | Owner | a named person, not a team or role | Required for accepted; best for to fix. Role text may follow the name: "Dana Reyes (Platform Group lead)" |
 | Reason | text | Required for false positive: why it is not real here |
