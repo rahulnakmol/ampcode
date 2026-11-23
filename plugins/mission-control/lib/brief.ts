@@ -1,4 +1,5 @@
 import type { Mission } from './mission'
+import type { ContractRecord, Pending } from './contract'
 
 // The decision-brief rules from skills/briefing-decisions/scripts/brief_check.py, except reading
 // ease, which stays in the Python checker. Keep both in step: tests compare BANNED with
@@ -287,4 +288,87 @@ export function refusal(result: Record<string, string> | undefined): string | un
 	if (!result) return 'Not approved. The dialog was closed without approval; the mission remains blocked.'
 	if (result.acknowledgment !== 'APPROVE') return 'Not approved. Type APPROVE in the owner field.'
 	return undefined
+}
+
+// Schema 3 contract dialogs. The owner ticks a box for each default and pre-authorized effect,
+// or writes Changes; there is no typed word and no secret field. Who answered comes from the
+// dialog's onAnswered responder, which the tool passes to readAnswer as data.
+export const NOT_APPROVED = 'Not approved: tick every box, or write what to change.'
+export const UNCONFIRMED = 'This client could not confirm who answered; open the approval in the Amp web app'
+const OWNER_NOTE = "Only the thread owner's answer counts; Amp reports who answered."
+const CHANGES = 'changes'
+export type ContractField =
+	| { type: 'link'; name: string; label: string; value: string }
+	| { type: 'checkbox'; name: string; label: string; value: 'false' }
+	| { name: typeof CHANGES; label: string; value: ''; placeholder: string; multiline: true; optional: true }
+export type ContractDialog = {
+	title: string; message: string; confirmButtonText: 'Submit'; requireHuman: true; endTurnOnDecline: true; fields: ContractField[]
+}
+const sentence = (text: string) => /[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`
+function contractDialog(record: ContractRecord, title: string, message: string, boxes: { name: string; label: string }[]): ContractDialog {
+	return {
+		// Checkbox labels hold record text, collapsed to one line; title and message hold fixed text.
+		title, message: `${message}\n\n${OWNER_NOTE}`, confirmButtonText: 'Submit', requireHuman: true, endTurnOnDecline: true,
+		fields: [
+			{ type: 'link', name: 'brief', label: 'Open the contract brief', value: record.contract.brief.url },
+			...boxes.map(b => ({ type: 'checkbox' as const, name: b.name, label: collapse(b.label), value: 'false' as const })),
+			{ name: CHANGES, label: 'Changes (optional)', value: '', placeholder: 'What to change, in your words', multiline: true, optional: true },
+		],
+	}
+}
+
+/** The kickoff dialog: one unticked box per open-question default and per pre-authorized effect.
+ * Effects that are not pre-authorized get their own effect dialog when the mission needs them. */
+export function kickoffDialog(record: ContractRecord): ContractDialog {
+	const c = record.contract
+	return contractDialog(record, 'Approve the mission contract',
+		'One approval starts the whole mission. Open the contract brief, tick each default you accept, and submit. To change something, untick it or write it in Changes; nothing is approved then.',
+		[
+			...c.openQuestions.map(q => ({ name: `default-${q.id}`, label: `${q.id}. ${q.question} Default: ${q.default}` })),
+			...c.effects.filter(e => e.preAuthorized).map(e => ({ name: `effect-${e.id}`, label: `${e.id}. ${sentence(e.effect)} Pre-authorized: ${e.source}` })),
+		])
+}
+
+/** The effect dialog for a pending effect approval: the same pattern with one box. */
+export function effectDialog(record: ContractRecord, pending: Pending): ContractDialog {
+	if (pending.kind !== 'effect') throw new Error('An effect dialog needs a pending effect approval')
+	let box: { name: string; label: string }
+	if (pending.effectId !== undefined) {
+		const e = record.contract.effects.find(e => e.id === pending.effectId)
+		if (!e) throw new Error(`Refused (effectId): unknown effect ${pending.effectId}`)
+		if (e.preAuthorized) throw new Error(`Refused (effectId): ${e.id} is pre-authorized and needs no dialog`)
+		box = { name: `effect-${e.id}`, label: `Approve once: ${e.id}. ${sentence(e.effect)} Contract note: ${e.source}` }
+	} else box = { name: 'effect', label: `Approve once: ${sentence(pending.effect ?? '')} Why: ${pending.why}` }
+	return contractDialog(record, 'Approve an outside effect',
+		'This mission wants to do something its contract did not pre-authorize. Open the contract brief, then tick to approve it once. To change it, leave the box unticked or write it in Changes; nothing is approved then.',
+		[box])
+}
+
+/** What the dialog promise and onAnswered gave: `failed` when the dialog threw, `values` undefined
+ * when it was dismissed, and the responder onAnswered reported, if any. */
+export type DialogAnswer = { failed?: boolean; values?: Record<string, string>; responder?: { userID: string } }
+/** What the agent gets. `reopen` is true exactly in cases 1 to 3 of the order rule. */
+export type AnswerReading =
+	| { outcome: 'approved'; responder: string; reopen: false }
+	| { outcome: 'changes'; message: string; reopen: false }
+	| { outcome: 'unticked'; message: typeof NOT_APPROVED; reopen: false }
+	| { outcome: 'unconfirmed'; message: typeof UNCONFIRMED; reopen: true }
+	| { outcome: 'nothing'; reopen: true }
+
+/** Read a kickoff or effect answer in the contract's order rule; the first case that applies decides.
+ * The caller still checks that the contract digest is unchanged since the dialog opened. */
+export function readAnswer(dialog: ContractDialog, answer: DialogAnswer, ownerID: string): AnswerReading {
+	// 1. Dismissed or failed.
+	if (answer.failed || !answer.values) return { outcome: 'nothing', reopen: true }
+	// 2. No responder reported.
+	if (!answer.responder) return { outcome: 'unconfirmed', message: UNCONFIRMED, reopen: true }
+	// 3. The responder is not the owner.
+	if (!ownerID || answer.responder.userID !== ownerID) return { outcome: 'nothing', reopen: true }
+	// 4. Changes holds text: that text is the owner's answer.
+	const changes = (answer.values[CHANGES] ?? '').trim()
+	if (changes) return { outcome: 'changes', message: changes, reopen: false }
+	// 5. A box is unticked. Only 'true' is a tick: a client that cannot show a box returns 'false'.
+	const boxes = dialog.fields.filter(f => 'type' in f && f.type === 'checkbox')
+	if (boxes.some(f => answer.values![f.name] !== 'true')) return { outcome: 'unticked', message: NOT_APPROVED, reopen: false }
+	return { outcome: 'approved', responder: answer.responder.userID, reopen: false }
 }
