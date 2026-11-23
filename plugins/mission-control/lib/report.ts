@@ -1,5 +1,5 @@
 import { banned, CONTROL, HIDDEN, hiddenMarkdown } from './brief'
-import { STOP_REASONS, approvalDigest, type ContractRecord, type Item, type MilestoneState } from './contract'
+import { STOP_REASONS, approvalDigest, settled, variant, type ContractRecord, type Item, type MilestoneState } from './contract'
 import contractText from './contract-text.json'
 
 // Checkpoint and close-out reports for a schema 3 contract mission. They ask nothing. Their
@@ -51,8 +51,10 @@ const itemsIn = (r: ContractRecord, milestoneId: string): Item[] => [...r.contra
 const titleOf = (r: ContractRecord, m: MilestoneState) => r.contract.milestones.find(x => x.id === m.id)!.title
 const criteriaOf = (r: ContractRecord, m: MilestoneState) => [...itemsIn(r, m.id).flatMap(i => i.done), ...r.contract.milestones.find(x => x.id === m.id)!.exit]
 const pullURL = (m: MilestoneState) => `https://github.com/${m.candidate!.repo}/pull/${m.candidate!.pr}`
-const mergedAt = (r: ContractRecord, milestoneId: string | undefined) =>
-	milestoneId === undefined ? -1 : r.events.findIndex(e => e.action.type === 'merged' && e.action.milestoneId === milestoneId)
+// When the milestone finished: merged under ship, recorded as ready under stop.
+const finishedAt = (r: ContractRecord, milestoneId: string | undefined) =>
+	milestoneId === undefined ? -1 : r.events.findIndex(e => (e.action.type === 'merged' || e.action.type === 'ready') && e.action.milestoneId === milestoneId)
+const ship = (r: ContractRecord) => variant(r.contract) === 'ship'
 
 function assumptions(out: Report, list: ContractRecord['assumptions']) {
 	return list.map(a => `- ${sentence(out.say(a.assumption))} Why: ${out.say(a.why)}`)
@@ -63,7 +65,7 @@ function humanTests(out: Report, r: ContractRecord, m: MilestoneState) {
 function milestoneRecord(r: ContractRecord, m: MilestoneState): string[] {
 	const c = m.candidate!, fp = m.evidence!.fingerprint
 	return [
-		`Milestone ${m.id}: pull request ${pullURL(m)}, head ${c.head}, base ${c.base}, merge commit ${m.mergeCommit} on dev, fingerprint ${fp}, generation ${m.generation}.`,
+		`Milestone ${m.id}: pull request ${pullURL(m)}, head ${c.head}, base ${c.base}, ${m.status === 'ready' ? 'not merged (stop variant)' : `merge commit ${m.mergeCommit} on dev`}, fingerprint ${fp}, generation ${m.generation}.`,
 		...m.reviews.filter(x => x.fingerprint === fp).map(x => `Milestone ${m.id} gate ${x.gate} review ${x.passed ? 'passed' : 'failed'}, by ${x.reviewer}: ${x.record}`),
 		`Milestone ${m.id} failed rounds: gate 1 ${m.failed[0]}, gate 2 ${m.failed[1]}. Dispositions: ${m.dispositions.map(d => `gate ${d.gate} ${d.outcome} (${d.record})`).join('; ') || 'none'}.`,
 		`Milestone ${m.id} human test as run: ${m.evidence!.humanTest}`,
@@ -74,51 +76,54 @@ function milestoneRecord(r: ContractRecord, m: MilestoneState): string[] {
 	]
 }
 
-/** The checkpoint report for a merged milestone, by default the latest one. */
+/** The checkpoint report for a finished milestone (merged, or ready under stop), by default the latest one. */
 export function checkpointReport(record: ContractRecord, milestoneId?: string): string {
-	const m = milestoneId === undefined ? record.milestones.filter(x => x.status === 'merged').at(-1) : record.milestones.find(x => x.id === milestoneId)
-	if (!m || m.status !== 'merged') throw new Error(`Refused (milestoneId): a checkpoint report needs a merged milestone${milestoneId === undefined ? '' : `; ${milestoneId} is not merged`}`)
+	const word = ship(record) ? 'merged' : 'ready'
+	const m = milestoneId === undefined ? record.milestones.filter(settled).at(-1) : record.milestones.find(x => x.id === milestoneId)
+	if (!m || !settled(m)) throw new Error(`Refused (milestoneId): a checkpoint report needs a ${word} milestone${milestoneId === undefined ? '' : `; ${milestoneId} is not ${word}`}`)
 	const index = record.milestones.indexOf(m)
-	const out = new Report(`Checkpoint: milestone ${m.id} merged into dev`)
+	const out = new Report(ship(record) ? `Checkpoint: milestone ${m.id} merged into dev` : `Checkpoint: milestone ${m.id} ready; its pull request stays open`)
 	const [S1, S2, S3, S4, S5, S6] = REPORT_SECTIONS.checkpoint
 	out.section(S1, [
-		`- Milestone ${out.say(m.id)}, ${out.say(titleOf(record, m))}, merged into dev as pull request ${m.candidate!.pr}: ${out.say(pullURL(m))}`,
+		ship(record)
+			? `- Milestone ${out.say(m.id)}, ${out.say(titleOf(record, m))}, merged into dev as pull request ${m.candidate!.pr}: ${out.say(pullURL(m))}`
+			: `- Milestone ${out.say(m.id)}, ${out.say(titleOf(record, m))}, is ready, not merged: the contract does not pre-authorize merges into dev, so pull request ${m.candidate!.pr} stays open for you: ${out.say(pullURL(m))}`,
 		'- Both milestone reviews passed on the same candidate, and every criterion has evidence on it.',
 	])
 	out.section(S2, itemsIn(record, m.id).flatMap(i => [
 		`- ${out.say(i.id)}, ${out.say(i.title)}`,
 		...(record.items.find(x => x.id === i.id)!.evidence ?? []).map(e => `  - ${out.say(e.criterion)}: ${out.say(e.result)}`),
 	]))
-	// Since the last report: taken after the previous milestone merged and before this one merged.
+	// Since the last report: taken after the previous milestone finished and before this one finished.
 	// One taken later belongs to the next milestone's report.
-	const from = mergedAt(record, record.milestones[index - 1]?.id), to = mergedAt(record, m.id)
+	const from = finishedAt(record, record.milestones[index - 1]?.id), to = finishedAt(record, m.id)
 	let k = 0
 	const since = record.events.flatMap((e, i) => e.action.type === 'assume' ? [{ i, a: record.assumptions[k++] }] : []).filter(x => x.i > from && x.i < to).map(x => x.a)
 	out.section(S3, assumptions(out, since))
 	out.section(S4, [
-		...record.filed.filter(i => record.milestones.find(x => x.id === i.milestone)!.status !== 'merged')
+		...record.filed.filter(i => !settled(record.milestones.find(x => x.id === i.milestone)!))
 			.map(i => `- ${out.say(i.id)}, ${out.say(i.title)}, from a review finding outside the case list, planned for milestone ${out.say(i.milestone)}.`),
 		...record.followUps.map(f => `- ${out.say(f.id)}, a follow-up for the close-out: ${out.say(f.text)}`),
 	])
 	out.section(S5, humanTests(out, record, m))
-	const upcoming = record.milestones.slice(index + 1).find(x => x.status !== 'merged')
+	const upcoming = record.milestones.slice(index + 1).find(x => !settled(x))
 	out.section(S6, [upcoming
 		? `- Milestone ${out.say(upcoming.id)}, ${out.say(titleOf(record, upcoming))}, with ${itemsIn(record, upcoming.id).map(i => out.say(i.id)).join(', ')}.`
-		: '- Every milestone is merged; the close-out report comes next.'])
+		: ship(record) ? '- Every milestone is merged; the close-out report comes next.' : '- Every milestone is ready, with its pull request left open; the close-out report comes next.'])
 	out.technical(...milestoneRecord(record, m))
 	return out.done()
 }
 
-/** The close-out report for a complete mission: every milestone merged. */
+/** The close-out report for a complete mission: every milestone merged, or ready under stop. */
 export function closeOutReport(record: ContractRecord): string {
-	const open = record.milestones.filter(m => m.status !== 'merged')
-	if (open.length) throw new Error(`Refused (close-out): every milestone must be merged first; open: ${open.map(m => m.id).join(', ')}`)
-	const out = new Report('Close-out: every milestone merged into dev')
+	const open = record.milestones.filter(m => !settled(m))
+	if (open.length) throw new Error(`Refused (close-out): every milestone must be ${ship(record) ? 'merged' : 'ready'} first; open: ${open.map(m => m.id).join(', ')}`)
+	const out = new Report(ship(record) ? 'Close-out: every milestone merged into dev' : 'Close-out: every milestone ready, pull requests left open')
 	const [S1, S2, S3, S4, S5, S6, S7] = REPORT_SECTIONS.closeOut
 	const approved = record.approval?.digest === approvalDigest(record.contract)
 	out.section(S1, [
 		`- ${out.say(record.contract.outcome)}`,
-		`- ${record.milestones.length} milestones merged into dev, ${record.items.length} items done (${record.filed.length} filed from findings), ${record.followUps.length} follow-ups, ${record.stops.length} stops, ${record.performed.length} effects performed.`,
+		`- ${record.milestones.length} milestones ${ship(record) ? 'merged into dev' : 'ready, with their pull requests left open'}, ${record.items.length} items done (${record.filed.length} filed from findings), ${record.followUps.length} follow-ups, ${record.stops.length} stops, ${record.performed.length} effects performed.`,
 	])
 	out.section(S2, record.milestones.flatMap(m => [
 		`- Milestone ${out.say(m.id)}, ${out.say(titleOf(record, m))}`,
@@ -136,7 +141,7 @@ export function closeOutReport(record: ContractRecord): string {
 		'| --- | --- | --- | --- | --- |',
 		`| Readiness preflight | agent | ${record.preflight ? (record.preflight.passed ? 'passed' : 'failed') : 'not current'} | - | GitHub readiness checks |`,
 		`| Kickoff | human | ${approved ? 'approved' : 'not current'} | ${approved ? 'the owner' : '-'} | kickoff dialog |`,
-		...record.milestones.map(m => `| Milestone ${out.cell(m.id)} merge into dev | agent | merged | - | pull request ${m.candidate!.pr} |`),
+		...record.milestones.map(m => `| Milestone ${out.cell(m.id)} merge into dev | agent | ${m.status === 'ready' ? 'ready, not merged' : 'merged'} | - | pull request ${m.candidate!.pr} |`),
 		...record.performed.map(e => e.preAuthorized
 			? `| Effect ${out.cell(e.effectId!)} | agent | performed | - | pre-authorized |`
 			: `| ${e.effectId ? `Effect ${out.cell(e.effectId)}` : 'Effect not in the contract'} | human | approved | the owner | effect dialog |`),

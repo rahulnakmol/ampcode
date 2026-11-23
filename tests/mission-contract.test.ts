@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
 	advance, approvalDigest, blocked, blockers, createRecord, fingerprint, loadContractRecord, parseContract,
-	saveContractRecord, update, type ContractRecord,
+	parseRecord, saveContractRecord, update, variant, type ContractRecord,
 } from '../plugins/mission-control/lib/contract'
 import { banned, effectDialog, kickoffDialog, readAnswer } from '../plugins/mission-control/lib/brief'
 import { checkpointReport, closeOutReport } from '../plugins/mission-control/lib/report'
@@ -37,6 +37,7 @@ const contract = {
 	effects: [
 		{ id: 'E1', effect: 'Push item branches', preAuthorized: true, source: 'Global AGENTS.md' },
 		{ id: 'E2', effect: 'Publish the plugin', preAuthorized: false, source: 'Not authorized' },
+		{ id: 'E3', effect: 'Squash-merge each milestone into dev when green', preAuthorized: true, source: 'Global AGENTS.md', kind: 'dev-merge' },
 	],
 	readiness: [{ id: 'R1', check: 'Box reachable', evidence: 'HTTP 200' }],
 	milestones: [
@@ -233,18 +234,18 @@ describe('P5 filing', () => {
 		r = evidence(r, 'M2', ['W3 criterion', 'X1 criterion', 'M2 exit green'])
 		expect(milestoneOf(r, 'M2').evidence?.results.map(e => e.criterion)).toEqual(['W3 criterion', 'X1 criterion', 'M2 exit green'])
 	})
-	test('P5.2 a follow-up is recorded only when the earliest unmerged milestone is the last one', () => {
+	test('P5.2 a follow-up is recorded only when the earliest unfinished milestone is the last one', () => {
 		const followUp = { id: 'F1', text: 'Tidy the report wording' }
 		expect(() => update(approved(), { type: 'file', followUp })).toThrow('follow-up')
 		const r = update(merged(merged(approved(), 'M1'), 'M2'), { type: 'file', followUp })
 		expect(r.followUps).toEqual([followUp])
 		expect(isApproved(r)).toBe(true)
-		expect(() => update(r, { type: 'file', item: item('X1', 'M3', ['X1 criterion']) })).toThrow('after the earliest unmerged milestone')
+		expect(() => update(r, { type: 'file', item: item('X1', 'M3', ['X1 criterion']) })).toThrow('after the earliest unfinished milestone')
 	})
 	test('P5.3 a filed item aimed at the current or a merged milestone is refused', () => {
 		const r = merged(approved(), 'M1')
-		expect(() => update(r, { type: 'file', item: item('X1', 'M1', ['X1 criterion']) })).toThrow('after the earliest unmerged milestone')
-		expect(() => update(r, { type: 'file', item: item('X1', 'M2', ['X1 criterion']) })).toThrow('after the earliest unmerged milestone')
+		expect(() => update(r, { type: 'file', item: item('X1', 'M1', ['X1 criterion']) })).toThrow('after the earliest unfinished milestone')
+		expect(() => update(r, { type: 'file', item: item('X1', 'M2', ['X1 criterion']) })).toThrow('after the earliest unfinished milestone')
 		expect(update(r, { type: 'file', item: item('X1', 'M3', ['X1 criterion']) }).filed).toHaveLength(1)
 	})
 })
@@ -436,15 +437,15 @@ describe('Amend: a non-digest item field keeps approval', () => {
 		const ahead = clone()
 		ahead.milestones.unshift({ id: 'M1b', title: 'First again', exit: ['M1 exit green'] })
 		ahead.items.push(item('W1b', 'M1b', ['W1 criterion a', 'W1 criterion b']))
-		expect(() => amend(failedOnce(1), ahead)).toThrow('earliest unmerged')
+		expect(() => amend(failedOnce(1), ahead)).toThrow('earliest unfinished')
 		const later = clone(); later.milestones = [later.milestones[1], later.milestones[0], later.milestones[2]]
-		expect(() => amend(failedOnce(1), later)).toThrow('earliest unmerged')
+		expect(() => amend(failedOnce(1), later)).toThrow('earliest unfinished')
 	})
 	test('Amend putting a copy ahead of a candidate that has not failed yet is refused', () => {
 		const ahead = clone()
 		ahead.milestones.unshift({ id: 'M1b', title: 'First again', exit: ['M1 exit green'] })
 		ahead.items.push(item('W1b', 'M1b', ['W1 criterion a', 'W1 criterion b']))
-		expect(() => amend(withCandidate(itemsDone(approved(), 'M1'), 'M1'), ahead)).toThrow('M1 is a candidate and must stay the earliest unmerged')
+		expect(() => amend(withCandidate(itemsDone(approved(), 'M1'), 'M1'), ahead)).toThrow('M1 is a candidate and must stay the earliest unfinished')
 		expect(amend(itemsDone(approved(), 'M1'), ahead).milestones.map(m => m.id)).toEqual(['M1b', 'M1', 'M2', 'M3'])
 	})
 	test('Replan of an item in a failed milestone needs a "replanned" disposition on each failing gate', () => {
@@ -508,6 +509,78 @@ describe('Amend: a non-digest item field keeps approval', () => {
 	})
 })
 
+describe('Ship or stop: a pre-authorized dev-merge effect picks ship; without it milestones chain unmerged', () => {
+	const stopContract = () => { const c = clone(); c.effects = c.effects.filter((e: any) => e.kind !== 'dev-merge'); return c }
+	// Items done, a candidate on head over base, both gates passed and evidence on the current fingerprint.
+	const gated = (r: ContractRecord, m: string, head: string, base: string) => {
+		r = update(itemsDone(r, m), { type: 'candidate', milestoneId: m, pr: 7, head, base })
+		return evidence(review(review(r, m, 1, true), m, 2, true), m)
+	}
+	const ready = (r: ContractRecord, m: string) => advance(r, { type: 'ready', milestoneId: m, fingerprint: fingerprint(r, m) })
+	test('the variant: ship only with a pre-authorized dev-merge effect', () => {
+		expect(variant(parseContract(contract))).toBe('ship')
+		expect(variant(parseContract(stopContract()))).toBe('stop')
+		const listed = clone(); listed.effects[2].preAuthorized = false
+		expect(variant(parseContract(listed))).toBe('stop')
+	})
+	test('an effect kind other than dev-merge, or two dev-merge effects, is refused', () => {
+		const other = clone(); other.effects[0].kind = 'push'
+		expect(() => parseContract(other)).toThrow('Refused (effects[0].kind)')
+		const two = clone(); two.effects[0].kind = 'dev-merge'
+		expect(() => parseContract(two)).toThrow('Refused (effects[2].kind)')
+	})
+	test('stop: no merge is requested; a gated milestone becomes ready and the next candidate builds on its head', () => {
+		let r = gated(approved(stopContract()), 'M1', A, B)
+		expect(() => advance(r, { type: 'merge-requested', milestoneId: 'M1', fingerprint: fingerprint(r, 'M1') })).toThrow('stop variant')
+		r = ready(r, 'M1')
+		expect(milestoneOf(r, 'M1').status).toBe('ready')
+		expect(blockers(r, 'M1')).toEqual(['Milestone is ready; its pull request stays open'])
+		r = itemsDone(r, 'M2')
+		expect(() => update(r, { type: 'candidate', milestoneId: 'M2', pr: 8, head: C, base: B })).toThrow(`base must be ${A}`)
+		r = update(r, { type: 'candidate', milestoneId: 'M2', pr: 8, head: C, base: A })
+		expect(blockers(r, 'M2')).not.toContain('Earlier milestones not ready: M1')
+	})
+	test('stop: the next candidate waits until the earlier milestone is ready, and ready needs every blocker cleared', () => {
+		let r = update(itemsDone(approved(stopContract()), 'M1'), { type: 'candidate', milestoneId: 'M1', pr: 7, head: A, base: B })
+		expect(() => ready(r, 'M1')).toThrow('Review 1 must pass')
+		r = itemsDone(r, 'M2')
+		expect(() => update(r, { type: 'candidate', milestoneId: 'M2', pr: 8, head: C, base: A })).toThrow('earlier milestones are not ready: M1')
+		expect(blockers(r, 'M2')).toContain('Earlier milestones not ready: M1')
+	})
+	test('ship: ready is refused, and merging still needs the earlier milestone merged', () => {
+		const r = gated(approved(), 'M1', A, B)
+		expect(() => ready(r, 'M1')).toThrow('ship variant')
+		expect(() => update(itemsDone(r, 'M2'), { type: 'candidate', milestoneId: 'M2', pr: 8, head: C, base: A })).toThrow('earlier milestones are not merged: M1')
+	})
+	test('stop: a ready milestone is frozen like a merged one, and new work is filed after it', () => {
+		const r = ready(gated(approved(stopContract()), 'M1', A, B), 'M1')
+		expect(() => review(r, 'M1', 1, false)).toThrow('M1 is ready')
+		const c = stopContract(); c.milestones[0].exit = ['M1 exit green', 'Docs updated']
+		expect(() => amend(r, c)).toThrow('M1 is ready and cannot change')
+		expect(() => update(r, { type: 'file', item: item('X1', 'M1', ['X1 criterion']) })).toThrow('after the earliest unfinished milestone')
+		expect(() => update(r, { type: 'file', item: item('X1', 'M2', ['X1 criterion']) })).toThrow('earliest unfinished milestone (M2)')
+		expect(update(r, { type: 'file', item: item('X1', 'M3', ['X1 criterion']) }).filed).toHaveLength(1)
+	})
+	test('the variant cannot change once a milestone is ready or merged', () => {
+		const shipped = merged(approved(), 'M1')
+		expect(() => amend(shipped, stopContract())).toThrow('merge variant')
+		const held = ready(gated(approved(stopContract()), 'M1', A, B), 'M1')
+		expect(() => amend(held, clone())).toThrow('merge variant')
+		expect(amend(approved(), stopContract()).approval).toBeUndefined()
+	})
+	test('stop: with every milestone ready the mission is complete: nothing more to file, and the close-out builds', () => {
+		let r = ready(gated(approved(stopContract()), 'M1', A, B), 'M1')
+		r = ready(gated(r, 'M2', C, A), 'M2')
+		r = ready(gated(r, 'M3', MERGE, C), 'M3')
+		expect(() => update(r, { type: 'file', followUp: { id: 'F1', text: 'Later' } })).toThrow('the mission is complete')
+		const report = closeOutReport(r)
+		expect(report).toContain('pull requests left open')
+		expect(report).toContain('| Milestone M1 merge into dev | agent | ready, not merged |')
+		expect(checkpointReport(r, 'M2')).toContain('ready; its pull request stays open')
+		expect(parseRecord(JSON.parse(JSON.stringify(r)), THREAD)).toEqual(r)
+	})
+})
+
 describe('P1 internal actions are not accepted through the public dispatch', () => {
 	const actions: Record<string, object> = {
 		'approval-pending': { kind: 'kickoff', digest: approvalDigest(parseContract(contract)) },
@@ -517,6 +590,7 @@ describe('P1 internal actions are not accepted through the public dispatch', () 
 		'merge-requested': { milestoneId: 'M1', fingerprint: 'f'.repeat(64) },
 		merged: { milestoneId: 'M1', fingerprint: 'f'.repeat(64), commit: MERGE },
 		recover: { milestoneId: 'M1', fingerprint: 'f'.repeat(64) },
+		ready: { milestoneId: 'M1', fingerprint: 'f'.repeat(64) },
 	}
 	Object.entries(actions).forEach(([type, fields], i) => test(`P1.${i + 1} ${type} is refused`, () => {
 		const r = createRecord(THREAD, contract)
@@ -630,7 +704,7 @@ describe('W3 kickoff dialog from a contract with 6 questions and 3 effects', () 
 	})
 	test('W3.3 an effect that is not pre-authorized is not a kickoff box; it gets its own effect dialog', () => {
 		const boxes = fieldsOf(kickoffDialog(createRecord(THREAD, contract)), 'checkbox')
-		expect(boxes.map((f: any) => f.name)).toEqual(['default-Q1', 'effect-E1'])
+		expect(boxes.map((f: any) => f.name)).toEqual(['default-Q1', 'effect-E1', 'effect-E3'])
 	})
 })
 

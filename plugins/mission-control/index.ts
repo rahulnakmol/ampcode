@@ -6,7 +6,7 @@ import { digest } from './lib/mission'
 import { canonical } from './lib/contracts'
 import { GitHub } from './lib/github'
 import { effectDialog, kickoffDialog, readAnswer, type AnswerReading, type ContractDialog, type DialogAnswer } from './lib/brief'
-import { advance as advanceContract, approvalDigest, blocked, blockers as contractBlockers, createRecord, fingerprint as contractFingerprint, loadContractRecord, RetiredSchema, saveContractRecord, update as updateContract, type ContractRecord, type MilestoneState, type Pending } from './lib/contract'
+import { advance as advanceContract, approvalDigest, blocked, blockers as contractBlockers, createRecord, fingerprint as contractFingerprint, loadContractRecord, RetiredSchema, saveContractRecord, settled, update as updateContract, variant, type ContractRecord, type MilestoneState, type Pending } from './lib/contract'
 import { checkpointReport, closeOutReport } from './lib/report'
 
 export const description = 'Coordinates owner-approved software missions, revision-bound evidence and protected dev integration using existing GitHub credentials.'
@@ -32,11 +32,12 @@ function nextAction(s: ContractRecord) {
 	if (s.preflight?.digest !== digest) return 'Run mission_preflight on the current contract'
 	if (!s.preflight.passed) return 'Fix the failing readiness checks, then run mission_preflight again'
 	if (s.approval?.digest !== digest) return 'Open the kickoff approval with mission_approve'
-	const m = s.milestones.find(m => m.status !== 'merged')
-	if (!m) return 'Every milestone is merged: write the close-out report with mission_report'
+	const ship = variant(s.contract) === 'ship'
+	const m = s.milestones.find(m => !settled(m))
+	if (!m) return `Every milestone is ${ship ? 'merged' : 'ready with its pull request left open'}: write the close-out report with mission_report`
 	if (m.status === 'merge-pending') return `Reconcile the merge of ${m.id} with mission_reconcile`
 	const missing = contractBlockers(s, m.id)
-	return missing.length ? `${m.id}: ${missing[0]}` : `Merge ${m.id} with mission_merge`
+	return missing.length ? `${m.id}: ${missing[0]}` : ship ? `Merge ${m.id} with mission_merge` : `Record ${m.id} as ready with mission_merge; its pull request stays open`
 }
 // The status the hooks show: approval, preflight, milestones with their items, open stops, a pending approval, and the next action.
 function compactStatus(s: ContractRecord) {
@@ -45,11 +46,11 @@ function compactStatus(s: ContractRecord) {
 	const preflight = s.preflight?.digest !== digest ? 'not run on the current contract' : s.preflight.passed ? 'passed' : 'failed'
 	const stops = s.stops.filter(x => !x.resolved)
 	return [
-		`Contract mission ${s.contract.missionId} on ${s.contract.repository}.`,
+		`Contract mission ${s.contract.missionId} on ${s.contract.repository}; ${variant(s.contract) === 'ship' ? 'ship variant: each milestone merges into dev' : 'stop variant: nothing merges, and each milestone builds on the previous reviewed head'}.`,
 		`Kickoff: ${s.approval?.digest === digest ? 'approved' : 'not approved'}; preflight: ${preflight}.`,
 		...s.milestones.map(m => {
 			const items = s.items.filter(i => defs.find(d => d.id === i.id)!.milestone === m.id).map(i => `${i.id} ${i.status}`)
-			return `${m.id}: ${m.status}${m.status !== 'merged' && blocked(s, m.id) ? ', blocked by a stop' : ''}; items ${items.join(', ')}.`
+			return `${m.id}: ${m.status}${!settled(m) && blocked(s, m.id) ? ', blocked by a stop' : ''}; items ${items.join(', ')}.`
 		}),
 		...(stops.length ? [`Open stops: ${stops.map(x => `${x.id} blocks ${x.blocks.join(', ')}`).join('; ')}.`] : []),
 		...(s.pendingApproval ? [`Pending approval: ${s.pendingApproval.kind}.`] : []),
@@ -57,10 +58,10 @@ function compactStatus(s: ContractRecord) {
 	].join('\n')
 }
 // agent.end continues only when kickoff is approved, the mission is not complete, no item is
-// delegated, and at least one unmerged milestone is not blocked by a stop.
+// delegated, and at least one unfinished milestone (not merged or ready) is not blocked by a stop.
 function workReady(s: ContractRecord) {
 	return s.approval?.digest === approvalDigest(s.contract) && !s.items.some(i => i.status === 'delegated')
-		&& s.milestones.some(m => m.status !== 'merged' && !blocked(s, m.id))
+		&& s.milestones.some(m => !settled(m) && !blocked(s, m.id))
 }
 // The compact status: approval, preflight, items, milestones with their fingerprints and blockers, and the next action.
 function contractStatus(s: ContractRecord) {
@@ -71,13 +72,13 @@ function contractStatus(s: ContractRecord) {
 			id: m.id, status: m.status, candidate: m.candidate ?? null, generation: m.generation, fingerprint: fp, failedRounds: m.failed,
 			reviews: m.reviews.filter(r => r.fingerprint === fp).map(({ gate, passed, reviewer }) => ({ gate, passed, reviewer })),
 			evidence: m.evidence ? { current: m.evidence.fingerprint === fp } : null, mergeCommit: m.mergeCommit ?? null,
-			blockers: m.status === 'merged' ? [] : contractBlockers(s, m.id),
+			blockers: settled(m) ? [] : contractBlockers(s, m.id),
 		}
 	})
 	const defs = [...s.contract.items, ...s.filed]
 	const next = nextAction(s)
 	return JSON.stringify({
-		schemaVersion: 3, missionId: s.contract.missionId, repository: s.contract.repository, digest,
+		schemaVersion: 3, missionId: s.contract.missionId, repository: s.contract.repository, variant: variant(s.contract), digest,
 		approval: s.approval ? { ...s.approval, current: s.approval.digest === digest } : null,
 		preflight: s.preflight ? { current: s.preflight.digest === digest, passed: s.preflight.passed, failed: s.preflight.results.filter(r => !r.passed).map(r => `${r.check}: ${r.detail}`) } : null,
 		pendingApproval: s.pendingApproval ?? null,
@@ -87,6 +88,12 @@ function contractStatus(s: ContractRecord) {
 	}, null, 2)
 }
 // Recovery reads: an open, unmerged, unqueued PR into dev with full SHAs.
+// Stop variant: the reviewed head, still open and unmerged, and not set to merge on its own.
+// The base is not read: a chained pull request may target the previous milestone's branch.
+function heldOpen(p: any, c: { repo: string; pr: number; head: string }) {
+	if (p.state !== 'open' || p.merged !== false || p.head?.sha !== c.head || p.base?.repo?.full_name !== c.repo) return `pull request ${c.pr} is no longer open on the reviewed head; inspect it before going on`
+	if (p.auto_merge !== null || p.isInMergeQueue !== false || p.mergeQueueEntry !== null) return `pull request ${c.pr} would merge on its own (auto-merge or a merge queue), and the contract does not pre-authorize merges into dev; turning that off is an outside effect (stop reason 2 unless the contract pre-authorizes it)`
+}
 const unqueued = (p: any, repo: string) => p.state === 'open' && p.merged === false && p.auto_merge === null && p.isMergeQueueEnabled === false && p.isInMergeQueue === false && p.mergeQueueEntry === null && p.base?.ref === 'dev' && p.base?.repo?.full_name === repo && /^[a-f0-9]{40}$/.test(p.head?.sha) && /^[a-f0-9]{40}$/.test(p.base?.sha)
 
 export default function (amp: PluginAPI, github = new GitHub()) {
@@ -192,11 +199,17 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		if (!record) return notApproved(reading)
 		return `Kickoff approved by the owner.\n\n${contractStatus(record)}`
 	})
-	tool('mission_merge', 'Request an immediate exact-head squash merge of the milestone (milestoneId) into dev with existing GitHub credentials only after its merge blockers, required pinned CI and branch protection pass. Opens no dialog. Never queues authorization for a future head or authorizes release/deployment.', { milestoneId: { type: 'string' } }, async (input, ctx) => {
+	tool('mission_merge', 'Finish the milestone (milestoneId) once its merge blockers pass. Ship variant (the contract pre-authorizes a "dev-merge" effect): request an immediate exact-head squash merge into dev with existing GitHub credentials after required pinned CI and branch protection pass. Stop variant (no such effect): merge nothing; check that the pull request is still open on the reviewed head and not set to merge, and record the milestone as ready, so the next milestone builds on its head. Opens no dialog. Never queues authorization for a future head or authorizes release/deployment.', { milestoneId: { type: 'string' } }, async (input, ctx) => {
 		const s = contract(ctx.thread.id)
 		const missing = contractBlockers(s, input.milestoneId)
 		if (missing.length) throw new Error(`Refused: ${missing.join('; ')}`)
 		const m = milestoneOf(s, input.milestoneId)
+		if (variant(s.contract) === 'stop') {
+			const problem = heldOpen(await github.pull(m.candidate!), m.candidate!)
+			ctx.signal.throwIfAborted()
+			if (problem) throw new Error(`Refused: ${problem}`)
+			return contractStatus(saveContract(advanceContract(s, { type: 'ready', milestoneId: m.id, fingerprint: contractFingerprint(s, m.id) }))) + `\n${m.id} is ready and was not merged: the contract does not pre-authorize merges into dev. Pull request ${m.candidate!.pr} stays open for the owner; build the next milestone on its head.`
+		}
 		await github.preflight(m.candidate!)
 		ctx.signal.throwIfAborted()
 		// Saved before the request: an unknown outcome is reconciled, never repeated.
@@ -253,7 +266,7 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		if (!record) return notApproved(reading)
 		return `${EFFECT_APPROVED} Perform it now, exactly as described.\n\n${contractStatus(record)}`
 	}, [])
-	tool('mission_report', 'Contract missions: write the checkpoint report for a merged milestone (kind checkpoint; milestoneId defaults to the latest merged) or the close-out report once every milestone is merged (kind close-out). Reports ask nothing; post them where the contract says.', { kind: { type: 'string', enum: ['checkpoint', 'close-out'] }, milestoneId: { type: 'string' } }, async (input, ctx) => {
+	tool('mission_report', 'Contract missions: write the checkpoint report for a merged milestone, or a ready one under the stop variant (kind checkpoint; milestoneId defaults to the latest), or the close-out report once every milestone is merged or ready (kind close-out). Reports ask nothing; post them where the contract says.', { kind: { type: 'string', enum: ['checkpoint', 'close-out'] }, milestoneId: { type: 'string' } }, async (input, ctx) => {
 		const s = contract(ctx.thread.id)
 		if (input.kind === 'checkpoint') return checkpointReport(s, input.milestoneId)
 		if (input.kind !== 'close-out') throw new Error('Refused (kind): checkpoint or close-out is required')

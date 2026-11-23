@@ -126,14 +126,14 @@ async function kickoff(h: ContractHarness, contract = CONTRACT) {
 }
 const STAGES = ['items', 'candidate', 'gate1', 'gate2', 'evidence'] as const
 // Delegate and finish the milestone's items, then candidate, both reviews and evidence, stopping after `until`.
-async function prepare(h: ContractHarness, gh: ReturnType<typeof fakeGitHub>, milestone: string, pr: number, until: typeof STAGES[number] = 'evidence') {
+async function prepare(h: ContractHarness, gh: ReturnType<typeof fakeGitHub>, milestone: string, pr: number, until: typeof STAGES[number] = 'evidence', base = DEV) {
 	for (const item of itemsOf(milestone)) {
 		await h.act({ type: 'delegate', itemId: item.id, executor: { kind: 'thread', id: CHILD } })
 		await h.act({ type: 'item-done', itemId: item.id, evidence: results(item.done), review: { reviewer: 'TU-item-review', record: 'No findings' } })
 	}
 	if (until === 'items') return
-	gh.state.prs.set(pr, { head: HEAD(pr), base: DEV, merged: false, queued: false })
-	await h.act({ type: 'candidate', milestoneId: milestone, pr, head: HEAD(pr), base: DEV })
+	gh.state.prs.set(pr, { head: HEAD(pr), base, merged: false, queued: false })
+	await h.act({ type: 'candidate', milestoneId: milestone, pr, head: HEAD(pr), base })
 	if (until === 'candidate') return
 	const fp = await fingerprintOf(h, milestone)
 	await h.act({ type: 'review', milestoneId: milestone, gate: 1, fingerprint: fp, passed: true, reviewer: 'TU-gate-1', record: 'No Blocker or Major inside section 6' })
@@ -164,6 +164,48 @@ test('journey (SC1): start, preflight, approve, then 2 milestones delegated, rev
 		expect(reports[0]).toContain('## Checkpoint: milestone M2 merged into dev')
 		expect(reports[1]).toContain('## Checkpoint: milestone M3 merged into dev')
 		expect(await h.call('mission_report', { kind: 'close-out' })).toContain('## Close-out: every milestone merged into dev')
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+// The stop variant: the same contract with the dev-merge effect left out.
+const STOP = { ...CONTRACT, effects: CONTRACT.effects.filter((e: any) => e.kind !== 'dev-merge') }
+
+test('journey, stop variant: without a dev-merge effect 2 milestones chain on open pull requests: 1 dialog, 0 merges, close-out', async () => {
+	const gh = fakeGitHub(), h = contractHarness(gh.github)
+	try {
+		await kickoff(h, STOP)
+		await prepare(h, gh, 'M2', 10)
+		expect((await h.status()).next).toBe('Record M2 as ready with mission_merge; its pull request stays open')
+		expect(await h.call('mission_merge', { milestoneId: 'M2' })).toContain('M2 is ready and was not merged')
+		expect(await h.call('mission_report', { kind: 'checkpoint' })).toContain('## Checkpoint: milestone M2 ready; its pull request stays open')
+		await prepare(h, gh, 'M3', 11, 'evidence', HEAD(10))
+		await h.call('mission_merge', { milestoneId: 'M3' })
+		expect(h.dialogs).toHaveLength(1)
+		expect(gh.state.merges).toEqual([])
+		const s = await h.status()
+		expect(s.variant).toBe('stop')
+		expect(s.milestones.map((m: any) => [m.id, m.status, m.candidate.base, m.mergeCommit])).toEqual([['M2', 'ready', DEV, null], ['M3', 'ready', HEAD(10), null]])
+		expect(s.next).toBe('Every milestone is ready with its pull request left open: write the close-out report with mission_report')
+		expect(await h.hook('agent.end')).toBeUndefined()
+		expect(await h.call('mission_report', { kind: 'close-out' })).toContain('## Close-out: every milestone ready, pull requests left open')
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('stop variant: mission_merge records nothing when the pull request would merge on its own or left the reviewed head', async () => {
+	const gh = fakeGitHub(), h = contractHarness(gh.github)
+	try {
+		await kickoff(h, STOP)
+		await prepare(h, gh, 'M2', 10)
+		gh.state.view = pr => ({ ...pr, auto_merge: { merge_method: 'squash' } })
+		await expect(h.call('mission_merge', { milestoneId: 'M2' })).rejects.toThrow('would merge on its own')
+		gh.state.view = pr => ({ ...pr, head: { sha: HEAD(99) } })
+		await expect(h.call('mission_merge', { milestoneId: 'M2' })).rejects.toThrow('no longer open on the reviewed head')
+		gh.state.prs.get(10)!.queued = true; gh.state.view = pr => pr
+		await expect(h.call('mission_merge', { milestoneId: 'M2' })).rejects.toThrow('would merge on its own')
+		expect((await h.status()).milestones[0].status).toBe('candidate')
+		gh.state.prs.get(10)!.queued = false
+		expect(await h.call('mission_merge', { milestoneId: 'M2' })).toContain('M2 is ready')
+		expect(gh.state.merges).toEqual([])
 	} finally { rmSync(h.root, { recursive: true, force: true }) }
 })
 

@@ -216,9 +216,10 @@ schemaVersion 3, missionId, repository "owner/name"
 outcome, scope { in[], out[] }, spec, design { high, low }, ux[] (https links), defense
 cases[]          { id, case, mitigation }             the closed list for adversarial review
 openQuestions[]  { id, question, default }            each default is taken unless the owner changes it
-effects[]        { id, effect, preAuthorized, source } every outside effect the mission needs
+effects[]        { id, effect, preAuthorized, source, kind? } every outside effect the mission needs;
+                 kind "dev-merge" marks the one entry for the milestone merges into dev
 readiness[]      { id, check, evidence }               targets outside GitHub, reported by the agent
-milestones[]     { id, title, exit[] }                 ordered; they merge in this order
+milestones[]     { id, title, exit[] }                 ordered; they finish in this order
 items[]          id, title, milestone, size (XS|S|M|L), outcome, inScope[], outOfScope[],
                  dependsOn[], done[], automatedTest, humanTest, trace[]
 brief            { markdown, url }                     the kickoff brief and its link
@@ -253,10 +254,10 @@ criteria of its items. So:
 | `mission_approve()` | Opens the kickoff dialog. Refused before a passing preflight on the current contract |
 | `mission_effect({ effectId })` or `({ effect, why })` | Call right before an outside effect. A pre-authorized effect is recorded with no dialog; any other effect opens the effect dialog |
 | `mission_update({ action })` | The 12 public actions below |
-| `mission_merge({ milestoneId })` | Checks every merge blocker and GitHub's merge readiness, saves the pending state, then requests one exact-head squash merge into `dev`. Opens no dialog |
+| `mission_merge({ milestoneId })` | Checks every merge blocker. Ship: checks GitHub's merge readiness, saves the pending state, then requests one exact-head squash merge into `dev`. Stop: merges nothing; reads that the PR is still open on the reviewed head with no auto-merge or merge queue entry, then records the milestone as ready. Opens no dialog |
 | `mission_reconcile({ milestoneId })` | Reads the PR after a restart or an uncertain merge. Records the merge only for an exact-head merge into `dev`. Never repeats the merge |
 | `mission_recover({ milestoneId })` | After a settled, unqueued attempt: reads GitHub twice, starts a new generation, voids the milestone's reviews and evidence, and returns it to review. Sends no merge and opens no dialog |
-| `mission_report({ kind, milestoneId? })` | `checkpoint` for a merged milestone (`milestoneId` defaults to the latest merged), or `close-out` once every milestone is merged (no `milestoneId`) |
+| `mission_report({ kind, milestoneId? })` | `checkpoint` for a merged or ready milestone (`milestoneId` defaults to the latest), or `close-out` once every milestone is merged or ready (no `milestoneId`) |
 
 The readiness preflight checks six things and names each failure:
 
@@ -275,16 +276,17 @@ A check whose prerequisite failed is reported as failed and not checked.
 
 Each action is `{ type, ...fields }`. Read fingerprints from `mission_status`. The internal
 actions (`approval-pending`, `approve`, `preflight`, `effect`, `merge-requested`, `merged`,
-`recover`) come only from the plugin's own tools and dialogs; `mission_update` refuses them.
+`recover`, `ready`) come only from the plugin's own tools and dialogs; `mission_update` refuses
+them.
 
 | Action | Fields | Rules |
 | --- | --- | --- |
 | `amend` | `contract`, `reason` | See [Amend](#amend) below |
 | `replan` | `itemId`, `into[]` | The new items hold exactly the original `done` criteria, verbatim, in the same milestone; put extra checks in `automatedTest`. Refused for a done item (reopen it first with a "replanned" disposition), and while a gate of that milestone has failed rounds, until a "replanned" disposition on each failing gate. Dependents and open stops move to the new items |
-| `file` | `item`, or `followUp { id, text }` | An item goes into a milestone after the earliest unmerged one, so a current candidate is never voided. A follow-up needs an ID and is allowed only when the earliest unmerged milestone is the last one; it is listed in the close-out. Neither needs approval |
+| `file` | `item`, or `followUp { id, text }` | An item goes into a milestone after the earliest unfinished one (not merged or ready), so a current candidate is never voided. A follow-up needs an ID and is allowed only when the earliest unfinished milestone is the last one; it is listed in the close-out. Neither needs approval |
 | `delegate` | `itemId`, `executor { kind, id }` | `kind` is `thread` (a `T-…` thread ID) or `subagent` |
 | `item-done` | `itemId`, `evidence[{ criterion, result }]`, `review { reviewer, record }` | One result per `done` criterion. The reviewer is not the mission thread. When the milestone already has a candidate, it starts a new generation and voids the milestone's reviews and evidence |
-| `candidate` | `milestoneId`, `pr`, `head`, `base` | Needs every item of the milestone done and every earlier milestone merged; full Git SHAs. A new head voids reviews and evidence; failed-round counters survive |
+| `candidate` | `milestoneId`, `pr`, `head`, `base` | Needs every item of the milestone done and every earlier milestone merged (ready under stop); full Git SHAs. Under stop, `base` must be the previous milestone's reviewed head. A new head voids reviews and evidence; failed-round counters survive |
 | `review` | `milestoneId`, `gate` (1 or 2), `fingerprint`, `passed`, `reviewer`, `record` | Bound to the current fingerprint. The reviewer is not the mission thread. Gate 2 needs a passing gate 1 on the same fingerprint and a different reviewer. After 3 failed rounds at a gate, a further `passed: false` is refused until a "replanned" disposition. A pass does not reset the count |
 | `disposition` | `milestoneId`, `gate`, `outcome`, `record`, `itemIds?` | `fixed` names no items. `replanned` names done or delegated items of that milestone: they go back to planned, lose their evidence, the milestone's reviews and evidence are voided, and that gate's count resets. `filed` names filed item or follow-up IDs. Only `replanned` resets a count |
 | `evidence` | `milestoneId`, `fingerprint`, `results[{ criterion, result }]`, `humanTest` | One result per `done` criterion of the milestone's items (filed items included) and per exit criterion |
@@ -306,7 +308,7 @@ actions (`approval-pending`, `approve`, `preflight`, `effect`, `merge-requested`
 - **Refused** while a merge is pending; when it changes a merged milestone or its items; when an
   open stop names an item or milestone that the amend removes (resume the stop first); and when
   it would change the ID, items, outcomes or criteria of a milestone with failed review rounds,
-  or move that milestone or a candidate milestone from the earliest unmerged place. Record a
+  or move that milestone or a candidate milestone from the earliest unfinished place. Record a
   "replanned" disposition first to change a failed milestone.
 
 ## The kickoff and effect dialogs
@@ -363,11 +365,13 @@ verifiable authentication receipts.
   and no dialog, and only after kickoff is approved on the current contract.
 - A listed effect that is not pre-authorized, or an effect that is not in the contract
   (`{ effect, why }`), opens the effect dialog. Perform it only after the owner approves it.
-- Milestone merges into `dev` happen through `mission_merge`, not `mission_effect`. With
-  mission-control, keep a pre-authorized effect for the merges in the contract. The plugin does
-  not check that entry itself, but it accepts the next milestone's candidate only after the
-  earlier milestone merged. Without the entry, `delivering` merges nothing, so the mission stops
-  after the first milestone's gates and leaves that PR open.
+- Milestone merges into `dev` happen through `mission_merge`, not `mission_effect`. The effect
+  with `"kind": "dev-merge"` picks the variant. Pre-authorized, it is **ship**: each milestone
+  merges into `dev`, and the next candidate needs the earlier milestone merged. Without it, or
+  not pre-authorized, it is **stop**: `mission_merge` merges nothing and records the milestone as
+  ready, its PR stays open for you, and the next milestone's candidate is built on its reviewed
+  head (`base` must equal that head). The close-out comes once every milestone is ready. The
+  variant cannot change by `amend` once a milestone is merged or ready.
 
 ## Milestones, reviews and merges
 
@@ -380,13 +384,14 @@ an item done after the candidate makes the old reviews and evidence lapse.
 1. kickoff approved on the current digest;
 2. the milestone is not blocked by an open stop naming it or one of its items;
 3. all its items done;
-4. every earlier milestone merged;
+4. every earlier milestone merged (ready under stop);
 5. a current candidate;
 6. gate 1 and gate 2 passed on the current fingerprint;
 7. evidence recorded on that fingerprint.
 
-Then GitHub's merge readiness is checked as below. There is no risk field and no owner merge
-gate at any risk level; high risk means independent reviewers and the full case list.
+Under ship, GitHub's merge readiness is then checked as below. Under stop, `mission_merge` reads
+the PR instead (see [Effects](#effects)). There is no risk field and no owner merge gate at any
+risk level; high risk means independent reviewers and the full case list.
 
 **The review cap.** A gate allows 3 failed rounds, and the count survives new heads. Then the
 disposition policy decides, never the owner: a Blocker or Major inside the case list or the
@@ -400,9 +405,9 @@ re-planned items still cannot meet the exit criteria, that is stop reason 5.
 - `agent.start` adds the compact status and the next action to the agent's context, plus a
   reminder after an approval dialog that ended in case 1, 2 or 3.
 - `agent.end` sends "continue" (at most 3 in a row) only when kickoff is approved on the current
-  contract, no item is delegated, and at least one unmerged milestone is not blocked by a stop.
-  It sends nothing while kickoff is pending, while any item is delegated, when every unmerged
-  milestone is blocked, or once every milestone is merged.
+  contract, no item is delegated, and at least one unfinished milestone (not merged or ready) is
+  not blocked by a stop. It sends nothing while kickoff is pending, while any item is delegated,
+  when every unfinished milestone is blocked, or once every milestone is merged or ready.
 - The hooks never open a dialog. The steering thread, not the plugin, watches child threads.
 
 ## Reports
