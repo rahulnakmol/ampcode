@@ -436,6 +436,8 @@ function fakeGitHub() {
 	const state = {
 		prs: new Map<number, { head: string; base: string; merged: boolean; queued: boolean }>(),
 		merges: [] as string[][], ciPassing: true, push: true, loseNextMerge: false, during: undefined as undefined | (() => Promise<void>),
+		// Rewrites each PR read, to show a different remote head or base.
+		view: (pr: any) => pr,
 	}
 	const protection = { enforce_admins: { enabled: true }, required_pull_request_reviews: { required_approving_review_count: 0 }, required_status_checks: { strict: true, contexts: ['Extension checks'], checks: [{ context: 'Extension checks', app_id: 15368 }] } }
 	const github = new GitHub(async args => {
@@ -460,7 +462,7 @@ function fakeGitHub() {
 		const pull = /^repos\/[^/]+\/[^/]+\/pulls\/(\d+)$/.exec(path)
 		if (pull) {
 			const n = Number(pull[1]), pr = state.prs.get(n)!
-			return JSON.stringify({ number: n, state: pr.merged ? 'closed' : 'open', merged: pr.merged, auto_merge: null, head: { sha: pr.head }, base: { sha: pr.base, ref: 'dev', repo: { full_name: REPO } }, merge_commit_sha: pr.merged ? MERGED(n) : null })
+			return JSON.stringify(state.view({ number: n, state: pr.merged ? 'closed' : 'open', merged: pr.merged, auto_merge: null, head: { sha: pr.head }, base: { sha: pr.base, ref: 'dev', repo: { full_name: REPO } }, merge_commit_sha: pr.merged ? MERGED(n) : null }))
 		}
 		throw new Error(`unexpected gh call: ${args.join(' ')}`)
 	})
@@ -680,6 +682,21 @@ test('P8: a lost merge response is pending first, reconciled, never repeated, an
 		expect((await again.status()).milestones[0].status).toBe('merge-pending')
 		await expect(again.call('mission_merge', { milestoneId: 'M2' })).rejects.toThrow('reconcile')
 		expect(await again.call('mission_reconcile', { milestoneId: 'M2' })).toContain('not confirmed merged')
+		// A merged PR at another head, or into another base, is not this candidate's merge.
+		const pr10 = gh.state.prs.get(10)!
+		pr10.merged = true
+		for (const view of [(pr: any) => ({ ...pr, head: { sha: HEAD(99) } }), (pr: any) => ({ ...pr, base: { ...pr.base, ref: 'main' } }), (pr: any) => ({ ...pr, base: { ...pr.base, repo: { full_name: 'acme/fork' } } })]) {
+			gh.state.view = view
+			expect(await again.call('mission_reconcile', { milestoneId: 'M2' })).toContain('not confirmed merged')
+		}
+		gh.state.view = pr => pr
+		pr10.merged = false
+		expect((await again.status()).milestones[0].status).toBe('merge-pending')
+		// The head moves between recovery's two reads.
+		let reads = 0
+		gh.state.view = pr => ++reads === 2 ? { ...pr, head: { sha: HEAD(99) } } : pr
+		await expect(again.call('mission_recover', { milestoneId: 'M2' })).rejects.toThrow('Remote changed during recovery')
+		gh.state.view = pr => pr
 		gh.state.prs.get(10)!.queued = true
 		await expect(again.call('mission_recover', { milestoneId: 'M2' })).rejects.toThrow('unqueued')
 		gh.state.prs.get(10)!.queued = false
@@ -726,6 +743,7 @@ const P12: [string, (d: any) => Answer, string | undefined][] = [
 	['no responder reported', d => ({ values: ticked(d), responder: null }), UNCONFIRMED],
 	['a responder who is not the owner', d => ({ values: ticked(d), responder: 'user-other' }), NOTHING],
 	['dismissed', () => ({ values: undefined }), NOTHING],
+	['dismissed with no responder reported', () => ({ values: undefined, responder: null }), NOTHING],
 	['failed', () => ({ failed: true }), NOTHING],
 	['a non-owner who wrote text in Changes', d => ({ values: ticked(d, 'Release to main now'), responder: 'user-other' }), NOTHING],
 ]
