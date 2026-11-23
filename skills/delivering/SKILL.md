@@ -83,8 +83,9 @@ Read [reference/mission-record.md](reference/mission-record.md) when starting or
 9. **Ask once.** With the plugin: `mission_start({ contract })`, `mission_preflight`, then
    `mission_approve`, which opens one dialog where the owner ticks each default and effect.
    Without it: one message that links the brief and asks for one reply; record the reply as a
-   human ledger row quoting the owner's words and the message ID. Changes in the reply are applied
-   to the baseline before execution starts and are not asked again.
+   human ledger row quoting the owner's words and the message ID. An answer that changes a default
+   or an effect is applied before execution starts and is not asked again; any other change is a
+   new baseline revision that needs its own kickoff reply.
 
 Until kickoff is approved, only read, research, draft, review, and publish the brief and record.
 Take no effect. A generic request to build is not approval of an unseen contract.
@@ -118,14 +119,15 @@ repository's isolation policy; preserve existing work and never reset or clean i
 1. Open the milestone PR into `dev` once all its items are done; with the plugin, record it as the
    `candidate`.
 2. Run the tests. **Wait for PR and CI results** with the host's tool in `missioning`'s
-   [reference/hosts.md](../missioning/reference/hosts.md).
+   [reference/hosts.md](../missioning/reference/hosts.md). Red CI is fixed on the milestone branch.
 3. **Gate 1:** a fresh critic review of the whole milestone diff against the milestone's criteria
    and the closed case list.
 4. **Gate 2:** after gate 1 passes, a second independent fresh review of the same head. Its record
    holds the drift check against the contract and the refreshed defense.
 5. Record one evidence line per criterion and per exit criterion, bound to that head.
-6. Squash-merge into `dev` (`mission_merge`), then read the merge back (`mission_reconcile`;
-   without the plugin, `gh` and an agent ledger row citing the pre-authorized effect).
+6. Squash-merge into `dev` (`mission_merge`) only when the required checks are green, then read
+   the merge back (`mission_reconcile`; without the plugin, `gh` and an agent ledger row citing
+   the pre-authorized effect).
    There is no owner merge gate at any risk level. High risk means independent reviewers and the
    full case list, not a question to the owner.
 7. Send the checkpoint report to the threads the charter names (by default, the mission thread).
