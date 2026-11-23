@@ -407,6 +407,22 @@ describe('Amend: a non-digest item field keeps approval', () => {
 		const later = clone(); later.milestones = [later.milestones[1], later.milestones[0], later.milestones[2]]
 		expect(() => amend(failedOnce(1), later)).toThrow('earliest unmerged')
 	})
+	test('Amend putting a copy ahead of a candidate that has not failed yet is refused', () => {
+		const ahead = clone()
+		ahead.milestones.unshift({ id: 'M1b', title: 'First again', exit: ['M1 exit green'] })
+		ahead.items.push(item('W1b', 'M1b', ['W1 criterion a', 'W1 criterion b']))
+		expect(() => amend(withCandidate(itemsDone(approved(), 'M1'), 'M1'), ahead)).toThrow('M1 is a candidate and must stay the earliest unmerged')
+		expect(amend(itemsDone(approved(), 'M1'), ahead).milestones.map(m => m.id)).toEqual(['M1b', 'M1', 'M2', 'M3'])
+	})
+	test('Replan of an item in a failed milestone needs a "replanned" disposition naming it', () => {
+		const c = clone(); c.items[0].title = 'Retitled'
+		const r = amend(failedOnce(1), c)
+		expect(itemOf(r, 'W1').status).toBe('planned')
+		const into = [{ ...item('W1x', 'M1', ['W1 criterion a', 'W1 criterion b']), outcome: 'Something else entirely' }]
+		expect(() => update(r, { type: 'replan', itemId: 'W1', into })).toThrow('record a "replanned" disposition naming W1')
+		const reopened = update(failedOnce(1), { type: 'disposition', milestoneId: 'M1', gate: 1, outcome: 'replanned', record: 'Cap', itemIds: ['W1'] })
+		expect(update(reopened, { type: 'replan', itemId: 'W1', into }).contract.items.map(i => i.id)).toContain('W1x')
+	})
 	test('Amend keeping the digest may not move a criterion between items, or swap items between milestones', () => {
 		const moved = clone(); moved.items[0].done = ['W1 criterion a']; moved.items[1].done = ['W2 criterion', 'W1 criterion b']
 		expect(() => amend(approved(), moved)).toThrow('Refused (items[0].done)')

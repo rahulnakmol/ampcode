@@ -344,14 +344,17 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 			}
 			// Failed-round counters survive: a milestone that failed a review stays the earliest unmerged
 			// one and keeps its ID, items and criteria. Record a "replanned" disposition first to change them.
+			// A candidate also stays the earliest unmerged milestone, so no copy can be put ahead of it.
 			for (const m of s.milestones) {
-				if (!m.failed.some(n => n > 0)) continue
-				const held = s.contract.items.filter(i => i.milestone === m.id)
+				const failed = m.failed.some(n => n > 0)
+				if (!failed && m.status !== 'candidate') continue
 				const index = c.milestones.findIndex(x => x.id === m.id)
+				if (index > 0 && c.milestones.slice(0, index).some(x => s.milestones.find(y => y.id === x.id)?.status !== 'merged')) fail('milestones', failed ? `${m.id} has failed review rounds and must stay the earliest unmerged milestone; record a "replanned" disposition first to change the order` : `${m.id} is a candidate and must stay the earliest unmerged milestone`)
+				if (!failed) continue
+				const held = s.contract.items.filter(i => i.milestone === m.id)
 				const criteria = (x: Contract) => new Set([...x.items.filter(i => i.milestone === m.id).flatMap(i => i.done), ...(x.milestones.find(y => y.id === m.id)?.exit ?? [])])
 				const kept = criteria(c), before = criteria(s.contract)
 				if (index < 0 || held.some(i => !c.items.some(x => x.id === i.id && x.milestone === m.id)) || [...before].some(k => !kept.has(k))) fail('milestones', `${m.id} has failed review rounds; it keeps its ID, items and criteria; record a "replanned" disposition first to change them`)
-				if (c.milestones.slice(0, index).some(x => s.milestones.find(y => y.id === x.id)?.status !== 'merged')) fail('milestones', `${m.id} has failed review rounds and must stay the earliest unmerged milestone; record a "replanned" disposition first to change the order`)
 			}
 			const readinessChanged = canonical(c.readiness) !== canonical(s.contract.readiness)
 			s.items = [
@@ -370,7 +373,8 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 		}
 		case 'replan': {
 			const { def, state } = itemFor(s, a.itemId)
-			open(s, def.milestone, 'itemId')
+			const m = open(s, def.milestone, 'itemId')
+			if (m.failed.some(n => n > 0) && !m.dispositions.some(d => d.outcome === 'replanned' && d.itemIds.includes(def.id))) fail('itemId', `${m.id} has failed review rounds; record a "replanned" disposition naming ${def.id} first`)
 			if (state.status === 'done') fail('itemId', `${def.id} is done; reopen it first with a "replanned" disposition`)
 			const into = list(a.into, 'into', false).map((x, i) => parseItem(x, `into[${i}]`))
 			if (sorted(into.flatMap(i => i.done)) !== sorted(def.done) || into.some(i => i.milestone !== def.milestone)) fail('into', 'the new items must hold exactly the original criteria, verbatim, in the same milestone; put extra checks in automatedTest')
@@ -410,7 +414,8 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 		}
 		case 'delegate': {
 			const { def, state } = itemFor(s, a.itemId)
-			open(s, def.milestone, 'itemId')
+			const m = open(s, def.milestone, 'itemId')
+			if (m.failed.some(n => n > 0) && !m.dispositions.some(d => d.outcome === 'replanned' && d.itemIds.includes(def.id))) fail('itemId', `${m.id} has failed review rounds; record a "replanned" disposition naming ${def.id} first`)
 			if (state.status === 'done') fail('itemId', `${def.id} is done`)
 			shape(a.executor, 'executor', ['kind', 'id'])
 			if (a.executor.kind === 'thread') { if (typeof a.executor.id !== 'string' || !/^T-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(a.executor.id)) fail('executor.id', 'a thread ID such as T-01a2… is required') }
