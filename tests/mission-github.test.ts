@@ -109,9 +109,14 @@ test('readiness passes all six named predicates on a ready repository', async ()
 for (const [label, change, failing, reason, passing] of [
 	['1: no push permission', (r: any) => { r['repos/acme/app'].permissions.push = false }, 1, /push permission/, []],
 	['2: dev missing', (r: any) => { r['repos/acme/app/branches/dev'] = httpError(404, 'Branch not found') }, 2, /dev missing: Branch not found \(HTTP 404\)/, [1]],
+	['2: dev renamed (the branch read redirects to another name)', (r: any) => { r['repos/acme/app/branches/dev'].name = 'main' }, 2, /dev missing: the branch read returned 'main'/, [1]],
 	['3: protection forbidden (403)', (r: any) => { r['repos/acme/app/branches/dev/protection'] = httpError(403, 'Upgrade to GitHub Pro or make this repository public to enable this feature.') }, 3, /^protection unreadable: needs a plan that supports it, or admin access$/, [1, 2]],
 	['3: protection absent', (r: any) => { r['repos/acme/app/branches/dev'].protected = false; r['repos/acme/app/branches/dev/protection'] = httpError(404, 'Branch not protected') }, 3, /^protection absent/, [1, 2]],
 	['4: administrators not enforced', (r: any) => { r['repos/acme/app/branches/dev/protection'].enforce_admins.enabled = false }, 4, /administrator enforcement/, [1, 2, 3, 5, 6]],
+	['4: checks not strict', (r: any) => { r['repos/acme/app/branches/dev/protection'].required_status_checks.strict = false }, 4, /strict checks/, [1, 2, 3, 5, 6]],
+	['4: a review bypass allowance', (r: any) => { r['repos/acme/app/branches/dev/protection'].required_pull_request_reviews.bypass_pull_request_allowances.users = [{ login: 'ops' }] }, 4, /bypass allowances/, [1, 2, 3, 5, 6]],
+	['3: protection read failed (503)', (r: any) => { r['repos/acme/app/branches/dev/protection'] = httpError(503, 'Service Unavailable') }, 3, /^protection unreadable: Service Unavailable/, [1, 2]],
+	['6: latest dev commit check still running', (r: any) => { Object.assign(r[`repos/acme/app/commits/${devSha}/check-runs?filter=latest&per_page=100`].check_runs[0], { status: 'in_progress', conclusion: null }) }, 6, /Required check not successful: test/, [1, 2, 3, 4, 5]],
 	['5: required check not pinned', (r: any) => { delete r['repos/acme/app/branches/dev/protection'].required_status_checks.checks[0].app_id }, 5, /pinned source App/, [1, 2, 3, 4]],
 	['6: latest dev commit check failed', (r: any) => { r[`repos/acme/app/commits/${devSha}/check-runs?filter=latest&per_page=100`].check_runs[0].conclusion = 'failure' }, 6, /Required check not successful: test/, [1, 2, 3, 4, 5]],
 ] as const) {

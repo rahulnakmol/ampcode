@@ -70,10 +70,12 @@ export function assessReadiness(reads: ReadinessReads): ReadinessResult[] {
 	if (!repository.ok) record(false, `repository not visible: ${repository.message}`)
 	else record(repository.data?.permissions?.push === true, repository.data?.permissions?.push === true ? 'visible with push permission' : 'repository visible without push permission')
 	// 2. dev exists.
-	const sha = branch?.ok ? branch.data?.commit?.sha : undefined
+	// GitHub answers a renamed branch's old name with a redirect that gh follows, so the name is checked.
+	const sha = branch?.ok && branch.data?.name === 'dev' ? branch.data?.commit?.sha : undefined
 	if (!skip(1)) {
 		if (!branch) record(false, 'dev missing: not read')
 		else if (!branch.ok) record(false, `dev missing: ${branch.message}`)
+		else if (branch.data?.name !== 'dev') record(false, `dev missing: the branch read returned '${branch.data?.name}'`)
 		else record(typeof sha === 'string' && SHA.test(sha), typeof sha === 'string' && SHA.test(sha) ? `dev at ${sha}` : 'dev missing: no head commit in the response')
 	}
 	// 3. Branch protection readable; a 403 and an absent protection are named apart.
