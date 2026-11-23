@@ -572,6 +572,22 @@ class Overclaims(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertEqual(slo_check.overclaims(phrase), [], phrase)
 
+    def test_d12_gate2_f1_no_proof_covers_only_its_that_clause(self):
+        # D-12, M5 gate 2 F1: "no proof" or "no evidence" negates only a claim it introduces with
+        # "that". A later clause after it is still a claim.
+        for phrase in ("No proof needed, the alert works.",
+                       "No evidence required: the alert works.",
+                       "We need no proof; the alert works.",
+                       "No proof needed and the alert works.",
+                       "There is no proof that the deploy finished, but the alert works."):
+            with self.subTest(phrase=phrase):
+                self.assertTrue(slo_check.overclaims(phrase), phrase)
+        for phrase in ("There is no proof yet that the alert works and pages on time.",
+                       "We have no evidence that the alert works.",
+                       "There is no evidence so far that ALERT-1 is verified."):
+            with self.subTest(phrase=phrase):
+                self.assertEqual(slo_check.overclaims(phrase), [], phrase)
+
     def test_d12_skill_text_documents_the_negation_scope(self):
         text = re.sub(r"\s+", " ", (SKILL / "SKILL.md").read_text())
         for words in ('"and", "but", "so" or "yet"', '"not only"', '"no proof"'):

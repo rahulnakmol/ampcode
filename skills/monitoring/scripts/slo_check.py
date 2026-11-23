@@ -31,8 +31,9 @@ exit 2 on a usage error or an unreadable file. Standard library only. The file f
   M8  the SLO file or a runbook claims an alert works or is verified; record where and when it
       fired instead. Fine: questions; a negation earlier in the same clause, which ends at
       . ! ? : ; or at a following and, but, so or yet ("we have not, as of today, verified the
-      alert", "there is no proof that the alert works"); a condition in the same comma clause
-      ("if the alert works, close it"); and "working hours". Claims: "nobody doubts that the
+      alert"); "no proof" or "no evidence" before a "that" clause ("there is no proof that the
+      alert works"), but not a later clause ("no proof needed, the alert works"); a condition
+      in the same comma clause ("if the alert works, close it"); and "working hours". Claims: "nobody doubts that the
       alert works", "we did not change it, so the alert works"; not only, not just and not
       merely do not negate
   M9  structure: invalid JSON, no SLOs, or a missing or repeated SLO or alert ID
@@ -82,8 +83,11 @@ OVERCLAIM = re.compile(
 # "not only", "not just" and "not merely" do not negate. A negation followed by a doubt word
 # affirms the claim instead: "Nobody doubts that the alert works."
 NEGATION = re.compile(
-    r"\bnot\b(?!\s+(?:only|just|merely)\b)|\b(?:never|nobody|no\s+one|cannot|no\s+(?:proof|evidence))\b"
-    r"|n't\b", re.I)
+    r"\bnot\b(?!\s+(?:only|just|merely)\b)|\b(?:never|nobody|no\s+one|cannot)\b|n't\b", re.I)
+# "no proof" or "no evidence" negates only the claim it introduces with "that": "There is no
+# proof yet that the alert works." It does not cover a later clause: "No proof needed, the
+# alert works." is a claim.
+NO_PROOF_THAT = re.compile(r"\bno\s+(?:proof|evidence)\s+(?:(?:yet|so\s+far)\s+)?that\b", re.I)
 # "yet" right after the negation is the adverb ("not yet shown"); "so far" is not the joining "so".
 JOIN = re.compile(r"\b(?:and|but|so(?!\s+far\b)|yet)\b", re.I)
 DOUBT = re.compile(r"\b(?:doubts?|doubted|questions?|questioned|disputes?|disputed|deny|denies|denied)\b", re.I)
@@ -146,10 +150,11 @@ def production(environment):
 def negated(part):
     """True when the last negation in part covers what follows it. A doubt word after it undoes
     it ("nobody doubts that"), and so does a joining and, but, so or yet ("did not fail and")."""
-    hits = list(NEGATION.finditer(part))
+    proof = [m for m in NO_PROOF_THAT.finditer(part) if "," not in part[m.end():]]
+    hits = list(NEGATION.finditer(part)) + proof
     if not hits:
         return False
-    rest = part[hits[-1].end():]
+    rest = part[max(hit.end() for hit in hits):]
     return not DOUBT.search(rest) and not JOIN.search(re.sub(r"^\s*yet\b", "", rest, flags=re.I))
 
 

@@ -415,6 +415,27 @@ class Check(Base):
         # A fixed Medium needs no retest evidence.
         self.assertEqual(self.rules(edit("| High |", "| Medium |", text)), [])
 
+    def test_m5_gate1_f1_gate2_f2_run_state_words_after_a_subject(self):
+        # M5 gate 1 F1, gate 2 F2 (Blocker, D-13 regression): a run-state word after a subject
+        # (an optional "the" or "a", then scan, rescan, run, rerun, test, tests, job, build, CI or
+        # PoC, then optionally the tool name) fails, as it did on origin/dev.
+        cell = "| Rescan ToolA 1.0 2026-11-21: 0 results at `x.py:5` |"
+        form = "<Rescan|Test|PoC|CI> <tool or name> <YYYY-MM-DD>: <result>"
+        for result in ("scan will run after deploy", "run skipped: no network", "scan skipped (no network)",
+                       "run cancelled by the runner", "the test will run after deploy", "scan errored",
+                       "rerun errored", "scan Bandit 1.9.4 skipped", "the CI job timed out",
+                       "a rescan was queued", "PoC errored.", "tests skipped"):
+            with self.subTest(result=result):
+                found = self.rules(edit(cell, f"| Rescan Bandit 1.9.4 2026-11-21: {result} |"))
+                self.assertEqual(len(found), 1, found)
+                self.assertTrue(found[0].startswith("C4:") and form in found[0], found)
+        # A subject followed by a finding is a result: the word after it is not a run-state word.
+        for result in ("scan found none of the 3 B602 hits", "scan found none",
+                       "the test passed; 2 unrelated tests skipped", "PoC failed after the fix: 403",
+                       "rerun Bandit 1.9.4: 0 results"):
+            with self.subTest(result=result):
+                self.assertEqual(self.rules(edit(cell, f"| Rescan Bandit 1.9.4 2026-11-21: {result} |")), [])
+
     def test_d13_run_state_words_only_at_the_start_of_the_result(self):
         # D-13 (gate1 N13, N14, N16; gate2 RP4, RP5, RP7): run-state words fail only at the start
         # of the result or as the whole result; "not run", "pending" and "failed to start" fail
@@ -662,6 +683,8 @@ class SkillText(unittest.TestCase):
         # D-13: the default date is the local date, and the word list is not every phrasing.
         self.assertIn("not after today (your local date; `check --today` sets it)", triage)
         self.assertIn("at the start of the result", triage)
+        # M5 gate 1 F1, gate 2 F2: the row says a subject before the word does not hide it.
+        self.assertIn('or after a subject such as "scan", "the test" or "run Bandit 1.9.4"', triage)
         self.assertIn("The list is not every phrasing: a reviewer still reads the result", triage)
         done = " ".join(self.text.split("## Check your work", 1)[1].split())
         self.assertIn("retest evidence in the Retest form", done)

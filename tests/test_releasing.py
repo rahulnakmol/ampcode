@@ -9,6 +9,7 @@ written by hand from the promotion model, not taken from the script.
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -388,6 +389,47 @@ class Plan(unittest.TestCase):
         code, out = self.snapshot_plan("--date", "2026-11-03")
         self.assertEqual(code, 1, out)
         self.assertIn(f"{stray[:7]} hotfix: patched only on rolling", out)
+        self.assertNotIn("Plan digest", out)
+
+    def test_d21_reapplied_patch_the_target_already_held_is_named(self):
+        # Gate 2 F9: the twin lookup only reads source commits the target lacked when the commit
+        # was made. #5 changes f1.txt on dev and is promoted. On rolling, one commit undoes it
+        # and another re-applies the same patch. #5 was already on rolling, so it is no twin.
+        (self.repo.path / "f1.txt").write_text("changed\n")
+        self.repo.git("commit", "-q", "-am", "feat: change f1 (#5)")
+        self.repo.snapshot("Rolling snapshot: 2026-11-02", "rolling-2026-11-02")
+        self.repo.git("switch", "-q", "rolling")
+        (self.repo.path / "f1.txt").write_text("feat: add the first skill (#1)\n")
+        self.repo.git("commit", "-q", "-am", "hotfix: undo f1 on rolling")
+        undo = self.repo.git("rev-parse", "HEAD")
+        (self.repo.path / "f1.txt").write_text("changed\n")
+        self.repo.git("commit", "-q", "-am", "hotfix: redo f1 on rolling")
+        redo = self.repo.git("rev-parse", "HEAD")
+        self.repo.git("switch", "-q", "dev")
+        self.repo.commit("feat: next change (#6)")
+        self.before = self.repo.refs()
+        code, out = self.snapshot_plan("--date", "2026-11-03")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"{undo[:7]} hotfix: undo f1 on rolling", out)
+        self.assertIn(f"{redo[:7]} hotfix: redo f1 on rolling", out)
+
+    def test_d6_merge_tree_failure_is_not_checked(self):
+        # Gate 2 F10: when git merge-tree fails (exit 129, as an old git does), the setUp snapshot
+        # merge on rolling is named as not checked, never passed over.
+        bin_dir = Path(self.tmp.name) / "bin"
+        bin_dir.mkdir()
+        wrapper = bin_dir / "git"
+        wrapper.write_text(f'#!/bin/sh\nfor a in "$@"; do [ "$a" = merge-tree ] && exit 129; done\n'
+                           f'exec {shutil.which("git")} "$@"\n')
+        wrapper.chmod(0o755)
+        env = {**ENV, "PATH": f"{bin_dir}{os.pathsep}{ENV.get('PATH', '')}"}
+        proc = subprocess.run([sys.executable, str(SCRIPT), "plan", "--repo", str(self.repo.path), "--from", "dev",
+                               "--to", "rolling", "--kind", "rolling", "--date", "2026-11-02"],
+                              capture_output=True, text=True, env=env)
+        out = proc.stdout + proc.stderr
+        self.assertEqual(proc.returncode, 1, out)
+        self.assertIn("Rolling snapshot: 2026-11-01", out)
+        self.assertIn("not checked", out)
         self.assertNotIn("Plan digest", out)
 
     def test_d6_conflict_resolved_with_new_content_is_named(self):

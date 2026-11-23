@@ -148,8 +148,8 @@ python3 $S record-signoff backlog.json --item F-1 --by "Dana Whitfield (VP Produ
 ```
 
 - `--item` is an initiative or feature. `--by` is an approver's `name` from `approvers`, with or
-  without the role in brackets, in any case. `--source` names the email or document; it is
-  required. Anything else is refused with one error line, and the file is not changed.
+  without the role in brackets, in any case; a name that fits two approvers is refused, so give
+  the role too. `--source` names the email or document; it is required. Anything else is refused with one error line, and the file is not changed.
 - It appends `{ "tracker": "written", "by", "at", "source", "fingerprint" }` to the item's
   `approvals`. The fingerprint covers the item and its stories (or goals). The sign-off counts
   for every tracker in `backlog.py status`, also on a backlog never synced, until any of that
@@ -169,7 +169,9 @@ research they wait on, and ready work behind a draft), who has not signed what y
 feedback. A gate that is approved, by anyone, is left out of "Not yet signed by". A feature whose
 notes say "Signs off: Elena Petrova" lists only her, and "Who signs" names her for it; other
 gates show "any listed approver". The note changes only the comment: any listed approver still
-passes the gate. A milestone whose date has passed shows how many items have a delivery record, not
+passes the gate. A note that names nobody on the list, or two people (a typo, "Dr." in front),
+also shows "any listed approver", and `plan` and `report` print one warning line for that
+feature; fix the note or the `approvers` entry. A milestone whose date has passed shows how many items have a delivery record, not
 "overdue": work can be live before its delivery is recorded. Won't-have items are left out of
 every count and of GitHub milestones. The full chain from driver to delivery stays in `backlog.py trace` and the Excel export. With
 `--post` (after the user approves the text) it creates the comment on each initiative issue, or

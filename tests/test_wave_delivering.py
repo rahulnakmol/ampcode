@@ -132,6 +132,25 @@ class W20InterrogatingChanges(unittest.TestCase):
                 self.assertRegex(gates, rf"(?m)^\| {re.escape(lens)} \|")
         self.assertIn("manual", flat(gates))
 
+    def test_W20_gate1_F10_gate_can_pass_on_changes_needed_only_for_filed_outside_findings(self):
+        self.assertIn("A gate passes while `review_ledger.py verdict` says `changes needed` only when every "
+                      "open Blocker or Major is outside the case list and the milestone's criteria and is filed.",
+                      flat(gates_section()))
+
+    def test_W20_gate2_F13_repair_reruns_gates_and_a_patch_keeping_rebase_keeps_verdicts(self):
+        text = flat(gates_section())
+        # The fix mission's sentence stays word for word.
+        self.assertIn("A repair makes a new head: both gates run again on it, and earlier reviews and "
+                      "evidence lapse.", text)
+        self.assertIn("A repair changes the patch ID, so both gates run again. A rebase that keeps the patch "
+                      "ID keeps the gates' verdicts, because they bind to the patch ID;", text)
+        self.assertIn("CI run again on the new head", text)
+        ref = flat(REVIEW_REF.read_text())
+        self.assertNotIn("lapses both gates even when a clean rebase keeps the patch ID", ref)
+        self.assertNotIn("A new head voids them", ref)
+        self.assertIn("A rebase that keeps the patch ID keeps the gates' verdicts", ref)
+        self.assertIn("A manual review has no patch-bound verdict, so any new head voids it.", ref)
+
     def test_W20_6_integration_step_names_releasing_as_an_outside_effect(self):
         merge = [i for i in numbered_items(gates_section()) if "Squash-merge into `dev`" in i]
         self.assertEqual(len(merge), 1)
@@ -149,6 +168,18 @@ class W21ShipAndStop(unittest.TestCase):
         stop = re.search(r"\*\*Stop:\*\*(.*?)(?=\*\*Ship:\*\*|$)", self.variants()).group(1)
         self.assertIn("never merges", stop)
         self.assertIn("`gh pr merge --disable-auto`", stop)
+
+    def test_W21_gate1_F9_stop_is_the_default_and_its_auto_merge_write_is_covered(self):
+        text = self.variants()
+        self.assertIn("When it names none, the variant is stop.", text)
+        self.assertIn("Running `gh pr merge --disable-auto` is part of choosing stop: an effect the stop "
+                      "variant needs, recorded under Effects performed.", text)
+        self.assertIn("If the contract does not pre-authorize writes to the PR, the stop variant only "
+                      "leaves the PR open and reports that auto-merge was not checked.", text)
+        self.assertNotIn("a contract that pre-authorizes the milestone merges ships", text)
+        ref = flat(section(WATCH_REF.read_text(), "## Stop"))
+        self.assertIn("auto-merge was not checked", ref)
+        self.assertNotIn("the contract's choice of the stop variant covers it", ref)
 
     def test_W21_6_ship_merges_when_green_only_as_pre_authorized(self):
         ship = re.search(r"\*\*Ship:\*\*(.*?)(?=\*\*Stop:\*\*|$)", self.variants()).group(1)
@@ -258,11 +289,30 @@ class W22DeliveryRecord(unittest.TestCase):
         self.assertEqual(trace.returncode, 2)
         self.assertIn("1 contract errors", trace.stderr)
 
-    def test_W22_skill_close_out_names_the_delivery_record(self):
+    def test_W22_gate1_F2_record_step_runs_right_after_each_milestone_merge(self):
+        steps = numbered_items(gates_section())
+        merge = next(n for n, s in enumerate(steps) if "Squash-merge into `dev`" in s)
+        record = [n for n, s in enumerate(steps) if "delivery record" in s]
+        report = next(n for n, s in enumerate(steps) if "Send the checkpoint report" in s)
+        self.assertEqual(record, [merge + 1], "the record step is not the one right after the merge")
+        self.assertLess(record[0], report)
+        step = steps[record[0]]
+        for words in ("`grooming`", "the milestone PR", "the test command", "`backlog.py validate`",
+                      "`trace`", "under stop, after its gates pass",
+                      "(reference/mission-record.md#delivery-evidence-into-backlogjson)"):
+            with self.subTest(words=words):
+                self.assertIn(words, step)
+
+    def test_W22_gate1_F2_close_out_only_checks_the_records(self):
         close = flat(section(skill_text(), "## J5 Close out"))
-        self.assertIn("`grooming`", close)
-        self.assertIn("delivery record", close)
-        self.assertIn("(reference/mission-record.md#delivery-evidence-into-backlogjson)", close)
+        self.assertIn("check that every story or bug each milestone delivered has its delivery record", close)
+        self.assertNotIn("Before the report, record each", close)
+
+    def test_W22_gate1_F2_reference_records_after_each_merge_not_at_close_out(self):
+        body = flat(section(RECORD_REF.read_text(), "## Delivery evidence into backlog.json"))
+        self.assertIn("right after the milestone merges into `dev` (under stop, after its gates pass)", body)
+        self.assertNotIn("record each one at close-out", body)
+        self.assertIn("At close-out, only check", body)
 
 
 if __name__ == "__main__":

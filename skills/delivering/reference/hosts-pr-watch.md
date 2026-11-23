@@ -25,7 +25,7 @@ one and read its new lines, or run `--once` each time you check.
 | Line | Means |
 | --- | --- |
 | `check <name>: <conclusion>` | A check run completed, or a commit status left pending |
-| `review by <author>: <state>` | A review was submitted; draft reviews are skipped |
+| `review by <author>: <state>` | A review was submitted, or its state changed (an approval later dismissed prints `dismissed`); draft reviews are skipped |
 | `comment by <author>` | A new comment on the PR conversation |
 | `pr merged` or `pr closed` | The PR ended; the loop exits 0 |
 
@@ -33,7 +33,7 @@ one and read its new lines, or run `--once` each time you check.
   `~/.local/state/pr_watch/`) keeps the events already printed, so a resume prints nothing twice.
   It refuses a state file written for another PR.
 - Exit 0 after `--once` or when the PR ends; 1 with one `error: ...` line when `gh` is missing,
-  signed out or fails; 2 on a usage error. It does not retry a failed `gh` call: run it again.
+  cannot be run, is signed out or fails; 2 on a usage error. It does not retry a failed `gh` call: run it again.
 - A line is a signal, not evidence. Read the check, review or comment before acting. The watcher
   does not name the head commit, so confirm the checks belong to the candidate head:
   `gh pr view N --repo OWNER/NAME --json headRefOid,statusCheckRollup`.
@@ -64,6 +64,8 @@ gh pr merge <number> --repo OWNER/NAME --disable-auto
 gh pr view <number> --repo OWNER/NAME --json state,autoMergeRequest
 ```
 
-Expect `state` `OPEN` and `autoMergeRequest` `null`. This changes only the PR's auto-merge setting;
-the contract's choice of the stop variant covers it. Record it under Effects performed, and list
-the PR as ready, not merged, in the checkpoint report.
+Expect `state` `OPEN` and `autoMergeRequest` `null`. This changes only the PR's auto-merge
+setting. It is part of choosing stop, whether the contract names stop or stop is the default: an
+effect the stop variant needs, recorded under Effects performed. If the contract does not
+pre-authorize writes to the PR, skip both commands: leave the PR open and report that auto-merge
+was not checked. Either way, list the PR as ready, not merged, in the checkpoint report.

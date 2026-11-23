@@ -190,6 +190,14 @@ class Watch(unittest.TestCase):
                         comments=[{"id": "IC_9", "author": None, "body": "x"}]))
         self.assertEqual(self.lines(self.run_watch("--once")), ["comment by ghost"])
 
+    def test_W21_2_dismissed_review_prints_again_gate2_F12(self):
+        # gate 2 F12: a review printed as approved and later dismissed prints a second line.
+        self.fake_gh(pr(reviews=[review("PRR_1", "alice", "APPROVED")]),
+                     pr(reviews=[review("PRR_1", "alice", "DISMISSED")]))
+        self.assertEqual(self.lines(self.run_watch("--once")), ["review by alice: approved"])
+        self.assertEqual(self.lines(self.run_watch("--once")), ["review by alice: dismissed"])
+        self.assertEqual(self.run_watch("--once").stdout, "")
+
     # W21.3 merged or closed prints one line and exits 0
 
     def test_W21_3_merged_prints_one_line_and_exits_0(self):
@@ -231,6 +239,13 @@ class Watch(unittest.TestCase):
         self.assertEqual(self.lines(self.run_watch("--once")), ["pr merged"])
         again = self.run_watch("--interval", "0.01")
         self.assertEqual((again.returncode, again.stdout), (0, ""))
+
+    def test_W21_4_first_poll_with_no_events_writes_the_state_file_gate2_F7(self):
+        # gate 2 F7: the state file exists after a first poll that prints nothing.
+        self.fake_gh(pr(checks=[check_run("lint", status="IN_PROGRESS")]))
+        result = self.run_watch("--once")
+        self.assertEqual((result.returncode, result.stdout), (0, ""))
+        self.assertEqual(json.loads(self.state.read_text()), {"repo": "octo/widgets", "pr": 7, "seen": []})
 
     def test_W21_4_state_file_of_another_pr_is_refused(self):
         self.state.write_text(json.dumps({"repo": "octo/widgets", "pr": 8, "seen": []}))
@@ -279,7 +294,26 @@ class Watch(unittest.TestCase):
     def test_W21_5_signed_out_gh(self):
         self.fake_gh({"code": 4, "stderr": "To get started with GitHub CLI, please run:  gh auth login\n"
                                            "Alternatively, populate the GH_TOKEN environment variable.\n"})
-        self.assert_one_error(self.run_watch("--once"), "gh auth login")
+        self.assert_one_error(self.run_watch("--once"), "error: gh is not signed in; run gh auth login")
+
+    def test_W21_5_signed_out_message_names_gh_auth_login_gate2_F8(self):
+        # gate 2 F8: gh's own text here does not say "gh auth login"; the script's line must.
+        self.fake_gh({"code": 1, "stderr": "HTTP 401: Bad credentials (https://api.github.com/graphql)\n"})
+        self.assert_one_error(self.run_watch("--once"), "error: gh is not signed in; run gh auth login",
+                              "Bad credentials")
+
+    def test_W21_5_gh_without_execute_bit_gate1_F8_gate2_F11(self):
+        # gate 1 F8, gate 2 F11: the only gh on PATH cannot be executed (PermissionError).
+        self.fake_gh(pr())
+        (self.bin / "gh").chmod(0o644)
+        self.assert_one_error(self.run_watch("--once", path=str(self.bin)), "error: cannot run gh:")
+
+    def test_W21_5_gh_that_is_not_a_program_gate1_F8_gate2_F11(self):
+        # Any other OSError, here "Exec format error": executable bit set, no interpreter line.
+        gh = self.bin / "gh"
+        gh.write_bytes(b"\x00\x01 not a program\n")
+        gh.chmod(0o755)
+        self.assert_one_error(self.run_watch("--once", path=str(self.bin)), "error: cannot run gh:")
 
     def test_W21_5_signed_out_gh_in_loop_mode(self):
         self.fake_gh({"code": 1, "stderr": "HTTP 401: Bad credentials (https://api.github.com/graphql)\n"

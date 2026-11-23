@@ -50,9 +50,11 @@ Both gates run it. `<ic>` below is that skill's directory.
    after every round, and fix the ledger until it prints `pass`.
 3. **Bind the verdict.** Run `review_ledger.py verdict` with `--ledger ledger.json`; it prints
    the patch ID with the verdict. A verdict on another patch ID is stale: it counts as no review,
-   so review the candidate again. This skill binds more tightly than the patch ID: a new head
-   lapses both gates even when a clean rebase keeps the patch ID, because the evidence binds to
-   the head. The gate fails on an open Blocker or Major inside the case list or the milestone's
+   so review the candidate again. A repair changes the patch ID, so both gates run again. A
+   rebase that keeps the patch ID keeps the gates' verdicts, because they bind to the patch ID;
+   the tests and CI run again on the new head, and its evidence lines are recorded again. With
+   `mission-control`, the new head is a new candidate: record the kept reviews for it with
+   `mission_update` `review`, citing the unchanged patch ID. The gate fails on an open Blocker or Major inside the case list or the milestone's
    criteria. One outside them is filed (see "Both ways") and named in the review record, even when
    it makes the ledger verdict `changes needed`.
 4. **Gate 2 runs the lowered-bar check** on the whole candidate diff (gate 1 runs it too when the
@@ -94,8 +96,11 @@ finding unless it has an accepted reason. Report what the manual review did not 
 - **Gate 2** is a second independent review of the same head, after gate 1 passed on it. It checks
   that gate 1's findings are closed, looks for problems the repairs introduced, and holds the drift
   check and the refreshed defense in its record.
-- Bind both reviews and the evidence to the exact head and base. A new head voids them; the failed
-  round counts stay. High risk means independent reviewers and the full case list.
+- Bind both reviews to the patch ID, and the evidence to the exact head and base. A repair
+  changes the patch ID and voids both reviews; the failed round counts stay. A rebase that keeps
+  the patch ID keeps the gates' verdicts, but the checks run again on the new head. A manual
+  review has no patch-bound verdict, so any new head voids it. High risk means independent
+  reviewers and the full case list.
 - Independent means another context able to challenge the work; a different model brand is neither
   needed nor enough. Self-review is not a fresh review.
 

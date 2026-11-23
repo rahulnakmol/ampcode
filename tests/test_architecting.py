@@ -159,7 +159,11 @@ class Designs(unittest.TestCase):
         # D-4: the target part, before its condition, needs its own unit.
         for target in ("p95 under 300 at 50 req/s", "p95 under 300 when 10,000 users are active",
                        "p95 under 300 under load of 50 req/s", "p95 under 300 with 10,000 tenants",
-                       "At 50 req/s, p95 under 300"):
+                       "At 50 req/s, p95 under 300",
+                       # Gate 1 F4: for, per, across and over before a load or scope.
+                       "p95 under 300 for 50 req/s", "p95 under 300 for a load of 50 req/s",
+                       "p95 under 300 per 1,000 requests", "p95 under 300 across 10,000 tenants",
+                       "p95 under 300 over 200 connections"):
             with self.subTest(target=target):
                 text = replace("p95 under 300 ms at 50 req/s", target)
                 self.assertEqual(rules(text), ["D2"])
@@ -167,7 +171,10 @@ class Designs(unittest.TestCase):
         for target in ("p95 under 300 ms at 50 req/s", "p95 at most 300 ms at 50 req/s",
                        "At 50 req/s, p95 under 300 ms", "p95 under 300 ms at 200 req/s with 10,000 tenants",
                        "p95 under 300 ms under load of 50 req/s",
-                       "Recall at 10 of at least 90 % on the evaluation set, for the current index"):
+                       "Recall at 10 of at least 90 % on the evaluation set, for the current index",
+                       # Gate 1 F4: before a time, these words state the target, not a load.
+                       "Backups kept for 30 days", "Error budget under 0.1 % over 30 days",
+                       "p95 under 300 ms for 50 req/s", "500 req/s sustained for 30 min"):
             with self.subTest(target=target):
                 self.assertEqual(design_check.check(replace("p95 under 300 ms at 50 req/s", target)), [])
 
@@ -300,6 +307,19 @@ class SkillText(unittest.TestCase):
         self.assertIn("threat-modelling", text)
         for word in ("actors", "trust boundaries", "abuse cases", "mitigation", "owner"):
             self.assertIn(word, text)
+
+    def test_every_catalogue_target_passes_d1_and_d2(self):
+        # M5 gate repair: the catalogue's WCAG row failed D2, so an agent copying it would fail the check.
+        rows = [l for l in (SKILL / "reference" / "nfr-catalogue.md").read_text().splitlines()
+                if l.startswith("|") and re.search(r"\d", l.split("|")[2])
+                and not re.match(r"\|\s*(Quality|-)", l)]
+        self.assertGreater(len(rows), 10)
+        for row in rows:
+            target = row.split("|")[2].strip()
+            text = replace("| NFR-1 | Latency | p95 under 300 ms at 50 req/s |",
+                           f"| NFR-1 | Latency | {target} |")
+            with self.subTest(target=target):
+                self.assertEqual([r for r in rules(text) if r.startswith(("D1", "D2"))], [])
 
     def test_d1_a_scope_is_the_condition_of_a_zero_findings_target(self):
         # D-1, eval round 3 finding 1: the catalogue's isolation example uses a scope, not a load.

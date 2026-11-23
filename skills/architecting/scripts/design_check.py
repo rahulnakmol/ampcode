@@ -12,7 +12,8 @@ unreadable file. Standard library only. The format, the rules and the accepted u
   D1  an NFR target has no number
   D2  an NFR target has no number followed by an accepted unit outside its condition (a condition
       runs from "at", "when", "while", "with", "during", "given" or "under ... load" to its first
-      number and unit): "p95 under 300 at 50 req/s" fails, "p95 under 300 ms at 50 req/s" passes
+      number and unit, or from "for", "per", "across" or "over" to a rate or count, as in "for
+      50 req/s"): "p95 under 300 at 50 req/s" fails, "p95 under 300 ms at 50 req/s" passes
   D3  an NFR has no verification test (empty, or only placeholder words such as TBD, n/a, later)
   D4  an ADR lists fewer than two options (top-level items under Options; nested bullets do not count)
   D5  an ADR has no valid Status, no Decision or no Consequences
@@ -34,16 +35,20 @@ from pathlib import Path
 REQUIRED = ("Context", "Containers", "Decisions", "Non-functional requirements")
 NFR_HEADER = ("id", "quality", "target", "verification")
 STATUSES = ("proposed", "accepted", "rejected", "deprecated", "superseded")
-UNITS = (
-    # time
-    "ms", "s", "sec", "seconds", "min", "minutes", "h", "hours", "d", "days", "weeks", "months", "years",
-    # share
-    "%",
+# Rates and counts: the units of a load or a scope ("for 50 req/s", "across 10,000 tenants").
+LOAD_UNITS = (
     # rate
     "req/s", "req/min", "rps", "rpm", "qps", "tps", "msg/s", "events/s", "errors/min", "errors/h",
     # count
     "users", "sessions", "tenants", "connections", "requests", "messages", "events", "records", "rows",
     "items", "files", "violations", "incidents", "findings", "defects",
+)
+UNITS = (
+    # time
+    "ms", "s", "sec", "seconds", "min", "minutes", "h", "hours", "d", "days", "weeks", "months", "years",
+    # share
+    "%",
+    *LOAD_UNITS,
     # size and bandwidth
     "KB", "MB", "GB", "TB", "PB", "KiB", "MiB", "GiB", "TiB", "Mbps", "Gbps", "MB/s", "GB/s",
     # money
@@ -51,8 +56,14 @@ UNITS = (
 )
 NUMBER = r"(?<![\w.])\d[\d,]*(?:\.\d+)?"
 MULTIPLIER = r"(?:\s*(?:k|thousand|million|billion))?"
-UNIT = "|".join(re.escape(u) for u in sorted(UNITS, key=len, reverse=True))
-MEASURE = re.compile(rf"{NUMBER}{MULTIPLIER}\s*(?:{UNIT})(?![A-Za-z0-9])", re.I)
+
+
+def measure(units):
+    alternatives = "|".join(re.escape(u) for u in sorted(units, key=len, reverse=True))
+    return rf"{NUMBER}{MULTIPLIER}\s*(?:{alternatives})(?![A-Za-z0-9])"
+
+
+MEASURE = re.compile(measure(UNITS), re.I)
 EMPTY = re.compile(r"(?:<[^<>]*>)?")
 PLACEHOLDERS = ("tbd", "todo", "tbc", "na", "none", "later", "notyet", "pending")
 LINK = re.compile(r"https?://\S+|\]\([^()\s]+\)|^[^\s<>]+[./][^\s<>]+$")
@@ -60,9 +71,12 @@ FIELD = re.compile(r"^\*{0,2}(Status|Options|Decision|Consequences):\*{0,2}[ \t]
 ITEM = re.compile(r"^([ \t]*)(?:[-*+]|\d+[.)])[ \t]+\S")
 SEPARATOR = re.compile(r"^\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-*:?\s*$")
 # A condition runs from its word to its first number, which carries a unit: "at 50 req/s",
-# "when 10,000 users". "Recall at 10" is no condition, because 10 has no unit.
-CONDITION = re.compile(r"\b(?:at(?!\s+(?:most|least)\b)|when|while|with|during|given|under\s+(?:\w+\s+)?load)\b"
-                       r"[^,;\d]*?" + MEASURE.pattern, re.I)
+# "when 10,000 users". "Recall at 10" is no condition, because 10 has no unit. "for", "per",
+# "across" and "over" start one only before a load or scope unit: "for 50 req/s" is a condition,
+# "kept for 30 days" is the target.
+CONDITION = re.compile(r"\b(?:(?:at(?!\s+(?:most|least)\b)|when|while|with|during|given|under\s+(?:\w+\s+)?load)\b"
+                       r"[^,;\d]*?" + MEASURE.pattern +
+                       r"|(?:for|per|across|over)\b[^,;\d]*?" + measure(LOAD_UNITS) + ")", re.I)
 # An NFR line starts with an NFR ID, after any table bar, list marker, heading mark or emphasis.
 NFR_LINE = re.compile(r"^[\s|>#*_+`-]*(?:\d+[.)]\s+)?[*_`]*NFR-\d+\b")
 

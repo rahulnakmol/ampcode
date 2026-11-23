@@ -15,8 +15,10 @@ and prints one line on standard output for each event it has not printed before:
   check <name>: <conclusion>      a check run completed (success, failure, cancelled ...) or a
                                   commit status left pending (success, failure, error)
   review by <author>: <state>     a review was submitted (approved, changes_requested,
-                                  commented, dismissed). Inline review comments arrive with
-                                  their review; gh pr view does not list them one by one.
+                                  commented, dismissed). A review whose state changes, such
+                                  as an approval later dismissed, prints again. Inline review
+                                  comments arrive with their review; gh pr view does not list
+                                  them one by one.
   comment by <author>             a new comment on the pull request conversation
   pr merged | pr closed           the pull request is merged or closed; the script exits 0
 
@@ -27,12 +29,14 @@ The state file keeps the events already printed, so a restart prints nothing twi
 $XDG_STATE_HOME/pr_watch/OWNER-NAME-N.json, or ~/.local/state/pr_watch/OWNER-NAME-N.json. The
 script refuses a state file written for another repository or pull request. It writes the
 file after it prints a poll's lines: if it is killed between the two, those lines can print
-again once.
+again once. A state file written before reviews were keyed by their state prints each review
+once more.
 
 Exit codes: 0 when the pull request is merged or closed, or after --once; 1 with one line
-"error: ..." on standard error when gh is missing, signed out or fails, gh returns bad JSON,
-or the state file cannot be read or written; 2 on a usage error; 130 on Ctrl-C. The script
-does not retry a failed gh call: run it again, and the state file keeps it from repeating.
+"error: ..." on standard error when gh is missing, cannot be run, is signed out or fails, gh
+returns bad JSON, or the state file cannot be read or written; 2 on a usage error; 130 on
+Ctrl-C. The script does not retry a failed gh call: run it again, and the state file keeps it
+from repeating.
 Standard library only.
 """
 
@@ -71,6 +75,8 @@ def poll(repo, pr):
         done = subprocess.run(command, capture_output=True, text=True)
     except FileNotFoundError:
         raise Failure("gh not found on PATH; install GitHub CLI from https://cli.github.com")
+    except OSError as error:
+        raise Failure(f"cannot run gh: {error.strerror or error}")
     if done.returncode != 0:
         said = " ".join(line.strip() for line in done.stderr.splitlines() if line.strip())
         if AUTH.search(said):
@@ -102,7 +108,7 @@ def events(data):
                           f"check {name}: {conclusion}"))
     for review in data.get("reviews") or []:
         if review.get("state") != "PENDING":
-            found.append((f"review:{review.get('id')}",
+            found.append((f"review:{review.get('id')}:{review.get('state')}",
                           f"review by {author(review)}: {(review.get('state') or 'unknown').lower()}"))
     for comment in data.get("comments") or []:
         found.append((f"comment:{comment.get('id')}", f"comment by {author(comment)}"))

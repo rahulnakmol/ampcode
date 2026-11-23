@@ -577,7 +577,7 @@ def report_comment(data, base, today, tracker="github"):
     return f"{REPORT_MARKER}\n_{STATUS}, updated {today}. Edits here are overwritten._\n\n{text}"
 
 
-SIGNS_OFF = re.compile(r"\bSigns off:\s*([^,;.\n]+)", re.I)
+SIGNS_OFF = re.compile(r"\bSigns off:\s*([^,;\n]+)", re.I)
 
 
 def _person(name):
@@ -585,17 +585,45 @@ def _person(name):
     return " ".join(re.sub(r"\s*\([^)]*\)\s*$", "", str(name)).lower().split())
 
 
+def approvers_named(data, name):
+    """The listed approvers with this name, with or without their '(role)', in any case."""
+    key = " ".join(name.lower().split())
+    return [a for a in data.get("approvers", []) if a.get("name") and key
+            and key in (" ".join(a["name"].lower().split()), _person(a["name"]))]
+
+
 def find_approver(data, name):
-    """The listed approver with this name, with or without their '(role)'; None if not one."""
-    found = [a for a in data.get("approvers", []) if a.get("name") and name.strip()
-             and " ".join(name.lower().split()) in (" ".join(a["name"].lower().split()), _person(a["name"]))]
+    """The one listed approver with this name; None if there is none or more than one."""
+    found = approvers_named(data, name)
     return found[0] if len(found) == 1 else None
+
+
+def _signer_note(item):
+    """(approver name candidates, the name as written) from 'Signs off: …', or None. The name ends
+    at ',' ';' or a line break; a sentence after '. ' is tried off, so 'Dr. Elena' stays whole."""
+    match = SIGNS_OFF.search(item.get("notes") or "")
+    if not match:
+        return None
+    text = match.group(1).strip().rstrip(".")
+    parts = text.split(". ")
+    return [". ".join(parts[:n]) for n in range(len(parts), 0, -1)], text
 
 
 def named_signer(data, item):
     """The approver a feature's notes name ("Signs off: Elena Petrova, due 30 May"), else None."""
-    match = SIGNS_OFF.search(item.get("notes") or "")
-    return find_approver(data, match.group(1)) if match else None
+    note = _signer_note(item)
+    return next((a for a in (find_approver(data, c) for c in note[0]) if a), None) if note else None
+
+
+def signer_warnings(data):
+    """One line per feature whose 'Signs off:' note names no single listed approver."""
+    lines = []
+    for item in sorted((i for i in data["items"] if i["type"] == "feature"), key=lambda i: backlog.id_key(i["id"])):
+        note = _signer_note(item)
+        if note and not named_signer(data, item):
+            lines.append(f"warning: {item['id']} notes say 'Signs off: {note[1][:60]}', which is not exactly one listed "
+                         "approver; the status comment shows 'any listed approver'")
+    return lines
 
 
 def signoff_fingerprint(data, item, base):
@@ -609,9 +637,12 @@ def record_signoff(data, base, iid, by, source):
     item = backlog.items_by_id(data).get(iid)
     if not item or item.get("type") not in ("initiative", "feature"):
         raise RuntimeError(f"{iid} is not an initiative or feature in this file; only those have a sign-off gate")
-    approver = find_approver(data, by or "")
-    if not approver:
+    found = approvers_named(data, by or "")
+    if len(found) > 1:
+        raise RuntimeError(f"{by!r} matches {len(found)} listed approvers; use the full name with the role: {[a['name'] for a in found]}")
+    if not found:
         raise RuntimeError(f"{by!r} is not a listed approver; use a name from 'approvers': {[a['name'] for a in data.get('approvers', [])]}")
+    approver = found[0]
     if not (source or "").strip():
         raise RuntimeError("record-signoff needs --source: the email or document where the approver signed")
     entry = {"tracker": "written", "by": approver["name"], "at": now(), "source": source.strip(),
@@ -1371,6 +1402,9 @@ def main(argv=None, prog=None):
             print(f"wrote {args.out}")
             return 0
         data = _load_valid(args.file)
+        if args.action in ("plan", "report"):
+            for line in signer_warnings(data):
+                print(line, file=sys.stderr)
         if args.adapter in ("azure", "linear"):
             return _run_tracker(args, data, base)
         gh = GitHub(args.repo)

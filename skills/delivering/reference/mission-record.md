@@ -135,12 +135,14 @@ usable handoff. If the record lives only locally, say so in the handoff.
 
 ## Delivery evidence into backlog.json
 
-When a milestone delivers stories or bugs from a `grooming` backlog, record each one at close-out
-with `grooming`'s delivery record: `{ at, evidence, criteria }`, as its `reference/contract.md`
-says. Do not change that format. Only a `ready` item takes a record.
+When a milestone delivers stories or bugs from a `grooming` backlog, record each one right after
+the milestone merges into `dev` (under stop, after its gates pass), so `backlog.py trace` and
+`steering`'s forecast count it as delivered from then on. Use `grooming`'s delivery record:
+`{ at, evidence, criteria }`, as its `reference/contract.md` says. Do not change that format. Only
+a `ready` item takes a record.
 
 1. For each acceptance criterion of the item, decide `met` or `not met` from the evidence: the
-   test that proves it and the merged PR. A green PR is not a met criterion on its own. List every
+   test that proves it and the milestone PR. A green PR is not a met criterion on its own. List every
    criterion; a partial delivery stays visible.
 2. Set the variables. `<grooming>` is the `grooming` skill's directory.
 
@@ -181,6 +183,10 @@ says. Do not change that format. Only a `ready` item takes a record.
    met`. `trace` exits 1 while other gaps remain, such as features not yet signed off; those are
    not this step's to close.
 
-5. List each record in the close-out report under `Criteria and evidence`. The backlog file is
-   local; copying the records to a tracker with `syncing` is an outside effect, done only when the
-   contract pre-authorizes it.
+5. List each record in the checkpoint report under `Done`. The backlog file is local; copying the
+   records to a tracker with `syncing` is an outside effect, done only when the contract
+   pre-authorizes it.
+
+At close-out, only check: every story or bug each milestone delivered has a record, and `trace`
+shows it. Record a missing one with the steps above, and list the records under `Criteria and
+evidence`.

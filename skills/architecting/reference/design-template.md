@@ -43,7 +43,9 @@ Do not use Mermaid: the check rejects a `mermaid` code fence (D9).
 
 A target passes D2 when a number is followed by an accepted unit outside its condition. The
 condition runs from `at`, `when`, `while`, `with`, `during`, `given` or `under ... load` to its
-first number and unit, as in "at 50 req/s" or "when 10,000 users". `at most`, `at least` and a
+first number and unit, as in "at 50 req/s" or "when 10,000 users". `for`, `per`, `across` and
+`over` start a condition only before a rate or a count (a load or scope), as in "for 50 req/s"
+or "across 10,000 tenants"; "kept for 30 days" stays the target. `at most`, `at least` and a
 number with no unit ("Recall at 10") do not start a condition. So "p95 under 300 at 50 req/s"
 fails: its only unit belongs to the condition. "p95 under 300 ms at 50 req/s" passes.
 A thousands separator and a multiplier are allowed: `10,000 users`, `10k users`, `1.5 s`,

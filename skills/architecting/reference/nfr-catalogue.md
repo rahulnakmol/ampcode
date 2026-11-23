@@ -39,7 +39,7 @@ the workload, the user's objectives and the cost limit, and say where the number
 | Authentication and sessions | Session tokens expire after 60 min of inactivity, for every client type | Automated integration test in CI with a clock skew; configuration check in CI on each change |
 | Privacy and deletion | A deletion request removed from stores, indexes and caches within 30 days of the request | End-to-end test in staging before each release: delete a seeded subject, search every store and index |
 | Audit | Audit records kept 7 years; 0 gaps in sequence per day | Retention policy test in CI on each change; daily gap check on the production audit log |
-| Accessibility | 0 critical violations against WCAG 2.2 AA on key journeys, at 320 px and 1280 px widths | Automated axe run in CI on each change plus a manual screen-reader pass in staging per release |
+| Accessibility | 0 violations of critical severity against WCAG 2.2 AA on key journeys, at 320 px and 1280 px widths | Automated axe run in CI on each change plus a manual screen-reader pass in staging per release |
 | Mobile start and stability | Cold start under 2 s on a mid-range device; 99.5 % crash-free sessions each week | Device-lab test per release; crash reporting in production |
 | Offline sync | Changes made offline sync within 60 s of reconnect, 0 lost records, after up to 24 h offline | Automated test on an emulator in CI toggling the network, on each change |
 | Deployability | Deploy to production in under 15 min; rollback in under 10 min, for a normal release | Timed production pipeline runs on each release; a rollback drill in staging each quarter |

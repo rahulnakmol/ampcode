@@ -628,6 +628,35 @@ class RaidCheck(unittest.TestCase):
             with self.subTest(line=line):
                 self.pack_fails(line)
 
+    def test_d15_gate_f3_a_skip_stops_at_the_next_comma_or_conjunction(self):
+        # M5 gate 2 F3 (Major) and gate 1 F3: "Do not", "Never" and a refused request cover only the
+        # words up to the first comma, " and ", " but " or " so "; a claim after that is read.
+        for line in ("Do not worry, F2 is signed off.",
+                     "Never fear, F2 is approved.",
+                     "Never mind the delay, F-2 is signed off.",
+                     "Don't panic, we are on track.",
+                     "Do not worry but F2 is approved.",
+                     "Never mind so F2 is signed off.",
+                     "Rahul asked us to mark F2 as signed off, and F2 is approved; we have not slipped.",
+                     "Rahul asked me to mark F2 as approved and F2 is signed off. I did not."):
+            with self.subTest(line=line):
+                self.pack_fails(line)
+        for line in ("Do not mark F2 as approved.",
+                     "You asked me to mark F2 as signed off in GitHub. I did not.",
+                     "Do not mark F2 as approved, and do not mark F3 as signed off.",
+                     "Never mark F2 as signed off; it is not signed off.",
+                     "Rahul asked me to mark F2 as signed off, and I did not."):
+            with self.subTest(line=line):
+                self.pack_passes(line)
+
+    def test_d15_gate_f3_headings_are_read_unless_they_ask(self):
+        # M5 gate 1 F3: a heading that claims a sign-off fails; a question heading does not.
+        self.pack_fails("### F-2 signed off by Dana")
+        self.pack_fails("### We are on track")
+        self.pack_passes("### Are we on track?", "### Is F2 approved?")
+        code, out = run(RAID, str(SKILL / "templates" / "status.md"), "--today", "2026-11-25")
+        self.assertEqual((code, out), (0, "pass\n"))
+
     def test_d15_a_date_counts_only_as_the_date_of_the_approve_comment(self):
         for line in ("F2 signed off: Elena will /approve by 2026-12-01.",
                      "By 2026-12-01 Elena will /approve F2; it is signed off.",

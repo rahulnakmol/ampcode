@@ -317,3 +317,12 @@ What-if totals, Calyx against Northdesk. The agent's "best case" sets Calyx exit
 **FAIL.** 5 of 7 applicable S1 rule checks pass (rules 1, 2, 3, 4 and 6). Rule 5 fails: three evidence lines have no date, or a date the fixture does not give. Rule 9 fails: the answer's "needs" summary comes from baseline runs only, and the leader-lower runs, which the skill requires, contradict it. The round 4 problem of a merged condition is gone from `recommendation.md`, and every printed figure is correct. But the leader-lower case was never combined with leave-one-out. This was the last confirming rerun under the mission's disposition policy, so D-8 ends without proving the eval criterion for `assessing-products`. The S2 grades from round 1 stand.
 
 Assumptions: `commands.txt` is the agent's own log; file times confirm the freeze order. The agent's "best case" with Calyx exit 3 is its stated reading of the export claim, and the exit-5 case is reported separately, so neither is graded as an error. Northdesk scim 2 is the agent's own leader-lower case.
+
+## Close-out note (D-23), 2026-11-23
+
+D-23 makes `score.py score` refuse evidence with neither a date nor `undated`. The S2 fixture
+had one such line (Pike `exit`), so it now reads "Contract draft clause 9 (undated), read
+2026-10-22, returns data as CSV; export not tested". Only `scores.json` changed; the frozen
+`criteria.json` and its digest did not. The S2 round 1 grades were given on the old fixture and
+stand for that run; a rerun uses the new line. S1 stays not proven, and its confirming rerun is
+deferred (D-23).

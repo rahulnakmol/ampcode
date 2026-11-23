@@ -29,6 +29,12 @@ BANNED = (
     "high-risk merge", "owner merge acknowledgment",
 )
 LIMIT = 1024
+# Common "-ing" words that are not gerunds (A1).
+NOT_GERUNDS = {
+    "thing", "nothing", "something", "anything", "everything", "morning", "evening", "during",
+    "ceiling", "string", "spring", "king", "ring", "wing", "bring", "sing", "ping", "ding", "sling",
+    "swing", "sting", "cling", "fling", "wring", "sibling",
+}
 
 
 def frontmatter(text):
@@ -56,10 +62,11 @@ def problems(name, root=ROOT, item=False):
     meta = frontmatter(text)
 
     # A1: name, directory and description. A gerund word ends in "ing" with a vowel (or y) before
-    # it, so "modelling" counts and "string", "thing" or "king" do not.
+    # it and is not in NOT_GERUNDS, so "modelling" counts and "string" or "morning" do not. This
+    # reads spelling, not grammar: an "-ing" noun missing from the list still passes.
     words = (meta.get("name") or "").split("-")
     if meta.get("name") != name or not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", name) \
-            or not any(re.fullmatch(r"\w*[aeiouy]\w*ing", w) for w in words):
+            or not any(re.fullmatch(r"\w*[aeiouy]\w*ing", w) and w not in NOT_GERUNDS for w in words):
         out.append(f"A1: name {meta.get('name')!r} must be a lowercase gerund equal to {name!r}")
     description = meta.get("description", "")
     if not description or len(description) > LIMIT:
@@ -189,6 +196,24 @@ class Rules(unittest.TestCase):
         for name in ("threat-modelling", "steering", "interrogating-changes", "sampling-things"):
             with self.subTest(name=name):
                 self.assertEqual(self.rules(name=name), [])
+
+    def test_d5_f5_common_ing_nouns_are_not_gerunds(self):
+        # Gate 1 F5: words with a vowel before "ing" that are still not gerunds.
+        for name in ("nothing-tools", "morning-report", "evening-digest", "during-release",
+                     "ceiling-checks", "sibling-repos", "something-useful"):
+            with self.subTest(name=name):
+                self.assertEqual(self.rules(name=name), ["A1"])
+        # A deny-listed word does not hide a real gerund in the same name.
+        self.assertEqual(self.rules(name="tracking-everything"), [])
+
+    def test_d5_f5_every_current_skill_name_passes(self):
+        # Every skill with an "-ing" word in its name ("distill" has none, and never passed A1).
+        names = sorted(p.parent.name for p in (ROOT / "skills").glob("*/SKILL.md")
+                       if any(w.endswith("ing") for w in p.parent.name.split("-")))
+        self.assertIn("threat-modelling", names)
+        for name in names:
+            with self.subTest(name=name):
+                self.assertEqual([p for p in problems(name, item=True) if "lowercase gerund" in p], [])
 
     def test_a3_missing_section(self):
         self.assertEqual(self.rules(skill=GOOD.replace("## Red flags\n", "")), ["A3"])

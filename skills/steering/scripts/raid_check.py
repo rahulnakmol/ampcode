@@ -20,10 +20,11 @@ Rules:
               evidence on the same line (a date, a percentile or a percentage); one that says
               "signed" (off) or "approved" cites its source (the /approve comment's #issuecomment
               link, /approve with its own date such as "/approve on 2026-11-24", or a written:
-              ledger row) or says "claimed". "not ..." passes; so does a clause that starts "Do
-              not" or "Never", and a request ("asked me to mark F2 as signed off") that a later
-              clause refuses ("I did not"). Headings, fenced code and table header rows are
-              skipped; table body rows are read
+              ledger row) or says "claimed". "not ..." passes; so do the words after "Do not" or
+              "Never", and a request ("asked me to mark F2 as signed off") that a later clause
+              refuses ("I did not"), each only up to the next comma, " and ", " but " or " so ".
+              Fenced code, table header rows and headings that end with "?" are skipped; other
+              headings and table body rows are read
   format      in a log: only the four sections, each once, each with one table with the template's
               columns and no table line outside it; known states and outcomes; unique IDs. In a
               status file: only "## Status" (once) and "## Full pack". Something to check in
@@ -65,6 +66,7 @@ APPROVE_DATED = re.compile(
     rf"/approve\b(?:\s+comment)?(?:\s+(?:on|of|dated|at)\s+|\s*[,:(]?\s*){DATE}"
     rf"|{DATE}\s*\((?:[\w-]+\s+)?/approve\b", re.I)
 CLAUSE = re.compile(r"[^.;:!?]+[.;:!?]*")
+PIECE = re.compile(r",|\s(?:and|but|so)\s", re.I)  # a skip ends at the first of these
 DO_NOT = re.compile(r"^(?:please\s+)?(?:do\s+not|don't|never)\b", re.I)
 REQUEST = re.compile(r"\b(?:asked|asks|wants|wanted|told)\s+(?:me|us)\s+to\b", re.I)
 REFUSAL = re.compile(r"^(?:I|we)\s+(?:did\s+not|didn't|have\s+not|haven't|will\s+not|won't)\b", re.I)
@@ -216,28 +218,32 @@ def sourced(line):
 
 
 def claims_in(line):
-    """Overclaim words the line asserts. A clause that starts "Do not" or "Never" asserts none, and
-    neither does a reported request ("asked me to ...") that a later clause refuses ("I did not")."""
-    clauses = [c.strip() for c in CLAUSE.findall(line)]
+    """Overclaim words the line asserts. The line is cut into clauses (at . ; : ! ?) and each clause
+    into pieces (at a comma, " and ", " but ", " so "). A piece that starts "Do not" or "Never"
+    asserts nothing, and neither does a piece with a reported request ("asked me to ...") when a
+    later piece refuses it ("I did not"). Each skip covers its own piece only."""
+    pieces = [p.strip() for c in CLAUSE.findall(line) for p in PIECE.split(c) if p.strip()]
     found = []
-    for i, clause in enumerate(clauses):
-        if DO_NOT.match(clause):
+    for i, piece in enumerate(pieces):
+        if DO_NOT.match(piece):
             continue
-        if REQUEST.search(clause) and any(REFUSAL.match(c) for c in clauses[i + 1:]):
+        if REQUEST.search(piece) and any(REFUSAL.match(p) for p in pieces[i + 1:]):
             continue
-        found += [m.group(1) for m in OVERCLAIM.finditer(clause) if not NEGATED.search(clause[:m.start()])]
+        found += [m.group(1) for m in OVERCLAIM.finditer(piece) if not NEGATED.search(piece[:m.start()])]
     return found
 
 
 def prose(lines, first):
-    """(line number, line) for prose: no headings, fenced code, or table header and separator rows."""
+    """(line number, line) to read: no fenced code, table header or separator rows, or question
+    headings ("### Are we on track?"). Other headings and table body rows are read."""
     fenced = False
     for i, line in enumerate(lines):
         if FENCE.match(line):
             fenced = not fenced
             continue
         following = lines[i + 1].strip() if i + 1 < len(lines) else ""
-        if fenced or HEADING.match(line) or SEPARATOR.match(line.strip()) or (
+        question = HEADING.match(line) and line.rstrip().endswith("?")
+        if fenced or question or SEPARATOR.match(line.strip()) or (
                 line.strip().startswith("|") and SEPARATOR.match(following)):
             continue
         yield first + i, line
