@@ -65,9 +65,12 @@ Read [reference/mission-record.md](reference/mission-record.md) when starting or
 6. **Run the readiness preflight** on the repository, CI, credentials and every outside target:
    push access, `dev` exists, branch protection is readable (name a 403), required checks are
    pinned and green on `dev`, the child-thread tools exist, and each deploy, publish or tracker
-   target is reachable. Resolve each failure, or turn it into an open question or an effect, while
-   preparing the baseline, never mid-build. With the plugin, `mission_preflight` binds the result
-   to the contract; kickoff is refused without a passing preflight on the current contract.
+   target is reachable. Kickoff waits for a passing preflight, so resolve each failed check while
+   preparing the baseline, asking the owner then if only they can fix it (a 403 needs a plan or
+   admin access); never fold it into the kickoff ask or leave it for mid-build. Turn other gaps,
+   such as a target that needs its own approval, into an open question or an effect. With the
+   plugin, `mission_preflight` binds the result to the contract; kickoff is refused without a
+   passing preflight on the current contract.
 7. **Write one contract** (fields in [reference/mission-record.md](reference/mission-record.md)):
    outcome, scope, spec, design, UX links, defense, the **closed case list** that bounds adversarial
    review, **open questions, each with a default**, **effects, each pre-authorized or not with its

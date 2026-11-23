@@ -32,10 +32,10 @@ records and publishes the brief for the owner. It takes no effects action.
 ## 2. Kickoff: one approval for the whole baseline
 
 The baseline is the charter, the success criteria, the first design or plan, and the milestones.
-First run a readiness preflight on every outside target the mission needs (repository, CI,
-credentials, trackers, deploy targets); turn each gap into an open question or an effect. The
-owner then approves once, from one brief showing the baseline, every open question with its
-default and every effect. Reviewers grade against these criteria, not the author's.
+First run a readiness preflight on every outside target (repository, CI, credentials, trackers,
+deploy targets). Resolve a failed check before the kickoff ask; turn other gaps into an open
+question or an effect. The owner then approves once, from one brief showing the baseline, every
+open question with its default and every effect. Reviewers grade against these criteria, not the author's.
 
 ## 3. Run the playbook
 
