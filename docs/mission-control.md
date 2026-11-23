@@ -363,10 +363,11 @@ verifiable authentication receipts.
   and no dialog, and only after kickoff is approved on the current contract.
 - A listed effect that is not pre-authorized, or an effect that is not in the contract
   (`{ effect, why }`), opens the effect dialog. Perform it only after the owner approves it.
-- Milestone merges into `dev` happen through `mission_merge`, not `mission_effect`, but the
-  contract must list them as a pre-authorized effect for the milestones to merge: in
-  `delivering`, that entry chooses the ship variant, and without it the mission merges nothing
-  and leaves each milestone PR open.
+- Milestone merges into `dev` happen through `mission_merge`, not `mission_effect`. With
+  mission-control, keep a pre-authorized effect for the merges in the contract. The plugin does
+  not check that entry itself, but it accepts the next milestone's candidate only after the
+  earlier milestone merged. Without the entry, `delivering` merges nothing, so the mission stops
+  after the first milestone's gates and leaves that PR open.
 
 ## Milestones, reviews and merges
 
