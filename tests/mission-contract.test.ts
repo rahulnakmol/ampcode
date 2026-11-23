@@ -67,8 +67,8 @@ const clone = () => structuredClone(contract) as any
 const isApproved = (r: ContractRecord) => r.approval?.digest === approvalDigest(r.contract)
 const itemOf = (r: ContractRecord, id: string) => r.items.find(i => i.id === id)!
 const milestoneOf = (r: ContractRecord, id: string) => r.milestones.find(m => m.id === id)!
-function approved(c: unknown = contract) {
-	let r = createRecord(THREAD, c)
+function approved(c: unknown = contract, start = createRecord(THREAD, c)) {
+	let r = start
 	const digest = approvalDigest(r.contract)
 	r = advance(r, { type: 'preflight', digest, results: [{ check: 'dev exists', passed: true, detail: 'found' }] })
 	r = advance(r, { type: 'approval-pending', kind: 'kickoff', digest })
@@ -518,10 +518,26 @@ describe('Ship or stop: a pre-authorized dev-merge effect picks ship; without it
 	}
 	const ready = (r: ContractRecord, m: string) => advance(r, { type: 'ready', milestoneId: m, fingerprint: fingerprint(r, m) })
 	test('the variant: ship only with a pre-authorized dev-merge effect', () => {
-		expect(variant(parseContract(contract))).toBe('ship')
-		expect(variant(parseContract(stopContract()))).toBe('stop')
+		expect(variant(createRecord(THREAD, contract))).toBe('ship')
+		expect(variant(createRecord(THREAD, stopContract()))).toBe('stop')
 		const listed = clone(); listed.effects[2].preAuthorized = false
-		expect(variant(parseContract(listed))).toBe('stop')
+		expect(variant(createRecord(THREAD, listed))).toBe('stop')
+	})
+	test('a record started before effect kinds existed stays ship: its merges replay and it still merges', () => {
+		// What the earlier plugin wrote: a merge effect with no kind, and no variants marker on the start event.
+		const legacy = stopContract(); legacy.effects.push({ id: 'E3', effect: 'Squash-merge each milestone into dev when green', preAuthorized: true, source: 'Global AGENTS.md' })
+		const start = createRecord(THREAD, legacy) as any
+		delete start.variants; delete start.events[0].action.variants
+		const gatedM1 = gated(approved(legacy, parseRecord(start, THREAD)), 'M1', A, B)
+		expect(gatedM1.variants).toBeUndefined()
+		expect(variant(gatedM1)).toBe('ship')
+		const pending = advance(gatedM1, { type: 'merge-requested', milestoneId: 'M1', fingerprint: fingerprint(gatedM1, 'M1') })
+		const merged = advance(pending, { type: 'merged', milestoneId: 'M1', fingerprint: fingerprint(pending, 'M1'), commit: MERGE })
+		expect(milestoneOf(parseRecord(JSON.parse(JSON.stringify(pending)), THREAD), 'M1').status).toBe('merge-pending')
+		expect(milestoneOf(parseRecord(JSON.parse(JSON.stringify(merged)), THREAD), 'M1').status).toBe('merged')
+		expect(() => advance(gatedM1, { type: 'ready', milestoneId: 'M1', fingerprint: fingerprint(gatedM1, 'M1') })).toThrow('ship variant')
+		// The same contract in a new record is stop.
+		expect(variant(createRecord(THREAD, legacy))).toBe('stop')
 	})
 	test('an effect kind other than dev-merge, or two dev-merge effects, is refused', () => {
 		const other = clone(); other.effects[0].kind = 'push'

@@ -32,7 +32,7 @@ function nextAction(s: ContractRecord) {
 	if (s.preflight?.digest !== digest) return 'Run mission_preflight on the current contract'
 	if (!s.preflight.passed) return 'Fix the failing readiness checks, then run mission_preflight again'
 	if (s.approval?.digest !== digest) return 'Open the kickoff approval with mission_approve'
-	const ship = variant(s.contract) === 'ship'
+	const ship = variant(s) === 'ship'
 	const m = s.milestones.find(m => !settled(m))
 	if (!m) return `Every milestone is ${ship ? 'merged' : 'ready with its pull request left open'}: write the close-out report with mission_report`
 	if (m.status === 'merge-pending') return `Reconcile the merge of ${m.id} with mission_reconcile`
@@ -46,7 +46,7 @@ function compactStatus(s: ContractRecord) {
 	const preflight = s.preflight?.digest !== digest ? 'not run on the current contract' : s.preflight.passed ? 'passed' : 'failed'
 	const stops = s.stops.filter(x => !x.resolved)
 	return [
-		`Contract mission ${s.contract.missionId} on ${s.contract.repository}; ${variant(s.contract) === 'ship' ? 'ship variant: each milestone merges into dev' : 'stop variant: nothing merges, and each milestone builds on the previous reviewed head'}.`,
+		`Contract mission ${s.contract.missionId} on ${s.contract.repository}; ${variant(s) === 'ship' ? 'ship variant: each milestone merges into dev' : 'stop variant: nothing merges, and each milestone builds on the previous reviewed head'}.`,
 		`Kickoff: ${s.approval?.digest === digest ? 'approved' : 'not approved'}; preflight: ${preflight}.`,
 		...s.milestones.map(m => {
 			const items = s.items.filter(i => defs.find(d => d.id === i.id)!.milestone === m.id).map(i => `${i.id} ${i.status}`)
@@ -78,7 +78,7 @@ function contractStatus(s: ContractRecord) {
 	const defs = [...s.contract.items, ...s.filed]
 	const next = nextAction(s)
 	return JSON.stringify({
-		schemaVersion: 3, missionId: s.contract.missionId, repository: s.contract.repository, variant: variant(s.contract), digest,
+		schemaVersion: 3, missionId: s.contract.missionId, repository: s.contract.repository, variant: variant(s), digest,
 		approval: s.approval ? { ...s.approval, current: s.approval.digest === digest } : null,
 		preflight: s.preflight ? { current: s.preflight.digest === digest, passed: s.preflight.passed, failed: s.preflight.results.filter(r => !r.passed).map(r => `${r.check}: ${r.detail}`) } : null,
 		pendingApproval: s.pendingApproval ?? null,
@@ -89,7 +89,8 @@ function contractStatus(s: ContractRecord) {
 }
 // Recovery reads: an open, unmerged, unqueued PR into dev with full SHAs.
 // Stop variant: the reviewed head, still open and unmerged, and not set to merge on its own.
-// The base is not read: a chained pull request may target the previous milestone's branch.
+// The PR's base branch is not compared: a chained pull request may target dev or the previous
+// milestone's branch. GitHub's compare checks instead that the head builds on the recorded base.
 function heldOpen(p: any, c: { repo: string; pr: number; head: string }) {
 	if (p.state !== 'open' || p.merged !== false || p.head?.sha !== c.head || p.base?.repo?.full_name !== c.repo) return `pull request ${c.pr} is no longer open on the reviewed head; inspect it before going on`
 	if (p.auto_merge !== null || p.isInMergeQueue !== false || p.mergeQueueEntry !== null) return `pull request ${c.pr} would merge on its own (auto-merge or a merge queue), and the contract does not pre-authorize merges into dev; turning that off is an outside effect (stop reason 2 unless the contract pre-authorizes it)`
@@ -204,11 +205,11 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		const missing = contractBlockers(s, input.milestoneId)
 		if (missing.length) throw new Error(`Refused: ${missing.join('; ')}`)
 		const m = milestoneOf(s, input.milestoneId)
-		if (variant(s.contract) === 'stop') {
-			const problem = heldOpen(await github.pull(m.candidate!), m.candidate!)
+		if (variant(s) === 'stop') {
+			const problem = heldOpen(await github.pull(m.candidate!), m.candidate!) ?? (await github.builds(m.candidate!) ? undefined : `head ${m.candidate!.head} does not build on the recorded base ${m.candidate!.base}; GitHub's compare shows it is not a descendant`)
 			ctx.signal.throwIfAborted()
 			if (problem) throw new Error(`Refused: ${problem}`)
-			return contractStatus(saveContract(advanceContract(s, { type: 'ready', milestoneId: m.id, fingerprint: contractFingerprint(s, m.id) }))) + `\n${m.id} is ready and was not merged: the contract does not pre-authorize merges into dev. Pull request ${m.candidate!.pr} stays open for the owner; build the next milestone on its head.`
+			return contractStatus(saveContract(advanceContract(s, { type: 'ready', milestoneId: m.id, fingerprint: contractFingerprint(s, m.id) }))) + `\n${m.id} is ready and was not merged: no pre-authorized effect has kind "dev-merge" (stop variant). Pull request ${m.candidate!.pr} stays open for the owner; build the next milestone on its head.`
 		}
 		await github.preflight(m.candidate!)
 		ctx.signal.throwIfAborted()
@@ -251,6 +252,7 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		const next = saveContract(advanceContract(s, { type: 'preflight', digest: approvalDigest(s.contract), results: checks.map(r => ({ check: r.name, passed: r.pass, detail: r.reason })) }))
 		return [
 			`Readiness preflight ${next.preflight!.passed ? 'passed' : 'failed'} on the current contract:`,
+			variant(next) === 'ship' ? 'Merge variant: ship. A pre-authorized "dev-merge" effect lets each milestone merge into dev.' : 'Merge variant: stop. No pre-authorized effect has kind "dev-merge", so nothing merges and each milestone PR stays open.',
 			...checks.map(r => `${r.pass ? 'PASS' : 'FAIL'} ${r.id}. ${r.name}: ${r.reason}`),
 			'Agent-reported readiness (from the contract, not checked by the plugin):',
 			...(s.contract.readiness.length ? s.contract.readiness.map(r => `- ${r.id}. ${r.check}: ${r.evidence}`) : ['- None.']),

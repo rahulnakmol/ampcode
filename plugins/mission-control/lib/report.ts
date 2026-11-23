@@ -54,7 +54,7 @@ const pullURL = (m: MilestoneState) => `https://github.com/${m.candidate!.repo}/
 // When the milestone finished: merged under ship, recorded as ready under stop.
 const finishedAt = (r: ContractRecord, milestoneId: string | undefined) =>
 	milestoneId === undefined ? -1 : r.events.findIndex(e => (e.action.type === 'merged' || e.action.type === 'ready') && e.action.milestoneId === milestoneId)
-const ship = (r: ContractRecord) => variant(r.contract) === 'ship'
+const ship = (r: ContractRecord) => variant(r) === 'ship'
 
 function assumptions(out: Report, list: ContractRecord['assumptions']) {
 	return list.map(a => `- ${sentence(out.say(a.assumption))} Why: ${out.say(a.why)}`)

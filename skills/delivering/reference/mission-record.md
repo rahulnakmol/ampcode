@@ -22,7 +22,7 @@ The contract is the baseline the owner approves once. Its fields:
 | `openQuestions` | `id`, `question`, `default`. Each default is taken unless the owner changes it |
 | `effects` | `id`, `effect`, `preAuthorized`, `source`, optional `kind`. Every outside effect the mission needs. `kind: "dev-merge"` marks the one entry for the milestone merges into `dev`; pre-authorized, it picks ship, otherwise the variant is stop |
 | `readiness` | `id`, `check`, `evidence`: the preflight results, including targets outside GitHub |
-| `milestones` | `id`, `title`, `exit` (the exit criteria); they merge in this order |
+| `milestones` | `id`, `title`, `exit` (the exit criteria); they finish (merge, or are ready under stop) in this order |
 | `items` | `id`, `title`, `milestone`, `size` (XS, S, M or L), `outcome`, `inScope`, `outOfScope`, `dependsOn`, `done`, `automatedTest`, `humanTest`, `trace` |
 | `brief` | `markdown` and `url`: the kickoff brief's text and link |
 

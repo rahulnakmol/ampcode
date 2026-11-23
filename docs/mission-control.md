@@ -254,7 +254,7 @@ criteria of its items. So:
 | `mission_approve()` | Opens the kickoff dialog. Refused before a passing preflight on the current contract |
 | `mission_effect({ effectId })` or `({ effect, why })` | Call right before an outside effect. A pre-authorized effect is recorded with no dialog; any other effect opens the effect dialog |
 | `mission_update({ action })` | The 12 public actions below |
-| `mission_merge({ milestoneId })` | Checks every merge blocker. Ship: checks GitHub's merge readiness, saves the pending state, then requests one exact-head squash merge into `dev`. Stop: merges nothing; reads that the PR is still open on the reviewed head with no auto-merge or merge queue entry, then records the milestone as ready. Opens no dialog |
+| `mission_merge({ milestoneId })` | Checks every merge blocker. Ship: checks GitHub's merge readiness, saves the pending state, then requests one exact-head squash merge into `dev`. Stop: merges nothing; reads that the PR is still open on the reviewed head with no auto-merge or merge queue entry and that the head builds on the recorded base, then records the milestone as ready. Opens no dialog |
 | `mission_reconcile({ milestoneId })` | Reads the PR after a restart or an uncertain merge. Records the merge only for an exact-head merge into `dev`. Never repeats the merge |
 | `mission_recover({ milestoneId })` | After a settled, unqueued attempt: reads GitHub twice, starts a new generation, voids the milestone's reviews and evidence, and returns it to review. Sends no merge and opens no dialog |
 | `mission_report({ kind, milestoneId? })` | `checkpoint` for a merged or ready milestone (`milestoneId` defaults to the latest), or `close-out` once every milestone is merged or ready (no `milestoneId`) |
@@ -305,15 +305,18 @@ them.
   again. A new digest voids approval, preflight and any pending approval.
 - **Progress.** An unchanged item (same ID, identical fields) keeps its progress; a changed one
   returns to planned. Filed items and follow-ups live in the record, so they survive.
-- **Refused** while a merge is pending; when it changes a merged milestone or its items; when an
-  open stop names an item or milestone that the amend removes (resume the stop first); and when
+- **Refused** while a merge is pending; when it changes a merged or ready milestone or its items;
+  when it changes the merge variant (the pre-authorized `dev-merge` effect) once a milestone is
+  merged or ready; when an open stop names an item or milestone that the amend removes (resume the stop first); and when
   it would change the ID, items, outcomes or criteria of a milestone with failed review rounds,
   or move that milestone or a candidate milestone from the earliest unfinished place. Record a
   "replanned" disposition first to change a failed milestone.
 
 ## The kickoff and effect dialogs
 
-**The kickoff dialog** is titled "Approve the mission contract". It has:
+**The kickoff dialog** is titled "Approve the mission contract". Its text names the merge
+variant: "Each milestone merges into dev once its gates pass." (ship) or "No milestone merges:
+each pull request stays open for you, and the next milestone builds on it." (stop). It has:
 
 - a link field, "Open the contract brief";
 - one checkbox per open-question default and per pre-authorized effect, all starting unticked;
@@ -368,10 +371,15 @@ verifiable authentication receipts.
 - Milestone merges into `dev` happen through `mission_merge`, not `mission_effect`. The effect
   with `"kind": "dev-merge"` picks the variant. Pre-authorized, it is **ship**: each milestone
   merges into `dev`, and the next candidate needs the earlier milestone merged. Without it, or
-  not pre-authorized, it is **stop**: `mission_merge` merges nothing and records the milestone as
-  ready, its PR stays open for you, and the next milestone's candidate is built on its reviewed
-  head (`base` must equal that head). The close-out comes once every milestone is ready. The
-  variant cannot change by `amend` once a milestone is merged or ready.
+  not pre-authorized, it is **stop**: `mission_merge` merges nothing. It reads that the PR is
+  still open on the reviewed head with no auto-merge or merge queue entry, and that GitHub's
+  compare shows the head building on the recorded base; then it records the milestone as ready.
+  The PR stays open for you, and the next milestone's candidate is built on its reviewed head
+  (`base` must equal that head). The close-out comes once every milestone is ready. The kickoff
+  dialog, `mission_preflight` and `mission_status` name the variant, and it cannot change by
+  `amend` once a milestone is merged or ready.
+- A mission started before effect kinds existed has no `dev-merge` entry. It keeps the behaviour
+  it was approved under: ship, so its milestones merge and its records still load.
 
 ## Milestones, reviews and merges
 

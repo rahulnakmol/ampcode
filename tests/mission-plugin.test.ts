@@ -36,6 +36,8 @@ function fakeGitHub() {
 		merges: [] as string[][], ciPassing: true, push: true, loseNextMerge: false, during: undefined as undefined | (() => Promise<void>),
 		// Rewrites each PR read, to show a different remote head or base.
 		view: (pr: any) => pr,
+		// GitHub's compare of base...head: by default the head builds on the base.
+		compare: (_base: string, _head: string) => ({ status: 'ahead', behind_by: 0 }),
 	}
 	const protection = { enforce_admins: { enabled: true }, required_pull_request_reviews: { required_approving_review_count: 0 }, required_status_checks: { strict: true, contexts: ['Extension checks'], checks: [{ context: 'Extension checks', app_id: 15368 }] } }
 	const github = new GitHub(async args => {
@@ -57,6 +59,8 @@ function fakeGitHub() {
 		if (path === `repos/${REPO}/branches/dev/protection`) return JSON.stringify(protection)
 		const runs = /^repos\/[^/]+\/[^/]+\/commits\/([a-f0-9]{40})\/check-runs/.exec(path)
 		if (runs) return JSON.stringify({ total_count: 1, check_runs: [{ name: 'Extension checks', app: { id: 15368 }, head_sha: runs[1], status: 'completed', conclusion: state.ciPassing ? 'success' : 'failure' }] })
+		const compare = /^repos\/[^/]+\/[^/]+\/compare\/([a-f0-9]{40})\.\.\.([a-f0-9]{40})\?per_page=1$/.exec(path)
+		if (compare) return JSON.stringify(state.compare(compare[1], compare[2]))
 		const pull = /^repos\/[^/]+\/[^/]+\/pulls\/(\d+)$/.exec(path)
 		if (pull) {
 			const n = Number(pull[1]), pr = state.prs.get(n)!
@@ -177,7 +181,10 @@ test('journey, stop variant: without a dev-merge effect 2 milestones chain on op
 		await prepare(h, gh, 'M2', 10)
 		expect((await h.status()).next).toBe('Record M2 as ready with mission_merge; its pull request stays open')
 		expect(await h.call('mission_merge', { milestoneId: 'M2' })).toContain('M2 is ready and was not merged')
-		expect(await h.call('mission_report', { kind: 'checkpoint' })).toContain('## Checkpoint: milestone M2 ready; its pull request stays open')
+		const checkpoint = await h.call('mission_report', { kind: 'checkpoint' })
+		expect(checkpoint).toContain('## Checkpoint: milestone M2 ready; its pull request stays open')
+		expect(checkpoint).toContain('is ready, not merged')
+		expect(checkpoint).not.toContain('merged into dev')
 		await prepare(h, gh, 'M3', 11, 'evidence', HEAD(10))
 		await h.call('mission_merge', { milestoneId: 'M3' })
 		expect(h.dialogs).toHaveLength(1)
@@ -187,7 +194,10 @@ test('journey, stop variant: without a dev-merge effect 2 milestones chain on op
 		expect(s.milestones.map((m: any) => [m.id, m.status, m.candidate.base, m.mergeCommit])).toEqual([['M2', 'ready', DEV, null], ['M3', 'ready', HEAD(10), null]])
 		expect(s.next).toBe('Every milestone is ready with its pull request left open: write the close-out report with mission_report')
 		expect(await h.hook('agent.end')).toBeUndefined()
-		expect(await h.call('mission_report', { kind: 'close-out' })).toContain('## Close-out: every milestone ready, pull requests left open')
+		const closeOut = await h.call('mission_report', { kind: 'close-out' })
+		expect(closeOut).toContain('## Close-out: every milestone ready, pull requests left open')
+		expect(closeOut).toContain('not merged (stop variant)')
+		expect(closeOut).not.toContain('merge commit')
 	} finally { rmSync(h.root, { recursive: true, force: true }) }
 })
 
@@ -200,6 +210,14 @@ test('stop variant: mission_merge records nothing when the pull request would me
 		await expect(h.call('mission_merge', { milestoneId: 'M2' })).rejects.toThrow('would merge on its own')
 		gh.state.view = pr => ({ ...pr, head: { sha: HEAD(99) } })
 		await expect(h.call('mission_merge', { milestoneId: 'M2' })).rejects.toThrow('no longer open on the reviewed head')
+		gh.state.view = pr => ({ ...pr, state: 'closed' })
+		await expect(h.call('mission_merge', { milestoneId: 'M2' })).rejects.toThrow('no longer open on the reviewed head')
+		gh.state.view = pr => ({ ...pr, state: 'closed', merged: true })
+		await expect(h.call('mission_merge', { milestoneId: 'M2' })).rejects.toThrow('no longer open on the reviewed head')
+		gh.state.view = pr => pr
+		gh.state.compare = () => ({ status: 'diverged', behind_by: 2 })
+		await expect(h.call('mission_merge', { milestoneId: 'M2' })).rejects.toThrow(`does not build on the recorded base ${DEV}`)
+		gh.state.compare = () => ({ status: 'ahead', behind_by: 0 })
 		gh.state.prs.get(10)!.queued = true; gh.state.view = pr => pr
 		await expect(h.call('mission_merge', { milestoneId: 'M2' })).rejects.toThrow('would merge on its own')
 		expect((await h.status()).milestones[0].status).toBe('candidate')
