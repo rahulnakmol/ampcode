@@ -331,7 +331,7 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 			const kept = new Set([...c.milestones.map(m => m.id), ...c.items.map(i => i.id), ...s.filed.map(i => i.id)])
 			for (const stop of s.stops) for (const name of stop.blocks) if (!stop.resolved && !kept.has(name)) fail('contract', `open stop ${stop.id} names ${name}, which this amend removes; resume the stop first`)
 			const after = approvalDigest(c)
-			// Only the item fields section 3 lists may change without a new digest; an outcome is baseline.
+			// With the digest kept, item IDs and outcomes may not change (section 3 lists the fields that may).
 			if (after === digest) {
 				if (sorted(c.items.map(i => i.id)) !== sorted(s.contract.items.map(i => i.id))) fail('items', 'item IDs are part of the baseline; rename an item with replan, or change a criterion (a new digest)')
 				c.items.forEach((item, i) => {
@@ -343,7 +343,10 @@ function apply(s: ContractRecord, action: Action, time: string): ContractRecord 
 			for (const m of s.milestones) {
 				if (!m.failed.some(n => n > 0)) continue
 				const held = s.contract.items.filter(i => i.milestone === m.id)
-				if (!c.milestones.some(x => x.id === m.id) || held.some(i => !c.items.some(x => x.id === i.id && x.milestone === m.id))) fail('milestones', `${m.id} has failed review rounds; it cannot be renamed or removed, nor its items moved`)
+				const now = c.milestones.find(x => x.id === m.id)
+				const criteria = (x: Contract) => new Set([...x.items.filter(i => i.milestone === m.id).flatMap(i => i.done), ...(x.milestones.find(y => y.id === m.id)?.exit ?? [])])
+				const kept = criteria(c), before = criteria(s.contract)
+				if (!now || held.some(i => !c.items.some(x => x.id === i.id && x.milestone === m.id)) || [...before].some(k => !kept.has(k))) fail('milestones', `${m.id} has failed review rounds; it cannot be renamed or removed, nor its items or criteria moved`)
 			}
 			const readinessChanged = canonical(c.readiness) !== canonical(s.contract.readiness)
 			s.items = [

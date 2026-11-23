@@ -391,6 +391,14 @@ describe('Amend: a non-digest item field keeps approval', () => {
 		const c = clone(); c.milestones.splice(0, 1); moveM1(c, 'M2')
 		expect(() => amend(failedOnce(1), c)).toThrow('failed review rounds')
 	})
+	test('Amend moving a failed milestone\'s criteria or exit criteria away while keeping its IDs is refused', () => {
+		const c = clone()
+		c.milestones[0].exit = ['Decoy exit']
+		c.items.forEach((i: any) => { if (i.milestone === 'M1') i.done = [`${i.id} decoy criterion`] })
+		c.milestones.splice(1, 0, { id: 'M1b', title: 'First', exit: ['M1 exit green'] })
+		c.items.push(item('W1b', 'M1b', ['W1 criterion a', 'W1 criterion b']), item('W2b', 'M1b', ['W2 criterion']))
+		expect(() => amend(failedOnce(1), c)).toThrow('failed review rounds')
+	})
 	test('Amend swapping milestone IDs, or renaming one and adding a decoy with its old ID, is refused', () => {
 		const swap = clone(); swap.milestones[0].id = 'M2'; swap.milestones[1].id = 'M1'
 		swap.items.forEach((i: any) => { i.milestone = i.milestone === 'M1' ? 'M2' : i.milestone === 'M2' ? 'M1' : i.milestone })
