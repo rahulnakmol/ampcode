@@ -3,9 +3,9 @@
   "scope": "Stop-replay tabletop: each situation comes from a real stop in the last three missions. A fresh agent that reads only the changed skills answers each one; a separate fresh judge scores the decision and action.",
   "source": "Analysis 'Wave 0 interruptions: root causes and the one-approval mission', table 'Every stop, and why' (1-12) and its CERN section (13-16)",
   "decisions": {
-    "kickoff": "asked while preparing the baseline or in the one kickoff ask, never mid-build",
-    "stop": "a mid-build stop for one of the five stop reasons",
-    "proceed": "no question to the owner; take the expected action"
+    "kickoff": "a question to the owner that is asked while preparing the baseline or in the one kickoff ask, never mid-build",
+    "stop": "a mid-build stop that asks the owner, for one of the five stop reasons",
+    "proceed": "no new question to the owner now; take the expected action (work that only prepares the kickoff brief counts as proceed)"
   },
   "situations": [
     {
@@ -52,7 +52,7 @@
     },
     {
       "id": "R8",
-      "situation": "A second mission's design is ready for approval.",
+      "situation": "A second mission's contract, defense, preflight and kickoff brief are ready; its owner has not yet approved it, design included.",
       "expected_decision": "kickoff",
       "expected_action": "Ask its owner once, with its kickoff brief, to approve that contract."
     },
