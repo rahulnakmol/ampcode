@@ -345,6 +345,25 @@ describe('Amend: a non-digest item field keeps approval', () => {
 		expect(r.contract.items[2].humanTest).toBe('Open the report and read three rows')
 		expect(itemOf(r, 'W1').status).toBe('done')
 	})
+	test('Amend changing an item outcome without a new criterion is refused, naming the field', () => {
+		const c = clone(); c.items[1].outcome = 'W2 does something wider'
+		expect(() => amend(approved(), c)).toThrow('Refused (items[1].outcome)')
+	})
+	test('Amend changing readiness voids an earlier preflight, so kickoff needs a new one', () => {
+		let r = createRecord(THREAD, contract)
+		const digest = approvalDigest(r.contract)
+		r = advance(r, { type: 'preflight', digest, results: [{ check: 'dev exists', passed: true, detail: 'found' }] })
+		const c = clone(); c.readiness[0].evidence = 'HTTP 503'
+		r = amend(r, c)
+		expect(r.preflight).toBeUndefined()
+		expect(() => advance(r, { type: 'approval-pending', kind: 'kickoff', digest })).toThrow('preflight')
+	})
+	test('Amend renaming or removing a milestone with failed review rounds is refused', () => {
+		let r = withCandidate(itemsDone(approved(), 'M1'), 'M1')
+		r = review(r, 'M1', 1, false)
+		const c = clone(); c.milestones[0].id = 'M1b'; c.items.forEach((i: any) => { if (i.milestone === 'M1') i.milestone = 'M1b' })
+		expect(() => amend(r, c)).toThrow('failed review rounds')
+	})
 })
 
 describe('P1 internal actions are not accepted through the public dispatch', () => {
