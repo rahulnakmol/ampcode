@@ -84,7 +84,7 @@ function cells(line: string) {
 	return s.split(/(?<!\\)\|/).length
 }
 /** The first Markdown construct that hides words, or undefined. Keep in step with brief_check.py. */
-function hiddenMarkdown(text: string) {
+export function hiddenMarkdown(text: string) {
 	if (IMAGE.test(text)) return 'an image'
 	if (EMPTY_LINK.test(text)) return 'a link with no text'
 	if (INLINE_LINK.test(text)) return 'a link with a title or an unusual destination'

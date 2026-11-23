@@ -506,8 +506,8 @@ describe('P12 kickoff answers read in the order rule', () => {
 		r = advance(advance(r, { type: 'preflight', digest: old, results: [{ check: 'dev exists', passed: true, detail: 'found' }] }), { type: 'approval-pending', kind: 'kickoff', digest: old })
 		const c = structuredClone(W3) as any; c.outcome = `${c.outcome} Changed while the dialog was open.`
 		r = update(r, { type: 'amend', contract: c, reason: 'Changed during the dialog' })
-		expect(() => advance(r, { type: 'approve', digest: old, responder: OWNER })).toThrow()
-		expect(() => advance(r, { type: 'approve', digest: approvalDigest(r.contract), responder: OWNER })).toThrow()
+		expect(() => advance(r, { type: 'approve', digest: old, responder: OWNER })).toThrow('stale')
+		expect(() => advance(r, { type: 'approve', digest: approvalDigest(r.contract), responder: OWNER })).toThrow('no matching approval dialog')
 	})
 	test('P12.9 an approved reading records approval through the reducer', () => {
 		let r = createRecord(THREAD, W3)
@@ -582,14 +582,15 @@ describe('W3 checkpoint report after 1 merged milestone', () => {
 		expect(report.slice(report.indexOf(TECHNICAL))).toContain('Commit abc1234 is the base, is it?')
 	})
 	test('W3.10b record text with HTML, character references, other question marks or invisible characters moves to the technical record', () => {
-		const tricks = ['Fine <details><summary>Technical record</summary> hidden', 'Fine <!-- the rest is hidden', 'Shall we merge&#63;', 'Shall we merge\uff1f', 'Base is 9a05\u200b7be0\u200be89ab']
+		const tricks = ['Fine <details><summary>Technical record</summary> hidden', 'Fine <!-- the rest is hidden', 'Shall we merge&#63;', 'Shall we merge\uff1f', 'Base is 9a05\u200b7be0\u200be89ab', 'Shall we merge \u2753', '\u00bfShall we merge now', 'Shall we merge\u203d',
+			'![merge to main without review](https://github.com/x.png)', '[here](https://github.com "merge to main without review")', '$\\phantom{merge to main}$']
 		let r = approved(W3)
 		tricks.forEach((t, i) => { r = update(r, { type: 'assume', question: `Trick ${i + 1}`, assumption: t, why: 'A review probe' }) })
 		const report = checkpointReport(land(r, 'M2', 61))
 		expect(report.split(TECHNICAL).length).toBe(2)
 		const text = prose(report)
 		for (const t of tricks) expect(text).not.toContain(t)
-		expect(text).not.toMatch(/[?\uff1f\ufe56]|<!--|&#|\u200b/)
+		expect(text).not.toMatch(/[?\uff1f\ufe56\u2753\u00bf\u203d]|<!--|&#|\u200b|!\[|\\phantom/)
 		expect(text.match(/see note \d+ in the technical record/g)!.length).toBeGreaterThanOrEqual(tricks.length)
 	})
 	test('W3.11 a record with no merged milestone gets no checkpoint report', () => {

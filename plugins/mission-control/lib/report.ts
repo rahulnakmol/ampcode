@@ -1,4 +1,4 @@
-import { banned, CONTROL, HIDDEN } from './brief'
+import { banned, CONTROL, HIDDEN, hiddenMarkdown } from './brief'
 import { STOP_REASONS, approvalDigest, type ContractRecord, type Item, type MilestoneState } from './contract'
 import contractText from './contract-text.json'
 
@@ -16,8 +16,10 @@ const sentence = (text: string) => /[.!?]$/.test(text) ? text : `${text}.`
 const raw = (text: string) => one(text).replace(/&/g, '&amp;').replace(/</g, '&lt;')
 // Prose must pass every briefing-decisions rule: no banned code, no question in any script, and
 // no raw HTML, character reference or control or invisible character.
-const QUESTION = /[?\uff1f\ufe56\u037e\u061f]/
-const unsafe = (text: string) => banned(text)[0] ?? (QUESTION.test(text) ? 'a question' : HIDDEN.test(text) ? 'raw HTML or a character reference' : CONTROL.test(text) ? 'a control or invisible character' : undefined)
+const QUESTION = /[?\u00bf\u037e\u055e\u061f\u1367\u203d\u2047-\u2049\u2e2e\u2e54\u2753\u2754\ufe56\uff1f]/
+const unsafe = (text: string) => banned(text)[0] ?? (QUESTION.test(text) ? 'a question' : HIDDEN.test(text) ? 'raw HTML or a character reference' : CONTROL.test(text) ? 'a control or invisible character' : hiddenMarkdown(text))
+// A fragment that is only a bracketed label would read as a link reference definition once joined.
+const label = (text: string) => /^\[[^\]]*\]$/.test(text)
 
 class Report {
 	private prose: string[] = []
@@ -27,7 +29,7 @@ class Report {
 	/** Record text for the prose, or a pointer to the note that holds it. */
 	say(text: string) {
 		const t = one(text)
-		if (!unsafe(t)) return t
+		if (!unsafe(t) && !label(t)) return t
 		this.notes.push(t)
 		return `see note ${this.notes.length} in the technical record`
 	}
