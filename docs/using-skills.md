@@ -11,10 +11,10 @@ the skill explicitly when you want it, and ask Amp which skill it is using if un
 
 | What you need | Skill | Typical trigger words | What you receive |
 | --- | --- | --- | --- |
-| Start, run or close any kind of mission with one charter and sign-off log | **missioning** | start a mission, mission charter, mission budget, record or audit approvals, which playbook | Charter, gate ledger and decision trail checked by `ledger_check.py`; the playbook's steps in your todo list; a close-out audit |
+| Start, run or close any kind of mission with one charter and sign-off log | **missioning** | start a mission, mission charter, open questions and defaults, record or audit approvals, which playbook | Charter, gate ledger and decision trail checked by `ledger_check.py`; one kickoff approval; the playbook's steps in your todo list; a close-out audit |
 | Make an idea or requirement concrete | **grilling** | grill me, clarify requirements, pressure-test, pre-mortem, spec this out, write a PRD | Confirmed brief, acceptance criteria, risks, plan and handoff prompt |
 | Design how a person or agent experiences something | **crafting** | design, redesign, craft, prototype, mock up, polish, critique, accessibility audit, user flow | Journeys, states, design direction, mockups/specification and critique |
-| Deliver a substantial software outcome | **delivering** | use delivering, deliver this feature, execute this approved brief, resume this mission | Implemented and verified slices, two reviews, evidence and authorized integration |
+| Deliver a substantial software outcome | **delivering** | use delivering, deliver this feature, execute this approved brief, resume this mission | One contract approved once at kickoff; milestones merged into `dev` after tests, CI and two fresh reviews; checkpoint and close-out reports |
 | Review a document with fresh eyes | **goldfishing** | fresh-eyes review, Goldfish review, can a newcomer follow this, novice-reader test | Findings with location, severity and smallest fix; a review record |
 | Write a sign-off a non-technical approver understands | **briefing-decisions** | decision brief, approval summary, sign-off text, executive sign-off | A checked plain-English brief with risks, exclusions, undo steps and a technical record |
 | Turn public YouTube research into an original article | **distill** | distill this video, distill these videos, write a whitepaper from these videos | Original evidence-backed article, research brief and supported offline package |
@@ -112,37 +112,49 @@ criteria. [Skill instructions](../skills/crafting/SKILL.md).
 
 ## Delivering: own the outcome through verification
 
-**Use when:** you want a major feature, use case or concrete requirement implemented,
-or need to resume a multi-step delivery. It brings grilling and relevant crafting into
-the work; you do not need to manually launch every skill in a fixed sequence.
+**Use when:** you want a major feature, use case or concrete requirement implemented, or need to
+resume a multi-step delivery. It brings grilling and crafting into the work; you do not need to
+launch every skill yourself.
 
-**Say:** “Use delivering for this feature,” “Deliver this approved brief,” “Execute
-this implementation plan,” or “Resume the mission.”
+**Say:** "Use delivering for this feature," "Deliver this approved brief," "Execute this
+implementation plan," or "Resume the mission."
 
 ```text
-Use delivering to implement the approved document-recovery brief in [repository].
-Check the approved design against the current code, resolve drift, and complete
-whiteboard defense before build. Use outcome-driven TDD, real interruption/recovery
-journeys and two review gates. Commit and open a PR to dev; integrate only after
-required gates pass. Do not release or deploy yet.
+Use delivering to implement the document-recovery brief in [repository].
+Check the brief against the current code and report drift. Write one contract
+with milestones, items, open questions with defaults and every outside effect,
+run the readiness preflight on it, and ask me for one approval at kickoff.
+Pre-authorize the milestone merges into dev. Do not release or deploy.
 ```
 
-**Give Amp:** the outcome or brief, repository, relevant design/decision references,
-constraints, delivery destination and budget. Say whether existing work is uncommitted
-or only available on a particular runner.
+**How it runs:** one contract, a readiness preflight, one approval at kickoff. Then milestones
+run on their own: items test-first in child threads or subagents, two fresh reviews per
+milestone, a squash merge into `dev` when the gates pass, and a checkpoint report that asks
+nothing. After kickoff it asks you only when:
 
-**A good result looks like:** criteria connected to failing-then-passing behavioral
-evidence, small coherent changes, real journeys, independent review for consequential
-changes, repaired findings and a second review. The final account distinguishes local
-verification, dev integration, release and installation. It explains whether customers
-can now do the intended job and what remains unverified.
+1. Change to the baseline: a criterion, scope item or design decision is wrong or conflicts, and no reading inside the contract works.
+2. Outside effect not in the contract: an irreversible or outside effect that the contract does not pre-authorize.
+3. A fact only a person holds, with no safe, reversible default.
+4. A red line: security, legal or safety.
+5. A milestone cannot meet its exit criteria after the work was re-planned and split.
 
-**Not good:** “all tests green” with no demonstrated customer outcome, a merge request
-called a completed merge, fabricated evidence, or a release inferred from permission
-to code. Do not use a full mission for a typo, standalone review or release-only task.
+Anything else becomes a recorded assumption in the next checkpoint report.
 
-**Next:** follow the [Mission-driven development guide](mission-driven-development.md)
-for the four stages, owner decisions and kickoff variations.
+**Give Amp:** the outcome or brief, repository, relevant design and decision references,
+constraints, and which outside effects you pre-authorize. Say whether existing work is
+uncommitted or only on a particular runner.
+
+**A good result looks like:** criteria with finite case lists, each tied to failing-then-passing
+evidence; small coherent changes; real journeys; two independent reviews per milestone with every
+finding fixed, re-planned or filed; and a close-out that separates merged into `dev`, released
+and installed. It says whether customers can now do the intended job and what remains unverified.
+
+**Not good:** "all tests green" with no demonstrated outcome, a merge request called a merge,
+fabricated evidence, a question to you that a default answers, or a release inferred from
+permission to code. Do not use a mission for a typo, a standalone review or a release-only task.
+
+**Next:** follow the [Mission-driven development guide](mission-driven-development.md) for the
+five journeys and the [kickoff prompts](mission-control.md#ways-to-kick-off-a-mission).
 [Skill instructions](../skills/delivering/SKILL.md).
 
 ## Goldfishing: review with fresh eyes
@@ -180,7 +192,7 @@ sections, codes such as hashes or task IDs outside the technical record, and any
 that hides words when the brief is rendered.
 
 **Use when:** anyone must approve, sign off or choose: a design, merge, release, budget, vendor
-or roadmap. `delivering` uses it for every mission-control design approval.
+or roadmap. `delivering` uses it for the one kickoff brief of a contract mission.
 
 ```text
 Use briefing-decisions to write the sign-off brief for moving our demo site to
@@ -196,15 +208,15 @@ passes the checker but hides the real decision in the technical record.
 **Adapt it:** edit the constants at the top of `brief_check.py` and `banned.json`, then the copy in
 `plugins/mission-control/lib/brief.ts`; a test fails when the lists differ. Without Amp, give the
 approver the Markdown file and open any HTML picture in a browser. On Amp, publish it as a
-document; mission-control links that document in its approval dialog.
+document; mission-control links that document in its kickoff dialog.
 [Skill instructions](../skills/briefing-decisions/SKILL.md).
 
 ## Missioning: one charter and sign-off log for any mission
 
 **What it is:** the thin conductor every mission starts from. One mission file holds the charter
-(outcome, decision owner, approvers, success criteria, Definition of Done, budget, and what the
-agent may do without asking, must always ask, and must stop for), the gate ledger and the
-decision trail. Eight playbooks (ERP and AI transformation, product delivery operations,
+(outcome, decision owner, approvers, success criteria, Definition of Done, open questions with
+defaults, pre-authorized effects, and what the agent may do without asking, must always ask, and
+must stop for), the gate ledger and the decision trail. The owner approves it once, at kickoff. Eight playbooks (ERP and AI transformation, product delivery operations,
 software delivery, campaigns and research, UX and UI design, code and security review,
 infrastructure and DevSecOps, product and SaaS assessment) list the steps, human gates and
 Definition of Done; only the chosen one is loaded. `blueprinting`, `planning`, `delivering` and
@@ -212,28 +224,27 @@ Definition of Done; only the chosen one is loaded. `blueprinting`, `planning`, `
 *planned* with a manual fallback.
 
 **Use when:** you start or resume a mission of any kind, want one place that shows who approved
-what and on which brief, need a budget for a mission, or work on Claude Code or Copilot where no
-owner dialog exists.
+what and on which brief, or work on Claude Code or Copilot where no owner dialog exists.
 
 ```text
 Use missioning to run a product assessment of three expense tools for finance,
-on the Copilot app. Elena Petrova decides; Tom Okafor approves. Budget: five
-working days, no paid trials. Agree the weights with Elena before any scoring.
+on the Copilot app. Elena Petrova decides; Tom Okafor approves. Open question:
+paid trials, default none. Agree the weights with Elena before any scoring.
 ```
 
 **A good result looks like:** a charter with every field, agreed before the work; the playbook's
-steps in the todo list with `skip: <reason>` where a step is not done; questions only about
-preferences, gate and budget calls (each with a recommended answer) or facts only you hold; a checked brief and a fresh novice-reader review
-before every sign-off; each approval a ledger row naming an approver and where they answered;
+steps in the todo list with `skip: <reason>` where a step is not done; questions only at
+kickoff and for the five stop reasons, each with a recommended answer; a checked brief and a
+fresh novice-reader review before every sign-off; each approval a ledger row naming an approver and where they answered;
 `ledger_check.py` printing `pass`; a close-out that lists what needs your attention. **Not
 good:** "looks good" in chat recorded as approval, a planned skill reported as run, a deleted
-todo step, or a budget breach found only at the end.
+todo step, or a question that a recorded default already answers.
 
 **Adapt it:** add a playbook with the same six headings and add its name to `PLAYBOOKS` in
 `scripts/ledger_check.py`; change charter fields in the checker's `FIELDS` and
 `reference/charter.md` together; add a host column to `reference/hosts.md` and label it "not
 tested" until you run it. The checker proves the record is complete, not that a person answered:
-on Amp, `mission-control`'s owner dialog remains the stronger record for delivery missions.
+on Amp, `mission-control`'s kickoff dialog remains the stronger record for delivery missions.
 [Skill instructions](../skills/missioning/SKILL.md).
 
 ## Distill: turn video sources into an original argument

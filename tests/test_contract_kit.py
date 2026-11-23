@@ -37,8 +37,13 @@ BANNED = (
 # Files searched with list B (part of file set F).
 BANNED_SEARCH = ("skills/delivering", "skills/missioning", "skills/goldfishing/SKILL.md", "skills/briefing-decisions/SKILL.md",
                  "skills/grilling/SKILL.md", "skills/crafting/SKILL.md", "plugins/mission-control")
+# The mission guides (W12), searched with list B and part of list L.
+GUIDES = ("README.md", "docs/mission-control.md", "docs/mission-driven-development.md", "docs/using-skills.md",
+          "plugins/README.md")
+BANNED_SEARCH += GUIDES
 # List L: files that list the five stop reasons.
-STOP_TEXT_FILES = ("skills/delivering/SKILL.md", "skills/missioning/SKILL.md", "skills/missioning/reference/charter.md")
+STOP_TEXT_FILES = ("skills/delivering/SKILL.md", "skills/missioning/SKILL.md", "skills/missioning/reference/charter.md",
+                   *GUIDES)
 # Files that must name the disposition policy for a review cap (K3).
 DISPOSITION_FILES = ("skills/delivering/SKILL.md", "skills/missioning/SKILL.md", "skills/goldfishing/SKILL.md")
 # The copy of reportSections that published skills and other hosts read.
@@ -99,6 +104,20 @@ class CanonicalText(unittest.TestCase):
             with self.subTest(kind=kind):
                 expected = ", ".join(f"`{name}`" for name in sections) + "."
                 self.assertTrue(expected in text, f"missing verbatim sections: {expected}")
+
+
+class KickoffPrompts(unittest.TestCase):
+    def test_each_kickoff_prompt_names_the_contract_the_preflight_and_one_approval(self):
+        text = (ROOT / "docs/mission-control.md").read_text()
+        section = text.split("## Ways to kick off a mission", 1)[1].split("\n## ", 1)[0]
+        prompts = re.findall(r"```text\n(.*?)```", section, re.S)
+        self.assertGreaterEqual(len(prompts), 7)
+        for prompt in prompts:
+            words = " ".join(prompt.split())
+            with self.subTest(prompt=words[:60]):
+                self.assertRegex(words, r"\bcontract\b")
+                self.assertIn("readiness preflight", words)
+                self.assertRegex(words, r"\bone (kickoff )?approval\b")
 
 
 class CapDisposition(unittest.TestCase):

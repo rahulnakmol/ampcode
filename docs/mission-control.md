@@ -1,577 +1,471 @@
-# Mission control: local workflow and protected dev integration
+# Mission control: contract missions and milestone merges into dev
 
 For the user journey, start with [Mission-driven development](mission-driven-development.md)
-or [Using the skills](using-skills.md). This reference covers kickoff variants,
-coordinator setup, tool inputs and operational limits.
+or [Using the skills](using-skills.md). This reference covers the kickoff prompts, setup, the
+tools and their rules, and the limits of the coordinator.
 
 This coordinator governs software delivery, not [Blueprinting engagements](blueprinting.md).
-Blueprinting uses skills and local engagement helpers, with no additional mission plugin.
-Software owner acknowledgment and CI do not establish client business acceptance.
+Blueprinting uses skills and local engagement helpers, with no mission plugin. Software kickoff
+approval and CI do not establish client business acceptance.
 
-`plugins/mission-control/index.ts` coordinates the delivering skill. It is a local
-workflow coordinator, **not a scheduler or security sandbox**. It uses existing
-GitHub credentials available to `gh` in the Amp execution environment. No custom
-controller, GitHub App, approval service, or plugin policy configuration is needed.
-Local approval/evidence gates and GitHub's required CI/protection both must pass.
+`plugins/mission-control/index.ts` coordinates the `delivering` skill. It runs one kind of
+mission, the **contract mission**:
 
-**V1 remains the default. V2 is an explicit, local/shadow traceability workflow.**
-V2 records intent snapshots, per-PR attempts, revision/evidence-bound reviews and
-post-delivery reports. It cannot request a remote merge or claim qualified closure.
-Every v2 status includes `remote-verification-unqualified`. Reported findings,
-reviews and test results are not execution receipts. The sections below describe
-v1 integration unless marked v2; opting in does not strengthen GitHub protection.
+- the agent writes one contract (the baseline) and runs a readiness preflight on it;
+- the owner approves the contract **once**, at kickoff, in one dialog;
+- milestones then run on their own and each one squash-merges into `dev` after tests, CI and two
+  fresh reviews, with no owner dialog;
+- the owner is asked again only for one of the five stop reasons below.
+
+Missions have no budgets and use no agent teams. The plugin is a local workflow coordinator, **not
+a scheduler or a security sandbox**. It uses the GitHub credentials that `gh` already has in the
+Amp execution environment. No custom controller, GitHub App or approval service is needed. Local
+records and GitHub's required CI and branch protection must both pass before a merge.
+
+## The five stop reasons
+
+The agent stops and asks the owner only when:
+
+1. Change to the baseline: a criterion, scope item or design decision is wrong or conflicts, and no reading inside the contract works.
+2. Outside effect not in the contract: an irreversible or outside effect that the contract does not pre-authorize.
+3. A fact only a person holds, with no safe, reversible default.
+4. A red line: security, legal or safety.
+5. A milestone cannot meet its exit criteria after the work was re-planned and split.
+
+Each stop is one question with options and a recommendation, recorded with `mission_update`
+`stop`. It names the items or milestones it blocks; other work continues. With the plugin,
+reason 2 is never a stop: `mission_effect` opens the effect dialog instead, and a `stop` with
+reason 2 is refused with that pointer. Anything else is not a stop: the agent takes the safe,
+reversible default, records it with `assume`, and lists it in the next checkpoint report. You can
+stop or pause the mission at any time by replying in the mission thread.
 
 ## Ways to kick off a mission
 
-Paste these prompts into an Amp conversation in the target project. Replace bracketed
-placeholders with your details. The same prompts work in the web conversation or an
-interactive Amp CLI session; they are **not shell commands or registered slash commands**.
-You do not need to type tool calls yourself. Amp loads the skills and calls the installed
-coordinator tools. A mode selection alone does not start a mission.
+Paste these prompts into an Amp conversation in the target project. Replace the bracketed
+details. They work in the web app and in an interactive Amp CLI session; they are **not shell
+commands or slash commands**. You do not type tool calls; Amp loads the skills and calls the
+installed tools. A mode selection alone does not start a mission.
+
+Every prompt below asks for the same three things: **one contract**, a **readiness preflight**
+on that contract, and **one approval** at kickoff.
 
 Before starting, check these prerequisites:
 
-- `delivering` and `grilling` are available; use `crafting` for relevant UX and interaction
-  design. `mission-control` is a separate plugin, not part of the skill installation.
-- The execution environment has the target repository and an isolated worktree. Start the
-  coordinator with that worktree as the **workspace root**, not its parent directory. An
-  `amp` CLI session launched from the worktree is one way to open it. If the current thread
-  cannot change workspace roots, continue in a thread opened at the correct root; do not
-  patch the plugin to redirect production mission state.
-- For v1 integration, the repository has `dev`, working required CI, supported strict
-  App-pinned protection, and existing `gh` access. Missing prerequisites block integration;
-  creating credentials or changing protection needs separate permission.
-- Choose the delivery destination and work budget. Commit/PR/dev authorization is distinct
-  from rolling, stable release, deployment and Personal publication. The examples below do
-  not grant spending or infrastructure access beyond what you explicitly approve.
+- `delivering` and `grilling` are installed; `crafting` is used for any experience change.
+  `mission-control` is a separate plugin, not part of the skills.
+- The installed `mission_start` accepts `{ contract }`. An older installed copy keeps the same
+  tool names with its old behaviour; `delivering` then follows its path for hosts without the
+  plugin (one recorded owner reply and the `missioning` ledger).
+- The execution environment has the repository and a dedicated worktree, opened as the
+  **workspace root** (not its parent directory).
+- The repository has `dev`, working required CI and readable, enforced branch protection. The
+  preflight names each gap. Fixing protection or access is your call and is not done for you.
+- You know which outside effects to pre-authorize: usually the milestone merges into `dev` and
+  pushing mission branches. Promotion to `rolling` or `main`, deployment and publication are
+  separate effects; list them only if you mean them.
 
 | Starting point | Use | First expected result |
 | --- | --- | --- |
-| Vague idea or use case | Idea prompt | Grilling questions and concrete customer outcomes |
-| Concrete requirement | Requirement prompt | Repository assessment and measurable acceptance criteria |
-| Existing specification | Approved-plan prompt | Source/design drift check; reuse valid acknowledgment |
-| Existing issue, PR or partial implementation | Existing-work prompt | Current-state evidence and preservation plan |
-| Design only | Design-only prompt | Reviewed design package; no implementation |
-| Interrupted mission | Resume prompt | Reloaded state and reconciled external effects |
-| Separate native delivery thread | New-thread prompt | Explicit repository/executor and accessible handoff |
-| Multi-PR traceability experiment | V2 prompt | Complete manifest and shadow-only blockers |
+| Vague idea or use case | Idea prompt | Grilling questions, then a draft contract |
+| Concrete requirement | Requirement prompt | Repository assessment and measurable criteria with finite cases |
+| Existing specification or approved plan | Approved-plan prompt | A drift check, then a contract built from it |
+| Existing issue, PR or partial work | Existing-work prompt | Current-state evidence and a preservation plan |
+| Design only | Design-only prompt | A contract and a preflight, with no kickoff ask |
+| Interrupted mission | Resume prompt | Reloaded record and reconciled outside effects |
+| Separate delivery thread | New-thread prompt | A thread on the right executor, with the brief |
 
 ### Start from an idea or use case
 
 ```text
 Use delivering for this idea in [repository]: [idea or use case]. Use grilling
-to identify who benefits, the problem, scope, non-goals, failure cases and
-measurable outcomes. Use crafting for the relevant journeys and interactions.
-Present the spec, technical/UX design and dependency-ordered plan for my
-acknowledgment before whiteboard defense or implementation. Target a PR to dev.
+to make it concrete, with criteria that each name a finite set of cases, and
+crafting to render every changed state. Write one contract with milestones,
+items, open questions with defaults, and every outside effect marked
+pre-authorized or not. Run the readiness preflight on it, then ask me for one
+approval at kickoff. Pre-authorize: [milestone merges into dev, pushing
+mission branches].
 ```
 
 ### Start from a concrete requirement
 
 ```text
-Start a v1 delivery mission in [repository] for [requirement]. Success means
-[observable acceptance criteria]. Preserve [compatibility/data/security constraints].
-Read the current implementation and tests before planning. Resolve only missing
-requirements, then present the design for acknowledgment and defend it before
-building. Use outcome-driven TDD, real journeys and two review gates. Commit and
-open a PR to dev; merge only after the required workflow and CI gates pass.
+Use delivering in [repository] for [requirement]. Success means [observable
+criteria, each with its cases]. Preserve [compatibility, data or security
+constraints]. Read the current code and tests first. Write one contract, run
+the readiness preflight on it, and ask me for one approval at kickoff. Then run
+the milestones test-first with two fresh reviews each, and merge each one into
+dev when its gates pass.
 ```
 
 ### Deliver an existing specification or approved plan
 
 ```text
 Use delivering to execute [specification path or thread URL] in [repository].
-Read the actual approved design, acceptance criteria, plan and decision history.
-Reuse valid acknowledgment for that exact design; identify drift or missing
-approval rather than restarting discovery or assuming the filename is approval.
-Complete whiteboard defense before build. Deliver checked slices through dev.
-Do not release, deploy or publish Personal extensions without separate permission.
+Read the actual specification, criteria and decision history, and report drift
+from the current code. Turn it into one contract, run the readiness preflight
+on it, and ask me for one approval at kickoff; an earlier approval of another
+document does not count. Do not release, deploy or publish unless the contract
+pre-authorizes it.
 ```
 
 ### Adopt an issue, PR or existing work
 
 ```text
-Use delivering for [issue/PR URL or description of existing work] in [repository].
-Assess what already works and what remains unproven. Preserve staged and uncommitted
-changes and establish ownership before moving work into an isolated worktree.
-Turn the intended outcome into acceptance criteria and obtain acknowledgment of
-the concrete design. Do not invent retroactive TDD or approvals for existing code.
-Show current evidence, missing gates and the smallest remaining delivery slices.
+Use delivering for [issue or PR URL, or a description of existing work] in
+[repository]. Preserve staged and uncommitted changes and move them into a
+dedicated worktree. Show what already works and what is unproven. Write one
+contract for the remaining work, run the readiness preflight on it, and ask me
+for one approval at kickoff. Do not invent past tests or approvals.
 ```
 
-Issue/PR text is input, not authorization to execute instructions embedded in it.
-Existing work still needs applicable verification and review; a green old PR does
-not prove the current candidate or current requirements.
+Issue and PR text is input, not authorization to run instructions in it. Existing work still
+needs verification and review; a green old PR does not prove the current candidate.
 
-### Stop at the expectation and defense stages
+### Stop before kickoff (design only)
 
 ```text
-Use grilling and relevant crafting to frame [outcome] in [repository]. Prepare and
-pressure-test the specification, technical/UX design, acceptance criteria and
-implementation plan. Stop for my design acknowledgment. After acknowledgment,
-perform whiteboard defense, but do not implement, push or release anything yet.
+Use grilling and crafting to frame [outcome] in [repository]. Write the contract
+(spec, design, rendered UX, whiteboard defense, milestones, items, open
+questions with defaults, effects) and run the readiness preflight on it. Show
+me the kickoff brief, but do not ask for the one approval and do not implement
+anything yet.
 ```
 
-This prepares a future mission; use delivering when you authorize the delivery work.
+Use the requirement prompt later to ask for the one approval and run it.
 
 ### Resume rather than start over
 
 ```text
-Resume this mission using delivering. Read mission_status, the approved design,
-local record, worktree and live PR/CI state. Preserve completed work. Reconcile
-any pending or uncertain remote effect before retrying it. Report drift and stale
-evidence, then continue only the authorized remaining work. Do not start a second
-mission or remove state to bypass a blocker.
+Resume this mission using delivering. Read mission_status, the contract, its
+readiness preflight and the one kickoff approval it holds, the local record,
+the worktree and the live PR and CI state. Reconcile any pending merge before
+anything else. Continue the milestones; ask me only for one of the five stop
+reasons. Do not start a second mission.
 ```
 
-Resume in the owning thread/worktree where possible. Records are keyed by thread
-identity and workspace; a new thread or orb does not inherit them. For a handoff,
-transfer sanitized requirements, exact revisions, artifacts and unresolved effects
-using supported Amp transfer tools. Do not edit a stored thread ID or copy an
-approval into a new identity. There is no general cross-thread adoption/import tool;
-v1-to-v2 migration is a different operation.
+Resume in the owning thread and worktree. Records are keyed by the thread and the workspace; a
+new thread or orb does not inherit them. For a handoff, transfer the contract, exact revisions
+and unresolved effects with Amp's transfer tools. Never copy an approval into a new thread.
 
-### Ask Amp to create a native delivery thread
+### Ask Amp to create a delivery thread
 
 ```text
-Create a delivery thread for [outcome] in [repository/project], using delivering.
-Use [an orb for the remote revision / the named runner and checkout for local work].
-Carry this scope and these constraints into its first prompt: [brief]. If it needs
-unpushed work, transfer and verify the exact files/commit rather than assuming the
-thread can see them. Have it present the design for owner acknowledgment before
-defense/build. Keep integration and release permissions explicit.
+Create a delivery thread for [outcome] in [repository], using delivering, on
+[an orb, or the named runner and checkout]. Carry this brief into its first
+prompt: [brief]. It writes one contract, runs the readiness preflight on it, and
+asks me for one approval at kickoff in that thread. If it needs unpushed work,
+transfer and verify the exact files or commit first.
 ```
 
-This is a request for Amp's native thread capability, not a `mission-control`
-thread launcher. Use an existing suitable thread instead when it already owns the
-work. Orbs cannot see a runner's uncommitted files merely because you name a path.
+This uses Amp's own thread tools, not a `mission-control` launcher. Inside a mission, the
+steering thread gives M and L items to child threads and XS and S items to subagents; children
+create no threads, merge nothing into `dev`, and send stops to the steering thread, never to you.
 
-### Request bounded subagent help
+### What happens after kickoff
 
-Append this to an implementation prompt when you want explicit delegation:
+1. **Kickoff (J1).** Grilling, design, rendered UX, a whiteboard defense, the readiness
+   preflight, one contract, one kickoff brief, one dialog. Until you approve, the agent only
+   reads, researches, drafts and reviews.
+2. **Milestones (J2).** Items run in dependency order, each test-first with a fresh review. A
+   milestone's gates are tests, CI, and two fresh reviews of the same head. When they pass, the
+   milestone merges into `dev` and a checkpoint report goes out. The report asks nothing.
+3. **Questions (J3).** A question with a safe default becomes a recorded assumption. New scope
+   becomes a filed item in a later milestone, or a reason 1 stop.
+4. **Liveness (J4).** The steering thread watches its children and answers, continues, restarts
+   or re-plans any child that settles without a report.
+5. **Close-out (J5).** A final report with evidence per criterion, every assumption, filed items
+   and follow-ups, the effects performed, the gate ledger and the human tests. Your end review is
+   a review, not a gate a merge waited on.
 
-```text
-Use native subagents for bounded independent work and consequential reviews.
-Sequence tasks that depend on earlier outputs. Parallelize only independent tasks
-with distinct file ownership and explicit contracts; integrate and test their
-combined result before accepting it. Keep one integration owner accountable.
-Use available native Finder/Librarian/Oracle responsibilities rather than adding
-replacement runtimes or assuming a named tool exists in every mode.
-```
-
-The coordinator does **not** implement a dependency scheduler or automatically
-launch those agents. The integration agent reasons about dependencies using the
-native tools actually available. A subagent report is evidence to inspect, not a
-substitute for checks on the assembled result.
-
-### Opt into v2 traceability, without enabling merges
-
-```text
-Start a fresh v2 shadow mission for [outcome] in [repository]. Use delivering and
-grilling to prepare a complete manifest with stable requirement/criterion IDs,
-slices, per-PR delivery units and final criterion allocations. Start with explicit
-schemaVersion:2, then request native acknowledgment of the exact manifest before
-defense/build. Label reports and policy authority honestly. Do not enable remote
-merges, downgrade to v1 to bypass a blocker, or claim qualified closure.
-```
-
-Use the [complete manifest example](#opt-in-v2-traceability). V2 is not “v1 with
-stronger merge permissions”: `remote-verification-unqualified` is expected. Its
-read-only reconciliation can observe separately authorized integration but cannot
-manufacture missing earlier gates. Keep ordinary protected integration on v1 when
-you need the coordinator to request a merge.
-
-For an **existing v1** record, migration needs its own informed decision:
-
-```text
-Preview this mission's v1-to-v2 migration without writing. Show preserved history,
-missing v2 intent details and the loss of v1 merge capability for this record.
-Reconcile pending effects first. Do not adopt until I acknowledge the migration
-in the native owner dialog; request v2 design acknowledgment separately afterward.
-```
-
-### Choose merge and release boundaries explicitly
-
-For v1, append “Use ask-before-merge mode” to request `mission_merge_mode({mode:"ask"})`.
-The owner confirms that preference in the native dialog. Automatic low/medium-risk
-integration still requires authorization and passing gates; high-risk exact-candidate
-acknowledgment remains mandatory in either mode. V2 has no merge-mode override.
-
-If a complete release is intended, specify it rather than assuming “deliver” includes it:
-
-```text
-The delivery target is [dev integration only / rolling snapshot / stable release].
-For this mission I authorize [commits, feature push, PR and gated dev merge].
-I additionally authorize [specific rolling/stable release, deployment destination
-or Personal publication, if intended]. Follow dev → rolling → main and all
-applicable gates. Use a work budget of [limit]; disclose unavailable usage telemetry.
-Do not change shared infrastructure, access or credentials without specific approval.
-```
-
-Remove alternatives you do not authorize. A broad request does not fabricate the
-native exact-design or high-risk final-candidate receipt. In those dialogs open the
-linked brief or pull request and type **APPROVE**, never a password or key.
-
-### What should happen after kickoff
-
-The four stages are **expectations → acknowledged design and whiteboard defense →
-build/delivery with two reviews → adversarial review and learning**. The first reply
-should establish the repository/executor, outcome, missing decisions, budget and
-delivery boundary—not begin coding an unacknowledged design. Reuse an unchanged
-approved package; reopen affected decisions when intent changes. After integration,
-inspect the assembled outcome, retain findings and lessons, and propose any corrective
-work. Do not publish shared-skill learning automatically or call integration proof of
-post-delivery closure.
-
-Common blockers and safe responses:
+Common blockers and what to do:
 
 | Observation | Response |
 | --- | --- |
-| Skill or coordinator unavailable | Ask Amp to reload installed skills/plugins; missing installation needs explicit destination/approval. Guidance-only fallback has no plugin-enforced state |
-| Wrong workspace root | Open the isolated Git worktree as the workspace before starting |
-| “Mission already exists” | Use `mission_status` and resume; use a fresh thread for a genuinely new mission |
-| Owner acknowledgment absent | Leave state blocked; reopen the native dialog on the owner's request |
-| Missing CI/protection/access | Resolve the prerequisite with appropriate authorization; never bypass it |
-| Pending merge or uncertain result | Reconcile first; do not blindly repeat the mutation |
-| V2 unqualified verification | Preserve the blocker; this release cannot activate trusted remote enforcement |
+| Skill or plugin unavailable | Ask Amp to reload installed skills and plugins; installing one is a separate, approved action |
+| `mission_start` refuses `requirements` or a v2 manifest | Those schemas are retired; pass `{ contract }` |
+| Wrong workspace root | Open the dedicated Git worktree as the workspace before starting |
+| "Mission already exists" | Use `mission_status` and resume; use a new thread for a new mission |
+| Preflight fails | Fix the named check, or ask the owner if only they can (a 403 needs a plan or admin access); then run `mission_preflight` again |
+| Kickoff dialog dismissed | Nothing is recorded; use the "Open kickoff approval" quick action |
+| Pending merge or uncertain result | `mission_reconcile` first; never repeat the merge |
+| A retired v1 or v2 record | Read the retired-schema message; start a contract mission in a new thread |
 
-## Tool-level start examples
+## Install and open the workspace
 
-These are **agent tool calls**, not commands for your terminal. Start only once in
-the correct workspace/thread. For v1, the actual input is an object:
+Copy the **whole** `plugins/mission-control/` directory into an authorized Amp plugin location.
+Source integration does not publish it to Personal Plugins. Install `delivering`, `grilling` and
+`crafting` separately as skills. Do not silently install missing dependencies.
 
-```json
-{"requirements":"Recover the latest durable document edit after interruption; preserve existing files."}
+Open the dedicated Git worktree root, then start with `mission_start({ contract })`. The tool
+refuses any other input and refuses a workspace that is not the Git top level. It adds `/.amp/in/`
+to the repository-local Git exclude, keeping existing rules, and stores the record at
+`.amp/in/missions/<thread-hash>/state.json`. Do not commit these records.
+
+## The contract
+
+`mission_start({ contract })` takes a schema 3 contract with 16 top-level fields, in camelCase.
+[`delivering`'s mission record](../skills/delivering/reference/mission-record.md) explains each.
+
+```text
+schemaVersion 3, missionId, repository "owner/name"
+outcome, scope { in[], out[] }, spec, design { high, low }, ux[] (https links), defense
+cases[]          { id, case, mitigation }             the closed list for adversarial review
+openQuestions[]  { id, question, default }            each default is taken unless the owner changes it
+effects[]        { id, effect, preAuthorized, source } every outside effect the mission needs
+readiness[]      { id, check, evidence }               targets outside GitHub, reported by the agent
+milestones[]     { id, title, exit[] }                 ordered; they merge in this order
+items[]          id, title, milestone, size (XS|S|M|L), outcome, inScope[], outOfScope[],
+                 dependsOn[], done[], automatedTest, humanTest, trace[]
+brief            { markdown, url }                     the kickoff brief and its link
 ```
 
-Pass it to `mission_start`. For v2, pass `{"schemaVersion":2,"manifest":...}` with
-the complete manifest below, and omit top-level `requirements`. To resume, call
-`mission_status()` rather than `mission_start` again. Public tools do not accept
-agent-supplied owner approval; use `mission_approve({stage:"design"})` after the
-design is presented. The agent records defense and build only after that succeeds.
+The plugin refuses an invalid contract and names the field, for example
+`Refused (items[1].done)`. It refuses a missing field, size XL, an unknown dependency, a
+dependency in a later milestone, a dependency cycle, a duplicate ID, an item in an unknown
+milestone, a milestone with no item, an empty `done` list, and a `ux` or brief link that is not
+https on `ampcode.com` or `github.com`. The `brief.markdown` must pass the `briefing-decisions`
+rules that `lib/brief.ts` copies (headings, summary, technical record, sentence length, banned
+codes, and no HTML or Markdown that hides words). The plugin cannot prove that the linked page
+shows the same text; publish the page from the checked text.
 
-## The agreement
+**The approval digest.** Kickoff approval binds to a digest of 13 parts: `missionId`,
+`repository`, `outcome`, `scope`, `spec`, `design`, `ux`, `defense`, `cases`, `openQuestions`,
+`effects`, the brief, and each milestone as its ID, title, exit criteria and the sorted `done`
+criteria of its items. So:
 
-1. Start from the user's software requirements; use grilling to produce concrete
-   acceptance criteria, scope, and non-goals.
-2. Produce the spec, dependency-ordered plan, technical design, and crafting UX
-   design where relevant. Record why UX design is inapplicable otherwise.
-3. Obtain the initiating owner's acknowledgment of that exact bundle.
-4. Defend it at the whiteboard, including alternatives, invariants, threats,
-   failure/recovery boundaries, and the implementer's teach-back.
-5. Build small outcome-driven TDD slices. Run real journeys, inspect artifacts,
-   conduct two distinct review gates, repair/revalidate, and assess customer value.
-6. Show what changed, where, the evidence and limitations, and how to try it.
-7. Integrate into `dev` only after local gates, exact-candidate CI and branch protection pass.
+- a re-plan that keeps every criterion in the same milestone keeps the digest;
+- filed items are outside the digest;
+- any other change to a digest part voids the approval and the preflight (stop reason 1, then a
+  new kickoff).
 
-Low/medium risk defaults to automatic merge without a response or waiting timer.
-At build entry the owner can choose ask-before-merge. High risk always requires
-owner acknowledgment of the final candidate; unknown risk blocks. Changing the
-design reopens acknowledgment and defense; changing head/base invalidates reviews
-and evidence. Changing merge preference invalidates presentation and final
-acknowledgment, but preserves code-review evidence.
+## Tools
 
-## Install and exercise the coordinator
-
-Copy the **whole** `plugins/mission-control/` directory into an authorized Amp plugin
-location. Source integration does not publish it to Personal Plugins. Install
-`delivering`, `grilling`, and applicable `crafting` separately through their skill
-destination. Do not silently install missing dependencies.
-
-Open the dedicated Git worktree root. Start with `mission_start({requirements: "..."})`;
-unrelated conversations do not become missions. The tool adds `/.amp/in/` to the
-repository-local exclude file, preserving existing rules, and stores records at
-`.amp/in/missions/<thread-hash>/state.json`. Do not commit these operational records.
-
-| Tool | Purpose |
+| Tool | What it does |
 | --- | --- |
-| `mission_start` | Save original requirements; begin framing |
-| `mission_update` | Save design, defense, build, candidate, review, evidence, pause/resume |
-| `mission_status` | Reload records, revision fingerprint and blockers |
-| `mission_approve` | Owner-restricted design or final-candidate acknowledgment |
-| `mission_merge_mode` | Owner-restricted auto/ask preference override |
-| `mission_present` | Show the evidence packet in Amp before integration |
-| `mission_merge` | Validate required CI/protection, persist pending state, request immediate exact-head squash merge |
-| `mission_reconcile` | Read remote integration state without repeating the mutation |
-| `mission_recover` | Owner-acknowledged recovery of a settled, unqueued attempt; revalidate before retry |
+| `mission_start({ contract })` | Validates the contract and starts the mission. Refuses a second mission in the same thread |
+| `mission_status()` | The full status: digest, approval, preflight, pending approval, items, milestones with fingerprints, failed rounds and blockers, open stops, and the next action |
+| `mission_preflight()` | Runs the GitHub readiness checks, binds the result to the current digest, and lists the contract's agent-reported `readiness` entries |
+| `mission_approve()` | Opens the kickoff dialog. Refused before a passing preflight on the current contract |
+| `mission_effect({ effectId })` or `({ effect, why })` | Call right before an outside effect. A pre-authorized effect is recorded with no dialog; any other effect opens the effect dialog |
+| `mission_update({ action })` | The 12 public actions below |
+| `mission_merge({ milestoneId })` | Checks every merge blocker and GitHub's merge readiness, saves the pending state, then requests one exact-head squash merge into `dev`. Opens no dialog |
+| `mission_reconcile({ milestoneId })` | Reads the PR after a restart or an uncertain merge. Records the merge only for an exact-head merge into `dev`. Never repeats the merge |
+| `mission_recover({ milestoneId })` | After a settled, unqueued attempt: reads GitHub twice, starts a new generation, voids the milestone's reviews and evidence, and returns it to review. Sends no merge and opens no dialog |
+| `mission_report({ kind, milestoneId? })` | `checkpoint` for a merged milestone (`milestoneId` defaults to the latest merged), or `close-out` once every milestone is merged (no `milestoneId`) |
 
-Use actual text in the design bundle, not a mutable filename standing in for its
-contents. A v1 design needs `bundle.brief = { markdown, url }`: `markdown` is a
-decision brief written with the `briefing-decisions` skill, and `url` is the document
-where the owner reads it (an `https` link on `ampcode.com` or `github.com`, such as an
-Amp document published from that text). The plugin rejects a design without a valid
-brief or link, with an error that names the broken rule (front matter, summary, headings,
-technical record, consistency, length, characters, raw HTML, character references or other
-hidden text, Markdown that hides words (images, empty link text, link titles or unusual
-destinations, labelled code fences, `$$` or `` $` `` math, `$` math with a TeX special
-character, table rows wider than their header), banned codes, sentence length, url; reading
-ease is checked by `brief_check.py` only). Both are stored in the design, so the design digest
-and the approval cover the exact text and link. The plugin cannot prove that the linked page shows the
-stored text; publish the page from the checked text. `mission_status` shows the brief only as
-its link, length and SHA-256.
+The readiness preflight checks six things and names each failure:
 
-### What the approval dialogs show
+1. the repository is visible, with push permission;
+2. `dev` exists;
+3. branch protection is readable; a 403 reads "protection unreadable: needs a plan that supports
+   it, or admin access";
+4. protection is enforced: administrators included, strict checks, PR reviews configured, no
+   bypass allowances;
+5. every required check is pinned to an app;
+6. the latest `dev` commit has every required check completed with success.
 
-The owner reads and decides in the brief document; the dialog only confirms. Title
-and message are fixed text, because Amp renders the message as Markdown and could hide
-words in agent-written text. Everything from the record, the brief and the evidence is
-in a read-only **Details** box, which shows plain text with line breaks and no Markdown.
+A check whose prerequisite failed is reported as failed and not checked.
 
-- **Design:** title "Approve the design". Step 1: "Open the brief you are approving"
-  (the brief link). Step 2: the owner field. Details: the decision, the brief link,
-  the acceptance criteria word for word, and the technical record (requirements, spec,
-  plan, technical and UX design).
-- **Merge:** title "Merge into dev", with the pull request number and risk level.
-  Step 1: open the pull request. Step 2: the owner field. Details: the decision,
-  try-it, each criterion with its result, customer value, the pull request URL, head
-  and base, and the merge preference. `mission_present` shows the same details as a notification, for
-  information only.
-- **Refusal:** any word other than APPROVE, or closing the dialog, refuses approval.
-- **Older missions** designed before decision briefs keep their digests; the message
-  says so and Details holds the raw design record.
+### `mission_update` actions
 
-To see the dialogs without a mission, run the command **Mission control: Preview
-approval dialogs** from the preview-only project plugin
-[`.amp/plugins/mission-control-preview.ts`](../.amp/plugins/mission-control-preview.ts).
-It shows both dialogs for a synthetic mission and records nothing.
+Each action is `{ type, ...fields }`. Read fingerprints from `mission_status`. The internal
+actions (`approval-pending`, `approve`, `preflight`, `effect`, `merge-requested`, `merged`,
+`recover`) come only from the plugin's own tools and dialogs; `mission_update` refuses them.
 
-Criteria and result entries correspond by array position. Evidence
-entries must contain implementation locations, observed outcomes, commands and
-artifact references, including limitations. The plugin checks lifecycle and
-completeness; it does not infer whether arbitrary prose is true. Publish the
-evidence on the PR as well: `mission_present` displays it in Amp, not GitHub.
+| Action | Fields | Rules |
+| --- | --- | --- |
+| `amend` | `contract`, `reason` | See [Amend](#amend) below |
+| `replan` | `itemId`, `into[]` | The new items hold exactly the original `done` criteria, verbatim, in the same milestone; put extra checks in `automatedTest`. Refused for a done item (reopen it first with a "replanned" disposition), and while a gate of that milestone has failed rounds, until a "replanned" disposition on each failing gate. Dependents and open stops move to the new items |
+| `file` | `item`, or `followUp { id, text }` | An item goes into a milestone after the earliest unmerged one, so a current candidate is never voided. A follow-up needs an ID and is allowed only when the earliest unmerged milestone is the last one; it is listed in the close-out. Neither needs approval |
+| `delegate` | `itemId`, `executor { kind, id }` | `kind` is `thread` (a `T-…` thread ID) or `subagent` |
+| `item-done` | `itemId`, `evidence[{ criterion, result }]`, `review { reviewer, record }` | One result per `done` criterion. The reviewer is not the mission thread. When the milestone already has a candidate, it starts a new generation and voids the milestone's reviews and evidence |
+| `candidate` | `milestoneId`, `pr`, `head`, `base` | Needs every item of the milestone done and every earlier milestone merged; full Git SHAs. A new head voids reviews and evidence; failed-round counters survive |
+| `review` | `milestoneId`, `gate` (1 or 2), `fingerprint`, `passed`, `reviewer`, `record` | Bound to the current fingerprint. The reviewer is not the mission thread. Gate 2 needs a passing gate 1 on the same fingerprint and a different reviewer. After 3 failed rounds at a gate, a further `passed: false` is refused until a "replanned" disposition. A pass does not reset the count |
+| `disposition` | `milestoneId`, `gate`, `outcome`, `record`, `itemIds?` | `fixed` names no items. `replanned` names done or delegated items of that milestone: they go back to planned, lose their evidence, the milestone's reviews and evidence are voided, and that gate's count resets. `filed` names filed item or follow-up IDs. Only `replanned` resets a count |
+| `evidence` | `milestoneId`, `fingerprint`, `results[{ criterion, result }]`, `humanTest` | One result per `done` criterion of the milestone's items (filed items included) and per exit criterion |
+| `assume` | `question`, `assumption`, `why` | Shown in the next checkpoint report |
+| `stop` | `reason`, `question`, `options[]`, `recommendation`, `blocks[]` | `reason` is 1 to 5 or the exact text; anything else is refused and the refusal lists the five. Reason 2 is refused and redirected to `mission_effect`. `blocks[]` names at least one known item or milestone |
+| `resume` | `stopId`, `answer`, `source` | Closes that stop; the answer joins the record |
 
-The installed API cannot authenticate an arbitrary multiplayer mission initiator.
-Version one requires the initiator to be the thread owner, or the owner explicitly
-to adopt the mission. The confirmation has a masked `secret: true` text field
-because the API documents that field as owner-only. Type **APPROVE**, never a
-password, key, or other secret. An ordinary `requireHuman` dialog is not owner-only.
-No responder ID is returned or invented. These local acknowledgments are useful
-workflow records, not externally verifiable authentication receipts.
+### Amend
+
+`amend` replaces the contract and records the reason. The rules:
+
+- **Approval.** With the same digest, approval stays. Only item fields outside the baseline may
+  then change: `title`, `inScope`, `outOfScope`, `size`, `dependsOn`, `automatedTest`,
+  `humanTest` and `trace`. Item IDs, outcomes, milestones and `done` criteria may not. A change
+  only to `readiness` keeps the approval but voids the preflight, so run `mission_preflight`
+  again. A new digest voids approval, preflight and any pending approval.
+- **Progress.** An unchanged item (same ID, identical fields) keeps its progress; a changed one
+  returns to planned. Filed items and follow-ups live in the record, so they survive.
+- **Refused** while a merge is pending; when it changes a merged milestone or its items; when an
+  open stop names an item or milestone that the amend removes (resume the stop first); and when
+  it would change the ID, items, outcomes or criteria of a milestone with failed review rounds,
+  or move that milestone or a candidate milestone from the earliest unmerged place. Record a
+  "replanned" disposition first to change a failed milestone.
+
+## The kickoff and effect dialogs
+
+**The kickoff dialog** is titled "Approve the mission contract". It has:
+
+- a link field, "Open the contract brief";
+- one checkbox per open-question default and per pre-authorized effect, all starting unticked;
+- an optional "Changes" text field;
+- a "Submit" button. There is no typed word and no secret field.
+
+The answer is read in this order, and the first case that applies decides:
+
+| Case | What the agent gets |
+| --- | --- |
+| 1. The dialog is dismissed or fails | Nothing recorded; the reopen quick action appears |
+| 2. No responder is reported | "This client could not confirm who answered; open the approval in the Amp web app"; the quick action appears |
+| 3. The responder is not the thread owner | Nothing recorded; the quick action appears |
+| 4. Changes holds text | That text, as the owner's answer. Not approved |
+| 5. A box is unticked and Changes is empty | "Not approved: tick every box, or write what to change." |
+
+Kickoff is approved only when every box is ticked, Changes is empty, the responder is the
+signed-in owner, and the contract is unchanged since the dialog opened. A contract that changed
+while the dialog was open is stale, and nothing is recorded.
+
+**The effect dialog** is titled "Approve an outside effect" and has the same pattern with one
+checkbox: a contract effect that is not pre-authorized, or an effect that is not in the contract
+with its reason. An approval is for that one effect, once. It records the effect as performed and
+never changes the contract.
+
+**Reopen.** Opening either dialog first records a pending approval. When the dialog ends in case
+1, 2 or 3, the quick action "Open kickoff approval" or "Open effect approval" appears above the
+composer in the Amp web app. It runs the command **Reopen mission approval**
+(`mission-reopen-approval`, category Mission control), which reopens the dialog for the pending
+entry and records the answer. Changes text given there is posted to the thread as the owner's
+dialog answer. While an approval is pending, `agent.start` reminds the agent, which tells you and
+reopens it only when you ask.
+
+**Preview.** To see the real dialogs without a mission, run the command **Preview approval
+dialogs** (category Mission control) from the preview-only project plugin
+[`.amp/plugins/mission-control-preview.ts`](../.amp/plugins/mission-control-preview.ts). It shows
+the kickoff dialog for the contract fixture (9 boxes: 6 defaults and 3 effects), then an effect
+dialog for a sample effect, and reports what each answer would do. It records nothing.
+
+**Who may answer.** Only the thread owner's answer counts; Amp reports who answered. Never enter
+a password, key or other secret in a dialog. These records are workflow records, not externally
+verifiable authentication receipts.
+
+## Effects
+
+- An effect listed in the contract as pre-authorized is recorded with `mission_effect({ effectId })`
+  and no dialog, and only after kickoff is approved on the current contract.
+- A listed effect that is not pre-authorized, or an effect that is not in the contract
+  (`{ effect, why }`), opens the effect dialog. Perform it only after the owner approves it.
+- Milestone merges into `dev` happen through `mission_merge`, not `mission_effect`. The contract
+  should still list them as a pre-authorized effect so the brief shows them.
+
+## Milestones, reviews and merges
+
+**Fingerprint.** Reviews and evidence bind to a fingerprint of the approval digest, the milestone,
+its candidate and its generation. A new candidate head, a recovery, a "replanned" disposition, or
+an item done after the candidate makes the old reviews and evidence lapse.
+
+**Merge blockers.** `mission_merge` refuses and names each missing one:
+
+1. kickoff approved on the current digest;
+2. the milestone is not blocked by an open stop naming it or one of its items;
+3. all its items done;
+4. every earlier milestone merged;
+5. a current candidate;
+6. gate 1 and gate 2 passed on the current fingerprint;
+7. evidence recorded on that fingerprint.
+
+Then GitHub's merge readiness is checked as below. There is no risk field and no owner merge
+gate at any risk level; high risk means independent reviewers and the full case list.
+
+**The review cap.** A gate allows 3 failed rounds, and the count survives new heads. Then the
+disposition policy decides, never the owner: a Blocker or Major inside the case list or the
+milestone's criteria is fixed, or its items are reopened and re-planned ("replanned"); a finding
+outside them is filed ("filed") and does not fail the review; a Nit never fails a review. If the
+re-planned items still cannot meet the exit criteria, that is stop reason 5.
+
+## Hooks and the nudge
+
+- `session.start` shows the compact status as a notification.
+- `agent.start` adds the compact status and the next action to the agent's context, plus a
+  reminder when an approval is pending.
+- `agent.end` sends "continue" (at most 3 in a row) only when kickoff is approved on the current
+  contract, no item is delegated, and at least one unmerged milestone is not blocked by a stop.
+  It sends nothing while kickoff is pending, while any item is delegated, when every unmerged
+  milestone is blocked, or once every milestone is merged.
+- The hooks never open a dialog. The steering thread, not the plugin, watches child threads.
+
+## Reports
+
+`mission_report` writes reports that ask nothing; post them where the contract says. Their
+sections come from `lib/contract-text.json` (`reportSections`):
+
+- **Checkpoint:** Merged, Done, Assumptions taken, Filed for later, Try it yourself, Next.
+- **Close-out:** Outcome, Criteria and evidence, Assumptions, Filed items and follow-ups, Effects
+  performed, Gate ledger, Human tests.
 
 ## GitHub prerequisites and the workflow boundary
 
-Use the existing Amp environment's GitHub authentication through `gh`; do not
-create or copy credentials into mission records or introduce an App credential.
-The account needs to read PRs, branch protection and check runs, and request the
-authorized merge. If that access is unavailable, report the capability gap.
+Use the GitHub authentication `gh` already has; do not create or copy credentials into mission
+records. The account needs to read PRs, branch protection and check runs, and to request the
+merge.
 
-- Protect `dev`, require PRs, enable strict up-to-date required checks and
-  administrator enforcement, and leave PR review bypass allowances empty.
-- Pin every required CI check to its actual source App in **branch protection**
-  (GitHub Actions uses App ID `15368`). The adapter reads those requirements from
-  GitHub, not a local policy setting or a hard-coded check name/App allowlist.
-- Each required check must be completed successfully on the recorded head. The
-  PR must still target the recorded `dev` base/head; preflight reads it twice.
-- Keep design acknowledgment, two revision-bound reviews, acceptance evidence,
-  presentation and high-risk/ask acknowledgment in the local mission workflow.
-  Risk classification and evidence truth remain the implementer/reviewers'
-  responsibility; the plugin validates records, not arbitrary prose or code semantics.
+- Protect `dev`, require PRs, enable strict up-to-date required checks and administrator
+  enforcement, and leave bypass allowances empty.
+- Pin every required check to its source App in branch protection (GitHub Actions is App ID
+  `15368`). The plugin reads these requirements from GitHub, not from a local setting.
+- Each required check must have completed successfully on the candidate head, and the PR must
+  still target the recorded `dev` base and head; the merge preflight reads it twice.
 
-The user accepts local workflow enforcement, not protection from a hostile shell.
-An unrestricted executor can edit local records or invoke GitHub outside these
-tools; GitHub does not authenticate the local mission approvals or reviews.
-Do not bypass the workflow, weaken protection, or use administrator overrides.
-Configuring CI/protection or changing repository access requires separate approval
-and is not performed by loading this plugin. Missing protection or failing CI
-still blocks integration; no custom external service is required.
+The current adapter supports REST branch protection, not rulesets-only repositories, merge
+queues, legacy commit-status contexts or more than 100 check runs. It refuses unpinned, skipped
+or neutral checks, bypass allowances, missing administrator enforcement, and head or base motion
+during the merge preflight. GitHub's strict checks and the exact-head merge condition govern any
+race after the last read.
 
-The current GitHub adapter supports REST branch protection, not rulesets-only
-repositories, merge queues, legacy commit-status contexts, or more than 100
-check runs. It blocks unsupported/incomplete responses rather than guessing.
-It refuses unpinned checks, skipped/neutral checks, review bypass allowances,
-missing admin enforcement, and head/base motion during preflight. GitHub's strict
-checks and exact-head merge precondition govern the race after the final read;
-local approval is not an atomic remote approval of a base that moves afterward.
+Mission merges do **not** enable GitHub's persistent auto-merge. The plugin requests one
+immediate merge with `--match-head-commit`; if the remote gates no longer pass, the merge fails.
+Never add `--auto` as a shortcut.
 
-Automatic mission integration does **not** enable GitHub's persistent auto-merge.
-The adapter requests an immediate merge with `--match-head-commit`; if remote gates
-are no longer satisfied, it fails rather than authorizing a later head. Reconcile
-the result and revalidate before recovery/retry. Never add `--auto` as a shortcut.
+You accept local workflow enforcement, not protection from a hostile shell. An unrestricted
+executor can edit local records or call GitHub outside these tools, and GitHub does not
+authenticate the local approvals or reviews. Do not bypass the workflow, weaken protection or use
+administrator overrides. The plugin does not configure CI or protection.
+
+## Retired v1 and v2 records
+
+The v1 single-PR flow and the v2 shadow flow are retired. Their tools are gone, and
+`mission_start` takes only `{ contract }`. When a thread still holds a v1 or v2 record, every
+tool and hook reports a "Retired schema" message and leaves the file's bytes unchanged. For a v1
+record that requested a merge, check its pull request on GitHub first. To continue the work,
+start a contract mission in a new thread.
 
 ## Recovery and limits
 
-Atomic replacement, file fsync, an exclusive lock, and stale-revision checks
-protect ordinary local updates. This is not a distributed transaction or
-tamper-resistant audit log. A leftover lock after process death deliberately
-blocks writes: verify no writer is running, preserve state/lock evidence, and
-remove only the stale lock with operator authorization. Never delete the mission
-record to manufacture a clean state.
+Atomic replacement, file fsync, an exclusive lock and a stale-copy check protect local updates.
+The record is rebuilt by replaying its events on every load, and a record whose saved state
+differs from its replay is refused: preserve it and investigate. This is not a distributed
+transaction or a tamper-resistant audit log. A leftover lock after a crash blocks writes on
+purpose: check that no writer runs, keep the evidence, and remove only the stale lock. Never
+delete the record to get a clean state.
 
-Pending state is saved **before** requesting merge. A timeout, cancellation or
-restart may leave an unknown outcome. Reconcile GitHub first; never blindly issue
-the mutation again. If the request never reached GitHub, the current coordinator
-keeps that pending state for operator investigation rather than automatic retry.
-After the owner confirms all prior senders have settled, `mission_recover` checks
-an open, unmerged, unqueued PR before and after owner acknowledgment. It starts a
-new recovery generation and clears reviews, evidence and merge approval without
-sending another merge. Register any changed head/base and revalidate; renew
-local acknowledgment where required for the new generation. A live queue, absent remote fields,
-moving candidate or active local request blocks recovery. This does not prove
-that another executor has stopped; that remains part of the owner's investigation.
-A queued request is not delivery. A closed-unmerged or changed PR is not success.
+The pending merge state is saved **before** the merge request. A timeout, cancellation or restart
+can leave the outcome unknown. Run `mission_reconcile` first; never send the merge again. Use
+`mission_recover` only when the attempt has settled: it needs an open, unmerged, unqueued PR into
+`dev` on two reads, refuses while a request may be in flight, and sends no merge. It does not
+prove that another executor has stopped.
 
-Session opening exposes persisted state; it does not replay interrupted dialogs.
-An active build can request at most three continuation turns, stopping on pause,
-approval waits, cancellation, errors or completed integration. This does not wake
-an offline runner or promise unattended completion after the continuation budget.
-Use Amp's authorized exact-head CI/PR event subscriptions for follow-up; this
-plugin does not provision an external daemon or subscriptions itself.
-
-The local tools reject out-of-order transitions. They cannot prevent an agent
-with unrestricted shell from editing code before approval or bypassing local
-files. True isolation would require a separate security design and host permissions;
-it is not the boundary promised by this coordinator.
-No production-scale reliability, native cross-platform approval-dialog behavior,
-or live protected-merge proof follows merely from the local test suite.
+Session start shows the saved state; it does not replay interrupted dialogs. The nudge does not
+wake an offline runner or promise unattended completion. Use Amp's exact-head CI and PR event
+subscriptions for follow-up; this plugin provisions no daemon or subscription.
 
 ## Verification
 
-Run `make check`. Mission tests exercise persisted lifecycle and corruption,
-owner-dialog contracts with cancellation/stale updates, revision invalidation,
-local risk/approval decisions, and GitHub preflight/merge behavior through controlled
-transport. Amp CLI plugin loading is also part of the repository check.
-Local Git/filesystem journeys are real; controlled GitHub/UI adapters are not a
-live GitHub integration or a multiplayer identity test. Before activation, run
-an authorized disposable protected-repository trial with existing GitHub access,
-including spoofed checks, stale approvals, changed bases, failures and recovery.
+Run `make check`. The mission tests cover the contract validation, the digest, every action rule,
+the dialogs and their order rule, the reopen command, the hooks, the reports, the retired
+records, and GitHub readiness and merges through a controlled transport. The repository check
+also loads every plugin, including the preview plugin, through the Amp CLI. Controlled GitHub and
+dialog adapters are not a live GitHub integration or a multiplayer identity test.
 
-Rolling promotion, stable release, deployment, access changes and Personal
-extension publication retain their own explicit gates.
-
-## Opt-in v2 traceability
-
-Use `mission_start({schemaVersion:2, manifest: ...})` in a fresh mission. Do not also
-supply top-level `requirements`: v2 requirements belong in the manifest. There is
-no automatic migration or repository-wide activation. Native Finder/Librarian/Oracle,
-subagents, routing and thread execution remain Amp responsibilities. This plugin
-adds no specialist wrappers, model pins, scheduler, DAG dispatcher or Sonar dependency.
-
-The manifest is bounded JSON data, not an executable policy. Its contract lives in
-`plugins/mission-control/lib/contracts.ts` (`parseManifest` is the runtime authority):
-
-```json
-{
-  "schemaVersion": 2,
-  "missionId": "M-1",
-  "repository": "acme/app",
-  "requirements": [{"id":"R-1","need":"Recover edits","scope":"Local documents","nonGoals":"Cloud sync"}],
-  "criteria": [{"id":"C-1","requirementIds":["R-1"],"outcome":"Recover after interruption","authority":"mission","method":"journey","checks":["recovery"],"threshold":"Latest durable edit survives"}],
-  "decisions": [],
-  "slices": [{"id":"S-1","criterionIds":["C-1"],"paths":["src/recovery.ts"]}],
-  "deliveries": [{"id":"U-1","sliceIds":["S-1"],"criterionIds":["C-1"]}],
-  "allocations": [{"criterionId":"C-1","contributors":["U-1"],"finalUnitId":"U-1"}]
-}
-```
-
-IDs are explicit and unique. References must resolve. Object-key order does not
-change a digest; array order does. Limits are 1 MiB per manifest, 1,000 items per
-collection, 16 KiB per prose field, 1,000 events and 16 MiB per persisted mission.
-Unsafe paths, unknown fields/enums/schemas and malformed projections are rejected.
-Do not put secrets or private payloads in any record.
-
-The four stages have distinct records and gates:
-
-| Stage | Input and transition | Foundation exit/limitation |
-| --- | --- | --- |
-| Expectations | `design {manifest}`, then native `mission_approve({stage:"design"})` | Exact local snapshot acknowledged; remote intent authority remains `local-reported` |
-| Whiteboard defense | `defense {digest,record}` using current `designDigest` | Current acknowledged design explained before `build {unitId}` |
-| Build/delivery | Candidate, reports, findings, two reviews per unit/attempt | Local traceability only. `mission_merge`, merge approval/mode and recovery reject before effects |
-| Adversarial learning | Read-only integration observation, post-delivery and whole-mission packages | Reports retained; qualified post-delivery/aggregate closure remains blocked |
-
-Every PR is an immutable delivery-unit binding. Replacement PRs require a new unit.
-Candidate attempts retain old reports and reviews. Use explicit `unitId` and
-`attemptId` even for a single unit, so changing to multiple units does not change
-the meaning of earlier calls. `mission_status.current` supplies the exact current
-`fingerprint` and `evidenceDigest` for each attempt. Unknown risk blocks; a unit
-that has been high risk cannot lower its floor by registering another candidate.
-
-`mission_update` accepts these additional v2 actions (each object includes `type`):
-
-- `candidate`: `unitId`, fresh `attemptId`, `candidate` with `repo`, positive `pr`,
-  full `head`/`base` Git SHAs and `risk`, plus the complete candidate `manifest`.
-  The manifest must match the retained acknowledged snapshot, not a caller-supplied
-  approval hash.
-- `report`: `unitId`, `attemptId`, `fingerprint`, `evidence` containing `id`,
-  `criterionIds`, `outcome` (`passed`, `failed`, `blocked`) and `record`.
-  The coordinator assigns `producer: reported`; callers cannot supply a producer.
-- `review`: `unitId`, `attemptId`, `gate` (1 or 2), `fingerprint`, `evidenceDigest`,
-  `reviewer`, boolean `passed`, `record`, and `findingIds` (possibly empty).
-  New evidence/findings invalidate old review acceptance. Gate two requires a
-  passing gate one for the same evidence. A failed review requires a new attempt.
-  High-risk self-review is refused; reviewer names are reported identities, not
-  cryptographic proof of independent execution.
-- `finding`: `unitId`, `attemptId`, `fingerprint`, `finding` containing `id`,
-  `criterionIds`, `severity` (`low`, `medium`, `high`, `critical`), `confidence`
-  (`hypothesis`, `source-supported`, `runtime-reproduced`), `location`, `record`,
-  and `owner`. Even `runtime-reproduced` is a reported claim without a receipt.
-- `pause {reason}` and `resume` preserve the underlying state/history.
-- `post-report {evidence}` records fresh reported results after integration.
-  Evidence contains `id`, `baseline`, `designDigest`, `policyDigest`, `unitIds`,
-  `results` and `record`. The coordinator binds it to observed unit integrations
-  and records its sequence, `producer: reported`, and `baselineInclusion: unverified`.
-- `post-delivery {unitId,package}` and `closure-report {package}` use the package
-  contract below. Neither can assert qualified closure.
-- `disposition {disposition}` appends `findingId`, `outcome` (`fixed`, `rejected`,
-  `deferred`), `evidenceIds`, `owner`, `reviewer`, `record`, and optional
-  `correctiveUnitId`. Fixed/rejected reports require fresh passing evidence for
-  the affected criteria and unit or linked corrective unit. Consequential findings
-  require a different reported reviewer. Deferral requires a corrective unit and
-  never waives the finding. These are reported dispositions, not authenticated
-  risk acceptance: qualified resolution remains blocked. Later reports cannot
-  silently erase earlier findings.
-
-A post-delivery package contains `baseline` (full Git SHA), `designDigest`,
-`policyDigest`, `unitIds`, `evidenceIds`, `results` (one `{criterionId,outcome,record}`
-for each covered criterion), `findings` (the finding shape above), and `record`.
-`policyDigest` is a 64-character SHA-256 reference or the explicit value `unqualified`.
-`evidenceIds` must resolve to post-report records with identical baseline, design,
-policy, unit scope and observed integrations. Pre-integration reports, dangling
-references and contradictory outcomes reject. Policy/evidence references are not
-verified authorities. Integration
-must already be recorded for every covered unit. Whole-mission reports cover all
-units/criteria; the identical package is retained for each unit without duplicating
-review work. A failed assembled-baseline result remains visible even if earlier
-PR results passed. Actual ancestry, required platform execution, trusted policy and
-authenticated receipts are still missing gates; arbitrary reported SHAs cannot
-satisfy them. Report packages do not execute commands or fetch artifacts.
-
-`mission_reconcile({unitId,attemptId})` reads the bound PR using existing GitHub
-authentication. Only an exact-head merge into the recorded repository's `dev`
-records an `adapter-observed` integration. Missing earlier review/evidence gates
-remain missing. Integration is not mission completion. V2 never starts pending
-remote effects; therefore it cannot queue two concurrent merges or recover an
-unqualified send. Existing v1 pending effects must settle before migration.
-
-Amendments retain old snapshots and integrated history but require renewed native
-acknowledgment/defense. Removing a criterion requires an explicit manifest
-`dispositions` entry `{criterionId,reason,owner,replacementIds}`; replacements may
-be empty for intentional removal. The owner acknowledges the changed manifest,
-including dispositions. Changed integrated criteria need an unintegrated final
-corrective unit. Historical integration never becomes evidence for new criteria.
-
-V2 uses no automatic continuation loop: a blocked shadow mission is not a reason
-to repeatedly invoke tools or reopen dialogs. Preserve the concrete blocker and
-continue only with work that can safely proceed.
-
-## Explicit migration and rollback
-
-`mission_migrate({adopt:false,repository:"owner/repo"})` returns a preview and
-`sourceDigest` without writing. The repository is needed only if v1 has no candidate.
-Adopt with `adopt:true`, the returned `expectedDigest`, and the same repository.
-An owner-only dialog precedes adoption; migration itself does not approve v2 intent.
-The writer locks, rereads and compares exact source bytes, writes/fsyncs a read-only
-`state.json.v1-<sourceDigest>.json` backup, then atomically replaces the live record.
-Stale previews, pending effects and unsupported schemas fail without overwrite.
-
-Legacy positional criteria receive stable `C-1`, `C-2`, … IDs. Missing scope/check
-details remain explicitly unspecified. Original v1 approvals, reviews, evidence,
-generation and history remain under `legacy`; they do not pass v2 gates. An already
-merged v1 record imports as historically integrated with `legacy-reported` origin,
-not a new live GitHub observation or completed post-delivery review.
-
-Rollback means stop v2 writes and keep a v2-capable reader. Never ask a v1 binary
-to overwrite v2 state or restore a backup over later history. Preserve all files
-after interruption; stale lock recovery requires confirming no writer remains.
-Replay detects corrupted projections, not malicious rewriting by an unrestricted
-executor. The local event log is neither signed nor externally tamper-resistant.
+Promotion to `rolling` or `main`, deployment, access changes and Personal publication are
+outside effects with their own approvals, unless the contract pre-authorizes them.
