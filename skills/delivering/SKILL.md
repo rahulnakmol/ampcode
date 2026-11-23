@@ -1,321 +1,264 @@
 ---
 name: delivering
-description: "Delivers major features, use cases, and concrete requirements through initiator-acknowledged design, whiteboard defense, outcome-driven TDD, real journeys, two review gates, and customer value. Uses grilling and relevant crafting UX design, coordinates with mission-control when installed, and integrates into dev under risk-based gates. Communicates in standard/formal or editorial mode, with ELI5 summaries under 300 words. Use to deliver a substantial feature, execute an approved brief, or resume a multi-step mission. Not for standalone review, release-only work, trivial edits, or design-only exploration."
+description: "Delivers major features, use cases and concrete requirements as a contract mission: grilling, crafting UX, a whiteboard defense and a readiness preflight become one baselined contract with open questions, defaults and pre-authorized effects; the owner approves it once at kickoff; milestones then run autonomously, items built test-first in child threads or subagents, and each milestone merges into dev after tests, CI and two fresh reviews. The owner is asked only for the five stop reasons. Watches children, follows the disposition policy at a review cap, and writes checkpoint and close-out reports that ask nothing. Uses mission-control when it accepts a contract. Communicates in standard/formal or editorial mode, with ELI5 summaries under 300 words. Use to deliver a substantial feature, run an approved contract, or resume a multi-step mission. Not for standalone review, release-only work, trivial edits, or design-only exploration."
 ---
 
 # Delivering
 
-Deliver the agreed customer outcome, not merely green tests. Use two cycles: **frame expectations
-with grilling**, then **build and deliver against those expectations**. Between them, obtain
-initiator acknowledgment of the concrete design package, then defend the definition of done at
-the whiteboard. Precision means traceable requirements and
-evidence, not a promise of perfection. Keep ceremony proportional to risk; prefer caution over
-speed for non-trivial work.
+Deliver the agreed customer outcome, not merely green tests. A mission has **one approval**: the
+owner approves a baselined contract at kickoff. After that, execution is autonomous, milestone by
+milestone. Each milestone merges into `dev` at a checkpoint, and the owner is asked only for one
+of the five stop reasons below. Missions have no budgets and use no agent teams.
 
-This skill is instruction guidance, not a daemon, permission grant, scheduler, or security boundary.
-Use `mission-control` when installed, following [reference/mission-record.md](reference/mission-record.md).
-Its local approval/evidence gates enforce the workflow, not security against an unrestricted shell.
-On Amp, its state is the authority for the gates it tracks; the `missioning` ledger rows cite it.
-It uses existing GitHub credentials through `gh` in Amp, with no custom controller/App or approval
-service. Required source-App-pinned CI and strict, administrator-enforced dev protection must pass;
-loading this skill/plugin does not configure them. Do not bypass gates with a shell command.
-Use the tools actually available. A coordinator without filesystem or execution access must hand
-execution to an authorized agent with the right environment; never invent execution evidence.
+This skill is instruction guidance, not a daemon, scheduler, permission grant or security boundary.
+Use the tools actually available. A coordinator without filesystem or execution access hands
+execution to an agent with the right environment; never invent execution evidence. For ordinary
+tiny edits, use the normal workflow instead of a mission.
 
-## Enter with a concrete agreement
+## The five stop reasons
 
-1. Read the request, repository guidance, existing brief, and current delivery state. State the
-   customer outcome and delivery target in a sentence. Preserve the original requirements and
-   purpose; distinguish clarification from a proposed change. Carry forward a valid acknowledgment
-   of the same design revision rather than asking again merely because this skill loaded.
-2. Load `grilling` for the expectation loop. Reuse its existing confirmed brief without repeating
-   the interview. For an incomplete brief, use its concreteness gate to resolve only missing or
-   contradictory decisions. If the skill is unavailable, read its source if accessible; otherwise
-   report the dependency and obtain the missing concrete expectations without claiming to have
-   run grilling. Do not install or publish another skill implicitly.
-3. Carry forward the final shape, problem and beneficiaries, scope/non-goals, decision provenance,
-   numbered acceptance criteria, failure handling, verification, and dependency-ordered work plan.
-   Identify the real delivery target, including any separate rollout approval and check. Start
-   from the `missioning` charter and gate ledger when one exists; otherwise write them in the
-   mission record's first three sections as part of the design package. A brief marked pending or
-   not concrete is not an approved mission. An explicit instruction to proceed with assumptions
-   authorizes only those stated assumptions within the user's existing authority.
-4. Produce a concrete specification, dependency-ordered plan, and technical design. Use `crafting`
-   for relevant UX design, including human and agent touchpoints; record why it is inapplicable
-   when there is no experience change. If required design support is unavailable, report the gap.
-   Build consequential packages section by section: customer problem and grading criteria,
-   system/technical approach, alternatives and reasons, then implementation slices with affected
-   files/contracts, invariants, checks and approval boundaries. Keep routine coding choices with
-   the implementer; settle choices that alter outcomes, compatibility or authority in the design.
-   Before requesting acknowledgment, run the risk-scaled fresh-context design review in
-   [reference/review-and-recovery.md](reference/review-and-recovery.md), using `goldfishing`. Reuse current grilling
-   comprehension evidence; repair gaps in the package rather than coaching a reviewer privately.
-   Write the design brief with `briefing-decisions`, run its `scripts/brief_check.py` until it
-   passes, and run a `goldfishing` novice-reader review of it; repair the brief, not the reviewer.
-   Publish the checked text as the document the owner reads (on Amp, a document artifact). With
-   the plugin, pass `bundle.brief = { markdown, url }` in the design action: the dialog links the
-   document and the approval binds the text and the link. Present both technical and applicable UX
-   design, acceptance criteria, risks, and verification to the mission initiator. Obtain acknowledgment of this exact design package **before whiteboard
-   defense or build**. A generic earlier request to build is not acknowledgment of an unseen design.
-   In version one the initiator must be the Amp thread owner, or the owner must explicitly adopt
-   the mission. Do not pretend to authenticate another multiplayer participant. With the plugin,
-   use its owner-restricted design dialog; transcript text is not an agent-callable approval receipt.
-   For ordinary tiny edits, use the normal workflow instead of creating a mission.
+Stop and ask the owner only when:
 
-## Own the definition of done before handoff
+1. Change to the baseline: a criterion, scope item or design decision is wrong or conflicts, and no reading inside the contract works.
+2. Outside effect not in the contract: an irreversible or outside effect that the contract does not pre-authorize.
+3. A fact only a person holds, with no safe, reversible default.
+4. A red line: security, legal or safety.
+5. A milestone cannot meet its exit criteria after the work was re-planned and split.
 
-Read [reference/whiteboard-defense.md](reference/whiteboard-defense.md) before the first
-implementation handoff, including when the same agent moves from design to building, and only
-after initiator acknowledgment. The integration owner
-must explain the customer outcome, system and data flow, decisions and alternatives, data
-structures and invariants, malicious actors, and failure/recovery boundaries. Function-name recall
-is not required. Ground each answer in the brief, inspected contracts, evidence, or an explicitly
-labelled proposal. Confidence and polished prose are not proof of understanding.
+- A stop is one message with one question, its options and a recommendation, and it is recorded.
+  It names the items and milestones it blocks; other work continues.
+- Anything else is not a stop. Take the safe, reversible default, record it as an assumption, and
+  list it in the next checkpoint report. An open question in the contract takes its default.
+- The owner can stop or pause the mission at any time by replying in the mission thread. Stop
+  after the current step and report.
+- With the plugin, reason 2 is asked only through `mission_effect`'s dialog, never as a separate stop.
 
-Record a concise defense and resolve blocking gaps before handing off implementation. A coherent
-proposal can pass before runtime tests exist: those tests remain build obligations, not invented
-results. A separate skeptical reviewer challenges consequential designs. The recipient must read
-the actual brief and transferred materials and give a short teach-back; another thread does not
-inherit shared memory. No second user approval is needed for already-approved, unchanged scope.
+## Choose the tools: the interim rule
 
-Use facts to resolve factual gaps, bounded experiments for uncertain mechanisms, and grilling for
-changed expectations. Stop when confused and name the gap. Reopen only affected decisions when
-design, ownership, threat boundaries, or data semantics change. Material changes to requirements,
-scope, technical design, UX, or acceptance criteria reopen initiator acknowledgment **before**
-renewed defense and build. Invalidate affected reviews and evidence; unchanged scope does not
-need ceremonial reapproval. Refresh the defense against the
-implemented system before delivery, so the owner can still answer “why?” and “where does it fail?”
-This entry gate never replaces the two build reviews, executed tests, or customer-value gate.
+Read [reference/mission-record.md](reference/mission-record.md) when starting or resuming a mission.
 
-## Prepare a recoverable mission
+- Use `mission-control`'s contract tools only when the installed plugin's `mission_start` accepts a
+  `contract` field. Check the tool's schema; do not guess.
+- Otherwise follow the path for hosts without the plugin: the kickoff is one recorded owner reply,
+  and the `missioning` gate ledger and the mission record hold the rest. The older plugin keeps the
+  same tool names with its old behaviour until the contract version is on `dev` and installed in
+  your Amp, so do not drive a contract mission through it.
 
-- Keep one integration owner accountable for the outcome, even when others contribute.
-- Read [reference/mission-record.md](reference/mission-record.md) when starting or resuming a
-  multi-step mission. Reuse the repository's existing plan/state convention; otherwise keep one
-  compact record under `.amp/in/missions/<mission-id>/mission.md`. Ensure `/.amp/in/` is in the
-  repository-local Git exclude before writing there. This local record is not automatically
-  shared or backed up. Transfer the sanitized record and required artifacts explicitly before
-  a handoff or deleting its worktree. Use committed plans only when repository policy calls for it.
-- Record scope, current state, owners, acceptance-to-evidence links, and the next safe action.
-  Update on meaningful transitions and before handoff, not on every tool call. Exclude credentials,
-  private payloads, and unnecessary raw logs. Record exact revisions and environments.
-- Establish authorized actions and the charter's budget: which of tokens, time, spend, attempts
-  and review rounds are limited, and the limits. There is no fixed default; with none set, propose
-  one in the design package. Until the owner acknowledges it, only read, research, draft, review,
-  publish the brief and record, within the review rounds `goldfishing` allows for the risk, with
-  no effects action. Keep **Budget used** current across
-  threads, delegated work included. Use usage telemetry; without it, say exact accounting and
-  enforcement are unavailable and label estimates. Checkpoint conservatively near a limit and surface a known or
-  suspected breach. Do not claim compliance from a word count or create threads to erase usage.
-  A fresh context resumes within the remaining budget; beyond it needs explicit approval.
-  Never invent a monetary allowance or buy tools. Repeated failure without a new hypothesis calls
-  for diagnosis or replanning, not an unlimited retry loop.
-- Follow repository isolation policy. Default to a dedicated branch/worktree from current
-  `origin/dev`; fetch before creating it. Preserve existing staged and unstaged work. If `dev`
-  does not exist, report the integration prerequisite as blocked—do not silently create it or
-  substitute `main` or another target. Inventory and safely transfer task-related pre-existing work, preserving its source
-  until verified. Never reset, clean, or overwrite unrelated work.
-- Order slices by dependency and risk. Each should yield a useful outcome or a necessary enabling
-  layer tied to an outcome. Validate accumulated slices at milestone boundaries, including their
-  interactions. The final mission needs an end-to-end check of the complete customer journey.
-- At build entry, explain the merge policy: **low/medium risk defaults to automatic dev merge**
-  after all gates, with an optional owner-selected **ask-before-merge** mode. Automatic mode
-  needs no response or timer. High risk always requires acknowledgment of the exact final
-  candidate, even in automatic mode; unknown risk is blocked until classified. Never silently
-  downgrade risk. An owner mode change invalidates a prior final-candidate acknowledgment.
-  Record the choice with `mission_merge_mode(mode: auto|ask)` when available; this offers an
-  owner-restricted interaction, not authority for the agent to choose on the owner's behalf.
+## J1 Kickoff: one contract, one approval
 
-## Build loop: repeat for each small, composable slice
+1. **Frame.** Read the request, repository guidance, any existing brief and the delivery state.
+   State the customer outcome and the delivery target in one sentence. Preserve the original
+   requirements; separate clarification from a proposed change.
+2. **Grill.** Load `grilling` and reuse a confirmed brief. Every criterion names a finite set of
+   cases; a rule like "reject anything that…" lists its cases. If the skill is unavailable, say so
+   and resolve the missing decisions without claiming to have run it.
+3. **Design.** Write the spec, the dependency-ordered plan and the technical design. Use `crafting`
+   for any experience change, and render every changed state (a screenshot or visual) for the owner
+   before the baseline; record why UX is inapplicable when nothing changes. Settle choices that
+   alter outcomes, compatibility or authority; leave routine coding choices to the implementer.
+4. **Review the design fresh.** Run the design review lenses in
+   [reference/review-and-recovery.md](reference/review-and-recovery.md) with `goldfishing`. Repair
+   the package, not the reviewer.
+5. **Defend it.** Run the whiteboard defense in
+   [reference/whiteboard-defense.md](reference/whiteboard-defense.md). The defense record becomes
+   part of the baseline before kickoff.
+6. **Run the readiness preflight** on the repository, CI, credentials and every outside target:
+   push access, `dev` exists, branch protection is readable (name a 403), required checks are
+   pinned and green on `dev`, the child-thread tools exist, and each deploy, publish or tracker
+   target is reachable. Kickoff waits for a passing preflight, so resolve each failed check while
+   preparing the baseline, asking the owner then if only they can fix it (a 403 needs a plan or
+   admin access); never fold it into the kickoff ask or leave it for mid-build. Turn other gaps,
+   such as a target that needs its own approval, into an open question or an effect. With the
+   plugin, `mission_preflight` binds the result to the contract; kickoff is refused without a
+   passing preflight on the current contract.
+7. **Write one contract** (fields in [reference/mission-record.md](reference/mission-record.md)):
+   outcome, scope, spec, design, UX links, defense, the **closed case list** that bounds adversarial
+   review, **open questions, each with a default**, **effects, each pre-authorized or not with its
+   source**, readiness results, milestones with exit criteria, and items. Every item has an ID,
+   title, milestone, size (XS, S, M or L; split anything larger), outcome, in scope, out of scope,
+   dependencies, a definition of done with finite cases, an automated test, a human test and a trace.
+8. **Write the kickoff brief** with `briefing-decisions`, run its checker, and run a `goldfishing`
+   novice-reader review of it. It is the one brief: it lists every open question with its default,
+   every effect, and the five stop reasons in plain words.
+9. **Ask once.** With the plugin: `mission_start({ contract })`, `mission_preflight`, then
+   `mission_approve`, which opens one dialog where the owner ticks each default and effect.
+   Without it: one message that links the brief and asks for one reply; record the reply as a
+   human ledger row quoting the owner's words and the message ID. Changes in the reply are applied
+   to the baseline before execution starts and are not asked again.
+
+Until kickoff is approved, only read, research, draft, review, and publish the brief and record.
+Take no effect. A generic request to build is not approval of an unseen contract.
+
+## J2 Run the milestones
+
+Run milestones in contract order. Cut each milestone branch (`mission/m<n>-…`) from current `dev`
+after the previous milestone merges, and each item branch from its milestone branch. Follow the
+repository's isolation policy; preserve existing work and never reset or clean it.
+
+### The item protocol
+
+- **Executor:** M and L items go to a child thread; XS and S items go to a subagent. The steering
+  thread stays the one integration owner.
+- **The brief is the item's contract slice:** its outcome, in and out of scope, definition of done,
+  automated and human tests, trace, the cases it touches, the defense, the milestone branch on `origin`, the five
+  stop reasons, and the reply route (the steering thread's ID, for `send_thread_message`).
+- **The child** works test-first with the build loop below, runs one fresh `goldfishing` critic
+  review against its definition of done and the cases it touches, pushes its item branch, and
+  reports: a teach-back (outcome, approach, constraints, key risks, first check), branch and head,
+  each done line with its evidence, the review record, assumptions taken and findings outside the
+  case list. It creates no threads and merges nothing into `dev`.
+- **A child stops only for the five reasons**, and sends them to the steering thread, never to the
+  owner. Everything else is a recorded assumption in its report.
+- **The steering thread** checks the evidence, merges the item branch into the milestone branch
+  (`git merge --no-ff`), runs the checks and pushes. With the plugin, record `delegate` and
+  `item-done` through `mission_update`.
+
+### The milestone gates
+
+1. Open the milestone PR into `dev` once all its items are done; with the plugin, record it as the
+   `candidate`.
+2. Run the tests. **Wait for PR and CI results** with the host's tool in `missioning`'s
+   [reference/hosts.md](../missioning/reference/hosts.md).
+3. **Gate 1:** a fresh critic review of the whole milestone diff against the milestone's criteria
+   and the closed case list.
+4. **Gate 2:** after gate 1 passes, a second independent fresh review of the same head. Its record
+   holds the drift check against the contract and the refreshed defense.
+5. Record one evidence line per criterion and per exit criterion, bound to that head.
+6. Squash-merge into `dev` (`mission_merge`), then read the merge back (`mission_reconcile`;
+   without the plugin, `gh` and an agent ledger row citing the pre-authorized effect).
+   There is no owner merge gate at any risk level. High risk means independent reviewers and the
+   full case list, not a question to the owner.
+7. Send the checkpoint report to the threads the charter names (by default, the mission thread).
+   It asks nothing.
+
+A review fails only on an open Blocker or Major inside the case list or the milestone's criteria.
+A repair makes a new head: both gates run again on it, and earlier reviews and evidence lapse.
+
+### The review cap: the disposition policy
+
+A gate allows 3 failed rounds, and the count survives new heads. After that the disposition
+policy decides, never the owner:
+
+- A Blocker or Major inside the case list or the milestone's criteria is **fixed**. If it is still
+  not fixed after 3 failed rounds, reopen the items concerned and re-plan and split them (**replanned**),
+  keeping their criteria verbatim. Only "replanned" resets the gate's count. If the re-planned
+  and split items reach the cap again, that is stop reason 5.
+- A finding outside them is **filed** as an item in a later milestone, or as a follow-up when the
+  current milestone is the last. It does not fail the review.
+- A Nit is fixed or declined and never fails a review.
+
+Item reviews follow the same policy; an item that reaches its cap again leaves its milestone
+unable to meet its exit criteria. Stop reason 5 applies only when a milestone still cannot
+meet its exit criteria after its items were re-planned and split.
+
+## J3 Questions, assumptions and new scope
+
+- A question with a safe, reversible default becomes an assumption (`assume`), listed in the next
+  checkpoint report.
+- New scope becomes an item in a later milestone (`file`), decided once, or a reason 1 stop when it
+  changes the baseline. Re-planning or splitting an item keeps its criteria and is never a stop.
+- A pre-authorized effect is performed and recorded (`mission_effect` with its ID: no dialog).
+  An effect that is not pre-authorized is stop reason 2.
+- A check that seems to need a person is scripted where possible (for example with browser
+  automation), and its human test goes in the checkpoint report.
+- Usage is reported when the host shows it. It is never a stop.
+
+## J4 Watch the children
+
+- While any child runs, the steering thread watches it with `wait_for_threads` and keeps a
+  30-minute schedule (`building-schedules`) as a backstop. Clear the schedule when no child runs.
+- When a child settles, read it. With a report, check the evidence. Without one, answer its
+  question if the contract settles it, tell it to continue, restart it once from its branch, or
+  re-plan its item. A child in error is restarted once from its branch, then re-planned.
+- Never leave a settled child idle. A child that paused itself over a usage limit is told to continue.
+
+## J5 Close out
+
+After the last milestone merges, send the close-out report. The owner's end review is a review,
+not a gate a merge waited on. Distinguish **implemented**, **verified**, **reviewed**,
+**integrated into dev** and **released**. Release to `rolling` or `main`, deployment and
+publication happen only when the contract pre-authorizes them.
+
+## Reports
+
+Write reports with `briefing-decisions`' writing rules. They ask nothing. With the plugin,
+`mission_report` writes them. These section lists copy `reportSections` in `mission-control`'s
+`lib/contract-text.json`; change both together.
+
+- **Checkpoint report** sections, in order: `Merged`, `Done`, `Assumptions taken`, `Filed for later`, `Try it yourself`, `Next`.
+- **Close-out report** sections, in order: `Outcome`, `Criteria and evidence`, `Assumptions`, `Filed items and follow-ups`, `Effects performed`, `Gate ledger`, `Human tests`.
+
+The close-out holds evidence per criterion, every assumption, filed items and follow-ups, the
+effects performed, the gate ledger and the human end-to-end scripts.
+
+## Build loop: each item, test-first
 
 ### 1. Assess the current state
 
-Read implementation, callers, contracts, failures, and existing evidence before editing. Separate
-observations from assumptions. Read exports, immediate callers, and shared utilities before adding
-code. If their purpose is unclear, investigate and ask only when a consequential decision remains.
-Surface conflicting patterns rather than blend them. Check authority, provenance, recency, and
-tested behavior; state which applies and why. Flag the other without expanding scope to clean it up.
-Run the relevant baseline and inspect the real test environment.
-Record what already works and what must be preserved. A failing baseline is not automatically
-pre-existing: reproduce on the untouched base in isolation before attributing it. Keep failures
-visible; neither baseline attribution nor flaky retries waive a required check.
+Read the implementation, callers, contracts, failures and existing evidence before editing.
+Separate observations from assumptions. Surface conflicting patterns rather than blend them. Run
+the relevant baseline and record what already works. A failing baseline is not automatically
+pre-existing: reproduce it on the untouched base before attributing it.
 
-### 2. Define the customer outcome
+### 2. Map the definition of done
 
-Name the problem, intended improvement, scope, and measurable acceptance criteria using the brief's
-IDs. Define who benefits and what would count as no improvement. Map each criterion to a test or
-observable journey before implementation. For an enabling slice, name the downstream outcome and
-demonstrate its necessity; do not pretend infrastructure alone proves customer impact.
-
-If new evidence changes expectations, return to grilling for that decision. Never silently weaken
-an acceptance criterion, override a user decision, or expand scope to make the implementation fit.
+Map each done line of the item to a test or an observable journey before implementation. Name
+who benefits and what would count as no improvement. Never weaken a criterion or expand scope to
+fit the implementation; a criterion that cannot hold is stop reason 1.
 
 ### 3. Build the test harness first
 
-Write the smallest harness that demonstrates missing behavior. Execute it against unchanged code
-and verify the expected assertion fails for the right reason. A syntax error, missing dependency,
-unavailable credential, or mock configured to fail does not establish the behavioral red state.
-
-Choose relevant realistic failure, recovery, security, and boundary cases. Name a plausible wrong
-implementation and choose inputs where it disagrees with the correct result: asymmetric data,
-both sides of a limit, unauthorized actors, interruption after a partial write. Derive expected
-results independently. A test that passes on empty output or checks only that nothing crashed
-does not demonstrate the outcome. Tie tests to why behavior matters for the customer, not only
-its mechanics; show which plausible business-rule violation they catch. Exercise a named technique
-such as fuzzing on the actual risk when requested or useful, not as mandatory extra ceremony.
-
-For a pure refactor, use unchanged behavioral checks rather than fabricating a missing behavior.
-For instruction or document deliverables, use task scenarios and observable outputs; keyword
-presence alone is not behavioral proof. Label simulations as simulations. Separate temporary
-validation probes from maintained tests; keep tests of public contracts that catch plausible
-regressions, extending existing suites before adding files.
+Write the smallest harness that shows the missing behavior, run it on unchanged code, and confirm
+it fails for the right reason. A syntax error, missing dependency or mock set to fail is not a red
+state. Name a plausible wrong implementation and choose inputs where it disagrees with the correct
+result: asymmetric data, both sides of a limit, unauthorized actors, an interrupted write. Derive
+expected results independently. A test that passes on empty output proves nothing. For a pure
+refactor, use unchanged behavioral checks. For instructions and documents, use task scenarios and
+observable outputs; keyword presence alone is not behavioral proof.
 
 ### 4. Implement the smallest useful layer
 
-Reuse local patterns and APIs. Keep responsibilities clear, and avoid speculative abstractions
-or unrelated cleanup. Prefer the minimum code that solves the agreed problem; do not add a
-single-use abstraction without a concrete need. Match repository style even when you prefer
-another approach. Surface harmful conventions instead of silently forking them. Clean up only
-your own task-related changes; do not reformat adjacent code or refactor sound code for taste.
-Keep behavior-preserving refactors separate from behavior changes.
-Use the model for judgment: interpretation, classification, drafting, extraction, summarization,
-design tradeoffs, and ambiguous evidence. Use code or existing tools for deterministic routing,
-fixed retry policies, transforms, counting, and checks. Do not spend model calls where code can
-answer reliably. Pursue verified outcomes rather than mechanically completing a list; required
-gates and permissions still apply.
-Commit coherent working increments frequently at green boundaries. Preserve the earlier red-run
-evidence; TDD does not require publishing broken commits. Stage only owned, relevant changes.
+Reuse local patterns and APIs; avoid speculative abstractions and unrelated cleanup. Keep
+behavior-preserving refactors separate from behavior changes. Use code, not model calls, for
+deterministic routing, transforms, counting and checks. Commit coherent increments at green
+boundaries, keep the red-run evidence, and stage only owned, relevant changes.
 
 ### 5. Run it
 
-Execute the harness and representative user journeys on the appropriate platform, not just mocks,
-typechecks, or compilation. Check actual outputs and persisted state. Exercise applicable failure
-and recovery paths. Record commands/actions, expected and observed results, revision, environment,
-and artifact references. Measure before/after under comparable conditions when claiming improvement.
+Run the harness and representative journeys on the real platform, not just mocks or typechecks.
+Check actual outputs and persisted state, and exercise failure and recovery paths. For visual
+changes, render the affected states and inspect the captures. Open the produced artifact and
+compare it with the request. Record commands, expected and observed results, revision and
+environment. A skipped required check blocks completion; an unavailable environment is reported,
+not substituted.
 
-For visual changes, render affected states and widths and inspect captured images; screenshots
-without inspection verify nothing. For interaction-only changes, exercise behavior and inspect
-DOM/accessibility state. For APIs, CLI tools, migrations, and background jobs, inspect responses,
-exit codes, data invariants, and recovery as relevant. Unavailable required environments remain
-blocked or partially verified; substitute checks are useful but must not be called equivalent.
+### 6. Review, fix and recheck
 
-Open the actual produced artifact and compare it with the original request, including scope,
-content, tone, and specification where relevant. A successful process exit is not enough. If the
-artifact cannot be inspected, report that part as unfinished. Name skipped checks and reasons;
-a skipped required check blocks completion, while a genuinely inapplicable optional check needs
-an explicit reason. Report what was present, missing, wrong, or different—not what was intended.
+Review the item against its definition of done and the cases it touches with a fresh reviewer
+(see [reference/review-and-recovery.md](reference/review-and-recovery.md)). Turn each real bug
+into a regression test that fails without the fix, make the smallest correction and rerun the
+affected checks. Never suppress failures, delete useful assertions, hard-code answers or rerun a
+flaky test until it passes.
 
-### 6. Review correctness, security, and vulnerabilities — gate one
+### 7. Apply the customer-value gate
 
-Review the candidate against the brief and actual diff, tests, and runtime evidence. Examine
-permissions, tenant/user isolation, secrets and logs, dependency changes, concurrency, data
-preservation, and failure recovery. Record applicable risks and reasons for any non-applicability.
-Read [reference/review-and-recovery.md](reference/review-and-recovery.md) for consequential changes,
-delegation, or interrupted operations.
+Ask: **"Will what we built actually matter to the people using it?"** Compare the result with the
+agreed problem. State the baseline, the observation and the limits; do not invent percentages or
+claim production impact from a local demonstration. An enabling item can pass by showing its
+prerequisite, but the final customer benefit stays unproven until the full journey passes.
 
-Use an independent reviewer context or person for consequential changes: authentication or trust
-boundaries, money, sensitive data, migrations, concurrent state, destructive operations, or broad
-shared contracts. Supply the candidate and criteria without telling the reviewer it is correct.
-If that review is unavailable, record the blocker; self-review is not independent review. Small,
-low-risk slices can use explicit self-review. Record reviewer, revision, scope, findings, severity,
-and limitations. No-finding reviews still need scope and evidence, not just “LGTM.”
+## Resume and finish honestly
 
-### 7. Fix and revalidate
-
-Turn discovered behavioral bugs into meaningful regression tests, demonstrate the failure without
-the fix, make the smallest correction, and rerun affected journeys and broader checks. Preserve
-existing evidence when safe; do not undo user work to reproduce a bug. Resolve each finding or
-obtain explicit authorized risk acceptance where policy permits. Risk acceptance cannot relabel a
-failed mandatory check as passed; changing a required gate needs an explicit expectations decision.
-
-Repeat while making evidence-backed progress. Stop and report when scope, authorization, required
-environment, or agreed budget prevents progress. Never suppress failures, delete useful assertions,
-hard-code answers, or keep rerunning a flaky test until one green result hides the failures.
-
-### 8. Review the revised result again — gate two
-
-Perform a distinct second review after repair and revalidation. Verify each finding is resolved,
-inspect the repair's interactions with the complete change, and look for newly introduced problems.
-For consequential changes, obtain independent review again; reusing the same reviewer is allowed.
-If gate one found nothing, still recheck the final candidate and evidence; do not manufacture fixes.
-
-Record the reviewed revision and finding dispositions. New code after approval invalidates review
-of that delta and affected evidence. Return through repair/revalidation and gate two until the
-final candidate is reviewed. Reuse unrelated evidence only with a recorded scope-based reason.
-
-At gate two and after resuming interrupted work, compare the acknowledged design with the actual
-implementation and executed evidence. Classify differences as missing behavior, unauthorized
-change, approved design evolution, or stale documentation. Trace each to acceptance IDs and
-source locations. Passing tests do not settle spec/code drift; do not rewrite the specification
-to legitimize a defect. Reopen affected decisions/acknowledgment for material changes, and refresh
-the handoff. See the drift protocol in the review reference. This is not a third build-review gate.
-
-### 9. Apply the customer-value gate
-
-Ask: **“Will what we built actually matter to the people using it?”** Compare the result with the
-agreed problem and core purpose. Show reduced waiting, manual intervention, lost work, cost, or
-uncertainty—or another agreed observable benefit. State the baseline, observation, and limitations.
-Do not invent percentages or claim production impact from a local demonstration.
-
-If tests pass but the customer still cannot accomplish the intended task, the slice has not met
-its outcome. Reframe with the user rather than add unrelated functionality. An enabling slice can
-pass by demonstrating the agreed prerequisite, while final customer benefit remains unproven until
-the full journey passes. Do not lower the goal to “we wrote code.”
-
-### 10. Integrate and learn
-
-Present the inspected artifacts, acceptance evidence, both reviews, customer value, limitations,
-and a reproducible **try-it procedure** before requesting merge (`mission_present()` when available).
-For low/medium automatic mode, proceed without another human response only when all mandatory
-local gates, required CI and branch protection pass. Ask mode and every high-risk candidate require owner
-acknowledgment bound to the exact candidate and current design/base/mode. Unknown risk blocks merge.
-Changed code or base needs affected revalidation and renewed exact-candidate acknowledgment where
-required; material design changes also reopen the design gate. A local approval record cannot
-override required CI or protection. Use `mission_approve(stage: merge)` and `mission_merge()` when available.
-Before an ask-mode or high-risk merge acknowledgment, write a `briefing-decisions` brief of the
-presented evidence beside the mission record; the merge is then a human ledger row. An automatic
-low/medium merge is an agent row.
-
-Commit the reviewed candidate, run configured CI, and integrate authorized green slices into `dev`
-under repository policy. Carry valid existing authorization forward without treating stale receipts
-as current. If GitHub access or protected-branch prerequisites are absent, finish local work
-and report the specific blocker; do not provision shared protections without separate approval.
-Use PRs to `dev`, squash-merge when required checks are green and policy permits, then clean up
-only this mission's branch/worktree after preserving its evidence. Use configured Depot runners;
-do not invent runner labels or CI. No CI configured is not a green CI run: report the gap and
-resolve the integration gate explicitly instead of merging on that assumption.
-
-Check the exact candidate's required checks, review status, and mergeability. If the base or code
-changes, revalidate affected integration behavior before merging. Follow Amp's PR comment/review
-and exact-head CI subscription guidance when available; feedback is not new authority to push.
-Record the merge outcome and relevant integration verification. An accepted auto-merge request
-is pending, not completion; verify the actual remote merge into dev. Inspect remote state before
-retrying an ambiguous push or merge. Capture lessons that change the next slice, not generic prose.
-
-Keep `dev` integration, rolling promotion, deployment, and stable release distinct. Promote only
-under the repository's schedule or explicit release authorization and applicable release gates.
-Never infer stable-release or deployment approval from green CI. Publishing source extensions
-does not install them into Amp Personal Skills or Personal Plugins; each publication destination
-requires separate explicit approval. Source delivery is not Personal publication authorization.
-
-## Resume, communicate, and finish honestly
-
-On resume, read the mission record and confirmed brief, then reconcile the actual worktree, remote
-state, running processes, and external operations. A saved status is a claim to check, not truth.
-Revalidate stale evidence. Keep implementation and fixes with their checkout; another thread does
-not inherit uncommitted files. Delegate only bounded independent work with explicit ownership and
-handoffs. Worktrees do not isolate ports, databases, credentials, or external effects.
-
-Checkpoint after each significant step: what changed, what is verified, what remains, and the next
-safe action. If you cannot describe the current state, stop and reconstruct it before continuing.
-Carry relevant repository conventions and approval gates into that next action explicitly; do not
-make the recipient infer them. Keep integration and later promotion gates distinct in the handoff.
-Report at meaningful milestones: outcome reached, decision changed, blocker found, verification
-result, or integration completed. Keep routine tool narration out. Finish with the customer outcome,
-evidence and limitations, unresolved risks, actual delivery state, and any exact approval needed.
-Distinguish **implemented**, **verified**, **reviewed**, **integrated into dev**, and **released**.
-Do not call a whole mission complete when only a slice or local checks are complete. When blocked,
-preserve completed work and a self-contained next action so another session can resume safely.
+- On resume, read the mission record and contract, then reconcile the real worktree, remote state,
+  children, running processes and outside operations. A saved status is a claim to check.
+- Before an outside operation, record its intent and target; afterwards record the observed effect.
+  A lost response is an unknown outcome: reconcile before any retry (see the recovery section of
+  [reference/review-and-recovery.md](reference/review-and-recovery.md)).
+- Checkpoint after each significant step: what changed, what is verified, what remains and the
+  next safe action. Keep implementation and fixes with their checkout; another thread does not
+  inherit uncommitted files.
+- Report at milestones, not per tool call. Do not call a mission complete when only a milestone or
+  local checks are complete. When blocked, preserve the work and a self-contained next action.
 
 ## Choose the communication form
 

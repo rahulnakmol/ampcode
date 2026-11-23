@@ -64,33 +64,40 @@ Each finding has a location, the problem, its consequence, a severity and the sm
 | --- | --- |
 | Fix | Change the artifact itself so the next reader does not hit the gap |
 | Contest | Only with evidence the reviewer could have read. "This was intentional" is not evidence |
-| Escalate | The deciding evidence is outside the reviewed material, or the fix is a new choice: the owner decides |
+| Escalate | The deciding evidence is outside the reviewed material, or the fix is a new choice: the owner decides. In a contract mission, ask only for one of its five stop reasons; otherwise take a safe, reversible default and record it as an assumption |
 | Decline | Only a Nit |
 
 The author never changes a severity and never contests a comprehension gap: if the reader did
 not understand, the text did not explain. Add context because a human reader needs it, not only
 to satisfy the reviewer. A fix replaces the wrong text or puts the missing rule where a reader
 looks; it does not add a note about the review. A reviewer's suggestion is the author's choice,
-labelled as an assumption, until the owner confirms it.
+labelled as an assumption, until the owner confirms it (in a contract mission, list it in the
+next checkpoint report instead of asking).
 
 ## 5. Rounds
 
 - A calling skill's own round rule wins. `planning` keeps its single recheck.
 - Otherwise: repair, then one recheck by a new fresh reader. The recheck gets the artifact, its
   sources, the earlier findings and one line per finding saying what changed, not whether it
-  worked. It checks those findings and the text around each repair. What remains goes to the
-  owner.
+  worked. It checks those findings and the text around each repair. What remains is decided as
+  at a cap, below.
 - At a high-risk gate (authentication or trust boundaries, money, sensitive data, migrations,
-  concurrent state, destructive operations or broad shared contracts, as listed in `delivering`),
-  run at most three rounds. At the cap the owner decides: accept the open findings, continue, or
-  rework. A cap never accepts findings by itself.
+  concurrent state, destructive operations or broad shared contracts), run at most three rounds.
+- At the cap, the calling contract's disposition policy decides, never the owner (`delivering`,
+  "The review cap: the disposition policy"). A Blocker or Major inside the contract's case list
+  or criteria is fixed; if still not fixed after 3 failed rounds, its items are reopened and
+  re-planned. A finding outside them is filed and does not
+  fail the review; a Nit is fixed or declined. Without a contract, the owner decides: accept the
+  open findings, continue, or rework. A cap never accepts findings by itself.
 
 ## 6. Failed reviewers
 
 A reviewer that fails, times out or cannot read its inputs is retried once, then recorded as
 **not run**. Not run is never a pass. When no fresh reviewer is available, the gate is
-**pending**: keep the artifact, name the review it still needs, and tell the owner. A review by
-the author is not a fresh review.
+**pending**: keep the artifact, name the review it still needs, and tell the owner. In a contract
+mission, a pending gate blocks its milestone's merge: retry it once; if it is still pending,
+re-planning and splitting cannot supply a reviewer, so the milestone cannot meet its exit
+criteria: stop reason 5. A review by the author is not a fresh review.
 
 ## 7. Isolation check
 

@@ -12,8 +12,13 @@ plain English. Everything only a specialist needs goes into a technical record a
 ## When to use it
 
 Use it for every human gate: design approval, merge, release, budget, vendor choice, roadmap or
-plan sign-off. `delivering` uses it for mission-control design approval: the owner reads the brief as a
-document, and the approval binds its exact text and link. Do not use it for status updates that ask no decision.
+plan sign-off. Do not use it for status updates that ask no decision.
+
+In a contract mission (`delivering`, `missioning`), the kickoff brief is the one brief. It lists
+every open question with its default, every effect to pre-authorize, and the five stop reasons
+in plain words. The owner reads it as a document, and the kickoff approval binds its exact text
+and link. Checkpoint and close-out reports ask nothing. Their sections are those listed in
+`delivering`, which copies `reportSections` verbatim. They follow the writing rules in step 3 below.
 
 ## Write the brief
 
@@ -50,7 +55,9 @@ included. Repair every wrong or missing answer in the brief and check it again.
 
 - **Amp:** publish the checked text as a document artifact. With mission-control, pass
   `bundle.brief = { markdown, url }` in the design action, where `url` is that document
-  (see `delivering`). Publish from the checked text: the dialog cannot prove the page matches.
+  (see `delivering`). In a contract mission the kickoff brief is the contract's Brief field
+  (`mission_start({ contract })`), and `mission_approve` shows it in the kickoff dialog.
+  Publish from the checked text: the dialog cannot prove the page matches.
 - **Other hosts:** give the Markdown file to the approver. An HTML picture opens in a browser.
 - Record the approval with the brief's revision. Approval in chat is not approval of the brief
   unless the approver names it.

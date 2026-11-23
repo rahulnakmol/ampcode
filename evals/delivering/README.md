@@ -42,3 +42,15 @@ The [2026-10-25 series](results/defense-2026-10-25/assessment.md) retains respon
 JSON, version mapping, and limitations. The original first-package results above remain historical;
 they do not qualify the revised skill. These tests evaluate adherence, not certified ASD compliance,
 exact token metering, or real code execution. An ELI5 word count is not a token count.
+
+## Stop-replay series
+
+`stop-replay.json` replays 16 situations taken from real stops in earlier missions. Each has an
+expected decision: `kickoff` (asked while preparing the baseline or in the one kickoff ask),
+`stop` (a mid-build stop for one of the five stop reasons) or `proceed` (ask the owner nothing and
+take the expected action). Give fresh answerers only the situations and the changed skills
+(`delivering` with its references, `missioning` with its charter, `goldfishing`, `grilling`,
+`crafting` and `briefing-decisions`), never the expected answers. A separate fresh judge scores
+each answer's decision and action against the file; the target is 16 of 16. Rerun the series
+after any edit to those skills' stop, cap, kickoff or item rules.
+[results/stop-replay.md](results/stop-replay.md) keeps each run's per-situation table.

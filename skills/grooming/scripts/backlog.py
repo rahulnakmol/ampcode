@@ -34,7 +34,7 @@ OPTIONAL = {
     "initiative": {"prd", "non_goals"},
     "goal": {"measurements"},
     "feature": {"acceptance", "milestone", "owner"},
-    "story": {"depends_on", "milestone", "owner", "delivery"},
+    "story": {"depends_on", "milestone", "owner", "delivery", "in_scope", "out_of_scope", "automated_test", "human_test"},
     "bug": {"environment", "depends_on", "milestone", "owner", "delivery"},
 }
 ENUMS = {
@@ -461,6 +461,13 @@ def _check_item(item, seen, milestones, err, warn):
             err(iid, "feature 'acceptance' must be a list of strings")
     if kind == "initiative" and "non_goals" in item and not isinstance(item["non_goals"], list):
         err(iid, "'non_goals' must be a list")
+    if kind == "story":
+        for field in ("in_scope", "out_of_scope"):
+            if field in item and not (isinstance(item[field], list) and item[field] and all(_text(s) for s in item[field])):
+                err(iid, f"'{field}' must be a non-empty list of non-empty strings")
+        for field in ("automated_test", "human_test"):
+            if field in item and not _text(item[field]):
+                err(iid, f"'{field}' must be a non-empty string")
     if work_item:
         _check_work_item(item, seen, err, warn)
 
@@ -810,6 +817,10 @@ def cmd_tree(args):
             if kind == "bug":
                 extra += f" urgency:{item.get('urgency')}"
         print(f"{pad}{item['id']} {item.get('title', '')}  ({extra})")
+        for field in ("in_scope", "out_of_scope", "automated_test", "human_test"):
+            if field in item:
+                value = item[field]
+                print(f"{pad}  {field.replace('_', ' ')}: {'; '.join(value) if isinstance(value, list) else value}")
         nested = sorted(kids.get(item["id"], []), key=lambda k: (
             order[k["type"]], -(wsjf_score(k) or 0) if k["type"] == "feature" else 0, id_key(k["id"])))
         for kid in nested:

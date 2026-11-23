@@ -25,7 +25,8 @@ repository, service or change. Not for the review gates inside a delivery missio
 ## Steps
 
 1. Charter the mission with `missioning`.
-2. Agree scope and rules of engagement: what may be read, scanned or probed, and where.
+2. Agree scope and rules of engagement at kickoff: what may be read, scanned or probed, and
+   where.
 3. Build the threat model.
 4. Run the allowed scans; keep the raw output as evidence.
 5. Review the code against the threat model.
@@ -33,14 +34,19 @@ repository, service or change. Not for the review gates inside a delivery missio
 7. Fix or file Critical and High findings; retest fixes.
 8. Write the coverage statement: what was examined and what was not.
 9. Run a fresh critic review of the report; repair.
-10. Release the report after its gate; close out.
+10. Release the report as an effect, pre-authorized or asked; close out.
+
+Milestones: M1 threat model and scans (steps 3 and 4), M2 review and findings (5 to 7), M3
+report (8 to 10).
 
 ## Human gates
 
-- Scope and rules of engagement (what may be scanned or probed).
+- Kickoff: the charter with scope and rules of engagement (what may be scanned or probed).
 - Accepted risks: each one accepted in writing by its risk owner, named as an Approver; by
   `question:` only when that is the Decision owner, otherwise by `written:` or `tracker:`.
-- Report release.
+  Until then the finding stays open; the mission goes on.
+- Report release: an outside send, pre-authorized at kickoff for named recipients or asked with
+  the exact plan.
 
 ## Definition of Done
 

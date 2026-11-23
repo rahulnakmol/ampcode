@@ -1,44 +1,41 @@
 # Review, delegation, and recovery
 
-## Fresh-context design review
+Run every fresh review with the `goldfishing` skill, which owns what a reviewer gets and never
+gets, severity, finding outcomes, failed reviewers and the review record. In a contract mission,
+the contract's disposition policy decides at a review cap (below), not the owner. Inspect
+referenced source; documents can be stale.
 
-The integration owner holds the problem, acceptance rubric, decisions, alternatives, progress and
-evidence in a compact package. Fresh reviewers test whether the package works without the
-author's conversation. Run them with the `goldfishing` skill, which owns what a reviewer gets and
-never gets, severity, finding outcomes, round limits, failed reviewers and the review record.
-Inspect referenced source; documents can be stale.
+## Design review before kickoff
 
-Before owner acknowledgment of a consequential design, run these lenses in order, each in its own
-fresh context:
+The integration owner holds the problem, criteria, decisions, alternatives and evidence in a
+compact package. Before the kickoff brief, run these lenses in order, each in its own fresh context:
 
 1. **Purpose and comprehension:** can a fresh reader reconstruct the customer problem, current
-   system, proposed behavior, non-goals and grading criteria from the packet alone? Reuse a
-   grilling check only for unchanged scope and revision; a new technical design needs coverage.
-2. **Critic and source check:** challenge assumptions, alternatives, security, failure/recovery
-   and compatibility against actual contracts. Verify claimed APIs, ownership and dependencies.
-3. **Readiness and purpose recheck:** after repairs, can a fresh implementer identify affected
-   files/contracts, ordered slices, testable invariants and the first safe check without inventing
-   a consequential decision? Did the repairs preserve the intended customer benefit?
-4. **Novice reader of the decision brief:** before the design dialog, a non-technical persona
-   answers from the brief alone what is approved, what can go wrong, what it costs and what is
-   not included (see `briefing-decisions`).
+   system, proposed behavior, non-goals and criteria from the package alone? Reuse a grilling
+   check only for unchanged scope and revision.
+2. **Critic and source check:** challenge assumptions, alternatives, security, failure and recovery,
+   and compatibility against the actual contracts. Verify claimed APIs, ownership and dependencies.
+3. **Readiness:** after repairs, can a fresh implementer identify the files, ordered items, testable
+   criteria, finite case lists and the first safe check without inventing a consequential decision?
+4. **Novice reader of the kickoff brief:** a non-technical persona answers from the brief alone what
+   is approved, which defaults and effects it accepts, when the mission will stop, and what is not
+   included (see `briefing-decisions`).
 
-Give each reviewer the original requirements and acceptance IDs, the versioned design and brief,
-and an explicit reading list. Budget required reviews before starting. Resolve factual disputes
-with source inspection or a bounded experiment, and design choices with the authorized owner;
-substantive changes invalidate affected passes. A pass means ready to present for owner
-acknowledgment, not permission to implement, proof of runtime behavior or either of the two
-build-review gates. With mission-control, include the final package in the existing design
-action; do not invent a review tool or approval receipt.
+Give each reviewer the original requirements, the versioned package and brief, and a reading list.
+Resolve factual disputes with source inspection or a bounded experiment. A pass means ready for
+kickoff, not proof of runtime behavior.
 
-## Review the candidate, not the implementer's confidence
+## Item review
 
-Give a reviewer the confirmed acceptance IDs, base and candidate revisions, actual diff, relevant
-contracts, test/journey evidence, and unresolved questions. For another checkout, transfer the
-exact files or make the committed candidate accessible before requesting review. A branch name
-or SHA alone does not transfer unpushed work. Do not tell the reviewer which conclusion to reach.
+Each item gets one fresh critic review against its definition of done and the cases it touches,
+before the child reports. Give the reviewer the item's contract slice, the diff and the evidence,
+not the author's reasoning or a desired conclusion.
 
-Use these lenses where applicable:
+## Milestone gates
+
+Give each gate reviewer the milestone's criteria and exit criteria, the closed case list, the base
+and head, the actual diff, and the test, CI and journey evidence. Push the head first; a branch name
+alone does not transfer unpushed work. Do not tell the reviewer which conclusion to reach.
 
 | Lens | Evidence to seek |
 | --- | --- |
@@ -49,77 +46,89 @@ Use these lenses where applicable:
 | Data preservation | Partial failure, interrupted writes, migration compatibility, restore/recovery |
 | Operations | Timeouts, retry/idempotency, resource limits, user-visible diagnosis and safe rollback |
 
-Use existing scanning/checking tools where applicable; a clean scan does not replace semantic
-review and an unavailable scanner is a limitation, not a passed check. Do not broaden a slice into
-an unrelated repository-wide audit. Escalate critical findings even if outside the slice.
+- Each finding needs a location or reproduction, its consequence, a severity, the smallest useful
+  fix and a verification. A clean scan does not replace semantic review.
+- A review fails only on an open Blocker or Major inside the case list or the milestone's criteria.
+  Findings outside them are filed; Nits never fail it.
+- **Gate 2** is a second independent review of the same head, after gate 1 passed on it. It checks
+  that gate 1's findings are closed, looks for problems the repairs introduced, and holds the drift
+  check and the refreshed defense in its record.
+- Bind both reviews and the evidence to the exact head and base. A new head voids them; the failed
+  round counts stay. High risk means independent reviewers and the full case list.
+- Independent means another context able to challenge the work; a different model brand is neither
+  needed nor enough. Self-review is not a fresh review.
 
-Each finding needs a location or reproduction, customer consequence, severity, smallest useful
-fix, and verification. Gate two checks finding closure and repair interactions on the final
-candidate, not just whether a reviewer message exists. Independent means another context/person
-able to challenge the implementation; different model branding is not required or sufficient.
+## Cap: follow the disposition policy
 
-Bind both reviews and execution evidence to the candidate, base, and acknowledged design they
-actually assessed. Changed code invalidates affected evidence; never copy a pass onto a new SHA
-without revalidation. Material design changes reopen initiator acknowledgment before defense
-and build. A mode change invalidates final merge acknowledgment. High risk always needs current
-exact-candidate owner acknowledgment, ask mode needs it at any known risk, and unknown risk blocks
-merge. Low/medium auto needs no extra response once all gates pass. No local record overrides the
-required CI, mandatory failures, or branch protection. Local gates are workflow enforcement, not
-security against an unrestricted executor; no custom controller/App is required.
+A gate allows 3 failed rounds, counted across heads. After that:
 
-## Check spec/code drift at gate two and resume
+| Finding | Disposition |
+| --- | --- |
+| Blocker or Major inside the case list or the milestone's criteria | `fixed`; still unfixed after 3 failed rounds: reopen and re-plan the items concerned (`replanned`), which resets the count; reaching the cap again after that is stop reason 5 |
+| Finding outside them | `filed` as an item in a later milestone, or a follow-up in the last one |
+| Nit | Fixed or declined |
 
-Read the acknowledged package, recorded approved changes, actual candidate source and relevant
-tests/results. For each in-scope acceptance ID, trace its implementation and observable evidence.
-Report missing behavior, shortcuts and changed contracts even if existing tests pass. Also check
-the changed code for behavior outside the approved scope; do not audit unrelated legacy code.
-Record only discrepancies and checked scope, not another copy of every matching requirement.
+Record each disposition with the review. Never ask the owner at a cap. Stop reason 5 applies only
+when the milestone still cannot meet its exit criteria after re-planning and splitting.
 
-Separate an unauthorized change or defect from an explicitly approved evolution and a stale doc.
-An approved rename with preserved behavior is not automatically a defect. Unknown provenance
-remains unresolved. Restore the contract or obtain a real design decision; never silently change
-the spec to match broken code. Refresh affected tests, reviews, defense and owner acknowledgment
-where required. A resumed reviewer must reconcile actual revisions and external state before
-using an old pass. Drift inspection does not replace executed tests or release checks.
+## Drift check at gate 2 and on resume
 
-## Delegate only when it helps
+Read the contract, the actual head and the evidence. For each criterion, trace its implementation
+and observable evidence. Report missing behavior, shortcuts, changed contracts and behavior outside
+the approved scope, even if tests pass. Separate a defect from an approved re-plan and from a stale
+document. Restore the contract; never change it to match broken code. A conflict no reading of the
+contract settles is stop reason 1. Record the check and the refreshed defense in the gate 2 review
+record, never in the contract, so the approval stands.
 
-Prefer direct execution for coherent implementation. Use bounded independent investigation,
-disjoint implementation, or consequential independent review when useful. Do not create another
-thread merely for a new phase of work in the same checkout. Follow the available tools' rules.
+## The item brief
 
-Every assignment carries:
-- Outcome and acceptance IDs; context and relevant evidence, without a desired review conclusion.
-- Actual environment, exact base/candidate, input transfer, and permitted files/resources.
-- Ownership, dependencies, authority, budget, and stop conditions.
-- Required return: changes, evidence, limitations, blockers, next safe action.
+An M or L item goes to a child thread; an XS or S item goes to a subagent. Every brief carries:
 
-Serialize shared writes. Separate working copies do not isolate databases, credentials, ports,
-queues, or deployment targets. Keep one owner of shared interfaces and integration. Treat worker
-results as reports until their evidence and combined behavior are checked. Never grant nested
-delegation or choose an expensive model solely to imitate another vendor's architecture.
+- the item's contract slice: outcome, in and out of scope, definition of done, automated and human
+  tests, trace, the cases it touches, and the defense;
+- the repository, the milestone branch on `origin`, the item branch name, and the files it may edit;
+- the five stop reasons, copied exactly, and the rule that anything else is a recorded assumption;
+- the reply route: the steering thread's ID for `send_thread_message`, and the report it expects
+  (a teach-back of the outcome, approach, constraints, risks and first check; branch and head; each done line
+  with its evidence; the review record; assumptions; findings outside the case list);
+- the rules: work test-first, run the item review, push the item branch, create no threads, merge
+  nothing into `dev`.
+
+Serialize shared writes; separate worktrees do not isolate databases, credentials, ports or
+deployment targets. Treat a child's report as a claim until its evidence and the combined
+behavior are checked.
+
+## Watch the children
+
+While any child runs, wait on it with `wait_for_threads` and keep a 30-minute schedule as a
+backstop. When a child settles, read it before acting:
+
+| What you find | Action |
+| --- | --- |
+| A report with evidence | Check it, merge the item branch into the milestone branch, run the checks |
+| A question the contract or a safe default settles | Answer it and tell it to continue |
+| A stop for one of the five reasons | Record it; ask the owner if it is not settled; continue other work |
+| Idle with no report, or paused over usage | Tell it to continue |
+| An error, or no progress after continuing | Restart once from its pushed branch, then re-plan the item |
 
 ## Reconcile interruption before retrying
 
-Before consequential external operations, record intent, authority, target, expected effect and
-an operation/idempotency ID if supported. Afterward record the observed effect, not merely the
-tool response. A lost connection leaves an unknown outcome, not a failed operation.
+Before an outside operation, record its intent, authority, target and expected effect. Afterwards
+record the observed effect, not merely the tool response. A lost connection leaves an unknown
+outcome, not a failed operation.
 
-On resume:
-1. Read the record and inspect real working-tree changes, commits, remotes, processes, PR/check
-   state, or the affected external system. Preserve unexpected work and running valid tasks.
-2. If the effect occurred, adopt its observed identity and continue. If absent, retry only when
-   safe, still authorized, and within limits. If ambiguous, stop that operation and escalate.
-3. For destructive/data operations, require a verified recovery path and applicable approval.
-   Git rollback is not database rollback. Do not replay migrations or payments to obtain logs.
-4. Recheck evidence that depends on changed code, configuration, environment, or base revision.
-   Report stale approvals and unavailable verification; do not reuse them silently.
-5. With `mission-control`, use `mission_status()` and `mission_reconcile()` to reconcile an
-   interrupted or pending merge. A queued auto-merge request is not an observed dev integration.
-   Present fresh artifacts/evidence and the try-it procedure before requesting another merge;
-   renew exact-candidate acknowledgment where required. Never bypass local approval, CI or protection.
+1. Read the record and inspect the real worktree, commits, remotes, children, PR and check state,
+   or the affected outside system. Preserve unexpected work.
+2. If the effect occurred, adopt its observed identity and continue. If absent, retry only when safe
+   and still authorized. If ambiguous, do not retry that operation; reconcile it first.
+3. For destructive or data operations, require a verified recovery path. Git rollback is not
+   database rollback. Do not replay migrations or payments to obtain logs.
+4. Recheck evidence that depends on changed code, configuration, environment or base.
+5. With `mission-control`, use `mission_status` and `mission_reconcile({ milestoneId })` for an
+   interrupted or pending merge; a queued auto-merge request is not an observed merge into `dev`.
+   Use `mission_recover({ milestoneId })` only for a settled, unqueued attempt.
 
-Diagnose repeated failures with new evidence. A reproduced baseline failure remains a failure;
-a flaky green retry does not erase it. Continue unrelated safe work while blocked when useful,
-but do not claim the blocked requirement is complete. Suspected secret exposure or data loss
-requires immediate containment within authority and escalation without copying sensitive payloads.
+Diagnose repeated failures with a new hypothesis; three failed attempts at one check call for a
+re-plan, not a retry. A reproduced baseline failure remains a failure, and a flaky green retry does
+not erase it. Suspected secret exposure or data loss is a red line (stop reason 4): contain it
+within authority and report it without copying sensitive payloads.

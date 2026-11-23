@@ -30,11 +30,11 @@ GOOD = """# Mission: security review of acme/payments
 - **Success criteria:** Every finding has evidence, severity, owner and disposition.
 - **Definition of Done:** Critical and High findings are fixed and retested,
   or accepted in writing.
-- **Budget:** 3 review rounds per gate; 2 working days.
-- **Budget used:** unknown: no usage telemetry on this host.
+- **Open questions:** Q1 report format? Default: Markdown with a SARIF appendix.
+- **Pre-authorized effects:** E1 open tracker issues for Critical and High findings in acme/payments.
 - **May do without asking:** read code, run the allowed scanners, draft reports.
 - **Always ask:** scanning anything outside acme/payments; releasing the report.
-- **Stop and ask when:** a check cannot prove a finding, or scope must change.
+- **Stop and ask when:** one of the five stop reasons in missioning.
 - **Playbook:** security-review
 - **Host:** Claude Code
 
@@ -44,7 +44,8 @@ GOOD = """# Mission: security review of acme/payments
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Charter and criteria | human | passed | charter above | reviews/charter-novice.md | briefs/charter.md | Rahul Nakmol | question: AskUserQuestion answer "Approve" | 2026-11-18 |
 | Threat model | agent | passed | threat-model.md, 14 threats | none needed: no decision, checked by scope gate | - | - | - | 2026-11-19 |
-| Scope and rules of engagement | human | pending | - | - | briefs/scope.md | - | - | - |
+| Accepted risk (finding 3) | human | pending | - | - | briefs/risk.md | - | - | - |
+| File findings (E1) | agent | open | pre-authorized: charter E1 | - | - | - | - | - |
 | Report release | human | open | - | - | - | - | - | - |
 
 ## Decision trail
@@ -85,7 +86,16 @@ class Rules(unittest.TestCase):
         self.assertEqual(self.rules(GOOD), [])
 
     def test_r1_charter_fields(self):
-        self.assertRule(edit("- **Budget used:** unknown: no usage telemetry on this host.\n", ""), "R1")
+        # The contract fields are required and named when missing.
+        for name in ("Open questions", "Pre-authorized effects"):
+            line = re.search(rf"- \*\*{name}:\*\*.*\n", GOOD).group(0)
+            with tempfile.TemporaryDirectory() as tmp:
+                problems = ledger_check.check(edit(line, ""), workspace(tmp))
+            r1 = [p for p in problems if p.startswith("R1:")]
+            self.assertEqual(r1, [f"R1: charter needs exactly one '- **{name}:**' line (found 0)"])
+        self.assertRule(edit("Q1 report format? Default: Markdown with a SARIF appendix.", "TBD"), "R1")
+        # "none" is a value: a mission may have no open questions or pre-authorized effects.
+        self.assertEqual(self.rules(edit("Q1 report format? Default: Markdown with a SARIF appendix.", "none")), [])
         self.assertRule(edit("Priya Shah (@priya-s)", "TBD"), "R1")
         self.assertRule(edit("- **Playbook:**", "- **Outcome:** again\n- **Playbook:**"), "R1")
         self.assertRule(edit("Priya Shah (@priya-s)", "<approver name>"), "R1")
@@ -114,16 +124,15 @@ class Rules(unittest.TestCase):
         self.assertEqual(self.rules(edit("- **Playbook:** security-review", "- **Playbook:** none: one-off review")), [])
         self.assertEqual(self.rules(edit("- **Host:** Claude Code", "- **Host:** copilot app")), [])
 
-    def test_r3_budget_names_a_limit(self):
-        self.assertRule(edit("3 review rounds per gate; 2 working days.", "as needed"), "R3")
-        self.assertRule(edit("3 review rounds per gate; 2 working days.", "no limit on tokens"), "R3")
-        self.assertEqual(self.rules(edit("3 review rounds per gate; 2 working days.", "no limit on tokens, decided by Rahul Nakmol")), [])
-        self.assertRule(edit("3 review rounds per gate; 2 working days.", "unlimited (agreed 18 Nov)"), "R3")
-        self.assertRule(edit("3 review rounds per gate; 2 working days.", "no limit on tokens; 3 review rounds"), "R3")
+    def test_old_budget_lines_are_extra_fields(self):
+        # Budget is no longer a charter field (rule R3 is retired); an old charter still passes.
+        for budget in ("3 review rounds per gate; 2 working days.", "as needed", "unlimited (agreed 18 Nov)"):
+            old = f"- **Budget:** {budget}\n- **Budget used:** unknown: no telemetry.\n"
+            self.assertEqual(self.rules(edit("- **Open questions:**", old + "- **Open questions:**")), [])
 
     def test_r4_ledger_table(self):
         self.assertRule(edit("| Gate | Kind | State |", "| Gate | State | Kind |"), "R4")
-        no_rows = re.sub(r"\| (Charter and|Threat|Scope|Report).*\n", "", GOOD)
+        no_rows = re.sub(r"\| (Charter and|Threat|Accepted|File|Report).*\n", "", GOOD)
         self.assertRule(no_rows, "R4")
         # A separator with fewer cells than the header is not a table on GitHub either.
         self.assertRule(edit("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n", "| --- | --- |\n"), "R4")
@@ -151,6 +160,8 @@ class Rules(unittest.TestCase):
         as_agent = PASSED.replace("| human |", "| agent |").replace("reviews/charter-novice.md", "none needed: owner said looks good")
         self.assertRule(edit(PASSED, as_agent), "R5")
         self.assertRule(edit(PASSED, as_agent.replace("Charter and criteria", "Mission charter")), "R5")
+        # The kickoff, the one approval of the whole baseline, is a human gate too.
+        self.assertRule(edit(PASSED, as_agent.replace("Charter and criteria", "Kickoff (contract revision 2)")), "R5")
         # Only the mission's charter gate is human by rule; other gates may mention a charter.
         self.assertEqual(self.rules(edit(AGENT, AGENT.replace("Threat model", "Initiative charter drafted"))), [])
 
@@ -250,6 +261,46 @@ class Rules(unittest.TestCase):
         self.assertRule(edit(PASSED, waived), "R11")
         self.assertRule(edit(PASSED, PASSED.replace("| passed | charter above |", "| waived | TODO |")), "R11")
 
+    def test_r13_pre_authorized_effects(self):
+        # A pre-authorized effect is an agent row whose Evidence cites the charter's entry.
+        done = "| File findings (E1) | agent | passed | pre-authorized: charter E1; 3 issues, read back | none needed: pre-authorized effect | - | - | - | 2026-11-21 |"
+        row = "| File findings (E1) | agent | open | pre-authorized: charter E1 | - | - | - | - | - |"
+        self.assertEqual(self.rules(edit(row, done)), [])
+        # Without a source, with an empty one, or citing no listed effect, it is not pre-authorized.
+        for evidence in ("pre-authorized;", "Pre-authorized:", "pre-authorized: -", "pre-authorized: none"):
+            with self.subTest(evidence=evidence):
+                self.assertRule(edit(row, row.replace("pre-authorized: charter E1", evidence)), "R13")
+        self.assertRule(edit(row, row.replace("(E1)", "(E9)").replace("charter E1", "charter E9")), "R13")
+        self.assertRule(edit(row, row.replace(" (E1)", "").replace("charter E1", "owner's email")), "R13")
+        self.assertRule(edit("E1 open tracker issues for Critical and High findings in acme/payments.", "none"), "R13")
+        # The field lists E-numbered effects, or says none; a blanket grant is not a list.
+        self.assertRule(edit("E1 open tracker issues for Critical and High findings in acme/payments.", "whatever is needed"), "R13")
+        none = edit(row + "\n", "", edit("E1 open tracker issues for Critical and High findings in acme/payments.", "none"))
+        self.assertEqual(self.rules(none), [])
+        two = "E1 open tracker issues in acme/payments, E2 email the report to Priya Shah."
+        self.assertEqual(self.rules(edit(row, row.replace("E1", "E2"), edit("E1 open tracker issues for Critical and High findings in acme/payments.", two))), [])
+        self.assertEqual(self.rules(edit("E1 open tracker issues for Critical and High findings in acme/payments.", "none: no outside effects", edit(row + "\n", ""))), [])
+        # An agent row naming an effect ID always cites a listed pre-authorization in that form.
+        for gate, evidence in (("File findings (E9)", "issues filed, read back"), ("File findings", "E9 pre-authorized at kickoff"),
+                               ("File findings", "preauthorized: charter E1"), ("Share the report", "per pre-authorization E9")):
+            with self.subTest(gate=gate, evidence=evidence):
+                self.assertRule(edit(row, f"| {gate} | agent | open | {evidence} | - | - | - | - | - |"), "R13")
+        # Error codes and stage names that look like effect IDs are ordinary evidence and gates.
+        for gate, evidence in (("Lint clean", "ruff clean except E501"), ("Build", "rustc E0308 fixed in 1a2b3c4"),
+                               ("Stage E2 rollout", "canary green"),
+                               ("Threat review", "nothing here is pre-authorized")):
+            with self.subTest(gate=gate, evidence=evidence):
+                self.assertEqual(self.rules(edit(row, f"| {gate} | agent | open | {evidence} | - | - | - | - | - |")), [])
+        # A waived pre-authorized effect still needs its own recorded decider and source.
+        waived = "| File findings (E1) | agent | waived | pre-authorized: charter E1; no findings to file | - | - | Rahul Nakmol | written: email 21 Nov | 2026-11-21 |"
+        self.assertEqual(self.rules(edit(row, waived)), [])
+        self.assertRule(edit(row, waived.replace("written: email 21 Nov", "-")), "R6")
+        # Recorded as a human gate, a pre-authorized effect would ask the owner a second time.
+        self.assertRule(edit(row, "| File findings (E1) | human | open | - | - | - | - | - | - |"), "R13")
+        self.assertRule(edit(row, "| File findings (e1) | human | open | - | - | - | - | - | - |"), "R13")
+        as_human = PASSED.replace("Charter and criteria", "Report release").replace("| charter above |", "| pre-authorized: charter E1 |")
+        self.assertRule(edit(PASSED, PASSED + "\n" + as_human), "R13")
+
     def test_r12_decision_trail(self):
         self.assertRule(edit("| charter | Rahul Nakmol |", "| charter |  |"), "R12")
         self.assertRule(GOOD[: GOOD.index("## Decision trail")], "R12")
@@ -300,6 +351,21 @@ class Files(unittest.TestCase):
 
 
 MISSIONS = SKILL / "reference" / "missions"
+# The canonical stop reasons (mission contract, section 8). tests/test_contract_kit.py checks the
+# same text against plugins/mission-control/lib/contract-text.json.
+STOP_REASONS = (
+    "1. Change to the baseline: a criterion, scope item or design decision is wrong or conflicts, and no reading inside the contract works.",
+    "2. Outside effect not in the contract: an irreversible or outside effect that the contract does not pre-authorize.",
+    "3. A fact only a person holds, with no safe, reversible default.",
+    "4. A red line: security, legal or safety.",
+    "5. A milestone cannot meet its exit criteria after the work was re-planned and split.",
+)
+# Banned-phrase list B (mission contract, section 6): budgets and owner merge gates.
+BANNED = (
+    "budget used", "**budget:**", "token budget", "review budget", "budget call", "remaining budget",
+    "beyond it needs explicit approval", "merge mode", "mission_merge_mode", "ask-before-merge",
+    "ask mode", "owner merge acknowledgment", "high-risk merge", "high risk always requires",
+)
 HEADINGS = ["When to use", "Skills", "Steps", "Human gates", "Definition of Done", "Red flags"]
 # Skills the research plans for later waves. When one is built, update the playbooks that name it.
 PLANNED = (
@@ -308,12 +374,33 @@ PLANNED = (
 )
 
 
+class Contract(unittest.TestCase):
+    def test_no_budget_or_owner_merge_gate_in_the_skill(self):
+        for path in sorted(p for p in SKILL.rglob("*") if p.is_file() and "__pycache__" not in p.parts):
+            text = " ".join(path.read_text().split()).lower()  # a phrase may wrap across lines
+            for phrase in BANNED:
+                with self.subTest(file=str(path.relative_to(SKILL)), phrase=phrase):
+                    self.assertNotIn(phrase, text)
+
+    def test_stop_reasons_are_canonical(self):
+        for path in (SKILL / "SKILL.md", CHARTER):
+            lines = path.read_text().splitlines()
+            for reason in STOP_REASONS:
+                with self.subTest(file=path.name, reason=reason[:2]):
+                    self.assertIn(reason, lines)
+
+    def test_review_cap_follows_the_disposition_policy(self):
+        paragraphs = (SKILL / "SKILL.md").read_text().split("\n\n")
+        cap = [p for p in paragraphs if "review cap" in p]
+        self.assertTrue(cap and all("disposition policy" in p for p in cap), cap)
+
+
 class Playbooks(unittest.TestCase):
     def test_one_playbook_per_mission_linked_from_skill(self):
         names = sorted(p.stem for p in MISSIONS.glob("*.md"))
         self.assertEqual(names, sorted(ledger_check.PLAYBOOKS))
         skill = (SKILL / "SKILL.md").read_text()
-        self.assertLessEqual(len(skill.splitlines()), 170)
+        self.assertLessEqual(len(skill.splitlines()), 180)
         for name in names:
             self.assertIn(f"(reference/missions/{name}.md)", skill)
         for ref in ("reference/charter.md", "reference/hosts.md", "scripts/ledger_check.py"):
