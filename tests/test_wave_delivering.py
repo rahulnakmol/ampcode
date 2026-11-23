@@ -178,8 +178,10 @@ class W21ShipAndStop(unittest.TestCase):
                       "variant needs, recorded under Effects performed.", text)
         # M5 gate 2 F22: the read-only auto-merge check always runs.
         self.assertIn("Always read the PR's auto-merge state back", text)
-        self.assertIn("If auto-merge is queued and the contract does not pre-authorize writes to the PR, "
+        self.assertIn("Without pre-authorized writes to the PR, skip the write; if auto-merge is queued, "
                       "that is stop reason 2.", text)
+        # M5 gate 1 R3-4: the Stop bullet runs the write only with that authority.
+        self.assertIn("when the contract pre-authorizes writes to the PR, runs `gh pr merge --disable-auto`", text)
         self.assertNotIn("auto-merge was not checked", text)
         ref = flat(section(WATCH_REF.read_text(), "## Stop"))
         self.assertIn("Always run the `gh pr view` read.", ref)

@@ -25,6 +25,8 @@ Rules:
               report, say, claim, write, state, call, treat, sign, approve, assume, list, set,
               post), and a request ("asked me to mark F2 as signed off") that a later clause
               refuses ("I did not"), each only up to the next comma, " and ", " but " or " so ".
+              Limit: the skip covers the whole rest of that piece, so "Do not report it as late
+              as F2 is approved." passes; a reviewer reads such lines.
               Fenced code, table header rows and headings that end with "?" are skipped; other
               headings and table body rows are read
   format      in a log: only the four sections, each once, each with one table with the template's

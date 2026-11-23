@@ -10,11 +10,12 @@ unreadable file. Standard library only. The format, the rules and the accepted u
 ../reference/design-template.md.
 
   D1  an NFR target has no number
-  D2  an NFR target has no number followed by an accepted unit outside its condition (a condition
-      runs from "at", "when", "while", "with", "during", "given" or "under ... load" to its first
-      number and unit, or from "for", "per", "across" or "over" to a rate or count, as in "for
-      50 req/s"): "p95 under 300 at 50 req/s" fails, "p95 under 300 ms at 50 req/s" passes. When no
-      number stays outside the conditions, the whole target is checked: "Handle over 500 req/s" passes
+  D2  an NFR target has no number followed by an accepted unit outside its condition. A condition
+      from "at", "when", "while", "with", "during", "given" or "under ... load" to its first number
+      and unit is always set aside: "p95 under 300 at 50 req/s" and "Serve at 50 req/s" fail,
+      "p95 under 300 ms at 50 req/s" passes. A condition from "for", "per", "across" or "over" to a
+      rate or count is set aside only when a number stays outside it: "p95 under 300 for 50 req/s"
+      fails; "Handle over 500 req/s" is checked whole and passes (so does "Fast for 50 req/s")
   D3  an NFR has no verification test (empty, or only placeholder words such as TBD, n/a, later)
   D4  an ADR lists fewer than two options (top-level items under Options; nested bullets do not count)
   D5  an ADR has no valid Status, no Decision or no Consequences
@@ -72,12 +73,12 @@ FIELD = re.compile(r"^\*{0,2}(Status|Options|Decision|Consequences):\*{0,2}[ \t]
 ITEM = re.compile(r"^([ \t]*)(?:[-*+]|\d+[.)])[ \t]+\S")
 SEPARATOR = re.compile(r"^\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-*:?\s*$")
 # A condition runs from its word to its first number, which carries a unit: "at 50 req/s",
-# "when 10,000 users". "Recall at 10" is no condition, because 10 has no unit. "for", "per",
-# "across" and "over" start one only before a load or scope unit: "for 50 req/s" is a condition,
-# "kept for 30 days" is the target.
-CONDITION = re.compile(r"\b(?:(?:at(?!\s+(?:most|least)\b)|when|while|with|during|given|under\s+(?:\w+\s+)?load)\b"
-                       r"[^,;\d]*?" + MEASURE.pattern +
-                       r"|(?:for|per|across|over)\b[^,;\d]*?" + measure(LOAD_UNITS) + ")", re.I)
+# "when 10,000 users". "Recall at 10" is no condition, because 10 has no unit. CONDITION is always
+# set aside. COMPARATOR ("for", "per", "across", "over") counts only before a load or scope unit:
+# "for 50 req/s" is a condition, "kept for 30 days" is the target.
+CONDITION = re.compile(r"\b(?:at(?!\s+(?:most|least)\b)|when|while|with|during|given|under\s+(?:\w+\s+)?load)\b"
+                       r"[^,;\d]*?" + MEASURE.pattern, re.I)
+COMPARATOR = re.compile(r"\b(?:for|per|across|over)\b[^,;\d]*?" + measure(LOAD_UNITS), re.I)
 # An NFR line starts with an NFR ID, after any table bar, list marker, heading mark or emphasis.
 NFR_LINE = re.compile(r"^[\s|>#*_+`-]*(?:\d+[.)]\s+)?[*_`]*NFR-\d+\b")
 
@@ -103,11 +104,13 @@ def blank(value):
 
 
 def target_part(target):
-    """The part of a target that needs its own unit (D2): the text outside its conditions when that
-    text holds a number ("p95 under 300 at 50 req/s"), otherwise the whole target ("Handle over
-    500 req/s")."""
-    outside = CONDITION.sub("", target)
-    return outside if re.search(NUMBER, outside) else target
+    """The part of a target that needs its own unit (D2). The at/when/... conditions are always
+    removed ("Serve at 50 req/s" keeps no measure). The for/per/across/over conditions are removed
+    too when a number stays outside them ("p95 under 300 for 50 req/s"); otherwise they stay
+    ("Handle over 500 req/s")."""
+    rest = CONDITION.sub("", target)
+    outside = COMPARATOR.sub("", rest)
+    return outside if re.search(NUMBER, outside) else rest
 
 
 def cells(line):

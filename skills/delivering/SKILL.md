@@ -165,15 +165,16 @@ variant is stop. This "stop" is a delivery variant, not one of the five stop rea
 
 - **Ship:** when both gates passed and the checks are green on the head, merge into `dev` only as
   the contract pre-authorizes that merge. A merge it does not pre-authorize is stop reason 2.
-- **Stop:** the mission never merges. After the gates, it runs `gh pr merge --disable-auto` on the
-  milestone PR, so a queued auto-merge cannot merge it, and leaves the PR open. The checkpoint
+- **Stop:** the mission never merges. After the gates, it reads the PR's auto-merge state and,
+  when the contract pre-authorizes writes to the PR, runs `gh pr merge --disable-auto` on it, so
+  a queued auto-merge cannot merge it. It leaves the PR open. The checkpoint
   report lists the PR as ready under `Merged`, not as merged. The next milestone branch is cut
   from this milestone's head, and its gates review the diff from that head. Close out after the
   last milestone's gates pass.
 
 Running `gh pr merge --disable-auto` is part of choosing stop: an effect the stop variant needs,
 recorded under Effects performed. Always read the PR's auto-merge state back; that only reads.
-If auto-merge is queued and the contract does not pre-authorize writes to the PR, that is stop
+Without pre-authorized writes to the PR, skip the write; if auto-merge is queued, that is stop
 reason 2.
 
 Commands for both are in [reference/hosts-pr-watch.md](reference/hosts-pr-watch.md).

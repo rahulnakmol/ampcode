@@ -27,12 +27,13 @@ exits 1 and prints one line per broken rule:
       "<Rescan|Test|PoC|CI> <tool or name> <YYYY-MM-DD>: <result>", for example
       "Rescan Bandit 1.9.4 2026-11-21: 0 results at app.py:24". The name has a letter or digit
       and is not a placeholder (TBD). The date is not after today (--today, default today's
-      local date). The result is not empty and does not say the run did not happen or finish:
-      skipped, cancelled, errored, aborted, timed out, queued, postponed, deferred, in
-      progress, not run, not done, pending, failed to start, didn't run or finish, couldn't
-      run fail anywhere; will, expected, to be run, going to, yet to, TBD, to follow,
-      awaiting, planned, scheduled fail at the start or after up to three words with a run
-      word ("the test will run"); none, n/a, unknown, yet and failed fail as the whole result.
+      local date). The result is not empty, and these words fail anywhere in it, even in an
+      honest sentence: skipped, cancelled, errored, aborted, timed out, queued, postponed,
+      deferred, in progress, pending, will, expected, yet, none, n/a, unknown, TBD, planned,
+      scheduled, awaiting, to follow, to be run, not run, not done, failed to start, didn't
+      run, start or finish, couldn't run, going to run, and not/never/hasn't (been) run,
+      started, finished, rescanned, retested or re-run. "failed" fails alone or after "the"
+      or a run word ("the run failed", "scan failed: runner offline"), not after PoC.
       check reads only the form, not every phrasing; a reviewer reads the content.
   C5  no overclaim: "secure", "secured", "securely", "no (known) vulnerabilities",
       "vulnerability-free" outside `code` and fenced blocks, also when the words wrap across
@@ -68,27 +69,30 @@ RETEST_FORM = re.compile(r"^(?:rescan|test|poc|ci)\s+(?P<name>\S.*?)\s+(?P<date>
                          r"\s*:(?P<result>.*)$", re.I | re.S)
 # A name that is a placeholder: "Rescan TBD 2026-11-21: ...".
 NO_NAME = re.compile(r"^(?:tbd|tba|tbc|todo|n/?a|none|unknown|tool|name|<[^<>]*>)$", re.I)
-# A result that says the run did not happen or finish. Three rules, made to fail safe; they are
-# not every phrasing, and a reviewer still reads the result.
-# 1. A participle or state fails anywhere: "Semgrep 1.85 scan skipped", "passed; 2 unrelated tests
-#    skipped". A result should not mention unrelated skipped tests.
-RUN_STATE = re.compile(
-    r"\b(?:skipped|cancell?ed|errored|aborted|timed\s+out|queued|postponed|deferred|in\s+progress"
-    r"|not\s+run|not\s+done|not\s+finished|pending|failed\s+to\s+start"
-    r"|(?:did\s*n['\u2019]?t|did\s+not)\s+(?:run|finish)"
-    r"|(?:not|never|\w+n['\u2019]t)\s+(?:yet\s+)?(?:been\s+)?(?:run|ran|executed|started|finished)"
+# A result that says the run did not happen or finish. Replanned at the M5 review cap: the test
+# is a strict superset of origin/dev's, so nothing origin/dev refused can pass. Honest results that
+# use these words anywhere fail too; reword them ("request rejected with 403", not "... as
+# expected"). Not every phrasing is caught; a reviewer still reads the result.
+# 1. origin/dev's NO_RESULT, unchanged.
+NO_RESULT = re.compile(
+    r"^(?:-+|\?+)$|^(?:(?:the\s+)?run\s+)?failed[.!]?$"
+    r"|\b(?:not\s+run|not\s+done|pending|tbd|tba|todo|failed\s+to\s+start|to\s+follow|awaiting|planned"
+    r"|scheduled|yet|n/a|none|unknown|skipped|cancell?ed|errored|aborted|will|expected|to\s+be\s+run"
     r"|(?:could\s*n['\u2019]?t|could\s+not|cannot|can['\u2019]?t)\s+(?:be\s+)?run)\b", re.I)
-# 2. A future or expectation word fails at the start of the result, or after up to three words of
-#    which one is a run word, then an optional was, is, has been or got: "the test will run after
-#    deploy". "the old token will no longer work" has no run word, so it is a result.
-FUTURE = re.compile(r"(?:will|expected|to\s+be\s+run|going\s+to|yet\s+to|tbd|tba|todo"
-                    r"|(?:results?\s+)?to\s+follow|awaiting|planned|scheduled)\b", re.I)
-RUN_WORD = re.compile(r"(?:rescan|scan|rerun|run|tests?|job|build|ci|poc)", re.I)
-AUX = re.compile(r"^(?:was|is|has\s+been|got)\s+", re.I)
-# 3. These fail only as the whole result: "failed." fails, "PoC failed, request rejected with 403"
-#    is a result. A result that starts with "failed" and a comma or colon ("failed, see log") fails.
-WHOLE = re.compile(r"^(?:-+|\?+|none|n/a|unknown|yet|(?:run\s+)?failed)[.!?]*$", re.I)
-FAILED_FIRST = re.compile(r"^(?:run\s+)?failed\s*[,;:]", re.I)
+# 2. More run states, anywhere: "timed out", "did not start", "has not been run", "never
+#    retested". Not "not executed": "script rendered as text, not executed" is an XSS result.
+RUN_STATE = re.compile(
+    r"\b(?:skipped|cancell?ed|errored|aborted|crashed|timed\s+out|queued|postponed|deferred|in\s+progress"
+    r"|not\s+run|not\s+done|not\s+finished|pending|failed\s+to\s+start"
+    r"|going\s+to\s+(?:re-?)?(?:run|scan|test)"
+    r"|(?:did\s*n['\u2019]?t|did\s+not)\s+(?:run|finish|start)"
+    r"|(?:not|never|\w+n['\u2019]t)\s+(?:yet\s+)?(?:been\s+)?(?:run|ran|started|finished|re-?scanned|re-?tested|re-?run)"
+    r"|(?:could\s*n['\u2019]?t|could\s+not|cannot|can['\u2019]?t)\s+(?:be\s+)?run)\b", re.I)
+# 3. "failed" after an optional article and run word, as the whole result or before , ; or :
+#    "the run failed", "scan failed: runner offline", "failed, see log". Not after PoC or exploit:
+#    "PoC failed, request rejected with 403" is a result.
+RUN_FAILED = re.compile(r"^(?:(?:the|an?)\s+)?(?:(?:rescan|scan|rerun|run|tests?|job|build|ci)\s+)?failed"
+                        r"(?:[.!?]*$|\s*[,;:])", re.I)
 # An owner is a person, the same rule as threat-modelling and assessing-products. The name, the
 # text before the first "(" or ",", is not a team or role word, does not start with a placeholder,
 # and is not only <...>. Role text after it is free: "Dana Reyes (Platform Group lead)". But the
@@ -336,15 +340,8 @@ def retest_in_form(retest, today):
 
 
 def no_result(result):
-    """True when a result says the run did not happen or finish (RUN_STATE, FUTURE, WHOLE)."""
-    if RUN_STATE.search(result) or WHOLE.match(result) or FAILED_FIRST.match(result):
-        return True
-    words = result.split()
-    for skip in range(4):  # rule 2: up to three words before the future word, one a run word
-        rest = AUX.sub("", " ".join(words[skip:]), count=1)
-        if FUTURE.match(rest) and (skip == 0 or any(RUN_WORD.fullmatch(w.strip(".,;:!?()")) for w in words[:skip])):
-            return True
-    return False
+    """True when a result says the run did not happen or finish (NO_RESULT, RUN_STATE, RUN_FAILED)."""
+    return bool(NO_RESULT.search(result) or RUN_STATE.search(result) or RUN_FAILED.match(result))
 
 
 def iso_date(text):

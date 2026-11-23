@@ -249,6 +249,140 @@ def edit(old, new, text=TRIAGED):
     return text.replace(old, new, 1)
 
 
+# origin/dev's NO_RESULT, copied by hand from `git show origin/dev:skills/scanning-vulnerabilities/
+# scripts/sarif_triage.py` (M5 replan). The test oracle for "nothing origin/dev refused may pass".
+BASE_NO_RESULT = re.compile(
+    r"^(?:-+|\?+)$|^(?:(?:the\s+)?run\s+)?failed[.!]?$"
+    r"|\b(?:not\s+run|not\s+done|pending|tbd|tba|todo|failed\s+to\s+start|to\s+follow|awaiting|planned"
+    r"|scheduled|yet|n/a|none|unknown|skipped|cancell?ed|errored|aborted|will|expected|to\s+be\s+run"
+    r"|(?:could\s*n['\u2019]?t|could\s+not|cannot|can['\u2019]?t)\s+(?:be\s+)?run)\b", re.I)
+
+# The must-fail Retest values of origin/dev's test_w7_8 (copied by hand).
+BASE_FAILING = (
+    "", "-", "TBD", "n/a", "none", "yes", "ok", "done", "Not run", "not yet",
+    "not done", "pending", "Pending.", "TBD after deploy", "No retest yet",
+    "will rescan Monday", "pending review", "not retested", "Not tested",
+    "Not reproduced", "Not run: Bandit 1.9.4 rescan planned for 2026-11-25",
+    "not proven, 2026-11-22", "Not proven (no rescan possible)",
+    "Not fixed yet 2026-11-20", "No CI run", "Rescan planned for 2026-12-01",
+    "Awaiting rescan", "Not verified yet; fix shipped in 2.4",
+    "Not rechecked since the 2026-11-20 deploy", "Not re-run after the 2026-11-20 fix",
+    "Retest scheduled", "not checked in CI", "Not possible: no test environment (2026-11-22)",
+    "Not reproduced on 2026-11-20", "Not detected, Bandit 1.9.4",
+    "Rescan expected after deploy", "No findings yet in the rescan",
+    "Rescan not run", "Retest pending", "Retest: TBD", "Fix deployed 2026-11-20; rescan not done",
+    "Bandit rescan failed to start", "No findings; rescan not run", "Not reproduced (no PoC available)",
+    "Not reproduced: PoC from F1 fails after the fix, 2026-11-20",
+    "Not reported by the Bandit 1.9.4 rescan on 2026-11-21",
+    "Bandit 1.9.4 rescan 2026-11-21: 0 results at app.py:24",
+    "Scan Bandit 1.9.4 2026-11-21: 0 results", "Retest Bandit 2026-11-21: 0 results",
+    "Rescan 2026-11-21: 0 results", "Rescan Bandit 1.9.4 2026-13-40: 0 results",
+    "Rescan Bandit 1.9.4 21/11/2026: 0 results", "Rescan Bandit 1.9.4: 0 results",
+    "Rescan Bandit 1.9.4 2026-11-21 0 results", "Rescan Bandit 1.9.4 2026-11-21:",
+    "Rescanned Bandit 2026-11-21: 0 results",
+    "Rescan Bandit 1.9.4 2026-11-21: not run", "Test test_upload 2026-11-21: not done",
+    "CI pipeline 2026-11-21: pending", "PoC F1-exploit 2026-11-20: TBD",
+    "Rescan Bandit 1.9.4 2026-11-21: failed to start", "CI nightly 2026-11-21: results to follow",
+    "Rescan Bandit 1.9.4 2026-11-21: awaiting triage", "Test suite 2026-11-21: planned",
+    "Rescan Bandit 1.9.4 2026-11-21: scheduled for Monday", "CI build 2026-11-21: not finished yet",
+    "Rescan Bandit 1.9.4 2026-11-21: n/a", "Rescan Bandit 1.9.4 2026-11-21: none", "PoC x 2026-11-20: -",
+    "Rescan Bandit 1.9.4 2026-12-01: 0 results", "Rescan Bandit 1.9.4 2099-01-01: 0 results",
+    "Rescan Bandit 1.9.4 2026-11-21: skipped", "CI nightly 2026-11-21: cancelled",
+    "CI nightly 2026-11-21: canceled", "Test suite 2026-11-21: errored",
+    "CI build 2026-11-21: aborted", "Rescan Bandit 1.9.4 2026-11-21: failed",
+    "Rescan Bandit 1.9.4 2026-11-21: Failed.", "CI nightly 2026-11-21: run failed",
+    "Rescan Bandit 1.9.4 2026-11-21: will run after deploy",
+    "Rescan Bandit 1.9.4 2026-11-21: will confirm", "Rescan Bandit 1.9.4 2026-11-21: expected 0 results",
+    "Test CI 2026-11-21: to be run", "Rescan Bandit 1.9.4 2026-11-21: couldn't run",
+    "Rescan Bandit 1.9.4 2026-11-21: could not run",
+    "Rescan TBD 2026-11-21: 0 results", "PoC n/a 2026-11-21: 0 results",
+    "PoC ? 2026-11-21: 0 results", "Rescan - 2026-11-21: 0 results",
+    "Rescan Bandit 20261121: 0 results",
+)
+
+# Results the M5 gates found in rounds 1 to 3 that say the run did not happen or finish.
+GATE_RESULTS = (
+    # Round 1, gate 1 F1 and gate 2 F2.
+    "scan will run after deploy", "run skipped: no network", "scan skipped (no network)",
+    "run cancelled by the runner", "the test will run after deploy", "scan errored", "rerun errored",
+    # Round 2, gate 2 F14 and gate 1.
+    "Bandit skipped (no network)", "Semgrep 1.85 scan skipped", "the nightly scan was skipped",
+    "scan has been skipped", "rescan with Trivy cancelled", "Bandit errored", "Bandit scan cancelled",
+    # Round 3, gate 2 F23.
+    "Bandit will run tonight", "Bandit will rerun after the deploy", "Trivy scheduled for Monday",
+    "Bandit results to follow", "Semgrep 1.85 awaiting a runner", "none, runner offline",
+    "n/a: scanner not installed", "unknown; logs lost", "not yet rescanned", "fix not rescanned yet",
+    # Round 3, gate 1 R3-1 (and its "did not start" note).
+    "the run failed", "the run failed.", "the run failed, see log", "scan failed.",
+    "scan failed: runner offline", "rescan failed", "Bandit did not start: runner offline",
+    "scan didn't start",
+    # The "has not been run" family.
+    "the rescan has not been run", "Bandit was never run", "the PoC hasn't been run", "Trivy not yet run",
+    "Bandit crashed before the scan",  # gate 1 R3-1
+    "the fix has not been rescanned", "Bandit never retested the fix", "the fix has not been re-run",
+)
+
+# Honest results that origin/dev refused and the D-13 rounds let pass. The replan refuses them
+# again; the SKILL.md Retest row shows how to reword them. Follow-up: D-13b.
+REWORD = (
+    "request rejected with 403 as expected", "none of the 3 B602 hits remain",
+    "the old token will no longer work", "yet again rejected", "scan found none",
+    "scan found none of the 3 B602 hits", "passed; 2 unrelated tests skipped",
+    "errored requests now return 400", "old sessions will be rejected: 0 of 3 tokens accepted",
+    "unknown host rejected, 0 results", "n/a rows: 0; B602 hits: 0",
+)
+
+HONEST = (
+    "0 results at app.py:24", "PoC failed, request rejected with 403",
+    "exploit failed: request rejected with 403", "test passed: login refused",
+    "request rejected with 403", "rerun Bandit 1.9.4: 0 results", "0 of the 3 B602 hits remain",
+    "old tokens are rejected: 0 of 3 accepted", "PoC failed after the fix: 403",
+    "script rendered as text, not executed", "injected command not executed; request rejected with 400",
+    "not reproduced, request rejected after the fix", "no findings for B602", "12 passed, 0 failed",
+    # "failed" after a run word with more text than , ; or : is a result (replan rule 4).
+    "scan failed to find B602 at app.py:24",
+)
+
+
+class Replan(Base):
+    def failing_rows(self, retests):
+        """Indexes of the Retest values that C4 refuses, from one check run on one report."""
+        rows = "".join(f"| F{i} | High | code | `x.py:{i}` | - | `A1` | ToolA | `t` | yes | yes | fixed | "
+                       f"Priya Shah | r | {value} | - |\n" for i, value in enumerate(retests, 1))
+        text = TRIAGED.split("| F1 |", 1)[0] + rows
+        done = run("check", "--today", "2026-11-22", self.write("report.md", text))
+        self.assertIn(done.returncode, (0, 1), done.stderr)
+        lines = done.stdout.strip().splitlines()
+        self.assertTrue(all(l.startswith("C4: F") for l in lines if l != "pass"), lines)
+        return {int(re.match(r"C4: F(\d+) ", l).group(1)) - 1 for l in lines if l.startswith("C4:")}
+
+    def test_m5_replan_superset_of_origin_dev(self):
+        # M5 replan of D-13 (gate 1 R3-1, gate 2 F23): nothing origin/dev refused may pass.
+        retests = list(BASE_FAILING) + [f"Rescan Bandit 1.9.4 2026-11-21: {r}" for r in GATE_RESULTS + REWORD]
+        refused = self.failing_rows(retests)
+        self.assertEqual([r for i, r in enumerate(retests) if i not in refused], [])
+        # The oracle agrees by hand: origin/dev refused every gate and reword result except the
+        # "did not start", "re-run" and "has not been run" family, which C4 now refuses too.
+        new_here = {"Bandit did not start: runner offline", "scan didn't start", "the rescan has not been run",
+                    "Bandit was never run", "the PoC hasn't been run", "the fix has not been rescanned",
+                    "Bandit never retested the fix", "the fix has not been re-run", "scan failed.",
+                    "scan failed: runner offline", "rescan failed", "the run failed, see log",
+                    "Bandit crashed before the scan"}
+        self.assertEqual({r for r in GATE_RESULTS + REWORD if not BASE_NO_RESULT.search(r)}, new_here)
+
+    def test_m5_replan_honest_results_pass(self):
+        # M5 replan: honest results without the refused words still pass, and so do the skill's
+        # own Retest examples and the rewordings the Retest row shows.
+        docstring = (SKILL / "scripts" / "sarif_triage.py").read_text().split('"""')[1]
+        text = (SKILL / "SKILL.md").read_text() + docstring
+        examples = re.findall(r"(?:Rescan|Test|PoC|CI) [^\"'`|]*? \d{4}-\d{2}-\d{2}: [^\"'`|]+", text)
+        self.assertGreaterEqual(len(examples), 3, examples)
+        retests = [f"PoC F1-exploit 2026-11-20: {r}" for r in HONEST] + examples
+        self.assertEqual([r for i, r in enumerate(retests) if i in self.failing_rows(retests)], [])
+        for result in HONEST:
+            self.assertIsNone(BASE_NO_RESULT.search(result), result)  # origin/dev accepted them too
+
+
 class Check(Base):
     def rules(self, text, today="2026-11-22"):
         done = run("check", *(["--today", today] if today else []), self.write("report.md", text))
@@ -431,8 +565,9 @@ class Check(Base):
                 self.assertTrue(found[0].startswith("C4:") and form in found[0], found)
         # A subject followed by a finding is a result: the word after it is not a run-state word.
         # ("the test passed; 2 unrelated tests skipped" moved to the must-fail list: gate 2 F14.)
-        for result in ("scan found none of the 3 B602 hits", "scan found none",
-                       "PoC failed after the fix: 403", "rerun Bandit 1.9.4: 0 results"):
+        # "scan found none of the 3 B602 hits" and "scan found none" moved to test_m5_replan_*.
+        # replanned at the M5 review cap: superset of origin/dev; reword the result
+        for result in ("PoC failed after the fix: 403", "rerun Bandit 1.9.4: 0 results"):
             with self.subTest(result=result):
                 self.assertEqual(self.rules(edit(cell, f"| Rescan Bandit 1.9.4 2026-11-21: {result} |")), [])
 
@@ -456,7 +591,9 @@ class Check(Base):
             "the job was canceled", "Semgrep timed out on app.py", "Bandit could not run",
             "Trivy can't run offline", "the nightly job is still in progress",
             # M5 round 3 pre-check: "has not been run" and its kin.
-            "the rescan has not been run", "Bandit was never run", "the PoC hasn't been executed",
+            # Gate 1 R3-3 took "executed" out ("not executed" is an XSS result), so "the PoC hasn't
+            # been executed" passes, as on origin/dev; "the PoC hasn't been run" fails instead.
+            "the rescan has not been run", "Bandit was never run", "the PoC hasn't been run",
             "Trivy not yet run",
             # Rule 2: a future word after a run word within three words.
             "the test will run after deploy", "the nightly scan is scheduled for Monday",
@@ -471,12 +608,8 @@ class Check(Base):
         passing = (
             # Gate 1 round 2 N2: "failed" with more text after it is a result.
             "PoC failed, request rejected with 403", "exploit failed: request rejected with 403",
-            # Rule 2: a future word without a run word before it, or later than three words in.
-            "the old token will no longer work", "request rejected with 403 as expected",
-            "old sessions will be rejected: 0 of 3 tokens accepted",
-            # Rule 3: whole-result words with more text after them.
-            "none of the 3 B602 hits remain", "unknown host rejected, 0 results",
-            "yet again rejected", "n/a rows: 0; B602 hits: 0",
+            # The future-word and whole-word cases that were here moved to test_m5_replan_*.
+            # replanned at the M5 review cap: superset of origin/dev; reword the result
         )
         for result in passing:
             with self.subTest(result=result):
@@ -490,8 +623,9 @@ class Check(Base):
         form = "<Rescan|Test|PoC|CI> <tool or name> <YYYY-MM-DD>: <result>"
         # Gate 2 F14 moved "passed; 2 unrelated tests skipped" and "errored requests now return 400"
         # to the must-fail list below: a participle fails anywhere.
-        honest = ("request rejected with 403 as expected", "none of the 3 B602 hits remain",
-                  "the old token will no longer work", "yet again rejected")
+        # The four honest results that were here moved to test_m5_replan_*.
+        # replanned at the M5 review cap: superset of origin/dev; reword the result
+        honest = ("request rejected with 403", "0 of the 3 B602 hits remain")
         for result in honest:
             with self.subTest(result=result):
                 self.assertEqual(self.rules(edit(cell, f"| PoC F1-exploit 2026-11-20: {result} |")), [])
@@ -732,7 +866,12 @@ class SkillText(unittest.TestCase):
         self.assertIn("skipped, cancelled, errored", triage)
         # D-13: the default date is the local date, and the word list is not every phrasing.
         self.assertIn("not after today (your local date; `check --today` sets it)", triage)
-        self.assertIn("at the start of the result", triage)
+        # M5 replan: the row says the words fail anywhere and shows honest rewordings.
+        self.assertIn("may not contain these words anywhere", triage)
+        self.assertIn('"request rejected with 403" instead of "request rejected with 403 as expected"', triage)
+        self.assertIn('"0 of the 3 B602 hits remain" instead of "none of the 3 B602 hits remain"', triage)
+        self.assertIn('"old tokens are rejected: 0 of 3 accepted" instead of "the old token will no longer work"',
+                      triage)
         # M5 gate 2 F14: the row says the participles fail anywhere, and what that means.
         self.assertIn("fail anywhere in the result", triage)
         self.assertIn("so a result should not mention unrelated skipped tests", triage)

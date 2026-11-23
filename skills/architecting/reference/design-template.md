@@ -46,11 +46,19 @@ condition runs from `at`, `when`, `while`, `with`, `during`, `given` or `under .
 first number and unit, as in "at 50 req/s" or "when 10,000 users". `for`, `per`, `across` and
 `over` start a condition only before a rate or a count (a load or scope), as in "for 50 req/s"
 or "across 10,000 tenants"; "kept for 30 days" stays the target. `at most`, `at least` and a
-number with no unit ("Recall at 10") do not start a condition. The conditions are set aside
-only when a number stays outside them; that number then needs its unit. So "p95 under 300 at
-50 req/s" fails: its only unit belongs to the condition. "p95 under 300 ms at 50 req/s" and
-"under 5 errors per 1,000 requests" pass. When no number stays outside the conditions, the whole
-target is checked: "Handle over 500 req/s" and "Support over 10,000 tenants" pass.
+number with no unit ("Recall at 10") do not start a condition.
+
+- A condition from `at`, `when`, `while`, `with`, `during`, `given` or `under ... load` is
+  always set aside. So "p95 under 300 at 50 req/s" fails: its only unit belongs to the
+  condition. A load-only target such as "Serve at 50 req/s" or "Latency acceptable at
+  50 req/s" fails too: write the target with its own unit, for example "Serve 50 req/s".
+  "p95 under 300 ms at 50 req/s" passes.
+- A condition from `for`, `per`, `across` or `over` is set aside only when a number stays
+  outside it; that number then needs its unit. So "p95 under 300 for 50 req/s" fails and
+  "under 5 errors per 1,000 requests" passes. When no number stays outside it, the target is
+  checked whole: "Handle over 500 req/s" and "Support over 10,000 tenants" pass. This also lets
+  "Fast for 50 req/s" pass; that trade-off is accepted for these four words.
+
 A thousands separator and a multiplier are allowed: `10,000 users`, `10k users`, `1.5 s`,
 `99.9 %`, `99.9%`, `400 USD/month`. Units are case-insensitive. To add a unit, change `UNITS`
 in the script and this line together; a test compares them.

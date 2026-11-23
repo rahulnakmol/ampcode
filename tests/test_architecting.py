@@ -178,12 +178,28 @@ class Designs(unittest.TestCase):
             with self.subTest(target=target):
                 self.assertEqual(design_check.check(replace("p95 under 300 ms at 50 req/s", target)), [])
 
-    def test_d4_no_number_outside_the_condition_checks_the_whole_target(self):
-        # Gate 1 N3, gate 2 F18: a condition is stripped only when a number stays outside it. With
-        # no number outside, the whole target is checked, as before D-4. Each passed at base.
+    def test_d4_load_only_target_fails(self):
+        # Gate 2 F24: at, when, while, with, during, given and "under ... load" are always
+        # stripped, so a target whose only number is in such a condition fails D2.
+        for target in ("Latency acceptable at 50 req/s", "Respond fast when 10,000 users are active",
+                       "Stays responsive at 500 users", "Stays responsive under load of 50 req/s",
+                       "Fast with 10,000 tenants", "At 50 req/s, p95 under 300", "p95 under 300 at 50 req/s",
+                       "p95 under 300 for 50 req/s",
+                       # replanned at the M5 review cap: a load-only target fails; write the target
+                       # with its own unit, e.g. 'Serve 50 req/s'
+                       "Serve at 50 req/s", "Stay up during 10,000 sessions"):
+            with self.subTest(target=target):
+                self.assertEqual(rules(replace("p95 under 300 ms at 50 req/s", target)), ["D2"])
+
+    def test_d4_comparator_with_no_number_outside_checks_the_whole_target(self):
+        # Gate 1 N3, gate 2 F18: for, per, across and over are stripped only when a number stays
+        # outside them; otherwise the whole target is checked. Each passed at base.
         for target in ("Handle over 500 req/s", "Support over 10,000 tenants",
                        "At most 5 errors per 1,000 requests", "under 5 errors per 1,000 requests",
-                       "Serve at 50 req/s", "Stay up during 10,000 sessions", "Handle 500 req/s"):
+                       "Backups kept for 30 days", "Serve 50 req/s", "p95 under 300 ms at 50 req/s",
+                       "Handle 500 req/s",
+                       # Gate 1 R3-2: accepted for for/per/across/over at the M5 review cap.
+                       "Fast for 50 req/s"):
             with self.subTest(target=target):
                 self.assertEqual(design_check.check(replace("p95 under 300 ms at 50 req/s", target)), [])
 
