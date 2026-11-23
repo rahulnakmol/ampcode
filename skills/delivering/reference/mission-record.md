@@ -83,8 +83,9 @@ enforcement, not security against an unrestricted shell: never bypass them with 
 effects; Playbook software-delivery>
 
 ## Gate ledger
-<missioning's table: readiness preflight, kickoff (the one human row), each milestone merge
-(agent rows citing the pre-authorized effect), each effect, close-out>
+<missioning's table: readiness preflight, kickoff (a human row), each milestone merge (agent rows
+citing the pre-authorized effect), each effect (an agent row with `(E<n>)` when pre-authorized,
+otherwise a human Effects gate), close-out>
 
 ## Decision trail
 <missioning's table>

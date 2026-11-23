@@ -186,7 +186,7 @@ def check(text, base):
         # Effect IDs: '(E<n>)' in the Gate, any case; in Evidence, upper case and only when it
         # speaks of pre-authorization, so codes such as 'E501' or 'rustc E0308' stay plain evidence.
         pre = re.match(r"pre-authori[sz]ed\b(?::(.*))?", evidence, re.I)
-        mentions = re.search(r"\bpre-?authori[sz]ed\b", evidence, re.I)
+        mentions = re.search(r"\bpre-?authori[sz](?:ed|ation)\b", evidence, re.I)
         named = {i.upper() for i in re.findall(r"\((E\d+)\)", gate, re.I)}
         cited = named | (set(re.findall(r"\bE\d+\b", evidence)) if mentions else set())
         if kind == "human" and (pre or named & granted):

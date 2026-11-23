@@ -282,7 +282,7 @@ class Rules(unittest.TestCase):
         self.assertEqual(self.rules(edit("E1 open tracker issues for Critical and High findings in acme/payments.", "none: no outside effects", edit(row + "\n", ""))), [])
         # An agent row naming an effect ID always cites a listed pre-authorization in that form.
         for gate, evidence in (("File findings (E9)", "issues filed, read back"), ("File findings", "E9 pre-authorized at kickoff"),
-                               ("File findings", "preauthorized: charter E1")):
+                               ("File findings", "preauthorized: charter E1"), ("Share the report", "per pre-authorization E9")):
             with self.subTest(gate=gate, evidence=evidence):
                 self.assertRule(edit(row, f"| {gate} | agent | open | {evidence} | - | - | - | - | - |"), "R13")
         # Error codes and stage names that look like effect IDs are ordinary evidence and gates.
