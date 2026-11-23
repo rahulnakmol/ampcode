@@ -311,7 +311,8 @@ describe('P10 stop reasons', () => {
 		expect(blocked(r, 'M1')).toBe(true)
 		const c = clone(); c.items[1].id = 'W2x'
 		expect(() => amend(stop(approved(), FIVE[0], ['W2']), c)).toThrow('open stop S-1')
-		expect(amend(approved(), c).contract.items[1].id).toBe('W2x')
+		// Item IDs are not in section 3's list of fields amend may change; renaming goes through replan.
+		expect(() => amend(approved(), c)).toThrow('Refused (items)')
 	})
 })
 
@@ -358,11 +359,45 @@ describe('Amend: a non-digest item field keeps approval', () => {
 		expect(r.preflight).toBeUndefined()
 		expect(() => advance(r, { type: 'approval-pending', kind: 'kickoff', digest })).toThrow('preflight')
 	})
-	test('Amend renaming or removing a milestone with failed review rounds is refused', () => {
+	test('Amend renaming an item while keeping the digest is refused, so its outcome cannot change that way', () => {
+		const c = clone(); c.items[1].id = 'W2x'; c.items[1].outcome = 'W2 does something wider'
+		expect(() => amend(approved(), c)).toThrow('Refused (items)')
+	})
+	test('Amend that changes the digest closes an open kickoff dialog, so reverting cannot reuse it', () => {
+		let r = createRecord(THREAD, contract)
+		const digest = approvalDigest(r.contract)
+		const pass = (x: ContractRecord) => advance(x, { type: 'preflight', digest: approvalDigest(x.contract), results: [{ check: 'dev exists', passed: true, detail: 'found' }] })
+		r = advance(pass(r), { type: 'approval-pending', kind: 'kickoff', digest })
+		const c = clone(); c.items[1].outcome = 'wider'; c.items[1].done = ['W2 changed criterion']
+		r = amend(r, c)
+		expect(r.pendingApproval).toBeUndefined()
+		const back = clone(); back.items[1].outcome = 'wider'
+		r = pass(amend(r, back))
+		expect(() => advance(r, { type: 'approve', digest, responder: 'user-owner' })).toThrow('approval')
+	})
+	const failedOnce = (gate: 1 | 2) => {
 		let r = withCandidate(itemsDone(approved(), 'M1'), 'M1')
-		r = review(r, 'M1', 1, false)
-		const c = clone(); c.milestones[0].id = 'M1b'; c.items.forEach((i: any) => { if (i.milestone === 'M1') i.milestone = 'M1b' })
-		expect(() => amend(r, c)).toThrow('failed review rounds')
+		if (gate === 2) r = review(r, 'M1', 1, true)
+		return review(r, 'M1', gate, false)
+	}
+	const moveM1 = (c: any, to: string) => c.items.forEach((i: any) => { if (i.milestone === 'M1') i.milestone = to })
+	test('Amend renaming a milestone with a failed gate 1 or gate 2 round is refused', () => {
+		for (const g of [1, 2] as const) {
+			const c = clone(); c.milestones[0].id = 'M1b'; moveM1(c, 'M1b')
+			expect(() => amend(failedOnce(g), c)).toThrow('failed review rounds')
+		}
+	})
+	test('Amend removing a milestone with failed review rounds is refused', () => {
+		const c = clone(); c.milestones.splice(0, 1); moveM1(c, 'M2')
+		expect(() => amend(failedOnce(1), c)).toThrow('failed review rounds')
+	})
+	test('Amend swapping milestone IDs, or renaming one and adding a decoy with its old ID, is refused', () => {
+		const swap = clone(); swap.milestones[0].id = 'M2'; swap.milestones[1].id = 'M1'
+		swap.items.forEach((i: any) => { i.milestone = i.milestone === 'M1' ? 'M2' : i.milestone === 'M2' ? 'M1' : i.milestone })
+		expect(() => amend(failedOnce(1), swap)).toThrow('failed review rounds')
+		const decoy = clone(); decoy.milestones[0].id = 'M1b'; moveM1(decoy, 'M1b')
+		decoy.milestones.unshift({ id: 'M1', title: 'Decoy', exit: ['Decoy exit'] }); decoy.items.push(item('D1', 'M1', ['Decoy criterion']))
+		expect(() => amend(failedOnce(1), decoy)).toThrow('failed review rounds')
 	})
 })
 
