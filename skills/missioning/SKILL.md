@@ -99,7 +99,7 @@ The mission file holds both; each gate is one ledger row. Every playbook uses th
   answers the exact gate question, by choosing an offered option or naming the decision. "Looks
   good", an earlier conversation or silence is never an approval. Write the row after the answer.
 - **Effects.** A pre-authorized effect (a release, publish, outside send or apply the charter
-  lists as `E<n>`) is an `agent` row naming its `E<n>`, with Evidence `pre-authorized: <source>`;
+  lists as `E<n>`) is an `agent` row with `(E<n>)` in its Gate and Evidence `pre-authorized: <source>`;
   never ask for it again. Any other outside effect is a human Effects gate on the exact plan
   (stop reason 2). Merges into the integration branch under the conductor's gates are agent rows
   at every risk level: high risk means independent reviewers and the full case list.

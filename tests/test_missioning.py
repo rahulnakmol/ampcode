@@ -287,7 +287,8 @@ class Rules(unittest.TestCase):
                 self.assertRule(edit(row, f"| {gate} | agent | open | {evidence} | - | - | - | - | - |"), "R13")
         # Error codes and stage names that look like effect IDs are ordinary evidence and gates.
         for gate, evidence in (("Lint clean", "ruff clean except E501"), ("Build", "rustc E0308 fixed in 1a2b3c4"),
-                               ("Stage E2 rollout", "canary green")):
+                               ("Stage E2 rollout", "canary green"),
+                               ("Threat review", "nothing here is pre-authorized")):
             with self.subTest(gate=gate, evidence=evidence):
                 self.assertEqual(self.rules(edit(row, f"| {gate} | agent | open | {evidence} | - | - | - | - | - |")), [])
         # A waived pre-authorized effect still needs its own recorded decider and source.

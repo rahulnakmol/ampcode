@@ -67,7 +67,8 @@ enforcement, not security against an unrestricted shell: never bypass them with 
 
 - Kickoff is one recorded owner reply: a human ledger row quoting the owner's words with the
   message ID as its source (`written:` or `question:`, per `missioning`).
-- Every other gate is an agent row. A milestone merge cites its pre-authorized effect and the
+- Every other gate is an agent row, except an effect the contract does not pre-authorize: that is
+  a human Effects gate (stop reason 2), per `missioning`. A milestone merge cites its pre-authorized effect and the
   evidence: the PR, the head, both reviews and the green checks.
 - Stops, assumptions, filed items and performed effects go in the record sections below.
 - Report the missing enforcement as a limitation; never claim tool enforcement.

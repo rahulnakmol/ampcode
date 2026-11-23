@@ -191,7 +191,7 @@ def check(text, base):
         cited = named | (set(re.findall(r"\bE\d+\b", evidence)) if mentions else set())
         if kind == "human" and (pre or named & granted):
             add("R13", f"gate '{gate}': a pre-authorized effect is an agent row, not a human gate; do not ask for it again")
-        elif kind == "agent" and (mentions or cited):
+        elif kind == "agent" and (pre or cited):
             grant = (pre.group(1) or "").strip() if pre else ""
             if not grant or grant.split()[0].strip(".,;").lower() in ("-", "none") or PLACEHOLDER.search(grant):
                 add("R13", f"gate '{gate}': Evidence must read 'pre-authorized: <source>'")
