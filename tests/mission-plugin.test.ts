@@ -32,7 +32,7 @@ function harness(root = mkdtempSync(join(tmpdir(), 'mission-plugin-')), github?:
 		notify: async (message: string) => { notifications.push(message) },
 	} }
 	const amp = { system: { workspaceRoot: root }, helpers: { filePathFromURI: (p: string) => p }, configuration: { get: async () => ({}) },
-		registerTool: (tool: any) => { tools[tool.name] = tool.execute }, on: (event: string, handler: any) => { hooks[event] = handler },
+		registerTool: (tool: any) => { tools[tool.name] = tool.execute }, on: (event: string, handler: any) => { hooks[event] = handler }, registerCommand: () => {},
 	}
 	register(amp as any, github)
 	return { root, tools, hooks, dialogs, notifications, ctx, answer: (value: any) => { answer = value }, call: (name: string, input = {}) => tools[name](input, ctx) }
@@ -393,22 +393,12 @@ test('records written before decision briefs keep their digests and finish both 
 	}
 })
 
-test('the preview plugin shows both dialogs for the synthetic AC-5 mission and registers nothing else', async () => {
+test('the v1 demo fixture is the briefing-decisions eval record', () => {
 	const fixture = readFileSync(join(import.meta.dir, '../plugins/mission-control/fixtures/demo-mission.json'), 'utf8')
 	expect(fixture).toBe(readFileSync(join(import.meta.dir, '../evals/briefing-decisions/record.json'), 'utf8'))
 	const record = parseMission(JSON.parse(fixture), 'T-00000000-0000-0000-0000-000000000000')
 	expect(record.design!.bundle.brief!.markdown).toBe(readFileSync(join(import.meta.dir, '../evals/briefing-decisions/brief.md'), 'utf8'))
 	expect(record.design!.bundle.brief!.url).toBe('https://github.com/rahulnakmol/ampcode/blob/34b8d0e8af6d53aaa60d33f7066983ac21e4fd0f/evals/briefing-decisions/brief.md')
-	const { default: preview } = await import('../.amp/plugins/mission-control-preview')
-	const commands: any[] = [], dialogs: any[] = [], notes: string[] = []
-	const fail = () => { throw new Error('preview must not register tools or events') }
-	preview({ registerCommand: (id: string, options: any, handler: any) => commands.push({ id, options, handler }), registerTool: fail, on: fail } as any)
-	expect(commands.map(c => c.options.title)).toEqual(['Preview approval dialogs'])
-	await commands[0].handler({ ui: { confirm: async (d: any) => { assertApprovalDialog(d); dialogs.push(d); return APPROVED }, notify: async (m: string) => { notes.push(m) } } })
-	expect(dialogs.map(d => d.title)).toEqual(['Approve the design', 'Merge into dev'])
-	for (const d of dialogs) expect(d.message).toStartWith('Preview only: nothing is recorded or approved.')
-	expect(dialogs[0].fields[0]).toMatchObject({ type: 'link', name: 'brief', value: record.design!.bundle.brief!.url })
-	expect(notes).toEqual(['Design preview: this answer would approve. Nothing was recorded.', 'Merge preview: this answer would approve. Nothing was recorded.'])
 })
 
 // Schema 3 contract missions through the plugin's tools (W4). The fixture is this mission's own
@@ -475,9 +465,20 @@ type Answer = { values?: Record<string, string>; responder?: string | null; fail
 const ticked = (d: any, changes = '') => ({ ...Object.fromEntries(d.fields.filter((f: any) => f.type === 'checkbox').map((f: any) => [f.name, 'true'])), changes })
 function contractHarness(github: any, root = mkdtempSync(join(tmpdir(), 'mission-contract-plugin-'))) {
 	execFileSync('git', ['init', '-q', root])
-	const tools: Record<string, any> = {}, hooks: Record<string, any> = {}, dialogs: any[] = []
+	const tools: Record<string, any> = {}, hooks: Record<string, any> = {}, commands: Record<string, any> = {}, dialogs: any[] = []
+	const notes: string[] = [], posted: any[] = [], quick: any[] = []
 	let answer: (dialog: any) => Answer | Promise<Answer> = d => ({ values: ticked(d) })
-	const ctx = { thread: { id: 'T-test' }, signal: new AbortController().signal, ui: {
+	// The thread's quick actions (live until unsubscribed) and the messages appended to it.
+	const thread = {
+		id: 'T-test',
+		createQuickAction: (definition: any) => {
+			const action = { definition, unsubscribe: () => { if (quick.includes(action)) quick.splice(quick.indexOf(action), 1) }, update: (d: any) => { action.definition = d } }
+			quick.push(action)
+			return action
+		},
+		appendUserMessage: async (message: any) => { posted.push(message) },
+	}
+	const ui = {
 		confirm: async (dialog: any) => {
 			dialogs.push(dialog)
 			const a = await answer(dialog)
@@ -485,15 +486,21 @@ function contractHarness(github: any, root = mkdtempSync(join(tmpdir(), 'mission
 			await dialog.onAnswered?.({ responder: a.responder === null ? undefined : { userID: a.responder ?? OWNER } })
 			return a.values
 		},
-		notify: async () => {},
-	} }
+		notify: async (message: string) => { notes.push(message) },
+	}
+	const ctx = { thread, signal: new AbortController().signal, ui }
 	const amp = { system: { workspaceRoot: root, user: { id: OWNER, email: 'owner@example.com' } }, helpers: { filePathFromURI: (p: string) => p }, configuration: { get: async () => ({}) },
 		registerTool: (tool: any) => { tools[tool.name] = tool.execute }, on: (event: string, handler: any) => { hooks[event] = handler },
+		registerCommand: (id: string, options: any, handler: any) => { commands[id] = { options, handler } },
 	}
 	register(amp as any, github)
 	const call = (name: string, input: any = {}) => tools[name](input, ctx)
 	return {
-		root, dialogs, call, answer: (f: typeof answer) => { answer = f },
+		root, dialogs, call, answer: (f: typeof answer) => { answer = f }, commands, notes, posted,
+		quickActions: () => quick.map(q => q.definition),
+		// A command context has no abort signal.
+		command: (id: string) => commands[id].handler({ thread, ui }),
+		hook: (name: string) => hooks[name]({ thread: { id: 'T-test' }, message: 'Continue', id: 1, status: 'done', messages: [] }, ctx),
 		act: (action: any) => call('mission_update', { action }),
 		status: async () => JSON.parse(await call('mission_status')),
 		file: () => JSON.parse(readFileSync(join(root, '.amp/in/missions', digest('T-test'), 'state.json'), 'utf8')),
@@ -840,4 +847,233 @@ test('stop text (SC6, plugin part): a refused stop reason lists the five texts f
 		for (const [i, reason] of FIVE.entries()) expect(error.message).toContain(`${i + 1}. ${reason}`)
 		expect(h.dialogs).toEqual([])
 	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+// W5: hooks, reopen and preview.
+const REOPEN_COMMAND = 'mission-reopen-approval'
+const REMINDER = 'An owner approval is pending'
+const NEW_EFFECT = { effect: 'Post the release notes to the team channel', why: 'The owner asked for an announcement' }
+const quickAction = (kind: string) => ({ text: `Open ${kind} approval`, icon: 'check', action: 'run-command', args: { command: REOPEN_COMMAND } })
+const changesPosted = (kind: string, text: string) => ({ type: 'user-message', content: `The mission owner answered the ${kind} approval dialog: not approved. The owner wrote in Changes:\n${text}` })
+const startContent = async (h: ContractHarness) => (await h.hook('agent.start'))?.message?.content as string
+
+test('P14: agent.end sends no nudge for a delegated item, every unmerged milestone blocked, kickoff pending or complete; one "continue" (at most 3 in a row) when work is ready', async () => {
+	const gh = fakeGitHub(), h = contractHarness(gh.github)
+	const nudges: [string, any][] = []
+	const end = async (state: string) => {
+		const before = h.dialogs.length
+		nudges.push([state, await h.hook('agent.end')])
+		expect(h.dialogs.length).toBe(before)
+	}
+	try {
+		await h.call('mission_start', { contract: CONTRACT })
+		await h.call('mission_preflight')
+		await end('kickoff pending')
+		h.answer(() => ({ values: undefined }))
+		await h.call('mission_approve')
+		await end('kickoff pending, dismissed')
+		h.answer(d => ({ values: ticked(d) }))
+		await h.call('mission_approve')
+		await end('work ready')
+		// M2 is blocked through its item W3, M3 by name.
+		await h.act({ type: 'stop', reason: 3, question: 'Which guide comes first?', options: ['Mission control', 'Using skills'], recommendation: 'Mission control', blocks: ['W3', 'M3'] })
+		await end('every unmerged milestone blocked')
+		await h.act({ type: 'resume', stopId: 'S-1', answer: 'Mission control', source: 'Owner reply in the mission thread' })
+		// One unmerged milestone (M3) is not blocked: work is ready.
+		await h.act({ type: 'stop', reason: 3, question: 'Which name?', options: ['A', 'B'], recommendation: 'A', blocks: ['M2'] })
+		expect(await h.hook('agent.end')).toMatchObject({ action: 'continue' })
+		await h.act({ type: 'resume', stopId: 'S-2', answer: 'A', source: 'Owner reply in the mission thread' })
+		await h.act({ type: 'delegate', itemId: 'W1', executor: { kind: 'thread', id: CHILD } })
+		await end('an item delegated')
+		for (const [milestone, pr] of [['M2', 10], ['M3', 11]] as const) {
+			await prepare(h, gh, milestone, pr)
+			await h.call('mission_merge', { milestoneId: milestone })
+			await h.call('mission_reconcile', { milestoneId: milestone })
+		}
+		await end('complete')
+		expect(nudges.map(([state, result]) => [state, result?.action ?? 'no nudge'])).toEqual([
+			['kickoff pending', 'no nudge'], ['kickoff pending, dismissed', 'no nudge'], ['work ready', 'continue'],
+			['every unmerged milestone blocked', 'no nudge'], ['an item delegated', 'no nudge'], ['complete', 'no nudge'],
+		])
+		expect(nudges[2][1]).toEqual({ action: 'continue', maxContinuations: 3, userMessage: expect.stringContaining('Next action: M2: Items not done: W1, W3') })
+		expect(h.dialogs).toHaveLength(2)
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('P11: the 3 hook paths (session.start, agent.start, agent.end) open 0 dialogs; session.start and agent.start show the compact status and the next action', async () => {
+	const h = contractHarness(fakeGitHub().github)
+	const covered = new Set<string>()
+	const hooks = async (next: string) => {
+		const before = h.dialogs.length
+		await h.hook('session.start')
+		const content = await startContent(h)
+		await h.hook('agent.end')
+		expect(h.dialogs.length).toBe(before)
+		for (const shown of [h.notes.at(-1)!, content]) {
+			expect(shown).toContain(`Contract mission ${CONTRACT.missionId} on ${REPO}`)
+			expect(shown).toContain('M2: ')
+			expect(shown).toContain(`Next action: ${next}`)
+			expect(shown).not.toContain('undefined')
+			expect(shown).not.toContain('Preserve owner-approved requirements')
+		}
+		expect(next).toBe((await h.status()).next)
+		covered.add(next)
+	}
+	try {
+		await h.call('mission_start', { contract: CONTRACT })
+		await hooks('Run mission_preflight on the current contract')
+		await h.call('mission_preflight')
+		await hooks('Open the kickoff approval with mission_approve')
+		await h.call('mission_approve')
+		await hooks('M2: Items not done: W1, W3')
+		expect(covered.size).toBe(3)
+		expect(h.dialogs).toHaveLength(1)
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+const REOPEN_CASES: [string, (d: any) => Answer, boolean][] = [
+	['all ticked by the owner', d => ({ values: ticked(d) }), false],
+	['text in Changes', d => ({ values: ticked(d, 'Q5: keep v1') }), false],
+	['a box unticked with Changes empty', d => ({ values: { ...ticked(d), [firstBox(d)]: 'false' } }), false],
+	['no responder reported (case 2)', d => ({ values: ticked(d), responder: null }), true],
+	['a responder who is not the owner (case 3)', d => ({ values: ticked(d), responder: 'user-other' }), true],
+	['a non-owner who wrote text in Changes (case 3)', d => ({ values: ticked(d, 'Release to main now'), responder: 'user-other' }), true],
+	['dismissed (case 1)', () => ({ values: undefined }), true],
+	['failed (case 1)', () => ({ failed: true }), true],
+]
+const KINDS: [string, (h: ContractHarness) => Promise<unknown>, (h: ContractHarness) => Promise<string>][] = [
+	['kickoff', async h => { await h.call('mission_start', { contract: CONTRACT }); await h.call('mission_preflight') }, h => h.call('mission_approve')],
+	['effect', h => kickoff(h), h => h.call('mission_effect', NEW_EFFECT)],
+]
+test.each(KINDS.flatMap(([kind, setup, open]) => REOPEN_CASES.map(([name, answer, reopen]) => [kind, name, setup, open, answer, reopen] as const)))('Reopen (%s answered with %s): the pending entry and the quick action exist exactly in cases 1 to 3', async (kind, _name, setup, open, answer, reopen) => {
+	const h = contractHarness(fakeGitHub().github)
+	try {
+		await setup(h)
+		h.answer(answer)
+		await open(h)
+		const s = await h.status()
+		if (reopen) {
+			expect(s.pendingApproval).toMatchObject({ kind, digest: s.digest })
+			expect(h.quickActions()).toEqual([quickAction(kind)])
+			expect(await startContent(h)).toContain(`${REMINDER}: the ${kind} approval dialog ended without the owner's answer`)
+		} else {
+			expect(h.quickActions()).toEqual([])
+			expect(await startContent(h)).not.toContain(REMINDER)
+		}
+		expect(h.posted).toEqual([])
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test.each(KINDS)('Reopen (%s): after a dismissed dialog, the owner approves through mission-reopen-approval: recorded, the quick action is removed, nothing is posted', async (kind, setup, open) => {
+	const h = contractHarness(fakeGitHub().github)
+	try {
+		await setup(h)
+		const before = h.dialogs.length
+		h.answer(() => ({ values: undefined }))
+		expect(await open(h)).toBe(NOTHING)
+		expect(await open(h)).toBe(NOTHING)
+		// Dismissed twice: one quick action, not two.
+		expect(h.quickActions()).toEqual([quickAction(kind)])
+		expect(h.commands[REOPEN_COMMAND].options).toMatchObject({ title: 'Reopen mission approval' })
+		h.answer(d => ({ values: ticked(d) }))
+		await h.command(REOPEN_COMMAND)
+		expect(h.dialogs.length).toBe(before + 3)
+		expect(h.dialogs.at(-1).title).toBe(kind === 'kickoff' ? 'Approve the mission contract' : 'Approve an outside effect')
+		const s = await h.status()
+		if (kind === 'kickoff') expect(s.approval).toMatchObject({ responder: OWNER, current: true })
+		else expect(s.performed.at(-1)).toMatchObject({ ...NEW_EFFECT, preAuthorized: false, responder: OWNER })
+		expect(s.pendingApproval).toBeNull()
+		expect(h.quickActions()).toEqual([])
+		expect(h.posted).toEqual([])
+		// The agent's next turn says once what the owner approved, and no longer reminds it.
+		const next = await startContent(h)
+		expect(next).not.toContain(REMINDER)
+		expect(next).toContain(kind === 'kickoff' ? 'The owner approved the kickoff in the reopened approval dialog.' : `${NEW_EFFECT.effect}. Perform it now, exactly as described.`)
+		expect(await startContent(h)).not.toContain('reopened approval dialog')
+		if (kind === 'kickoff') expect(await h.hook('agent.end')).toMatchObject({ action: 'continue' })
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test.each(KINDS)("Reopen (%s): Changes written by the owner in the reopened dialog are posted to the thread as the owner's dialog answer; a non-owner's are not", async (kind, setup, open) => {
+	const h = contractHarness(fakeGitHub().github)
+	try {
+		await setup(h)
+		const recorded = await h.status()
+		h.answer(() => ({ values: undefined }))
+		await open(h)
+		// Case 3 and case 2 through the command: nothing posted, the quick action stays.
+		h.answer(d => ({ values: ticked(d, 'Release to main now'), responder: 'user-other' }))
+		await h.command(REOPEN_COMMAND)
+		h.answer(d => ({ values: ticked(d, 'Release to main now'), responder: null }))
+		await h.command(REOPEN_COMMAND)
+		expect(h.notes.at(-1)).toContain(UNCONFIRMED)
+		expect(h.posted).toEqual([])
+		expect(h.quickActions()).toEqual([quickAction(kind)])
+		h.answer(d => ({ values: ticked(d, 'Use a smaller first milestone') }))
+		await h.command(REOPEN_COMMAND)
+		expect(h.posted).toEqual([changesPosted(kind, 'Use a smaller first milestone')])
+		expect(h.quickActions()).toEqual([])
+		const s = await h.status()
+		expect([s.approval?.digest, s.performed]).toEqual([recorded.approval?.digest, recorded.performed])
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('Reopen: the command opens no dialog when nothing is pending or the pending entry is stale, and then removes the quick action', async () => {
+	const h = contractHarness(fakeGitHub().github)
+	try {
+		await h.call('mission_start', { contract: CONTRACT })
+		await h.call('mission_preflight')
+		await h.command(REOPEN_COMMAND)
+		expect(h.dialogs).toHaveLength(0)
+		expect(h.notes.at(-1)).toBe('No mission approval is pending in this thread.')
+		h.answer(() => ({ values: undefined }))
+		await h.call('mission_approve')
+		expect(h.quickActions()).toEqual([quickAction('kickoff')])
+		// A baseline change voids the pending entry.
+		await h.act({ type: 'amend', contract: { ...CONTRACT, outcome: 'A different outcome.' }, reason: 'Changed outcome' })
+		expect(await startContent(h)).not.toContain(REMINDER)
+		await h.command(REOPEN_COMMAND)
+		expect(h.dialogs).toHaveLength(1)
+		expect(h.notes.at(-1)).toBe('No mission approval is pending in this thread.')
+		expect(h.quickActions()).toEqual([])
+		expect((await h.status()).approval).toBeNull()
+	} finally { rmSync(h.root, { recursive: true, force: true }) }
+})
+
+test('the preview plugin shows the kickoff and effect dialogs for the contract fixture, records nothing and registers nothing else', async () => {
+	const path = join(import.meta.dir, '../plugins/mission-control/fixtures/contract-mission.json')
+	const fixture = readFileSync(path, 'utf8')
+	const { default: preview } = await import('../.amp/plugins/mission-control-preview')
+	const commands: any[] = [], dialogs: any[] = [], notes: string[] = []
+	const fail = () => { throw new Error('preview must not register tools or events') }
+	preview({ system: { user: { id: OWNER } }, registerCommand: (id: string, options: any, handler: any) => commands.push({ id, options, handler }), registerTool: fail, on: fail } as any)
+	expect(commands.map(c => [c.id, c.options.title])).toEqual([['preview-approval-dialogs', 'Preview approval dialogs']])
+	const run = (answer: (d: any) => Answer) => commands[0].handler({ ui: {
+		confirm: async (d: any) => {
+			dialogs.push(d)
+			const a = answer(d)
+			await d.onAnswered?.({ responder: a.responder === null ? undefined : { userID: a.responder ?? OWNER } })
+			return a.values
+		},
+		notify: async (m: string) => { notes.push(m) },
+	} })
+	await run(d => ({ values: ticked(d) }))
+	expect(dialogs.map(d => d.title)).toEqual(['Approve the mission contract', 'Approve an outside effect'])
+	for (const d of dialogs) {
+		expect(d).toMatchObject({ requireHuman: true, endTurnOnDecline: true, confirmButtonText: 'Submit' })
+		expect(d.message).toStartWith('Preview only: nothing is recorded or approved.')
+		expect(d.fields[0]).toEqual({ type: 'link', name: 'brief', label: 'Open the contract brief', value: CONTRACT.brief.url })
+		expect(d.fields.some((f: any) => f.secret)).toBe(false)
+	}
+	const boxes = (d: any) => d.fields.filter((f: any) => f.type === 'checkbox').map((f: any) => f.name)
+	expect(boxes(dialogs[0])).toEqual([...CONTRACT.openQuestions.map((q: any) => `default-${q.id}`), 'effect-E1', 'effect-E2', 'effect-E3'])
+	expect(boxes(dialogs[0])).toHaveLength(9)
+	expect(boxes(dialogs[1])).toEqual(['effect'])
+	expect(notes).toEqual(['Kickoff preview: this answer would approve. Nothing was recorded.', 'Effect preview: this answer would approve. Nothing was recorded.'])
+	await run(() => ({ values: undefined }))
+	expect(notes.slice(2)).toEqual([
+		'Kickoff preview: no answer from the owner, so the quick action "Open kickoff approval" would appear. Nothing was recorded.',
+		'Effect preview: no answer from the owner, so the quick action "Open effect approval" would appear. Nothing was recorded.',
+	])
+	expect(readFileSync(path, 'utf8')).toBe(fixture)
 })

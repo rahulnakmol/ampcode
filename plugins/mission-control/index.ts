@@ -1,14 +1,14 @@
-import type { PluginAPI, PluginToolContext } from '@ampcode/plugin'
+import type { PluginAPI, PluginThread, PluginToolContext, PluginUI, QuickAction } from '@ampcode/plugin'
 import { execFileSync } from 'node:child_process'
 import { appendFileSync, existsSync, readFileSync, realpathSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { advance, blockers, createMission, digest, fingerprint, loadRecord, saveRecord, readRecordBytes, parseMission, type Action, type Mission } from './lib/mission'
 import { advanceV2, blockersV2, createMissionV2, fingerprintV2, evidenceDigestV2, type ActionV2, type MissionV2 } from './lib/mission-v2'
-import { intentDigest } from './lib/contracts'
+import { canonical, intentDigest } from './lib/contracts'
 import { migrateMission, previewMigration, sourceDigest } from './lib/migration'
 import { GitHub } from './lib/github'
 import { confirmOptions, designDialog, effectDialog, kickoffDialog, mergeDialog, rawDetails, readAnswer, refusal, type AnswerReading, type ContractDialog, type Dialog, type DialogAnswer } from './lib/brief'
-import { advance as advanceContract, approvalDigest, blockers as contractBlockers, createRecord, fingerprint as contractFingerprint, loadContractRecord, saveContractRecord, update as updateContract, type ContractRecord, type MilestoneState } from './lib/contract'
+import { advance as advanceContract, approvalDigest, blocked, blockers as contractBlockers, createRecord, fingerprint as contractFingerprint, loadContractRecord, saveContractRecord, update as updateContract, type ContractRecord, type MilestoneState, type Pending } from './lib/contract'
 import { checkpointReport, closeOutReport } from './lib/report'
 import { createHash } from 'node:crypto'
 
@@ -21,6 +21,9 @@ function isV2(s: RecordState): s is MissionV2 { return (s as any).schemaVersion 
 function isContract(s: RecordState): s is ContractRecord { return (s as any).schemaVersion === 3 }
 const CONTRACT_ACTIONS = ['amend', 'replan', 'file', 'delegate', 'item-done', 'candidate', 'review', 'disposition', 'evidence', 'assume', 'stop', 'resume']
 const NOTHING = 'No approval was recorded.'
+const EFFECT_APPROVED = 'The owner approved this effect once, and it is recorded as performed.'
+// The registered command behind the "Open kickoff approval" and "Open effect approval" quick actions.
+const REOPEN = 'mission-reopen-approval'
 // What the agent gets when a kickoff or effect dialog does not approve (the order rule in brief.ts).
 function notApproved(reading: AnswerReading) {
 	if (reading.outcome === 'changes') return `Not approved. The owner wrote in Changes:\n${reading.message}`
@@ -31,6 +34,41 @@ const milestoneOf = (s: ContractRecord, milestoneId: unknown): MilestoneState =>
 	const m = s.milestones.find(m => m.id === milestoneId)
 	if (!m) throw new Error(`Refused (milestoneId): unknown milestone ${milestoneId}`)
 	return m
+}
+function nextAction(s: ContractRecord) {
+	const digest = approvalDigest(s.contract)
+	if (s.preflight?.digest !== digest) return 'Run mission_preflight on the current contract'
+	if (!s.preflight.passed) return 'Fix the failing readiness checks, then run mission_preflight again'
+	if (s.approval?.digest !== digest) return 'Open the kickoff approval with mission_approve'
+	const m = s.milestones.find(m => m.status !== 'merged')
+	if (!m) return 'Every milestone is merged: write the close-out report with mission_report'
+	if (m.status === 'merge-pending') return `Reconcile the merge of ${m.id} with mission_reconcile`
+	const missing = contractBlockers(s, m.id)
+	return missing.length ? `${m.id}: ${missing[0]}` : `Merge ${m.id} with mission_merge`
+}
+// The status the hooks show: approval, preflight, milestones with their items, open stops, a pending approval, and the next action.
+function compactStatus(s: ContractRecord) {
+	const digest = approvalDigest(s.contract)
+	const defs = [...s.contract.items, ...s.filed]
+	const preflight = s.preflight?.digest !== digest ? 'not run on the current contract' : s.preflight.passed ? 'passed' : 'failed'
+	const stops = s.stops.filter(x => !x.resolved)
+	return [
+		`Contract mission ${s.contract.missionId} on ${s.contract.repository}.`,
+		`Kickoff: ${s.approval?.digest === digest ? 'approved' : 'not approved'}; preflight: ${preflight}.`,
+		...s.milestones.map(m => {
+			const items = s.items.filter(i => defs.find(d => d.id === i.id)!.milestone === m.id).map(i => `${i.id} ${i.status}`)
+			return `${m.id}: ${m.status}${m.status !== 'merged' && blocked(s, m.id) ? ', blocked by a stop' : ''}; items ${items.join(', ')}.`
+		}),
+		...(stops.length ? [`Open stops: ${stops.map(x => `${x.id} blocks ${x.blocks.join(', ')}`).join('; ')}.`] : []),
+		...(s.pendingApproval ? [`Pending approval: ${s.pendingApproval.kind}.`] : []),
+		`Next action: ${nextAction(s)}`,
+	].join('\n')
+}
+// agent.end continues only when kickoff is approved, the mission is not complete, no item is
+// delegated, and at least one unmerged milestone is not blocked by a stop.
+function workReady(s: ContractRecord) {
+	return s.approval?.digest === approvalDigest(s.contract) && !s.items.some(i => i.status === 'delegated')
+		&& s.milestones.some(m => m.status !== 'merged' && !blocked(s, m.id))
 }
 // The compact status: approval, preflight, items, milestones with their fingerprints and blockers, and the next action.
 function contractStatus(s: ContractRecord) {
@@ -45,15 +83,7 @@ function contractStatus(s: ContractRecord) {
 		}
 	})
 	const defs = [...s.contract.items, ...s.filed]
-	const next = (() => {
-		if (s.preflight?.digest !== digest) return 'Run mission_preflight on the current contract'
-		if (!s.preflight.passed) return 'Fix the failing readiness checks, then run mission_preflight again'
-		if (s.approval?.digest !== digest) return 'Open the kickoff approval with mission_approve'
-		const m = milestones.find(m => m.status !== 'merged')
-		if (!m) return 'Every milestone is merged: write the close-out report with mission_report'
-		if (m.status === 'merge-pending') return `Reconcile the merge of ${m.id} with mission_reconcile`
-		return m.blockers.length ? `${m.id}: ${m.blockers[0]}` : `Merge ${m.id} with mission_merge`
-	})()
+	const next = nextAction(s)
 	return JSON.stringify({
 		schemaVersion: 3, missionId: s.contract.missionId, repository: s.contract.repository, digest,
 		approval: s.approval ? { ...s.approval, current: s.approval.digest === digest } : null,
@@ -115,13 +145,45 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 	}
 	const saveContract = (s: ContractRecord) => { saveContractRecord(pathFor(s.thread), s); return s }
 	// A kickoff or effect dialog. Who answered comes from onAnswered and is compared with the signed-in user.
-	const ask = async (ctx: PluginToolContext, dialog: ContractDialog) => {
+	// A command has no abort signal.
+	const ask = async (ui: PluginUI, dialog: ContractDialog, signal?: AbortSignal) => {
 		const answer: DialogAnswer = {}
 		try {
-			answer.values = await ctx.ui.confirm({ ...dialog, onAnswered: ({ responder }) => { if (responder) answer.responder = { userID: responder.userID } } } as any)
+			answer.values = await ui.confirm({ ...dialog, onAnswered: ({ responder }) => { if (responder) answer.responder = { userID: responder.userID } } } as any)
 		} catch { answer.failed = true }
-		ctx.signal.throwIfAborted()
+		signal?.throwIfAborted()
 		return readAnswer(dialog, answer, amp.system.user?.id ?? '')
+	}
+	// Reopen: after cases 1 to 3 of the order rule, the thread shows a quick action that runs
+	// REOPEN for the pending entry. It lives in this plugin process, as quick actions do.
+	const reopens = new Map<string, { pending: Pending; action?: QuickAction }>()
+	const dropReopen = (thread: string) => { reopens.get(thread)?.action?.unsubscribe(); reopens.delete(thread) }
+	const offerReopen = (thread: PluginThread, pending: Pending) => {
+		dropReopen(thread.id)
+		const action = thread.createQuickAction?.({ text: `Open ${pending.kind} approval`, icon: 'check', action: 'run-command', args: { command: REOPEN } })
+		reopens.set(thread.id, { pending, action })
+	}
+	// The reopen entry while the record still holds its pending approval on the current contract.
+	const reopenFor = (s: ContractRecord) => {
+		const r = reopens.get(s.thread), p = s.pendingApproval
+		if (r && p && p.digest === approvalDigest(s.contract) && canonical(p) === canonical(r.pending)) return r
+		if (r) dropReopen(s.thread)
+		return undefined
+	}
+	// What the agent learns on its next turn about an approval given through REOPEN.
+	const reopened = new Map<string, string>()
+	// Records the pending entry, opens the kickoff or effect dialog, and records an approval.
+	// The quick action is offered exactly when the answer reads as case 1, 2 or 3.
+	const approval = async (thread: PluginThread, ui: PluginUI, s: ContractRecord, target: Omit<Pending, 'digest'>, signal?: AbortSignal) => {
+		const digest = approvalDigest(s.contract)
+		dropReopen(s.thread)
+		const opened = saveContract(advanceContract(s, { type: 'approval-pending', digest, ...target }))
+		const reading = await ask(ui, target.kind === 'kickoff' ? kickoffDialog(opened) : effectDialog(opened, opened.pendingApproval!), signal)
+		if (reading.reopen) offerReopen(thread, opened.pendingApproval!)
+		if (reading.outcome !== 'approved') return { reading }
+		const now = unchanged(s.thread, digest, target.kind, opened.events.length)
+		const { kind: _kind, ...effect } = target
+		return { reading, record: saveContract(advanceContract(now, target.kind === 'kickoff' ? { type: 'approve', digest, responder: reading.responder } : { type: 'effect', ...effect, responder: reading.responder })) }
 	}
 	// After an approving answer: the record is read again. The contract must be the one the dialog showed,
 	// and no amend since this dialog opened (event `from` on) changed it, even one that was changed back.
@@ -194,13 +256,10 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		const s = required(ctx.thread.id)
 		if (isContract(s)) {
 			if (input.stage !== undefined) throw new Error('A contract mission has one approval, at kickoff, and no stage; milestones merge without an owner dialog')
-			const digest = approvalDigest(s.contract)
-			// Recorded first, so a dismissed dialog can be reopened; refused before a passing preflight (P15).
-			const opened = saveContract(advanceContract(s, { type: 'approval-pending', kind: 'kickoff', digest }))
-			const reading = await ask(ctx, kickoffDialog(opened))
-			if (reading.outcome !== 'approved') return notApproved(reading)
-			const approved = saveContract(advanceContract(unchanged(s.thread, digest, 'kickoff', opened.events.length), { type: 'approve', digest, responder: reading.responder }))
-			return `Kickoff approved by the owner.\n\n${status(approved)}`
+			// The pending entry is recorded first, so a dismissed dialog can be reopened; refused before a passing preflight (P15).
+			const { reading, record } = await approval(ctx.thread, ctx.ui, s, { kind: 'kickoff' }, ctx.signal)
+			if (!record) return notApproved(reading)
+			return `Kickoff approved by the owner.\n\n${status(record)}`
 		}
 		if (input.stage !== 'design' && input.stage !== 'merge') throw new Error('Invalid approval stage')
 		if (isV2(s)) {
@@ -348,12 +407,9 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		const target = Object.fromEntries(['effectId', 'effect', 'why'].filter(k => Object.hasOwn(input, k)).map(k => [k, input[k]]))
 		const listed = s.contract.effects.find(e => e.id === target.effectId)
 		if (listed?.preAuthorized) return `Recorded ${listed.id} as performed. It is pre-authorized, so no dialog opened.\n\n${status(saveContract(advanceContract(s, { type: 'effect', ...target })))}`
-		const digest = approvalDigest(s.contract)
-		const opened = saveContract(advanceContract(s, { type: 'approval-pending', kind: 'effect', digest, ...target }))
-		const reading = await ask(ctx, effectDialog(opened, opened.pendingApproval!))
-		if (reading.outcome !== 'approved') return notApproved(reading)
-		const done = saveContract(advanceContract(unchanged(s.thread, digest, 'effect', opened.events.length), { type: 'effect', ...target, responder: reading.responder }))
-		return `The owner approved this effect once, and it is recorded as performed. Perform it now, exactly as described.\n\n${status(done)}`
+		const { reading, record } = await approval(ctx.thread, ctx.ui, s, { kind: 'effect', ...target }, ctx.signal)
+		if (!record) return notApproved(reading)
+		return `${EFFECT_APPROVED} Perform it now, exactly as described.\n\n${status(record)}`
 	}, [])
 	tool('mission_report', 'Contract missions: write the checkpoint report for a merged milestone (kind checkpoint; milestoneId defaults to the latest merged) or the close-out report once every milestone is merged (kind close-out). Reports ask nothing; post them where the contract says.', { kind: { type: 'string', enum: ['checkpoint', 'close-out'] }, milestoneId: { type: 'string' } }, async (input, ctx) => {
 		const s = contract(ctx.thread.id)
@@ -362,17 +418,55 @@ export default function (amp: PluginAPI, github = new GitHub()) {
 		if (input.milestoneId !== undefined) throw new Error('Refused (milestoneId): the close-out covers every milestone')
 		return closeOutReport(s)
 	}, ['kind'])
+	// Reopens the dialog for the pending entry and records the answer. The owner's Changes text is
+	// posted to the thread as their dialog answer; cases 1 to 3 keep the quick action.
+	amp.registerCommand(REOPEN, { title: 'Reopen mission approval', category: 'Mission control', description: "Reopen the mission's pending kickoff or effect approval dialog and record the owner's answer." }, async ctx => {
+		const thread = ctx.thread
+		try {
+			const s = thread && read(thread.id)
+			const p = s && isContract(s) ? s.pendingApproval : undefined
+			if (!thread || !s || !isContract(s) || !p || p.digest !== approvalDigest(s.contract)) {
+				if (thread) dropReopen(thread.id)
+				return await ctx.ui.notify('No mission approval is pending in this thread.')
+			}
+			const { digest: _digest, ...target } = p
+			const { reading, record } = await approval(thread, ctx.ui, s, target)
+			if (record) {
+				const effect = p.effectId ?? p.effect
+				reopened.set(thread.id, p.kind === 'kickoff' ? 'The owner approved the kickoff in the reopened approval dialog.' : `${EFFECT_APPROVED} It was approved in the reopened approval dialog: ${effect}. Perform it now, exactly as described.`)
+				return await ctx.ui.notify(p.kind === 'kickoff' ? 'Kickoff approved by the owner and recorded. Send a message to continue the mission.' : `${EFFECT_APPROVED} Send a message so the agent performs it.`)
+			}
+			if (reading.outcome === 'changes') return await thread.appendUserMessage({ type: 'user-message', content: `The mission owner answered the ${p.kind} approval dialog: not approved. The owner wrote in Changes:\n${reading.message}` })
+			await ctx.ui.notify(notApproved(reading))
+		} catch (error) { await ctx.ui.notify((error as Error).message) }
+	})
 	amp.on('session.start', async (event, ctx) => {
 		const s = read(event.thread.id)
+		if (s && isContract(s)) return await ctx.ui.notify(compactStatus(s))
 		if (s) await ctx.ui.notify(isV2(s) ? `V2 shadow mission resumed at ${s.status}. Use mission_status. Remote verification remains unqualified; do not retry merges.` : `Mission resumed at ${s.phase}. Use mission_status${s.phase === 'merge-pending' ? ' and mission_reconcile' : ''}.`)
 	})
 	amp.on('agent.start', async event => {
 		const s = read(event.thread.id)
+		if (s && isContract(s)) {
+			const r = reopenFor(s), note = reopened.get(s.thread)
+			reopened.delete(s.thread)
+			const tool = r?.pending.kind === 'kickoff' ? 'mission_approve' : 'mission_effect'
+			return { message: { content: [
+				'Active contract mission. Follow delivering; mission_status has the fingerprints and details. Local records do not override required CI or branch protection.',
+				compactStatus(s),
+				...(r ? [`An owner approval is pending: the ${r.pending.kind} approval dialog ended without the owner's answer. The owner reopens it with the quick action "Open ${r.pending.kind} approval" above the composer in the Amp web app. Tell the owner it is waiting; open it again with ${tool} only when the owner asks.`] : []),
+				...(note ? [note] : []),
+			].join('\n') } }
+		}
 		if (s) return { message: { content: `Active software mission: ${status(s)}\nFollow delivering. Preserve owner-approved requirements, plan, technical/UX design; whiteboard before build. Local workflow records do not override required CI or branch protection.` } }
 	})
 	amp.on('agent.end', async event => {
 		if (event.status !== 'done') return
 		const s = read(event.thread.id)
+		if (s && isContract(s)) {
+			if (!workReady(s)) return
+			return { action: 'continue', maxContinuations: 3, userMessage: `The contract mission has work ready. Next action: ${nextAction(s)}\nContinue the contract loop in delivering. Record a stop with mission_update only for one of the five stop reasons. Do not bypass a merge blocker, required CI or branch protection.` }
+		}
 		if (!s || isV2(s) || s.paused || !['building', 'reviewing', 'evidence'].includes(s.phase) || (s.presented && blockers(s).includes('Owner merge acknowledgment required'))) return
 		return { action: 'continue', maxContinuations: 3, userMessage: 'The active mission is not integrated. Continue its approved build/review/evidence loop, or record a concrete blocker with mission_update pause. Do not bypass approval, required CI, branch protection or unavailable-platform gates. Never claim a requested merge is completion.' }
 	})
