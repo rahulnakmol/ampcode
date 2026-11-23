@@ -154,7 +154,16 @@ anyone a question. The checked part of that is the Definition of Ready below; th
 | `milestone` | no | Overrides the feature's milestone |
 | `owner` | for ready | Person, team with its contact ("Claims data team (lead: Ana Silva)"), or `agent`. With no contact named yet, the mission owner stands in: "Team Atlas (contact: Dana Whitfield until she names the lead by 27 April)". `--require-ready` fails on a `ready` story with none. A placeholder such as "lead (to be named)" fails `--require-ready` (a warning before) |
 | `delivery` | no | Added when the work is done; see [Delivery](#delivery) |
+| `in_scope` | no | A non-empty list of non-empty strings: what this story changes |
+| `out_of_scope` | no | A non-empty list of non-empty strings: what it deliberately leaves alone |
+| `automated_test` | no | A non-empty string: the test that proves the acceptance criteria, written before the work |
+| `human_test` | no | A non-empty string: a short script a person follows, with the steps and the expected result |
 | `trace` | yes | At least one entry, normally a PRD acceptance criterion |
+
+The four optional fields `in_scope`, `out_of_scope`, `automated_test`, and `human_test` let a story
+serve as a full work item. They are allowed on stories only. When one is present, a wrong type or an
+empty value (an empty list, an empty or blank entry, a blank string) is an error even on a `draft`
+story. `tree` prints each one present on its own line under the story.
 
 ## Bug: a sibling of stories
 

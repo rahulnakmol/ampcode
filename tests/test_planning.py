@@ -4,7 +4,9 @@ Run: python3 -m unittest discover -s tests -p 'test_planning.py' -v
 No network calls: GitHub is an in-memory fake behind the same `gh api` paths.
 """
 
+import contextlib
 import copy
+import io
 import json
 import re
 import sys
@@ -181,6 +183,61 @@ class Structure(unittest.TestCase):
         item(data, "S-1")["delivery"]["criteria"] = {"S-1.1": "met", "S-1.2": "met"}
         errors, _ = backlog.validate(data)
         self.assertIn("delivery criteria must list exactly ['S-1.1']", messages(errors, "S-1"))
+
+    WORK_ITEM_FIELDS = {"in_scope": ["Bank lines from UK01"], "out_of_scope": ["Card payments"],
+                        "automated_test": "tests/test_match.py::test_posts_confident_matches",
+                        "human_test": "Load the 3 May file; expect 12 matches posted and 0 duplicates."}
+
+    def test_story_scope_and_test_fields_are_optional_and_story_only(self):
+        data = example()
+        item(data, "S-2").update(copy.deepcopy(self.WORK_ITEM_FIELDS))
+        errors, warnings = backlog.validate(data)
+        self.assertEqual(messages(errors + warnings, "S-2"), [])
+        for iid in ("B-1", "F-1"):
+            item(data, iid).update(copy.deepcopy(self.WORK_ITEM_FIELDS))
+        errors, _ = backlog.validate(data)
+        for field in self.WORK_ITEM_FIELDS:
+            self.assertIn(f"unknown field '{field}' for a bug", messages(errors, "B-1"))
+            self.assertIn(f"unknown field '{field}' for a feature", messages(errors, "F-1"))
+
+    def test_story_scope_and_test_fields_reject_wrong_types_and_empty_values(self):
+        bad = [("in_scope", "Bank lines"), ("out_of_scope", {"a": "b"}), ("automated_test", ["t"]), ("human_test", 3),
+               ("in_scope", []), ("out_of_scope", ["Card payments", "  "]), ("automated_test", ""), ("human_test", " \n")]
+        for field, value in bad:
+            data = example()
+            item(data, "S-6")[field] = value  # a draft story: shape errors still fail
+            errors, _ = backlog.validate(data)
+            shape = "list of non-empty strings" if field.endswith("scope") else "string"
+            self.assertEqual(messages(errors, "S-6"), [f"'{field}' must be a non-empty {shape}"], (field, value))
+        data = example()
+        item(data, "S-2")["human_tests"] = "Load the file."
+        errors, _ = backlog.validate(data)
+        self.assertIn("unknown field 'human_tests' for a story", messages(errors, "S-2"))
+
+    def test_cli_validates_and_tree_shows_story_scope_and_tests(self):
+        def run(*argv):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = backlog.main(list(argv))
+            return code, out.getvalue()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp, "backlog.json"))
+            data = example()
+            item(data, "S-2").update(copy.deepcopy(self.WORK_ITEM_FIELDS))
+            Path(path).write_text(json.dumps(data))
+            self.assertEqual(run("validate", path)[0], 0)
+            code, out = run("tree", path)
+            self.assertEqual(code, 0)
+            self.assertIn(self.WORK_ITEM_FIELDS["human_test"], out)
+            self.assertIn("Card payments", out)
+            self.assertIn("Bank lines from UK01", out)
+            self.assertIn(self.WORK_ITEM_FIELDS["automated_test"], out)
+            item(data, "S-2")["human_test"] = ""
+            Path(path).write_text(json.dumps(data))
+            code, out = run("validate", path)
+            self.assertEqual(code, 1)
+            self.assertIn("error   S-2: 'human_test' must be a non-empty string", out)
 
     def test_accepted_feedback_must_name_existing_items(self):
         data = example()

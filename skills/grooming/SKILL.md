@@ -59,6 +59,9 @@ path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard l
    - `work` type, `priority` (MoSCoW: `must` only when the milestone fails without it, so not
      every story is a must), `size` XS (half a day) to L (one iteration);
    - `depends_on` for real ordering only; `trace` to the PRD criterion it satisfies.
+   - optionally, when the story is handed over as a full work item: `in_scope` and
+     `out_of_scope` lists, the `automated_test` that proves the criteria (written first), and a
+     `human_test` script of steps and expected result (see `reference/contract.md`).
    - **Test every part of the criterion you trace.** Each channel, group, and promise in a PRD
      criterion needs a check that tests it: "stop texts by phone or on the page" needs a phone
      check and a page check; "0 customer records are used for training" needs a check on that
