@@ -14,6 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_TEXT = ROOT / "plugins/mission-control/lib/contract-text.json"
+STOP_REPLAY = ROOT / "evals/delivering/stop-replay.json"
 
 # List B, matched case-insensitively.
 BANNED = (
@@ -34,7 +35,8 @@ BANNED = (
 )
 
 # Files searched with list B (part of file set F).
-BANNED_SEARCH = ("skills/delivering", "skills/missioning", "skills/goldfishing/SKILL.md", "skills/briefing-decisions/SKILL.md")
+BANNED_SEARCH = ("skills/delivering", "skills/missioning", "skills/goldfishing/SKILL.md", "skills/briefing-decisions/SKILL.md",
+                 "skills/grilling/SKILL.md", "skills/crafting/SKILL.md")
 # List L: files that list the five stop reasons.
 STOP_TEXT_FILES = ("skills/delivering/SKILL.md", "skills/missioning/SKILL.md", "skills/missioning/reference/charter.md")
 # Files that must name the disposition policy for a review cap (K3).
@@ -104,6 +106,20 @@ class CapDisposition(unittest.TestCase):
         for path in files(DISPOSITION_FILES):
             with self.subTest(file=str(path.relative_to(ROOT))):
                 self.assertTrue("disposition policy" in path.read_text(), "does not name the disposition policy")
+
+
+
+class StopReplay(unittest.TestCase):
+    def test_sixteen_situations_with_expected_decisions(self):
+        situations = json.loads(STOP_REPLAY.read_text())["situations"]
+        self.assertEqual([s["id"] for s in situations], [f"R{n}" for n in range(1, 17)])
+        for s in situations:
+            with self.subTest(situation=s["id"]):
+                self.assertIn(s["expected_decision"], ("kickoff", "stop", "proceed"))
+                self.assertTrue(s["situation"].strip() and s["expected_action"].strip())
+                self.assertEqual("stop_reason" in s, s["expected_decision"] == "stop")
+        decided = {d: [s["id"] for s in situations if s["expected_decision"] == d] for d in ("kickoff", "stop")}
+        self.assertEqual(decided, {"kickoff": ["R1", "R8", "R15"], "stop": ["R9"]})
 
 
 if __name__ == "__main__":

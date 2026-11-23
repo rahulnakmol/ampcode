@@ -330,7 +330,9 @@ Before presenting it, review it yourself:
   criterion. Each check fails on a plausible wrong result (a leak test must not pass on an empty
   export).
 - The plan ends by delivering to the real target (production, the live event, the customer), not
-  only to staging, and that step has its own check and approval gate.
+  only to staging, and that step has its own check and approval gate. In a contract mission, that
+  approval is the kickoff pre-authorization of the effect, not a gate during the build; an effect
+  that is not pre-authorized is stop reason 2.
 - Dependencies are true: a step marked parallel needs nothing from the step it runs beside (no
   replay before the API key exists), and every human gate says exactly what is approved.
 - The pick-up prompt works on its own, without this conversation.

@@ -71,7 +71,8 @@ The author never changes a severity and never contests a comprehension gap: if t
 not understand, the text did not explain. Add context because a human reader needs it, not only
 to satisfy the reviewer. A fix replaces the wrong text or puts the missing rule where a reader
 looks; it does not add a note about the review. A reviewer's suggestion is the author's choice,
-labelled as an assumption, until the owner confirms it.
+labelled as an assumption, until the owner confirms it (in a contract mission, list it in the
+next checkpoint report instead of asking).
 
 ## 5. Rounds
 
@@ -84,7 +85,8 @@ labelled as an assumption, until the owner confirms it.
   concurrent state, destructive operations or broad shared contracts), run at most three rounds.
 - At the cap, the calling contract's disposition policy decides, never the owner (`delivering`,
   "The review cap: the disposition policy"). A Blocker or Major inside the contract's case list
-  or criteria is fixed, or its items are re-planned; a finding outside them is filed and does not
+  or criteria is fixed; if still not fixed after 3 failed rounds, its items are reopened and
+  re-planned. A finding outside them is filed and does not
   fail the review; a Nit is fixed or declined. Without a contract, the owner decides: accept the
   open findings, continue, or rework. A cap never accepts findings by itself.
 
@@ -93,8 +95,8 @@ labelled as an assumption, until the owner confirms it.
 A reviewer that fails, times out or cannot read its inputs is retried once, then recorded as
 **not run**. Not run is never a pass. When no fresh reviewer is available, the gate is
 **pending**: keep the artifact, name the review it still needs, and tell the owner. In a contract
-mission, a pending gate blocks only its milestone's merge; report it at the next checkpoint
-rather than stopping. A review by the author is not a fresh review.
+mission, a pending gate blocks its milestone's merge: retry it, and if it stays pending, the
+milestone cannot meet its exit criteria, which is stop reason 5. A review by the author is not a fresh review.
 
 ## 7. Isolation check
 
