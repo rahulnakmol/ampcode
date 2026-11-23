@@ -50,7 +50,8 @@ def files(paths):
 
 
 def searchable(text):
-    """Lower-case text with line wraps and runs of spaces collapsed and Markdown `\\_` escapes removed."""
+    """Lower-case text with blockquote markers, line wraps, runs of spaces and `\\_` escapes removed."""
+    text = re.sub(r"(?m)^[ \t]*>+", " ", text)
     return " ".join(text.split()).replace("\\_", "_").lower()
 
 

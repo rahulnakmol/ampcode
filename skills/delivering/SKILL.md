@@ -101,8 +101,9 @@ repository's isolation policy; preserve existing work and never reset or clean i
   stop reasons, and the reply route (the steering thread's ID, for `send_thread_message`).
 - **The child** works test-first with the build loop below, runs one fresh `goldfishing` critic
   review against its definition of done and the cases it touches, pushes its item branch, and
-  reports: branch and head, each done line with its evidence, the review record, assumptions taken
-  and findings outside the case list. It creates no threads and merges nothing into `dev`.
+  reports: a teach-back (outcome, approach, constraints, key risks, first check), branch and head,
+  each done line with its evidence, the review record, assumptions taken and findings outside the
+  case list. It creates no threads and merges nothing into `dev`.
 - **A child stops only for the five reasons**, and sends them to the steering thread, never to the
   owner. Everything else is a recorded assumption in its report.
 - **The steering thread** checks the evidence, merges the item branch into the milestone branch
@@ -124,7 +125,8 @@ repository's isolation policy; preserve existing work and never reset or clean i
    without the plugin, `gh` and an agent ledger row citing the pre-authorized effect).
    There is no owner merge gate at any risk level. High risk means independent reviewers and the
    full case list, not a question to the owner.
-7. Send the checkpoint report to the threads the charter or contract names. It asks nothing.
+7. Send the checkpoint report to the threads the charter names (by default, the mission thread).
+   It asks nothing.
 
 A review fails only on an open Blocker or Major inside the case list or the milestone's criteria.
 A repair makes a new head: both gates run again on it, and earlier reviews and evidence lapse.
@@ -135,14 +137,15 @@ A gate allows 3 failed rounds, and the count survives new heads. After that the 
 policy decides, never the owner:
 
 - A Blocker or Major inside the case list or the milestone's criteria is **fixed**. If it is still
-  not fixed after 3 failed rounds, reopen the items concerned and re-plan them (**replanned**),
+  not fixed after 3 failed rounds, reopen the items concerned and re-plan and split them (**replanned**),
   keeping their criteria verbatim. Only "replanned" resets the gate's count. If the re-planned
   and split items reach the cap again, that is stop reason 5.
 - A finding outside them is **filed** as an item in a later milestone, or as a follow-up when the
   current milestone is the last. It does not fail the review.
 - A Nit is fixed or declined and never fails a review.
 
-Item reviews follow the same policy. Stop reason 5 applies only when a milestone still cannot
+Item reviews follow the same policy; an item that reaches its cap again leaves its milestone
+unable to meet its exit criteria. Stop reason 5 applies only when a milestone still cannot
 meet its exit criteria after its items were re-planned and split.
 
 ## J3 Questions, assumptions and new scope

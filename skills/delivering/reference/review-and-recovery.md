@@ -89,7 +89,7 @@ An M or L item goes to a child thread; an XS or S item goes to a subagent. Every
 - the repository, the milestone branch on `origin`, the item branch name, and the files it may edit;
 - the five stop reasons, copied exactly, and the rule that anything else is a recorded assumption;
 - the reply route: the steering thread's ID for `send_thread_message`, and the report it expects
-  (a teach-back of the outcome, approach, risks and first check; branch and head; each done line
+  (a teach-back of the outcome, approach, constraints, risks and first check; branch and head; each done line
   with its evidence; the review record; assumptions; findings outside the case list);
 - the rules: work test-first, run the item review, push the item branch, create no threads, merge
   nothing into `dev`.
