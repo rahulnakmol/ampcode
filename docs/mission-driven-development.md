@@ -90,6 +90,10 @@ illustration, not a claim that the kit implements or has tested a document edito
 | Interrupted work | "Resume this mission from its contract, preflight and one kickoff approval; reconcile state before retrying effects." | Read the record, worktree and remote state |
 | Need another executor | "Create a delivery thread on [runner or orb] for [brief]; it writes one contract, runs the readiness preflight and asks me for one approval at kickoff." | Check access and transfer exact work if needed |
 
+End every delivering phrase above with the effects you pre-authorize, usually "Pre-authorize the
+milestone merges into dev and pushing mission branches." Without the merge entry, `delivering`
+merges nothing and leaves each milestone PR open for you.
+
 ## Know which component does what
 
 - **Grilling** turns the ask into criteria with finite case lists.

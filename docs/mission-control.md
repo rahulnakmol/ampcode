@@ -133,8 +133,9 @@ Show me the kickoff brief, but do not ask for the one approval and do not
 implement anything yet.
 ```
 
-Later, in the same thread, ask: "Resume this mission; ask me for the one approval at kickoff." A
-second `mission_start` in that thread is refused, because the mission already exists.
+Later, in the same thread, ask: "Use delivering to start this mission from the drafted contract;
+ask me for the one approval at kickoff." If the thread already holds the mission record, the agent
+resumes it instead, because a second `mission_start` in a thread is refused.
 
 ### Resume rather than start over
 
@@ -156,7 +157,7 @@ and unresolved effects with Amp's transfer tools. Never copy an approval into a 
 Create a delivery thread for [outcome] in [repository], using delivering, on
 [an orb, or the named runner and checkout]. Carry this brief into its first
 prompt: [brief]. It writes one contract, with the milestone merges into dev
-pre-authorized, runs the readiness preflight on it, and asks me for one approval
+and pushing mission branches pre-authorized, runs the readiness preflight on it, and asks me for one approval
 at kickoff in that thread. If it needs unpushed work,
 transfer and verify the exact files or commit first.
 ```
@@ -342,7 +343,9 @@ composer in the Amp web app. It runs the command **Reopen mission approval**
 (`mission-reopen-approval`, category Mission control), which reopens the dialog for the pending
 entry and records the answer. Changes text given there is posted to the thread as the owner's
 dialog answer. After a dialog that ends in case 1, 2 or 3, `agent.start` reminds the agent, which
-tells you and reopens it only when you ask.
+tells you and reopens it only when you ask. The quick action and the reminder live in the plugin
+process: after a restart, run **Reopen mission approval** from the command palette; the status
+still shows the pending approval.
 
 **Preview.** To see the real dialogs without a mission, run the command **Preview approval
 dialogs** (category Mission control) from the preview-only project plugin
@@ -361,7 +364,7 @@ verifiable authentication receipts.
 - A listed effect that is not pre-authorized, or an effect that is not in the contract
   (`{ effect, why }`), opens the effect dialog. Perform it only after the owner approves it.
 - Milestone merges into `dev` happen through `mission_merge`, not `mission_effect`, but the
-  contract must list them as a pre-authorized effect: in `delivering`, that entry chooses the
+  contract must list them as a pre-authorized effect for the milestones to merge: in `delivering`, that entry chooses the
   ship variant, and without it the mission merges nothing and leaves each milestone PR open.
 
 ## Milestones, reviews and merges
