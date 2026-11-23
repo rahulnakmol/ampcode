@@ -38,7 +38,7 @@ more starting points, see the [kickoff prompts](mission-control.md#ways-to-kick-
 
 | Journey | What happens | What good looks like |
 | --- | --- | --- |
-| **J1 Kickoff** | Grilling, design, rendered UX, a whiteboard defense, a readiness preflight of the repository, CI, credentials and every outside target, then one contract and one kickoff brief | One dialog (or one recorded reply without the plugin). You tick each default and effect; nothing else is asked |
+| **J1 Kickoff** | Grilling, design, rendered UX, a whiteboard defense, a readiness preflight of the repository, CI, credentials and every outside target, then one contract and one kickoff brief | One dialog (or one recorded reply without the plugin). You tick each default and each pre-authorized effect. An effect you did not pre-authorize gets its own effect dialog later, when the mission needs it |
 | **J2 Milestones** | Items run in dependency order, each test-first with a fresh review. A milestone's gates are tests, CI and two fresh reviews of the same head against its criteria and the closed case list | Each milestone squash-merges into `dev` when its gates pass, followed by a checkpoint report that asks nothing |
 | **J3 Questions** | A question with a safe default becomes a recorded assumption. New scope becomes an item in a later milestone | Assumptions and filed items appear in the next checkpoint report; only the five stop reasons reach you |
 | **J4 Liveness** | The steering thread watches its child threads and subagents | A child that settles without a report is answered, told to continue, restarted or re-planned, never left idle |
@@ -83,12 +83,12 @@ illustration, not a claim that the kit implements or has tested a document edito
 | Your situation | Say this | Expected first step |
 | --- | --- | --- |
 | New idea | "Use grilling to make [idea] concrete; I want to deliver it afterward." | Clarify the customer need, not start coding |
-| Known requirement | "Use delivering for [requirement]; success means [criteria]." | Assess current code and gaps, then draft the contract |
-| Approved brief | "Deliver [brief, path or thread]; turn it into one contract." | Read the actual brief and check drift |
-| Partial implementation | "Adopt this work into a delivery mission; preserve my changes." | Inventory ownership and evidence without inventing past gates |
-| Design only | "Write the contract and run the preflight; do not ask for kickoff yet." | The contract and its preflight, with no build |
-| Interrupted work | "Resume this mission; reconcile state before retrying effects." | Read the record, worktree and remote state |
-| Need another executor | "Create a delivery thread on [runner or orb] for [brief]." | Check access and transfer exact work if needed |
+| Known requirement | "Use delivering for [requirement]; success means [criteria]. Write one contract, run the readiness preflight and ask me for one approval at kickoff." | Assess current code and gaps, then draft the contract |
+| Approved brief | "Deliver [brief, path or thread]; turn it into one contract, run the readiness preflight and ask me for one approval at kickoff." | Read the actual brief and check drift |
+| Partial implementation | "Adopt this work into a delivery mission; preserve my changes. Write one contract, run the readiness preflight and ask me for one approval at kickoff." | Inventory ownership and evidence without inventing past gates |
+| Design only | "Write the contract and run the readiness preflight; do not ask for the one approval yet." | The contract and its preflight, with no build |
+| Interrupted work | "Resume this mission from its contract, preflight and one kickoff approval; reconcile state before retrying effects." | Read the record, worktree and remote state |
+| Need another executor | "Create a delivery thread on [runner or orb] for [brief]; it writes one contract, runs the readiness preflight and asks me for one approval at kickoff." | Check access and transfer exact work if needed |
 
 ## Know which component does what
 
@@ -111,7 +111,8 @@ You decide the outcome, the contract, each open question's default and which out
 pre-authorize, all in the one kickoff approval. The kickoff dialog links the brief; you tick each
 box, or write what to change. Never type a secret into a dialog. Milestone merges into `dev` need
 no further answer from you at any risk level. Promotion to `rolling` or `main`, deployment and
-publication happen only if the contract pre-authorizes them; otherwise each is stop reason 2.
+publication happen only if the contract pre-authorizes them or you approve each one once in the
+effect dialog (without the plugin, that question is stop reason 2).
 
 A good close-out answers:
 

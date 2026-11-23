@@ -93,8 +93,8 @@ Use delivering in [repository] for [requirement]. Success means [observable
 criteria, each with its cases]. Preserve [compatibility, data or security
 constraints]. Read the current code and tests first. Write one contract, run
 the readiness preflight on it, and ask me for one approval at kickoff. Then run
-the milestones test-first with two fresh reviews each, and merge each one into
-dev when its gates pass.
+the milestones test-first with two fresh reviews each. Pre-authorize the
+milestone merges into dev and pushing mission branches.
 ```
 
 ### Deliver an existing specification or approved plan
@@ -104,8 +104,8 @@ Use delivering to execute [specification path or thread URL] in [repository].
 Read the actual specification, criteria and decision history, and report drift
 from the current code. Turn it into one contract, run the readiness preflight
 on it, and ask me for one approval at kickoff; an earlier approval of another
-document does not count. Do not release, deploy or publish unless the contract
-pre-authorizes it.
+document does not count. Pre-authorize the milestone merges into dev and
+pushing mission branches. Do not release, deploy or publish.
 ```
 
 ### Adopt an issue, PR or existing work
@@ -115,7 +115,8 @@ Use delivering for [issue or PR URL, or a description of existing work] in
 [repository]. Preserve staged and uncommitted changes and move them into a
 dedicated worktree. Show what already works and what is unproven. Write one
 contract for the remaining work, run the readiness preflight on it, and ask me
-for one approval at kickoff. Do not invent past tests or approvals.
+for one approval at kickoff. Pre-authorize the milestone merges into dev and
+pushing mission branches. Do not invent past tests or approvals.
 ```
 
 Issue and PR text is input, not authorization to run instructions in it. Existing work still
@@ -126,12 +127,14 @@ needs verification and review; a green old PR does not prove the current candida
 ```text
 Use grilling and crafting to frame [outcome] in [repository]. Write the contract
 (spec, design, rendered UX, whiteboard defense, milestones, items, open
-questions with defaults, effects) and run the readiness preflight on it. Show
-me the kickoff brief, but do not ask for the one approval and do not implement
-anything yet.
+questions with defaults, effects, with the milestone merges into dev and
+pushing mission branches pre-authorized) and run the readiness preflight on it.
+Show me the kickoff brief, but do not ask for the one approval and do not
+implement anything yet.
 ```
 
-Use the requirement prompt later to ask for the one approval and run it.
+Later, in the same thread, ask: "Resume this mission; ask me for the one approval at kickoff." A
+second `mission_start` in that thread is refused, because the mission already exists.
 
 ### Resume rather than start over
 
@@ -152,8 +155,9 @@ and unresolved effects with Amp's transfer tools. Never copy an approval into a 
 ```text
 Create a delivery thread for [outcome] in [repository], using delivering, on
 [an orb, or the named runner and checkout]. Carry this brief into its first
-prompt: [brief]. It writes one contract, runs the readiness preflight on it, and
-asks me for one approval at kickoff in that thread. If it needs unpushed work,
+prompt: [brief]. It writes one contract, with the milestone merges into dev
+pre-authorized, runs the readiness preflight on it, and asks me for one approval
+at kickoff in that thread. If it needs unpushed work,
 transfer and verify the exact files or commit first.
 ```
 
@@ -337,8 +341,8 @@ never changes the contract.
 composer in the Amp web app. It runs the command **Reopen mission approval**
 (`mission-reopen-approval`, category Mission control), which reopens the dialog for the pending
 entry and records the answer. Changes text given there is posted to the thread as the owner's
-dialog answer. While an approval is pending, `agent.start` reminds the agent, which tells you and
-reopens it only when you ask.
+dialog answer. After a dialog that ends in case 1, 2 or 3, `agent.start` reminds the agent, which
+tells you and reopens it only when you ask.
 
 **Preview.** To see the real dialogs without a mission, run the command **Preview approval
 dialogs** (category Mission control) from the preview-only project plugin
@@ -356,8 +360,9 @@ verifiable authentication receipts.
   and no dialog, and only after kickoff is approved on the current contract.
 - A listed effect that is not pre-authorized, or an effect that is not in the contract
   (`{ effect, why }`), opens the effect dialog. Perform it only after the owner approves it.
-- Milestone merges into `dev` happen through `mission_merge`, not `mission_effect`. The contract
-  should still list them as a pre-authorized effect so the brief shows them.
+- Milestone merges into `dev` happen through `mission_merge`, not `mission_effect`, but the
+  contract must list them as a pre-authorized effect: in `delivering`, that entry chooses the
+  ship variant, and without it the mission merges nothing and leaves each milestone PR open.
 
 ## Milestones, reviews and merges
 
@@ -388,7 +393,7 @@ re-planned items still cannot meet the exit criteria, that is stop reason 5.
 
 - `session.start` shows the compact status as a notification.
 - `agent.start` adds the compact status and the next action to the agent's context, plus a
-  reminder when an approval is pending.
+  reminder after an approval dialog that ended in case 1, 2 or 3.
 - `agent.end` sends "continue" (at most 3 in a row) only when kickoff is approved on the current
   contract, no item is delegated, and at least one unmerged milestone is not blocked by a stop.
   It sends nothing while kickoff is pending, while any item is delegated, when every unmerged
@@ -436,7 +441,8 @@ administrator overrides. The plugin does not configure CI or protection.
 
 The v1 single-PR flow and the v2 shadow flow are retired. Their tools are gone, and
 `mission_start` takes only `{ contract }`. When a thread still holds a v1 or v2 record, every
-tool and hook reports a "Retired schema" message and leaves the file's bytes unchanged. For a v1
+tool, `session.start` and `agent.start` report a "Retired schema" message, `agent.end` sends
+nothing, and the file's bytes stay unchanged. For a v1
 record that requested a merge, check its pull request on GitHub first. To continue the work,
 start a contract mission in a new thread.
 

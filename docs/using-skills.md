@@ -124,7 +124,8 @@ Use delivering to implement the document-recovery brief in [repository].
 Check the brief against the current code and report drift. Write one contract
 with milestones, items, open questions with defaults and every outside effect,
 run the readiness preflight on it, and ask me for one approval at kickoff.
-Pre-authorize the milestone merges into dev. Do not release or deploy.
+Pre-authorize the milestone merges into dev and pushing mission branches.
+Do not release or deploy.
 ```
 
 **How it runs:** one contract, a readiness preflight, one approval at kickoff. Then milestones

@@ -112,6 +112,11 @@ class KickoffPrompts(unittest.TestCase):
         section = text.split("## Ways to kick off a mission", 1)[1].split("\n## ", 1)[0]
         prompts = re.findall(r"```text\n(.*?)```", section, re.S)
         self.assertGreaterEqual(len(prompts), 7)
+        # The delivering kickoff prompts in the other guides.
+        for name in ("README.md", "docs/mission-driven-development.md", "docs/using-skills.md"):
+            found = [p for p in re.findall(r"```text\n(.*?)```", (ROOT / name).read_text(), re.S) if "Use delivering" in p]
+            self.assertTrue(found, f"{name} has no delivering kickoff prompt")
+            prompts += found
         for prompt in prompts:
             words = " ".join(prompt.split())
             with self.subTest(prompt=words[:60]):

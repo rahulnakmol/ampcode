@@ -184,7 +184,8 @@ Use delivering to start a mission for [outcome] in [repository]. Use grilling
 to make the criteria concrete and crafting to render every changed state.
 Write one contract with milestones, items, open questions with defaults and
 every outside effect, run the readiness preflight on it, and ask me for one
-approval at kickoff. Pre-authorize the milestone merges into dev.
+approval at kickoff. Pre-authorize the milestone merges into dev and pushing
+mission branches.
 ```
 
 See [Ways to kick off a mission](./docs/mission-control.md#ways-to-kick-off-a-mission) for
@@ -235,7 +236,7 @@ records the earlier design rationale; [evaluations](./evals/delivering/README.md
 stop-replay eval, distinguish simulated decisions from live execution. Install `grilling`
 alongside it. Source integration does not publish skills to Amp Personal Skills or the plugin to
 Amp Personal Plugins. Promotion to `rolling` or `main`, deployment and Personal publication are
-outside effects that run only when the contract pre-authorizes them.
+outside effects that run only when the contract pre-authorizes them or the owner approves each one once in the effect dialog.
 
 ## Goldfishing
 

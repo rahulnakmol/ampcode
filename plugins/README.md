@@ -16,7 +16,8 @@ Tools are `mission_start({ contract })`, `mission_status()`, `mission_preflight(
 `candidate`, `review`, `disposition`, `evidence`, `assume`, `stop`, `resume`),
 `mission_merge({ milestoneId })`, `mission_reconcile({ milestoneId })`,
 `mission_recover({ milestoneId })` and `mission_report({ kind, milestoneId? })`. The command
-"Reopen mission approval" and its quick action reopen a dismissed dialog; the project plugin
+"Reopen mission approval" and its quick action reopen a dialog that was dismissed, failed, or
+not answered by the owner; the project plugin
 [`.amp/plugins/mission-control-preview.ts`](../.amp/plugins/mission-control-preview.ts) adds
 "Preview approval dialogs", which records nothing. Retired v1 and v2 records report a retired
 schema and stay unchanged.
