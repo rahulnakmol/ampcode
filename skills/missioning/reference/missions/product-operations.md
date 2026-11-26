@@ -69,3 +69,4 @@ owner, a date and an outcome.
 - "G1" in a document people read; write "gate 1".
 - A guardrail reported as breached with no action taken.
 - A blocker with no owner or date.
+- An approved goal or criterion changed in meaning after approval, without a reason 1 stop.
