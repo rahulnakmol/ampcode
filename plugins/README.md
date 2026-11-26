@@ -6,29 +6,37 @@ Store personal Amp plugin source here.
 
 [`advisory-team/`](./advisory-team/) adds Archi, Darci, and Opsci as modes and consultation tools. Read the [usage guide](../docs/advisory-team.md). Copy the entire directory when installing or publishing; its Markdown files contain the role instructions.
 
-[`mission-control/`](./mission-control/) coordinates the [`delivering`](../skills/delivering/SKILL.md)
-workflow with revision-bound local checkpoints and owner-restricted acknowledgment dialogs.
-Read the [mission guide](../docs/mission-control.md). Tools are `mission_start(requirements)`,
-`mission_update(action)`, `mission_status()`, `mission_approve(stage: design|merge)`,
-`mission_merge_mode(mode: auto|ask)`, `mission_present()`, `mission_merge()`, and
-`mission_reconcile()`, plus owner-only `mission_recover()` for settled, unqueued
-attempts. Use the installed schemas for action payloads.
+[`mission-control/`](./mission-control/) runs contract missions for the
+[`delivering`](../skills/delivering/SKILL.md) skill: one contract, a readiness preflight bound to
+it, **one owner approval at kickoff**, then milestones that squash-merge into `dev` after tests,
+CI and two fresh reviews, with no owner dialog. Read the [mission guide](../docs/mission-control.md).
+Tools are `mission_start({ contract })`, `mission_status()`, `mission_preflight()`,
+`mission_approve()` (the kickoff dialog), `mission_effect({ effectId } or { effect, why })`,
+`mission_update({ action })` with 12 actions (`amend`, `replan`, `file`, `delegate`, `item-done`,
+`candidate`, `review`, `disposition`, `evidence`, `assume`, `stop`, `resume`),
+`mission_merge({ milestoneId })`, `mission_reconcile({ milestoneId })`,
+`mission_recover({ milestoneId })` and `mission_report({ kind, milestoneId? })`. The command
+"Reopen mission approval" and its quick action reopen a dialog that was dismissed, failed, or
+not answered by the owner; the project plugin
+[`.amp/plugins/mission-control-preview.ts`](../.amp/plugins/mission-control-preview.ts) adds
+"Preview approval dialogs", which records nothing. Retired v1 and v2 records report a retired
+schema and stay unchanged.
 
-Requirements → grilling → concrete spec/plan/technical design plus relevant crafting UX →
-initiator acknowledgment → whiteboard defense → outcome-driven TDD, two reviews, inspected
-artifacts and customer value → evidence/try-it presentation → gated dev integration.
-Material changes reopen design acknowledgment. At build entry low/medium risk defaults to auto,
-with optional owner-selected ask-before-merge and no response/timer needed for auto. High risk
-always needs exact-candidate acknowledgment; unknown risk blocks merge. Version one requires the
-initiator to be the thread owner or the owner to adopt the mission. Owner-restricted fields take
-non-sensitive typed acknowledgment, never secrets.
+The owner is asked again only for one of the five stop reasons, which `lib/contract-text.json`
+holds:
+
+1. Change to the baseline: a criterion, scope item or design decision is wrong or conflicts, and no reading inside the contract works.
+2. Outside effect not in the contract: an irreversible or outside effect that the contract does not pre-authorize.
+3. A fact only a person holds, with no safe, reversible default.
+4. A red line: security, legal or safety.
+5. A milestone cannot meet its exit criteria after the work was re-planned and split.
 
 Local state enforces the workflow, not security against unrestricted shell access. Existing GitHub
-credentials available to `gh` in Amp are used; no custom controller/App or approval service is needed.
-Required CI checks must be pinned to source Apps by strict, administrator-enforced dev protection.
-The plugin does not configure CI/protection; absent or failing requirements block integration.
-A queued auto-merge request is not a verified merge. Copy the entire plugin
-directory if separately authorized to install/publish; skills belong in Personal Skills, not in
+credentials available to `gh` in Amp are used; no custom controller, App or approval service is
+needed. Required CI checks must be pinned to source Apps by strict, administrator-enforced `dev`
+protection. The plugin does not configure CI or protection; a failing preflight blocks kickoff and
+failing requirements block a merge. Never type a secret into a dialog. Copy the entire plugin
+directory if separately authorized to install or publish; skills belong in Personal Skills, not in
 the Personal Plugins destination. Source integration grants no Personal publication authority.
 
 - Use one root `.ts` or `.js` file for a standalone plugin.

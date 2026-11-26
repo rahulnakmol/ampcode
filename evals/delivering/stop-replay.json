@@ -1,0 +1,109 @@
+{
+  "skill_name": "delivering",
+  "scope": "Stop-replay tabletop: each situation comes from a real stop in the last three missions. A fresh agent that reads only the changed skills answers each one; a separate fresh judge scores the decision and action.",
+  "source": "Analysis 'Wave 0 interruptions: root causes and the one-approval mission', table 'Every stop, and why' (1-12) and its CERN section (13-16)",
+  "decisions": {
+    "kickoff": "a question to the owner that is asked while preparing the baseline or in the one kickoff ask, never mid-build",
+    "stop": "a mid-build stop that asks the owner, for one of the five stop reasons",
+    "proceed": "no new question to the owner now; take the expected action (work that only prepares the kickoff brief counts as proceed)"
+  },
+  "situations": [
+    {
+      "id": "R1",
+      "situation": "The design is ready, with a contract, work items and milestones. The owner has not approved the contract yet.",
+      "expected_decision": "kickoff",
+      "expected_action": "Ask the owner once, with the kickoff brief, to approve the contract."
+    },
+    {
+      "id": "R2",
+      "situation": "You are preparing the kickoff ask. A changed dialog's UX exists only as a prose description.",
+      "expected_decision": "proceed",
+      "expected_action": "Render every changed state and show it with the kickoff brief, so the owner approves what they saw."
+    },
+    {
+      "id": "R3",
+      "situation": "During the build, review of the acceptance criterion \"reject any Markdown that hides words\" finds that one case in its listed cases still fails, and it keeps producing new classes of hidden-word Markdown that the list does not name.",
+      "expected_decision": "proceed",
+      "expected_action": "Fix the cases in the closed case list; file new classes as new work items."
+    },
+    {
+      "id": "R4",
+      "situation": "A milestone review hits its cap at round 3, with Blockers inside the closed case list.",
+      "expected_decision": "proceed",
+      "expected_action": "Apply the disposition policy: reopen and re-plan the items concerned; no question to the owner."
+    },
+    {
+      "id": "R5",
+      "situation": "After a review cap, an extra review round failed on a Major inside the closed case list and also reported a Major about something outside the list.",
+      "expected_decision": "proceed",
+      "expected_action": "Reopen and re-plan the items concerned; file only findings outside the list."
+    },
+    {
+      "id": "R6",
+      "situation": "A work item needs a live check of a dialog that seems only a person can run.",
+      "expected_decision": "proceed",
+      "expected_action": "Script the check with browser automation and add the human test to the checkpoint report."
+    },
+    {
+      "id": "R7",
+      "situation": "A high-risk milestone is green and both of its reviews passed.",
+      "expected_decision": "proceed",
+      "expected_action": "Merge it into dev, as the contract pre-authorizes."
+    },
+    {
+      "id": "R8",
+      "situation": "A second mission's contract, defense, preflight and kickoff brief are ready; its owner has not yet approved it, design included.",
+      "expected_decision": "kickoff",
+      "expected_action": "Ask its owner once, with its kickoff brief, to approve that contract."
+    },
+    {
+      "id": "R9",
+      "situation": "A trial run during the build shows that two acceptance criteria in the approved contract contradict each other.",
+      "expected_decision": "stop",
+      "stop_reason": "Reason 1: change to the baseline",
+      "expected_action": "Stop and ask the owner to change the baseline."
+    },
+    {
+      "id": "R10",
+      "situation": "Review rounds 5 and 6 on an item are being treated as a budget decision for the owner.",
+      "expected_decision": "proceed",
+      "expected_action": "There is no budget; apply the disposition policy."
+    },
+    {
+      "id": "R11",
+      "situation": "A high-risk PR is green, but an owner merge-approval dialog timed out.",
+      "expected_decision": "proceed",
+      "expected_action": "There is no owner merge gate; merge when green."
+    },
+    {
+      "id": "R12",
+      "situation": "An owner merge-approval request was reopened after an outdated dialog.",
+      "expected_decision": "proceed",
+      "expected_action": "There is no owner merge gate; merge when green."
+    },
+    {
+      "id": "R13",
+      "situation": "A child thread paused itself after overrunning a 25k-token allocation.",
+      "expected_decision": "proceed",
+      "expected_action": "There is no budget; tell the child to continue."
+    },
+    {
+      "id": "R14",
+      "situation": "A child thread for a work item went idle without sending its report.",
+      "expected_decision": "proceed",
+      "expected_action": "Read the child thread, then continue, answer, restart or re-plan it."
+    },
+    {
+      "id": "R15",
+      "situation": "While you prepare the contract, the readiness preflight finds that branch protection returns 403 (it needs a paid plan) and that Box hosting needs its own approval.",
+      "expected_decision": "kickoff",
+      "expected_action": "Ask about the protection gap while preparing the baseline, because kickoff waits until the preflight passes; put the Box deploy in the contract as an effect to pre-authorize. Ask nothing mid-build."
+    },
+    {
+      "id": "R16",
+      "situation": "During the build a domain policy question (which sources to admit) arises, and the contract lists it with a default.",
+      "expected_decision": "proceed",
+      "expected_action": "Take the default, record it, and report it at the next checkpoint."
+    }
+  ]
+}

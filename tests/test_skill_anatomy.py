@@ -1,0 +1,259 @@
+"""Anatomy rules A1 and A3 to A7 for the wave 1 and 2 skills (contract section 6).
+
+Run: python3 -m unittest tests.test_skill_anatomy -v
+Check one skill before milestone integration (skips results.md and the README rows):
+    python3 tests/test_skill_anatomy.py --skill <name> --item
+"""
+
+import ast
+import re
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+# The mission thread adds each skill here at milestone integration.
+NEW_SKILLS = (
+    "architecting", "interrogating-changes", "releasing",
+    "threat-modelling", "scanning-vulnerabilities", "assessing-products",
+    "provisioning", "monitoring", "investigating-incidents",
+    "steering",
+)
+
+SECTIONS = ("Common rationalizations", "Red flags", "Adapt it", "Check your work")
+BANNED = (
+    "budget used", "token budget", "review budget", "budget call", "merge mode", "ask mode",
+    "high-risk merge", "owner merge acknowledgment",
+)
+LIMIT = 1024
+# Common "-ing" words that are not gerunds (A1).
+NOT_GERUNDS = {
+    "thing", "nothing", "something", "anything", "everything", "morning", "evening", "during",
+    "ceiling", "string", "spring", "king", "ring", "wing", "bring", "sing", "ping", "ding", "sling",
+    "swing", "sting", "cling", "fling", "wring", "sibling",
+}
+
+
+def frontmatter(text):
+    match = re.match(r"\A---\n(.*?)\n---\n", text, re.S)
+    if not match:
+        return {}
+    fields = {}
+    for line in match.group(1).splitlines():
+        key, _, value = line.partition(":")
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        fields[key.strip()] = value
+    return fields
+
+
+def problems(name, root=ROOT, item=False):
+    """Return one 'rule: message' string per broken rule for skills/<name>."""
+    out = []
+    skill = root / "skills" / name
+    path = skill / "SKILL.md"
+    if not path.is_file():
+        return [f"A1: {path.relative_to(root)} is missing"]
+    text = path.read_text()
+    meta = frontmatter(text)
+
+    # A1: name, directory and description. A gerund word ends in "ing" with a vowel (or y) before
+    # it and is not in NOT_GERUNDS, so "modelling" counts and "string" or "morning" do not. This
+    # reads spelling, not grammar: an "-ing" noun missing from the list still passes.
+    words = (meta.get("name") or "").split("-")
+    if meta.get("name") != name or not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", name) \
+            or not any(re.fullmatch(r"\w*[aeiouy]\w*ing", w) and w not in NOT_GERUNDS for w in words):
+        out.append(f"A1: name {meta.get('name')!r} must be a lowercase gerund equal to {name!r}")
+    description = meta.get("description", "")
+    if not description or len(description) > LIMIT:
+        out.append(f"A1: description must be 1 to {LIMIT} characters, has {len(description)}")
+    for phrase in ("Use when", "Not for"):
+        if phrase not in description:
+            out.append(f"A1: description must say {phrase!r}")
+
+    # A3: required sections.
+    headings = re.findall(r"^#{2,3} (.+?)\s*$", text, re.M)
+    for section in SECTIONS:
+        if section not in headings:
+            out.append(f"A3: missing section {section!r}")
+
+    # A4: eval scenarios, and results after integration.
+    evals = root / "evals" / name
+    readme = evals / "README.md"
+    scenarios = re.findall(r"^\| S\d+ \|", readme.read_text(), re.M) if readme.is_file() else []
+    if len(scenarios) < 2:
+        out.append(f"A4: evals/{name}/README.md needs at least 2 scenario rows (| S1 | ...)")
+    if not item and not (evals / "results.md").is_file():
+        out.append(f"A4: evals/{name}/results.md is missing")
+
+    # A5: routing rows, after integration.
+    if not item:
+        if f"skills/{name}/" not in _read(root / "README.md"):
+            out.append(f"A5: README.md has no row linking skills/{name}/")
+        if f"**{name}**" not in _read(root / "docs" / "using-skills.md"):
+            out.append(f"A5: docs/using-skills.md has no **{name}** row")
+
+    # A6: banned budget and merge-gate phrases anywhere in the skill.
+    for file in sorted(p for p in skill.rglob("*") if p.is_file()):
+        body = _read(file).lower()
+        for phrase in BANNED:
+            if phrase in body:
+                out.append(f"A6: {file.relative_to(root)} contains {phrase!r}")
+
+    # A7: scripts use the standard library and answer --help.
+    scripts = skill / "scripts"
+    local = {p.stem for p in scripts.glob("*.py")} if scripts.is_dir() else set()
+    for script in sorted(scripts.glob("*.py")) if scripts.is_dir() else []:
+        for module in _imports(script):
+            if module not in sys.stdlib_module_names and module not in local:
+                out.append(f"A7: {script.relative_to(root)} imports {module!r}, not the standard library")
+        run = subprocess.run([sys.executable, str(script), "--help"], capture_output=True, text=True, timeout=60)
+        if run.returncode != 0:
+            out.append(f"A7: {script.relative_to(root)} --help exits {run.returncode}")
+    return out
+
+
+def _read(path):
+    try:
+        return path.read_text()
+    except (FileNotFoundError, UnicodeDecodeError):
+        return ""
+
+
+def _imports(script):
+    tree = ast.parse(script.read_text())
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                yield alias.name.split(".")[0]
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            yield node.module.split(".")[0]
+
+
+GOOD = """---
+name: sampling-things
+description: "Samples things. Use when asked to sample. Not for counting."
+---
+
+# Sampling things
+
+## Common rationalizations
+
+## Red flags
+
+## Adapt it
+
+## Check your work
+"""
+
+
+class Rules(unittest.TestCase):
+    def tree(self, tmp, skill=GOOD, script="import json\nimport sys\nif '--help' in sys.argv: print('usage')\n",
+             evals="| S1 | a |\n| S2 | b |\n", results=True, rows=True, name="sampling-things"):
+        root = Path(tmp)
+        base = root / "skills" / name
+        (base / "scripts").mkdir(parents=True)
+        (base / "SKILL.md").write_text(skill.replace("name: sampling-things", f"name: {name}"))
+        (base / "scripts" / "tool.py").write_text(script)
+        (root / "evals" / name).mkdir(parents=True)
+        (root / "evals" / name / "README.md").write_text(evals)
+        if results:
+            (root / "evals" / name / "results.md").write_text("graded\n")
+        (root / "docs").mkdir()
+        (root / "README.md").write_text(f"[x](./skills/{name}/SKILL.md)\n" if rows else "")
+        (root / "docs" / "using-skills.md").write_text(f"| **{name}** |\n" if rows else "")
+        return root
+
+    def rules(self, item=False, name="sampling-things", **kw):
+        with tempfile.TemporaryDirectory() as tmp:
+            return sorted({p.split(":")[0] for p in problems(name, self.tree(tmp, name=name, **kw), item)})
+
+    def test_complete_skill_passes(self):
+        self.assertEqual(self.rules(), [])
+
+    def test_a1_name_and_description(self):
+        self.assertEqual(self.rules(skill=GOOD.replace("name: sampling-things", "name: sampler")), ["A1"])
+        self.assertEqual(self.rules(skill=GOOD.replace(" Not for counting.", "")), ["A1"])
+        self.assertEqual(self.rules(skill=GOOD.replace(" Use when asked to sample.", "")), ["A1"])
+        long = "Samples things. " + "x" * (1025 - 60) + " Use when asked to sample. Not for counting."
+        self.assertEqual(len(long), 1025)
+        self.assertEqual(self.rules(skill=GOOD.replace(
+            "Samples things. Use when asked to sample. Not for counting.", long)), ["A1"])
+        fits = "Samples things. " + "x" * (1024 - 60) + " Use when asked to sample. Not for counting."
+        self.assertEqual(len(fits), 1024)
+        self.assertEqual(self.rules(skill=GOOD.replace(
+            "Samples things. Use when asked to sample. Not for counting.", fits)), [])
+
+    def test_d5_a1_gerund_needs_a_vowel_before_ing(self):
+        # D-5: "string", "thing" and the like end in "ing" but are not gerunds.
+        for name in ("string-tools", "thing-maker", "king", "ring-buffer", "spring-boot", "wing", "bring-up"):
+            with self.subTest(name=name):
+                self.assertEqual(self.rules(name=name), ["A1"])
+        for name in ("threat-modelling", "steering", "interrogating-changes", "sampling-things"):
+            with self.subTest(name=name):
+                self.assertEqual(self.rules(name=name), [])
+
+    def test_d5_f5_common_ing_nouns_are_not_gerunds(self):
+        # Gate 1 F5: words with a vowel before "ing" that are still not gerunds.
+        for name in ("nothing-tools", "morning-report", "evening-digest", "during-release",
+                     "ceiling-checks", "sibling-repos", "something-useful"):
+            with self.subTest(name=name):
+                self.assertEqual(self.rules(name=name), ["A1"])
+        # A deny-listed word does not hide a real gerund in the same name.
+        self.assertEqual(self.rules(name="tracking-everything"), [])
+
+    def test_d5_f5_every_current_skill_name_passes(self):
+        # Every skill with an "-ing" word in its name ("distill" has none, and never passed A1).
+        names = sorted(p.parent.name for p in (ROOT / "skills").glob("*/SKILL.md")
+                       if any(w.endswith("ing") for w in p.parent.name.split("-")))
+        self.assertIn("threat-modelling", names)
+        for name in names:
+            with self.subTest(name=name):
+                self.assertEqual([p for p in problems(name, item=True) if "lowercase gerund" in p], [])
+
+    def test_a3_missing_section(self):
+        self.assertEqual(self.rules(skill=GOOD.replace("## Red flags\n", "")), ["A3"])
+
+    def test_a4_scenarios_and_results(self):
+        self.assertEqual(self.rules(evals="| S1 | a |\n"), ["A4"])
+        self.assertEqual(self.rules(results=False), ["A4"])
+
+    def test_a5_routing_rows(self):
+        self.assertEqual(self.rules(rows=False), ["A5"])
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp)
+            (root / "docs" / "using-skills.md").write_text("")
+            self.assertEqual([p.split(":")[0] for p in problems("sampling-things", root)], ["A5"])
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp)
+            (root / "README.md").write_text("")
+            self.assertEqual([p.split(":")[0] for p in problems("sampling-things", root)], ["A5"])
+
+    def test_a6_banned_phrase(self):
+        self.assertEqual(self.rules(skill=GOOD + "\nKeep a review budget.\n"), ["A6"])
+
+    def test_a7_script_imports_and_help(self):
+        self.assertEqual(self.rules(script="import yaml\n"), ["A7"])
+        self.assertEqual(self.rules(script="import sys\nsys.exit(3)\n"), ["A7"])
+
+    def test_item_mode_skips_results_and_rows(self):
+        self.assertEqual(self.rules(item=True, results=False, rows=False), [])
+
+
+class NewSkills(unittest.TestCase):
+    def test_every_new_skill_meets_the_anatomy(self):
+        for name in NEW_SKILLS:
+            with self.subTest(skill=name):
+                self.assertEqual(problems(name), [])
+
+
+if __name__ == "__main__":
+    if "--skill" in sys.argv:
+        found = problems(sys.argv[sys.argv.index("--skill") + 1], item="--item" in sys.argv)
+        print("\n".join(found) or "pass")
+        sys.exit(1 if found else 0)
+    unittest.main()

@@ -1,0 +1,272 @@
+---
+name: grooming
+description: "Builds and maintains a tracker-neutral backlog (backlog.json, contract backlog/v1): initiatives with business drivers, measurable goals, features with benefit hypotheses and WSJF, executable stories sized XS to L with measurable acceptance criteria, bugs with urgency, and feedback filed against features. Splits oversized work, triages stakeholder feedback, records delivery evidence and goal measurements, and checks everything with backlog.py (validate, tree, status, trace). SAFe-inspired, without epics. Use when asked to groom, refine, break down, split, size, prioritise, or clean up a backlog, turn a PRD into features and user stories, triage feedback, record what was delivered, or report traceability from goals to delivery. Not for writing the PRD (use specifying) or pushing to a tracker (use syncing)."
+---
+
+# Grooming
+
+Turn an agreed PRD into a backlog anyone can execute, and keep it honest afterwards. The backlog
+is `backlog.json`, defined by [reference/contract.md](reference/contract.md); read the contract
+before your first edit in a session. `scripts/backlog.py` checks it.
+
+```text
+initiative → goals (1:n) → features (1:n) → stories (1:n), bugs (0:n), feedback (0:n)
+```
+
+## Commands
+
+```sh
+python3 scripts/backlog.py validate backlog.json                  # contract + Definition of Ready
+python3 scripts/backlog.py validate backlog.json --require-ready  # final grooming gate
+python3 scripts/backlog.py tree backlog.json                      # hierarchy; features in WSJF order within each goal
+python3 scripts/backlog.py status backlog.json [--all-approvers]  # sign-off per approver; exit 0 when all gates pass
+python3 scripts/backlog.py trace backlog.json                     # described → agreed → delivered → achieved; exit 0 when no gaps
+```
+
+Paths are relative to this skill's directory; run them from the mission folder with the full
+path. `validate` exits 1 on errors; warnings guide drafting. Python 3 standard library only.
+
+## Build a backlog from a PRD
+
+1. **Start from the seeded file.** `specifying` leaves the initiative and goals in
+   `backlog.json`. If it is missing, create them from the PRD first.
+2. **Features per goal.** For each goal, list the capabilities, process changes, or campaign
+   components that move its metric. Each feature gets a description, a benefit hypothesis tied to
+   the goal's metric, WSJF scores relative to the other features, a milestone, an `owner` (one
+   named person, not a team), and traces to
+   `R-`/`AC-` IDs. `--require-ready` fails on a feature with no owner, or on a feature, story, or
+   bug owner that is a placeholder ("lead (to be named)", "name to confirm", "TBD"), so ask for
+   owners in the same question round as sizes and milestones. If the user leaves the choice to
+   you, name the person whose role does the work. When the evidence names nobody in that role,
+   the mission owner stands in, even when they are an approver. They answer for finding the
+   person, not for doing the work. Write it in the feature's `notes` as "Owner assumed: Maya
+   Chen, standing in for the metering lead until she names one by 17 February; confirm before
+   sign-off". The status report lists the feature as blocked, and gate 6 needs an owner who
+   agreed. A `ready` story or bug needs an owner too
+   (`--require-ready` fails without one). A team may own a story only with its contact, such as
+   "Claims data team (lead: Ana Silva)". With no name yet, the mission owner stands in as the
+   contact in the same field: "Team Atlas (contact: Dana Whitfield until she names the lead by
+   27 April)". The feature's `notes` also name who signs it off and when it is due: "Signs off:
+   Elena Petrova, due 30 May". Never write that someone has signed; `status` and the tracker
+   show that, and `validate` warns on "Signed off by" in notes. A feature that moves no goal is
+   out of scope or reveals a missing goal: ask.
+   Dependencies and milestone dates decide the order first; the rank score (WSJF) only orders
+   features that could go either way. If the two disagree, fix the scores.
+3. **Stories per feature.** Write each as one executable unit:
+   - a specific actor, not "user"; the change; the value in goal terms;
+   - acceptance criteria as Given/When/Then that are the story's definition of done: every
+     `then` has a quantity and at least one has a real number, date, time, or amount;
+   - `work` type, `priority` (MoSCoW: `must` only when the milestone fails without it, so not
+     every story is a must), `size` XS (half a day) to L (one iteration);
+   - `depends_on` for real ordering only; `trace` to the PRD criterion it satisfies.
+   - optionally, when the story is handed over as a full work item: `in_scope` and
+     `out_of_scope` lists, the `automated_test` that proves the criteria (written first), and a
+     `human_test` script of steps and expected result (see `reference/contract.md`).
+   - **Test every part of the criterion you trace.** Each channel, group, and promise in a PRD
+     criterion needs a check that tests it: "stop texts by phone or on the page" needs a phone
+     check and a page check; "0 customer records are used for training" needs a check on that
+     rule, not only on what the assistant may read. A part no check tests gets its own check or
+     story. The check that tests a criterion names it at the end of its `then`: "… within 2
+     working days for 95% of patients (AC-8)". `trace` lists every criterion that a story
+     traces but no check names.
+   - **Go-live and spend wait on finished gates.** A story that goes live, reaches customers,
+     or commits money `depends_on` every story that completes one of its preconditions (an
+     assessment, a contract, the submission for an approval). Those stories' criteria test the
+     final artefact ("the signed assessment has 0 open high findings"), not a draft or a review
+     of one. A go-live criterion names each precondition, and each outside decision with its
+     date: "0 live proposals before S-13 is done and the board's go, due 30 September".
+4. **Split anything bigger than L.** Mark it `XL` and `draft`, then split by workflow step,
+   business rule, data variation, entity or region, channel, or happy path versus exceptions.
+   Each part must still deliver something checkable. Remove the XL item when its parts exist.
+5. **Unknowns become `research` stories** with a time box and the decision they produce, rather
+   than guesses dressed as requirements. Work that depends on the decision is either written now
+   as `draft` stories that depend on the research story, or moved with its PRD criteria to a
+   later milestone, said plainly in the PRD. A milestone never promises work that has no story:
+   `trace` reports a criterion that only a feature lists. A story whose start depends on a
+   condition nobody has measured yet ("only if the preview takes under 5 seconds") depends on a
+   research story that measures it, and stays `draft` until it passes. The ready gate holds
+   such drafts (a warning, not an error) while their research story is undelivered, directly
+   or through the stories they depend on.
+   - **Decisions someone else makes.** Ask what the decision changes.
+     - **What gets built** (who builds it, which supplier, which option): a `research` story
+       owned by whoever prepares the options. Its time box is that preparation, usually 1 or 2
+       days, and its criterion names who decides and by when ("Elena chooses the supplier by
+       2 July"). The work that needs the answer stays `draft` behind it and starts after the
+       decision date. Never mark a story `ready` that assumes the answer. Put every decision one
+       person owes by the same date in one story, with one check per decision.
+     - **Only whether work may go live, spend, or start** (an approval, a board go, a
+       regulator's answer): no story of its own. It is a dated check on the story that waits
+       for it ("0 texts go before Mark Ellis's recorded yes, due 8 June"), so that story can be
+       `ready`. Preparing the ask (the board paper, the submission) is a story owned by the
+       person who prepares it, with the date it is sent, and the waiting story `depends_on` it.
+       Someone outside the team never owns a story.
+   - **Not stories.** A meeting (the team's sizing session, presenting a paper, a review), a
+     reading of a goal's number (record it as the goal's `measurement`), and sign-off of the plan
+     itself (gates 3 and 5) are not work items. Write them as dated lines in the milestone's or
+     feature's `notes`, or as next actions in the report. Building what produces the number, such
+     as a report or a query, is a story. So is preparing an outside approval; the approval
+     itself is a dated check on the story that waits for it.
+   - **Won't-have items** keep the decision visible but leave the plan: priority `wont`, no
+     milestone, and no grooming beyond the title and the reason in `notes`. The ready gate skips
+     them, and no milestone or status report counts them.
+6. **Bugs** go under the feature whose behaviour they break, with observed, expected, steps, a
+   reproduction criterion, priority, and urgency.
+7. **Check each milestone fits.** Count the working days from today to its `due` date and add
+   up each owner's story sizes in it at the top of each size: XS ½, S 2, M 5, L 10 days. A
+   research story's `size` is the band of its time box (a 3-day spike is M, and `validate` warns
+   when it is not), but people see the time box itself ("3-day time box" in `tree`, the tracker,
+   and Excel), and it counts at its time box in the sum: 3 days, not 5. Use only this scale in every
+   sum you show. Work owned by someone standing in for an unnamed role counts under that role
+   ("metering lead, not yet named: 25 days"), not under the person standing in. When an
+   owner's work does not fit, move stories to a later milestone or name the fallback in the
+   feature's `notes`. Never leave a milestone that cannot be met.
+   - **Sizes against the team's estimate.** When your total differs from the team's own
+     estimate by half of their estimate or more, your sizes are not ready. Re-size with the
+     team's numbers if you have them: split stories until the total is within half of their estimate, and move what
+     no longer fits. Otherwise keep the affected stories `draft` until the team re-sizes; the
+     ready gate (gate 4) stays open and you say so.
+   - **No team estimate yet.** Your sizes stand: keep the stories `ready` and say in each
+     feature's `notes` that the sizes are yours. Plan a dated session where the team sizes them,
+     as the next action in the report. Gate 4 stays open until the team has sized them at that
+     session; then the bullet above applies.
+   - **Outside approvals.** When someone outside the team approves work (a bank, a regulator, a
+     data protection officer, a patient group), plan three dates: when it is submitted, when
+     they decide, and one resubmission that still meets the deadline. Count their review days
+     as working days and skip holidays. The submission story's checks hold the dates the team
+     controls: sent, and resent after a no. The story that waits holds their decision as a
+     dated check ("Given the bank's decision, due 7 October"), not as their approval. Say what
+     slips or is cut if the resubmission fails. What they approve is the final artefact people
+     will see (the finished video, the final text), not only a script or a draft.
+8. **Validate until clean**, mark stories `ready` as they pass, then run the gate:
+   `validate --require-ready` with 0 errors.
+9. **Fresh-context executability review** (below), then hand over to `syncing`.
+
+Every child has one parent. If a story serves two features, it is two stories or the features
+are cut wrongly.
+
+## Run a session from an intake
+
+When `synthesizing` hands over a confirmed `intake.md` (new features under existing goals,
+changes, bugs, or feedback), work through its "Next session" agenda in order. Each placement row
+becomes backlog edits: new features with their story seeds turned into executable stories, a
+change to the named feature, a bug under its feature, or a feedback entry. Give new items IDs
+here, cite the intake's evidence in `trace`, and tell the owner which sign-offs each change
+reopens. A row marked `assumed` is confirmed with the owner before it changes the backlog. For
+every ask that came from outside the team (a customer ticket, a stakeholder email), say who
+tells that person the outcome, through the channel they used, and by when. Draft the reply for
+the user to approve. It states only what the evidence confirms: a cause nobody has reproduced
+reads "we can see … and will reproduce it with your file", work nobody has started is never
+described as under way, and a date the team has not confirmed reads "we are aiming for 30 April
+and will confirm after planning on 27 April". It says when the person hears next, such as when
+the fix ships or the date moves. Acceptance checks that test the fix use the requester's own
+example (their file, their case) when there is one.
+
+## Triage feedback
+
+`syncing pull` adds tracker comments as `open` feedback on a feature and prints comments on
+initiatives and goals separately. For each entry decide with the owner:
+
+- **accepted:** change the backlog, and put the changed item IDs in `resolution`;
+- **declined:** give the reason the giver will read;
+- **duplicate:** name the other `FB-` ID.
+
+Initiative and goal comments either become feedback on the right feature (create a new entry
+with the comment URL as `source`, so `pull` does not list it again) or a PRD change through
+`specifying`. Changing a signed-off item makes its sign-off stale; tell the
+owner which gate reopens. Draft replies to commenters for the user to approve, stating only what the
+evidence confirms; never post them yourself without approval.
+
+## Record delivery and outcomes
+
+When a story or bug is done, verify each acceptance criterion against evidence (a pull request,
+a run log, a published page, an attendance list) and add `delivery` with every criterion `met` or
+`not met`. Do not mark a criterion met because the tracker item is closed. When a goal's metric
+is read, append a `measurement`. `trace` then shows which drivers are satisfied and which gaps
+remain.
+
+## Fresh-context executability review
+
+Give a subagent only `backlog.json`, the PRD, the contract, `rounds.md` (the owner's own
+answers), the drafted replies, and what stakeholders will see (`sync.py` renders it; with no
+PRD, as for new asks against an existing backlog, give `intake.md` and `evidence.md` instead).
+Ask it, as an adversary:
+
+1. For every `must` story and every `critical` or `high` bug: how would you do this, and how
+   would you prove it is done? List every question you would have to ask first.
+2. Which PRD requirements, or parts of an acceptance criterion, does no story's check test?
+3. Read the plan as each approver and each outside person it touches (a customer who asked, a
+   patient, a partner bank). What will they be told, and when? What happens to them when they
+   cannot act on it, or a step fails? Which promise breaks at a limit (a cap, a hold, a cut-off)?
+4. Which milestone cannot be met, counting each owner's days from the date the work can start?
+5. Which decision, fact, or reply is not backed by the owner's words in `rounds.md` or an
+   evidence row, and is not labelled an assumption? Which numbers differ between files?
+6. What would you cut, merge, or say once instead of several times?
+Each question is a gap: fix the story by replacing its text, then recheck once. The recheck
+reads only the repaired items (`planning`, section 3). Keep the findings in the review's own file,
+not in the backlog. The README gets one line for the review, and what stays open joins its one
+open list.
+
+## Write in plain English
+
+Stories and bugs are read by the people doing the work and by approvers who sign off. Write so that someone who was not in the room can read it once, understand it, and approve
+it.
+
+- Short sentences, about 20 words at most, one idea each. Short bullets over long paragraphs.
+- Everyday words. Spell out each acronym and planning term the first time, such as "rank score
+  (WSJF)" or "must have (MoSCoW)".
+- Numbers and names instead of adjectives: "by 07:00", not "early"; "the AP team", not
+  "stakeholders".
+- Say who does what: "the nightly job posts matches", not "matches are posted".
+- Keep IDs next to words, never alone: "the exception report (S-3)", not "S-3".
+- Evidence IDs (E7) go only in `trace`, which the tracker shows as the Sources line. Titles,
+  descriptions, notes, stories, and criteria say the fact in words: "Tom's estimate of a quarter
+  for five people", not "(E27)". `validate` flags evidence IDs in that text; on a `ready` story
+  it is an error.
+- An acceptance criterion reads as one plain sentence when Given, When, and Then are joined.
+
+
+## Adapt it
+
+- **Importing a rough backlog** from a tracker or spreadsheet: map each row to the contract,
+  keep the source link in `notes`, and expect many drafts. Do not invent acceptance criteria
+  you cannot trace; mark them draft and ask.
+- **Your own work types or labels:** propose a contract change (`reference/contract.md`, the
+  enums in `backlog.py`, and a test) rather than smuggling fields in; unknown fields are errors.
+- **Team size scale:** the default sizes assume one person per story. If your iteration is not
+  two weeks, restate the size anchors in the mission charter.
+
+## Examples
+
+Valid backlogs for each domain:
+
+- [Operations: month-end close in three days](reference/examples/operations.json), with a
+  delivered research story, a critical bug, accepted and declined feedback, and a measured goal.
+- [Product: self-serve team onboarding](reference/examples/product.json).
+- [Marketing: launch campaign](reference/examples/marketing.json).
+
+All three pass `validate`. The operations and product examples keep one `draft` item each, to
+show a backlog mid-grooming, so they fail `--require-ready` until it is finished; the marketing
+example passes it.
+
+A weak story and its executable rewrite:
+
+```text
+Weak:  "As a user I want faster onboarding."
+Ready: As a workspace admin I want to upload a CSV of up to 500 users and see invalid rows before
+       anyone is invited, so that I fix mistakes once.
+       S-1.1 Given a CSV with 500 rows, 3 malformed, when the admin uploads it, then the preview
+             lists 497 valid rows and exactly 3 errors with row numbers within 5 seconds.
+```
+
+## Check your work
+
+- `backlog.py validate --require-ready` reports 0 errors, and you ran it after the last edit.
+- Every part of each traced PRD criterion has a check that tests it.
+- Every reply to someone outside the team states only what the evidence confirms.
+- No `ready` story assumes the answer to an open question. A question that changes what gets
+  built is a research story owned by whoever prepares the options; an approval is a dated check
+  on the story that waits for it. Nobody outside the team owns a story.
+- No story depends on one in a later milestone (`validate` warns).
+- `backlog.py tree` shows every goal with features and every feature with stories.
+- The fresh-context executability review found no unanswered question, or each is resolved.
+- No feedback is `open` at hand-over.

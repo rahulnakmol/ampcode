@@ -1,0 +1,239 @@
+{
+  "name": "Tenant order export",
+  "scope": "docs/designs/order-export.md at revision 3f9c2a1: tenant integrations request order exports and download them by signed link",
+  "standard": "OWASP ASVS 4.0.3",
+  "summary": "15 threats on 7 flows, 5 of them cross a trust boundary: 10 mitigations (1 with evidence, 9 not run), 2 accepted risks and 3 backlog items. The design is a draft: no control is in place until built and tested. ASVS 4.0.3 level 2 review: 1 met, 11 gaps, 1 not applicable, 2 not examined.",
+  "zones": [
+    {"id": "internet", "name": "Public internet"},
+    {"id": "app", "name": "Application network"},
+    {"id": "data", "name": "Database subnet"},
+    {"id": "storage", "name": "Object storage service"}
+  ],
+  "elements": [
+    {"id": "tenant-client", "name": "Tenant integration client", "kind": "actor", "zone": "internet"},
+    {"id": "orders-api", "name": "Orders API", "kind": "process", "zone": "app", "entry_point": true},
+    {"id": "export-queue", "name": "Export queue", "kind": "store", "zone": "app"},
+    {"id": "export-worker", "name": "Export worker", "kind": "process", "zone": "app"},
+    {"id": "orders-db", "name": "Orders database (PostgreSQL)", "kind": "store", "zone": "data"},
+    {"id": "export-store", "name": "Export file storage", "kind": "store", "zone": "storage", "entry_point": true}
+  ],
+  "flows": [
+    {
+      "id": "F1", "from": "tenant-client", "to": "orders-api",
+      "data": "Export requests (POST /v1/exports: date range, format) and status requests (GET /v1/exports/{id}), each with an OAuth access token for a client credential",
+      "personal_data": false,
+      "stride": {
+        "spoofing": ["T1"],
+        "tampering": ["T2"],
+        "repudiation": ["T3"],
+        "information_disclosure": "n/a: the requests hold a date range, a format and an export ID only; the signed link in the response is T4 on F6",
+        "denial_of_service": ["T5"],
+        "elevation_of_privilege": ["T6"]
+      }
+    },
+    {
+      "id": "F2", "from": "orders-api", "to": "export-queue",
+      "data": "export.requested event: export ID, tenant ID, date range",
+      "personal_data": false
+    },
+    {
+      "id": "F3", "from": "orders-db", "to": "export-worker",
+      "data": "Order rows for one tenant: customer name, delivery address, phone number, order lines",
+      "personal_data": true,
+      "stride": {
+        "spoofing": ["T7"],
+        "tampering": ["T15"],
+        "repudiation": "n/a: the read is a system action under the export ID that T3 audits",
+        "information_disclosure": ["T8"],
+        "denial_of_service": ["T5"],
+        "elevation_of_privilege": "n/a: the worker holds no user session; its read-only database role is part of T7"
+      },
+      "linddun": {
+        "linking": "n/a: rows go to the tenant that already holds them; no other data is joined",
+        "identifying": "n/a: the tenant already knows these customers; identification is the purpose of the export",
+        "non_repudiation": "n/a: order rows record purchases the tenant already holds",
+        "detecting": "n/a: an internal read that no outside party can observe",
+        "data_disclosure": ["T11"],
+        "unawareness": ["T13"],
+        "non_compliance": "n/a: retention of the result is T12 on F4"
+      }
+    },
+    {
+      "id": "F4", "from": "export-worker", "to": "export-store",
+      "data": "Export CSV file with the order rows of one tenant",
+      "personal_data": true,
+      "stride": {
+        "spoofing": ["T7"],
+        "tampering": ["T9"],
+        "repudiation": "n/a: the file write is tied to its export ID; the request that caused it is audited in T3",
+        "information_disclosure": ["T10"],
+        "denial_of_service": "n/a: files are deleted after 7 days (T12), which bounds storage growth; request volume is T5",
+        "elevation_of_privilege": "n/a: the worker identity can write only to export containers; part of T7"
+      },
+      "linddun": {
+        "linking": "n/a: the file holds one tenant's rows only and joins no other data",
+        "identifying": "n/a: the file goes to the tenant that already knows these customers",
+        "non_repudiation": "n/a: the file records orders, not actions a customer might wish to deny",
+        "detecting": "n/a: file names are random export IDs that reveal nothing about customers",
+        "data_disclosure": ["T11"],
+        "unawareness": ["T13"],
+        "non_compliance": ["T12"]
+      }
+    },
+    {
+      "id": "F5", "from": "export-store", "to": "tenant-client",
+      "data": "Export file download through a signed link valid for 15 minutes",
+      "personal_data": true,
+      "stride": {
+        "spoofing": ["T4"],
+        "tampering": ["T2"],
+        "repudiation": "n/a: a download has no business effect; the request that made the file is audited in T3",
+        "information_disclosure": ["T4"],
+        "denial_of_service": "n/a: a link serves one file from the managed storage endpoint; request volume is T5",
+        "elevation_of_privilege": "n/a: a signed link grants read on one file only (ADR-2)"
+      },
+      "linddun": {
+        "linking": "n/a: the download joins no other data",
+        "identifying": "n/a: the file goes to the tenant that already knows these customers",
+        "non_repudiation": "n/a: the download records no customer action",
+        "detecting": "n/a: link and file names are random export IDs that reveal nothing about customers",
+        "data_disclosure": ["T11"],
+        "unawareness": ["T13"],
+        "non_compliance": "n/a: retention is T12 on F4"
+      }
+    },
+    {
+      "id": "F6", "from": "orders-api", "to": "tenant-client",
+      "data": "Responses: 202 with exportId to POST /v1/exports; export status and a signed link to the file, valid for 15 minutes, to GET /v1/exports/{id}",
+      "personal_data": false,
+      "stride": {
+        "spoofing": "n/a: the client checks the API's public TLS certificate, the control of T2; the tenant is authenticated on the request, F1 (T1)",
+        "tampering": ["T2"],
+        "repudiation": "n/a: a response has no business effect of its own; the request that caused it is audited in T3",
+        "information_disclosure": ["T4", "T6"],
+        "denial_of_service": ["T5"],
+        "elevation_of_privilege": "n/a: a response grants no role; a link to another tenant's file is T6 under information disclosure"
+      }
+    },
+    {
+      "id": "F7", "from": "export-queue", "to": "export-worker",
+      "data": "export.requested v1 event: export ID, tenant ID, date range; the worker exports the tenant the event names",
+      "personal_data": false,
+      "stride": {
+        "spoofing": ["T14"],
+        "tampering": ["T14"],
+        "repudiation": "n/a: each event carries the export ID whose request T3 audits",
+        "information_disclosure": "n/a: the event holds IDs and a date range, no order data",
+        "denial_of_service": ["T5"],
+        "elevation_of_privilege": "n/a: a forged or altered event is T14; the worker's rights on the database and storage are fixed by T7"
+      }
+    }
+  ],
+  "threats": [
+    {"id": "T1", "title": "A stolen integration client secret is used to request exports",
+     "disposition": "mitigate",
+     "mitigation": "Existing (design, Context: OAuth client credential): OAuth client credentials. Planned: access tokens valid 15 minutes; client secrets kept in a key vault and rotated every 90 days",
+     "verification": "Integration test in CI: an expired or wrongly signed token gets 401; key vault rotation policy test",
+     "asvs": ["V3.5.3", "V2.10.4"]},
+    {"id": "T2", "title": "A request or an export file is altered in transit",
+     "disposition": "mitigate",
+     "mitigation": "Existing (design, Context: HTTPS): HTTPS on the API. Planned: TLS 1.2 or later only on the API and the storage endpoint; HTTPS-only storage; HSTS on API responses",
+     "verification": "testssl.sh scan of both public endpoints in staging before each release: no protocol below TLS 1.2 and no plain HTTP",
+     "asvs": ["V9.1.1", "V14.4.5"]},
+    {"id": "T3", "title": "A tenant denies having requested an export",
+     "disposition": "mitigate",
+     "mitigation": "Planned: one audit event per export request: client ID, tenant ID, export ID, UTC time and result",
+     "verification": "Integration test asserts one audit event for each POST /v1/exports",
+     "asvs": ["V7.1.4"]},
+    {"id": "T4", "title": "A signed link pasted into a ticket or chat lets anyone download the file until it expires",
+     "disposition": "accept",
+     "owner": "Priya Shah (Head of Platform)",
+     "reason": "ADR-2: links are bearer credentials by design, valid 15 minutes for one file; shorter links break slow tenant integrations",
+     "accepted": "Written acceptance in the design review record, 2026-11-18",
+     "asvs": ["V13.1.3"]},
+    {"id": "T5", "title": "Mass export requests or status polling exhaust the API and the worker and load the orders database",
+     "disposition": "backlog",
+     "item": "B-31",
+     "asvs": ["V11.1.4"]},
+    {"id": "T6", "title": "Tenant A reads tenant B's export by its ID (insecure direct object reference)",
+     "disposition": "mitigate",
+     "mitigation": "Existing (design, Contracts GET /v1/exports/{id} and NFR-4): tenant taken from the access token, never the path; a foreign export ID or link returns 404. Planned: every lookup filters by tenant",
+     "verification": "NFR-4 automated test: tenant A requests tenant B's export ID and link, expects 404",
+     "asvs": ["V4.2.1", "V13.1.4"]},
+    {"id": "T7", "title": "A leaked static secret lets an attacker act as the export worker against the database or storage",
+     "disposition": "mitigate",
+     "mitigation": "Existing (worker configuration at revision 3f9c2a1, checked by CI run 4182): workload identity for the worker; no password or account key in configuration. Planned: read-only database role on orders",
+     "verification": "CI policy test: the worker configuration holds no password or account key; secret scan on each pull request",
+     "evidence": "CI run 4182 on revision 3f9c2a1: policy test and secret scan passed, 2026-11-19",
+     "asvs": ["V2.10.1", "V2.10.4"]},
+    {"id": "T8", "title": "The export query misses the tenant filter and mixes tenants' rows in one file",
+     "disposition": "mitigate",
+     "mitigation": "Planned: PostgreSQL row-level security by tenant; the worker sets the tenant from the event before it queries",
+     "verification": "Integration test with two seeded tenants: each export holds only its own rows",
+     "asvs": ["V4.2.1"]},
+    {"id": "T9", "title": "Customer-entered text starting with =, +, - or @ runs as a formula when the tenant opens the CSV",
+     "disposition": "mitigate",
+     "mitigation": "Planned: prefix such cells with a single quote when the worker writes the file",
+     "verification": "Unit test with fixture rows that start with each of =, +, - and @"},
+    {"id": "T10", "title": "An export container is readable without a signed link",
+     "disposition": "mitigate",
+     "mitigation": "Existing (design, Containers: one container per tenant): one container per tenant. Planned: containers private and public access disabled for the storage account",
+     "verification": "Infrastructure policy test in CI; an anonymous GET on a staging export file expects 403 or 404"},
+    {"id": "T11", "title": "Exports carry phone numbers and full addresses that most tenants do not need",
+     "disposition": "backlog",
+     "item": "B-32"},
+    {"id": "T12", "title": "Export files with personal data are kept longer than needed",
+     "disposition": "mitigate",
+     "mitigation": "Existing (design, Containers and NFR-5: export files kept 7 days): deletion within 7 days. Planned: a storage lifecycle rule that deletes export files after 7 days",
+     "verification": "Lifecycle rule test in staging and a weekly scan for files older than 7 days",
+     "asvs": ["V8.3.8"]},
+    {"id": "T13", "title": "End customers are not told that tenants export their order data",
+     "disposition": "accept",
+     "owner": "Marta Silva (Data Protection Officer)",
+     "reason": "Tenants are the controllers; the data processing agreement makes them responsible for notice to their customers",
+     "asvs": ["V8.3.3"]},
+    {"id": "T14", "title": "A process other than the Orders API puts or alters an export.requested event, so the worker exports any tenant's orders",
+     "disposition": "mitigate",
+     "mitigation": "Planned: queue access by workload identity only: the Orders API alone may send, the export worker alone may receive; no shared access keys on the queue",
+     "verification": "CI policy test on the queue's role assignments and key settings; a staging send with another workload identity expects 403"},
+    {"id": "T15", "title": "Stored orders altered through the Orders API write paths, which this model does not examine, flow into export files",
+     "disposition": "backlog",
+     "item": "B-33"}
+  ],
+  "abuse_cases": [
+    {"id": "AC1", "actor": "A former employee of a tenant who kept the integration client secret",
+     "goal": "Download all of that tenant's customer orders after leaving",
+     "how": "Requests a token with the old secret and calls POST /v1/exports",
+     "threats": ["T1"]},
+    {"id": "AC2", "actor": "A user of tenant A who knows the export ID format",
+     "goal": "Read tenant B's customer orders",
+     "how": "Calls GET /v1/exports/{id} with guessed or leaked IDs",
+     "threats": ["T6", "T8"]},
+    {"id": "AC3", "actor": "Anyone who sees a support ticket with a pasted download link",
+     "goal": "Download the export file before the link expires",
+     "how": "Opens the link within 15 minutes",
+     "threats": ["T4"]}
+  ],
+  "review": [
+    {"ref": "V1.1.2", "result": "not examined"},
+    {"ref": "V2.1.1", "result": "not applicable", "reason": "Integrations authenticate with client credentials, not user-set secrets; administrators sign in through tenant single sign-on, which is not examined here"},
+    {"ref": "V2.10.1", "result": "met", "evidence": "CI run 4182 on revision 3f9c2a1: policy test shows the worker configuration holds no password or account key; secret scan passed, 2026-11-19"},
+    {"ref": "V2.10.4", "result": "gap", "threats": ["T7"]},
+    {"ref": "V3.5.3", "result": "gap", "threats": ["T1"]},
+    {"ref": "V4.2.1", "result": "gap", "threats": ["T6", "T8"]},
+    {"ref": "V7.1.4", "result": "gap", "threats": ["T3"]},
+    {"ref": "V8.3.3", "result": "gap", "threats": ["T13"]},
+    {"ref": "V8.3.8", "result": "gap", "threats": ["T12"]},
+    {"ref": "V9.1.1", "result": "gap", "threats": ["T2"]},
+    {"ref": "V11.1.4", "result": "gap", "threats": ["T5"]},
+    {"ref": "V13.1.3", "result": "gap", "threats": ["T4"]},
+    {"ref": "V13.1.4", "result": "gap", "threats": ["T6"]},
+    {"ref": "V14.2.1", "result": "not examined"},
+    {"ref": "V14.4.5", "result": "gap", "threats": ["T2"]}
+  ],
+  "not_examined": [
+    "Web UI and single sign-on for tenant administrators (needs its own model)",
+    "Orders API write paths and the integrity of stored orders",
+    "Dependency and container vulnerabilities (run scanning-vulnerabilities)"
+  ]
+}

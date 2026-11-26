@@ -1,0 +1,31 @@
+{
+  "products": [
+    {
+      "name": "Kestrel",
+      "scores": {
+        "fit": {"score": 4, "evidence": "Sandbox test 2026-10-20: 13 of 14 requirements; R7 needs a workaround", "status": "verified"},
+        "apis": {"score": 2, "evidence": "API docs read 2026-10-21; no webhooks; ERP sync by nightly file only", "status": "verified"},
+        "cost": {"score": 5, "evidence": "Written quote K-311, 2026-10-22: 5-year total 410,000 EUR", "status": "verified"},
+        "exit": {"score": 4, "evidence": "Export test 2026-10-20: full CSV and API export; contract clause 14.2 returns data", "status": "verified"}
+      }
+    },
+    {
+      "name": "Lumen",
+      "scores": {
+        "fit": {"score": 4, "evidence": "Sandbox test 2026-10-20: 13 of 14 requirements; R11 not supported", "status": "verified"},
+        "apis": {"score": 5, "evidence": "Sandbox calls 2026-10-21: REST and webhooks for jobs and technicians", "status": "verified"},
+        "cost": {"score": 2, "evidence": "Written quote L-88, 2026-10-22: 5-year total 590,000 EUR", "status": "verified"},
+        "exit": {"score": 3, "evidence": "Export test 2026-10-20: CSV export; job photos only by API", "status": "verified"}
+      }
+    },
+    {
+      "name": "Pike",
+      "scores": {
+        "fit": {"score": 3, "evidence": "Vendor demo 2026-10-19 of its own script; no sandbox", "status": "claimed"},
+        "apis": {"score": 3, "evidence": "API docs read 2026-10-21; webhooks for jobs only", "status": "verified"},
+        "cost": {"score": 4, "evidence": "Written quote P-1203, 2026-10-22: 5-year total 455,000 EUR", "status": "verified"},
+        "exit": {"score": 3, "evidence": "Contract draft clause 9 (undated), read 2026-10-22, returns data as CSV; export not tested", "status": "claimed"}
+      }
+    }
+  ]
+}

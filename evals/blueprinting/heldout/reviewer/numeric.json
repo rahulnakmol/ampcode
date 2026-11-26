@@ -1,0 +1,61 @@
+{
+  "status": "H1-author-arithmetic-controls-awaiting-independent-source-review",
+  "convention": "Exact Decimal inputs; money two decimals; null contingency is unsupplied, not approved zero. Person-days are not elapsed days. Targets are not observations; 10.8 is an equivalent expected count, not a fractional observed order.",
+  "estimates": [
+    {"id":"manufacturing-r1","sources":["M11.a","M11.b"],"currency":"GBP",
+     "rows":[["1","6","9","960"],["10","1.5","2.5","720"],["10","0.5","1","640"],["1","3","5","960"]],
+     "row_order":["shared design","local validation","training","governance/handover"],
+     "contingency_percent":"12.5","expected_days":["29","49"],"expected_base":["22640","37840"],"expected_contingency":["2830","4730"],"expected_total":["25470","42570"]},
+    {"id":"manufacturing-r2","sources":["M11.a","M11.b","M12.a"],"currency":"GBP",
+     "rows":[["1","6","9","960"],["10","1.5","2.5","680"],["10","0.5","1","640"],["1","3","5","960"]],
+     "row_order":["shared design","local validation","training","governance/handover"],
+     "contingency_percent":"12.5","expected_days":["29","49"],"expected_base":["22040","36840"],"expected_contingency":["2755","4605"],"expected_total":["24795","41445"]},
+    {"id":"finance-mapping","sources":["F07.a"],"currency":"GBP",
+     "rows":[["5","2","2","725"],["1","3","3","725"]],"row_order":["mapping","shared review"],
+     "contingency_percent":null,"expected_days":["13","13"],"expected_base":["9425","9425"],"expected_contingency":null,"expected_total":null},
+    {"id":"presales-discovery","sources":["P04.a","P04.b"],"currency":"EUR",
+     "rows":[["4","1.5","2.5","760"],["1","4","6","880"],["4","0.5","1","680"]],"row_order":["discovery","prototype","validation"],
+     "contingency_percent":"12.5","expected_days":["12","20"],"expected_base":["9440","15600"],"expected_contingency":["1180","1950"],"expected_total":["10620","17550"]},
+    {"id":"rfp-original-base","sources":["R04.b"],"currency":"EUR",
+     "rows":[["16","0.75","0.75","560"],["1","3","5","840"]],"row_order":["setup","transition"],
+     "contingency_percent":null,"expected_days":["15","17"],"expected_base":["9240","10920"],"expected_contingency":null,"expected_total":null},
+    {"id":"rfp-current-base","sources":["R04.b","R05.a"],"currency":"EUR",
+     "rows":[["14","0.75","0.75","560"],["1","3","5","840"]],"row_order":["setup","transition"],
+     "contingency_percent":null,"expected_days":["13.5","15.5"],"expected_base":["8400","10080"],"expected_contingency":null,"expected_total":null},
+    {"id":"rfp-original-optional","sources":["R04.b"],"currency":"EUR",
+     "rows":[["16","0.5","0.5","480"]],"row_order":["optional training"],
+     "contingency_percent":null,"expected_days":["8","8"],"expected_base":["3840","3840"],"expected_contingency":null,"expected_total":null},
+    {"id":"rfp-current-optional","sources":["R04.b","R05.a"],"currency":"EUR",
+     "rows":[["14","0.5","0.5","480"]],"row_order":["optional training"],
+     "contingency_percent":null,"expected_days":["7","7"],"expected_base":["3360","3360"],"expected_contingency":null,"expected_total":null}
+  ],
+  "metrics": [
+    {"id":"physical-stock","sources":["M06.a"],"expression":["+","156","48","36"],"expected":"240","unit":"couplings"},
+    {"id":"released-shortfall","sources":["M06.a"],"expression":["-","170","156"],"expected":"14","unit":"couplings"},
+    {"id":"pilot-missed-percent","sources":["M03.a"],"expression":["*",["/","18","72"],"100"],"expected":"25","unit":"percent"},
+    {"id":"pilot-target-percent","sources":["M03.a"],"expression":["*",["/","18","72"],"0.6","100"],"expected":"15","unit":"percent target"},
+    {"id":"pilot-target-count","sources":["M03.a"],"expression":["*","72","0.15"],"expected":"10.8","unit":"equivalent expected count at equal exposure; not observed count"},
+    {"id":"pilot-percentage-points","sources":["M03.a"],"expression":["-","25","15"],"expected":"10","unit":"percentage points target"},
+    {"id":"cost-change-low","sources":["M11.a","M11.b","M12.a"],"expression":["*","10","1.5",["-","680","720"],"1.125"],"expected":"-675","unit":"GBP current less original including contingency"},
+    {"id":"cost-change-high","sources":["M11.a","M11.b","M12.a"],"expression":["*","10","2.5",["-","680","720"],"1.125"],"expected":"-1125","unit":"GBP current less original including contingency"},
+    {"id":"distinct-reopen-percent","sources":["S05.a"],"expression":["*",["/","30","150"],"100"],"expected":"20","unit":"percent"},
+    {"id":"service-target-percent","sources":["S05.a"],"expression":["*",["/","30","150"],"0.7","100"],"expected":"14","unit":"percent target"},
+    {"id":"service-target-count","sources":["S05.a"],"expression":["*","30","0.7"],"expected":"21","unit":"distinct tickets at equal exposure target"},
+    {"id":"service-target-reduction","sources":["S05.a"],"expression":["-","30","21"],"expected":"9","unit":"distinct tickets target, not events"},
+    {"id":"repeat-events","sources":["S05.a"],"expression":["-","36","30"],"expected":"6","unit":"events beyond first per ticket"},
+    {"id":"invoice-basket","sources":["F05.b"],"expression":["+","7200","7500","7800","2500"],"expected":"25000","unit":"GBP, not release consent"},
+    {"id":"second-contact-percent","sources":["P03.a"],"expression":["*",["/","54","240"],"100"],"expected":"22.5","unit":"percent one-week sample"},
+    {"id":"rfp-current-with-option-low","sources":["R04.b","R05.a"],"expression":["+","8400","3360"],"expected":"11760","unit":"EUR one-time cost illustration"},
+    {"id":"rfp-current-with-option-high","sources":["R04.b","R05.a"],"expression":["+","10080","3360"],"expected":"13440","unit":"EUR one-time cost illustration"}
+  ],
+  "calendar": {
+    "sources":["M01.d","M10.a"],"zone":"Europe/London",
+    "raised":"2027-08-27T15:30:00","holidays":["2027-08-30"],
+    "expected_due":"2027-08-31T15:30:00+01:00","expected_utc":"2027-08-31T14:30:00+00:00",
+    "observed":"2027-08-31T18:00:00","expected_overdue_seconds":9000
+  },
+  "invoice_routes": {
+    "sources":["F02.a","F02.b","F05.b"],"inclusive_department_limit":"7500",
+    "invoices":["7200","7500","7800","2500"],"expected":["department","department","director","department"]
+  }
+}

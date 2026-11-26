@@ -1,0 +1,3 @@
+[18 Apr 2027 09:12] Dana Whitfield (VP Product): Quick priorities for next week's grooming. Activation is still the goal: median days-to-5-active is 4.5, target 2. Fix the CSV problems first. I do NOT want SSO/SCIM work pulled into this initiative - that's the enterprise tier initiative (Q3).
+[18 Apr 2027 09:20] Marco Silva (CS): +1 on CSV. But the spam issue is killing us with M365 customers, 6 escalations this month.
+[18 Apr 2027 09:31] Chris Novak (Sales): Northgate is $210k. Can we at least raise the 500 limit? That's not SSO.

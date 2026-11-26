@@ -1,0 +1,72 @@
+{
+  "status": "Succeeded",
+  "properties": {
+    "changes": [
+      {
+        "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-orders-prod/providers/Microsoft.Storage/storageAccounts/stordersexport",
+        "changeType": "Create",
+        "after": {
+          "name": "stordersexport",
+          "type": "Microsoft.Storage/storageAccounts",
+          "apiVersion": "2023-05-01",
+          "location": "westeurope",
+          "sku": {"name": "Standard_ZRS"},
+          "kind": "StorageV2"
+        }
+      },
+      {
+        "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-orders-prod/providers/Microsoft.Sql/servers/sql-orders-prod/databases/orders",
+        "changeType": "Modify",
+        "before": {
+          "name": "sql-orders-prod/orders",
+          "type": "Microsoft.Sql/servers/databases",
+          "apiVersion": "2023-08-01",
+          "location": "westeurope",
+          "sku": {"name": "GP_S_Gen5", "capacity": 2}
+        },
+        "after": {
+          "name": "sql-orders-prod/orders",
+          "type": "Microsoft.Sql/servers/databases",
+          "apiVersion": "2023-08-01",
+          "location": "westeurope",
+          "sku": {"name": "GP_S_Gen5", "capacity": 4}
+        },
+        "delta": [
+          {"path": "sku.capacity", "propertyChangeType": "Modify", "before": 2, "after": 4}
+        ]
+      },
+      {
+        "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-orders-prod/providers/Microsoft.Web/sites/app-orders-prod",
+        "changeType": "Deploy",
+        "before": {"name": "app-orders-prod", "type": "Microsoft.Web/sites", "apiVersion": "2023-12-01", "location": "westeurope"},
+        "after": {"name": "app-orders-prod", "type": "Microsoft.Web/sites", "apiVersion": "2023-12-01", "location": "westeurope"}
+      },
+      {
+        "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-orders-prod/providers/Microsoft.DocumentDB/databaseAccounts/cosmos-orders-legacy",
+        "changeType": "Delete",
+        "before": {"name": "cosmos-orders-legacy", "type": "Microsoft.DocumentDB/databaseAccounts", "apiVersion": "2024-05-15", "location": "westeurope"}
+      },
+      {
+        "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-orders-prod/providers/Microsoft.Network/publicIPAddresses/pip-orders-legacy",
+        "changeType": "Delete",
+        "before": {"name": "pip-orders-legacy", "type": "Microsoft.Network/publicIPAddresses", "apiVersion": "2024-01-01", "location": "westeurope"}
+      },
+      {
+        "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-orders-prod/providers/Microsoft.KeyVault/vaults/kv-orders-prod",
+        "changeType": "NoChange",
+        "before": {"name": "kv-orders-prod", "type": "Microsoft.KeyVault/vaults", "apiVersion": "2023-07-01", "location": "westeurope"},
+        "after": {"name": "kv-orders-prod", "type": "Microsoft.KeyVault/vaults", "apiVersion": "2023-07-01", "location": "westeurope"}
+      },
+      {
+        "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-orders-prod/providers/Microsoft.Compute/disks/disk-orders-scratch",
+        "changeType": "Ignore",
+        "before": {"name": "disk-orders-scratch", "type": "Microsoft.Compute/disks", "apiVersion": "2023-10-02", "location": "westeurope"}
+      },
+      {
+        "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-orders-prod/providers/Microsoft.Web/sites/app-orders-prod/config/appsettings",
+        "changeType": "Unsupported",
+        "unsupportedReason": "Changes to the resource cannot be analyzed because its resource ID or API version cannot be calculated until the deployment is under way."
+      }
+    ]
+  }
+}

@@ -1,122 +1,193 @@
-# Compact mission record
+# Mission record and contract
 
-Use one record per mission. Replace the prompts below with observed facts; omit inapplicable
-fields with a reason. Link existing briefs and evidence rather than duplicate them. This is a
-template, not an executable validator or proof of persistent background operation.
+Keep one record per mission. Reuse the repository's existing plan or state convention; otherwise
+keep it at `.amp/in/missions/<mission-id>/mission.md`, and make sure `/.amp/in/` is in the
+repository-local Git exclude before writing there. This local record is not shared or backed up:
+transfer the sanitized record and required artifacts before a handoff or deleting a worktree. On
+Amp, keep the contract in a document artifact as well. The record starts with the `missioning`
+charter, gate ledger and decision trail; run its `scripts/ledger_check.py` on the file. Exclude
+credentials, private payloads and unneeded raw logs.
 
-## Coordinate with mission-control when installed
+## The contract
 
-Discover the installed tools and their schemas; do not invent action payloads. Keep reasoning in
-`grilling`, `crafting`, and `delivering`; the plugin records revision-bound operational checkpoints.
+The contract is the baseline the owner approves once. Its fields:
+
+| Field | Holds |
+| --- | --- |
+| `schemaVersion`, `missionId`, `repository` | The contract version (3), the mission's ID and the repository (`owner/name`) |
+| `outcome`, `scope` (`in`, `out`), `spec` | What changes for whom, and what does not |
+| `design` (`high`, `low`), `ux` | The technical design and the rendered UX states (https links) |
+| `defense` | The whiteboard defense record |
+| `cases` | The closed case list: `id`, `case`, `mitigation`. Adversarial review covers exactly these |
+| `openQuestions` | `id`, `question`, `default`. Each default is taken unless the owner changes it |
+| `effects` | `id`, `effect`, `preAuthorized`, `source`, optional `kind`. Every outside effect the mission needs. `kind: "dev-merge"` marks the one entry for the milestone merges into `dev`; pre-authorized, it picks ship, otherwise the variant is stop |
+| `readiness` | `id`, `check`, `evidence`: the preflight results, including targets outside GitHub |
+| `milestones` | `id`, `title`, `exit` (the exit criteria); they finish (merge, or are ready under stop) in this order |
+| `items` | `id`, `title`, `milestone`, `size` (XS, S, M or L), `outcome`, `inScope`, `outOfScope`, `dependsOn`, `done`, `automatedTest`, `humanTest`, `trace` |
+| `brief` | `markdown` and `url`: the kickoff brief's text and link |
+
+An item depends only on items in the same or an earlier milestone, and no item is larger than L.
+Re-planning or splitting an item keeps its done criteria verbatim in the same milestone. Any other
+change to the outcome, scope, spec, design, UX, defense, cases, questions, effects, brief or a
+milestone's criteria changes the baseline: that is stop reason 1 and needs re-approval. Item fields
+outside the done criteria (scope lists, size, dependencies, tests, trace, title) may change with a
+recorded reason. Filed items from findings sit outside the baseline.
+
+## Use mission-control when it accepts a contract
+
+Check that the installed `mission_start` accepts `contract` before using these tools. Until the
+contract version is on `dev` and installed in your Amp, the older plugin keeps the same tool names
+with its old behaviour; with it, or with no plugin, use the manual path below.
 
 | Tool | Use |
 | --- | --- |
-| `mission_start(requirements)` | Capture the original requirements and owner-initiated/adopted mission. |
-| `mission_update(action)` | Record design, defense, build, candidate, reviews, evidence, or pause using the installed action schema. Never submit self-authored approval receipts. |
-| `mission_status()` | Inspect current checkpoints and explicit blockers before proceeding. |
-| `mission_approve(stage: design\|merge)` | Request owner acknowledgment of the current design package or exact final candidate. |
-| `mission_merge_mode(mode: auto\|ask)` | Offer an owner-restricted merge-mode change; auto is the default, not a timer awaiting consent. |
-| `mission_present()` | Present evidence, artifacts, limitations, and the try-it procedure before requesting merge. |
-| `mission_merge()` | Request dev integration only after current local gates, required CI and branch protection pass. |
-| `mission_reconcile()` | Inspect external merge state after interruption or a pending merge; never equate a request with integration. |
-| `mission_recover()` | After owner investigation of a settled, unqueued attempt, invalidate candidate evidence and return to review; never blindly retry. |
+| `mission_start({ contract })` | Start the contract mission |
+| `mission_status` | Show the compact status and the next action |
+| `mission_preflight` | Run the GitHub readiness checks and bind the result to the contract |
+| `mission_approve` | Open the one kickoff dialog |
+| `mission_effect` | Record a pre-authorized effect with no dialog; otherwise open the effect dialog (stop reason 2) |
+| `mission_merge({ milestoneId })` | Ship: squash-merge the milestone's exact head into `dev`. Stop: merge nothing, check the PR is still open on the reviewed head and not set to merge, and record the milestone as ready |
+| `mission_reconcile({ milestoneId })` | Read back the merge after an interruption or a pending request |
+| `mission_recover({ milestoneId })` | After a settled, unqueued attempt, void the candidate's evidence and return to review; never retry blindly |
+| `mission_report({ kind })` | Write the `checkpoint` or `close-out` report |
+| `mission_update(action)` | The actions below |
 
-The first version authenticates the Amp thread owner, not arbitrary multiplayer initiators. The
-initiator must own the thread or the owner must explicitly adopt the mission. Owner-restricted
-dialogs use a non-sensitive typed acknowledgment in a secret-style field to restrict responders.
-**Never enter credentials or other secrets.** Do not invent a responder ID or treat an agent's
-transcript claim as a completed owner interaction. These local interactions are not trusted merge
-authorization against an unrestricted executor.
+`mission_update` actions: `amend` (with a reason), `replan` (keep the criteria), `file` (an item
+or a follow-up), `delegate`, `item-done` (evidence per done line and a review), `candidate`,
+`review` (gate 1 or 2, bound to the milestone fingerprint), `disposition` (`fixed`, `replanned` or
+`filed`), `evidence`, `assume`, `stop` (one of the five reasons and the items or milestones it
+blocks) and `resume`. Approvals, preflight results, effects and merges are recorded only by the
+plugin's own tools and dialogs; never try to supply them through `mission_update`.
 
-Use existing GitHub credentials through `gh` in Amp; no custom controller/App or approval service
-is needed. Protected `dev` must enforce PRs, strict required CI pinned to source Apps, and
-administrator enforcement. The source implementation does not configure CI/protection. Missing
-requirements block automatic merge; provision them only with separate approval. Owner approvals,
-review/evidence records, risk and merge mode remain local workflow gates, not hostile-shell security.
-If the plugin is unavailable, maintain this manual record and report the capability gap; do not
-claim tool enforcement or substitute local files for successful CI and branch protection.
+In the kickoff dialog the owner ticks every default and effect. Text in its Changes field is the
+owner's answer, not an approval. A dismissed dialog records nothing; the reopen quick action brings
+it back. **Never enter credentials or other secrets** in a dialog. The plugin's gates are workflow
+enforcement, not security against an unrestricted shell: never bypass them with a shell command.
+
+## Without the plugin
+
+- Kickoff is one recorded owner reply: a human ledger row quoting the owner's words with the
+  message ID as its source (`written:` or `question:`, per `missioning`).
+- Every other gate is an agent row, except an effect the contract does not pre-authorize: that is
+  a human Effects gate (stop reason 2), per `missioning`. A milestone merge cites its pre-authorized effect and the
+  evidence: the PR, the head, both reviews and the green checks.
+- Stops, assumptions, filed items and performed effects go in the record sections below.
+- Report the missing enforcement as a limitation; never claim tool enforcement.
 
 ## Record template
 
 ```markdown
 # Mission: <id and customer outcome>
 
-## Agreement
-- Requirements: <original request and purpose; clarification/change provenance>
-- Brief: <path/URL and revision; self-contained or transferred with this record>
-- Design package: <concrete spec, plan, technical design, relevant crafting UX or inapplicability>
-- Fresh-context design review: <packet revision, reviewer/lens, reading list and actual reads,
-  findings/dispositions, reused grilling evidence and its scope, pending checks or skip rationale>
-- Design acknowledgment: <initiator/thread owner or explicit owner adoption; package revision;
-  owner interaction reference; permitted assumptions; material changes reopen this gate>
-- In / out: <scope and non-goals>
-- Target: <actual recipient/environment; integration and rollout are separate>
-- Permissions: <authorized local, remote, deployment actions and their source>
-- Risk / merge mode: <low | medium | high | unknown and rationale; auto default | owner-selected ask>
-- GitHub readiness: <existing access, required CI and branch protection evidence or blocker>
-- Limits: <agreed time/spend/attempt limits, or absent; next cost decision>
-- Tokens: <4,000/task and 30,000/session unless explicitly overridden; measured/estimated/unknown
-  usage including delegated work, remaining allowance, and accounting limitations>
-- Owner: <integration owner; independent reviewer when required>
-- Communication: <standard/formal | editorial; ELI5 when requested>
-- Ownership defense: <record from whiteboard-defense.md; brief/candidate, challenge, teach-back,
-  gaps and disposition; design readiness is not runtime verification>
+## Charter
+<missioning's charter fields, including Open questions (each with a default) and Pre-authorized
+effects; Playbook software-delivery>
 
-## Current checkpoint
-- State: <framing | design-awaiting-acknowledgment | defense | assess | define | harness-red | implement | journey | review-1 |
-  repair | review-2 | value | ready-for-dev | integrated-dev | blocked | replan | stopped>
-- Repository / base / branch / worktree / candidate: <exact identities>
-- Preserved existing work: <owner, paths, verified safe location; never secrets>
-- Active slice and dependencies: <IDs, ownership, prerequisite results>
-- Next safe action: <one executable step and its prerequisite/approval>
-- Blockers: <missing evidence/decision, owner, what unblocks it>
+## Gate ledger
+<missioning's table: readiness preflight, kickoff (a human row), each milestone merge (agent rows
+citing the pre-authorized effect), each effect (an agent row with `(E<n>)` when pre-authorized,
+otherwise a human Effects gate), close-out>
 
-## Acceptance and evidence
-| ID | Customer behavior and measurable criterion | Slice | Test/journey | Evidence and revision | Status |
-| --- | --- | --- | --- | --- | --- |
+## Decision trail
+<missioning's table>
 
-For each evidence record:
-- ID / criterion / candidate or base revision / relevant dirty diff identity.
-- Command or reproducible user actions, environment, safe fixture and tool versions as needed.
-- Expected result, observed result, exit status, and sanitized artifact location.
-- Red failure reason; green result; applicable failure/recovery controls.
-- Limits: simulation vs real execution, missing platforms, known failures, evidence reuse reason.
+## Contract
+- Revision and link: <artifact URL or path; digest when the plugin reports one>
+- Readiness preflight: <each check, result and evidence>
 
-## Reviews and repairs
-| Finding | Severity/customer risk | Reviewer and reviewed revision | Regression evidence | Fix/disposition | Gate-two verification |
-| --- | --- | --- | --- | --- | --- |
-- Gate one: <scope, independence, candidate, result, limitations>
-- Gate two: <final candidate, finding closure, new-risk check, result, limitations>
-- Spec/code drift: <checked acceptance IDs and revisions; missing/unauthorized/approved/stale-doc
-  differences, source evidence, decisions and revalidation; also refresh after resume>
-- Accepted risks: <authorized owner, rationale, boundaries; never a fabricated pass>
+## Milestones
+| ID | Branch | Status | PR and head | Gate 1 (failed rounds) | Gate 2 (failed rounds) | Evidence | Merge commit |
+| --- | --- | --- | --- | --- | --- | --- | --- |
 
-## Value and delivery
-- Benefit: <baseline → observed result, comparable conditions, uncertainty>
-- Enabling dependency, if applicable: <criterion served; full-journey evidence still needed>
-- Presentation: <inspected artifacts, evidence, limitations, reproducible try-it procedure>
-- Merge acknowledgment: <required for ask/high; exact head/base/design/mode and owner interaction;
-  absent for low/medium auto is not a blocker; unknown risk always blocks>
-- CI / PR / merge: <exact head, required check outcomes, approvals, observed remote result>
-- Milestone/full journey: <combined behavior and regression evidence>
-- Release/deployment: <not authorized | pending | separately verified; target and evidence>
-- Lessons: <specific findings that change the next slice>
+## Items
+| ID | Milestone | Size | Executor (thread or subagent) | Branch and head | Status | Evidence | Review |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+
+## Children
+| Item | Thread | Last seen | State | Action taken |
+| --- | --- | --- | --- | --- |
+- Backstop schedule: <ID while any child runs; cleared when none run>
+
+## Assumptions
+| Date | Question | Assumption | Why | Reported in |
+| --- | --- | --- | --- | --- |
+
+## Stops
+| ID | Reason (1-5) | Question | Options | Recommendation | Blocks | Answer and source |
+| --- | --- | --- | --- | --- | --- | --- |
+
+## Filed items and follow-ups
+| ID | Finding | Milestone or follow-up | Source review |
+| --- | --- | --- | --- |
+
+## Effects performed
+| Effect | Pre-authorization or approval | Observed result |
+| --- | --- | --- |
 
 ## Operations and resume
-| Operation intent/target | Authority | Expected effect | Observed effect/ID | Reconciliation before retry |
-| --- | --- | --- | --- | --- |
-- Artifacts transferred/preserved: <locations and integrity check>
-- Pick-up prompt: <goal, this record and brief, actual revision, first safe action, stop gates>
+| Operation and target | Expected effect | Observed effect or ID | Reconciliation before retry |
+| --- | --- | --- | --- |
+- Next safe action: <one executable step>
+- Pick-up prompt: <goal, this record and the contract, actual revisions, first safe action, the five stop reasons>
 ```
 
-`ready-for-dev` requires acknowledged current design, a current ownership defense, evidence for every in-scope criterion, both
-review gates, value, and no unresolved mandatory failures. It does not authorize a push, merge,
-or release by itself. A defense marked ready permits implementation only after design acknowledgment,
-not dev integration. Low/medium auto needs no additional response once all gates pass; ask/high needs
-current exact-candidate acknowledgment. Unknown risk, stale evidence, or missing CI/protection blocks merge.
-`integrated-dev` requires the actual remote merge result. `blocked`, `replan`, and `stopped` retain
-the last completed checkpoint and reason; none means success. Release status is recorded separately.
+Store large artifacts outside the record and link them. A path to a deleted worktree is not a
+usable handoff. If the record lives only locally, say so in the handoff.
 
-Store large artifacts outside the record. Keep only sanitized data necessary to reproduce a check.
-Before worktree cleanup, transfer needed evidence and update references; a path to a deleted
-worktree is not a usable handoff. If the record lives only locally, say so in the handoff.
+## Delivery evidence into backlog.json
+
+When a milestone delivers stories or bugs from a `grooming` backlog, record each one right after
+the milestone merges into `dev` (under stop, after its gates pass), so `backlog.py trace` and
+`steering`'s forecast count it as delivered from then on. Use `grooming`'s delivery record:
+`{ at, evidence, criteria }`, as its `reference/contract.md` says. Do not change that format. Only
+a `ready` item takes a record.
+
+1. For each acceptance criterion of the item, decide `met` or `not met` from the evidence: the
+   test that proves it and the milestone PR. A green PR is not a met criterion on its own. List every
+   criterion; a partial delivery stays visible.
+2. Set the variables. `<grooming>` is the `grooming` skill's directory.
+
+   ```bash
+   export BACKLOG=path/to/backlog.json ITEM=S-1 AT=2026-11-23 \
+     PR=https://github.com/OWNER/NAME/pull/N TEST="python3 -m unittest tests.test_x -v" \
+     CRITERIA='{"S-1.1": "met", "S-1.2": "met", "S-1.3": "not met"}'
+   ```
+
+3. Write the record. It replaces any earlier record on the item.
+
+   ```bash
+   python3 - <<'EOF'
+   import json, os
+   path = os.environ["BACKLOG"]
+   with open(path, encoding="utf-8") as f:
+       data = json.load(f)
+   item = next(i for i in data["items"] if i["id"] == os.environ["ITEM"])
+   item["delivery"] = {"at": os.environ["AT"],
+                       "evidence": [os.environ["PR"], "Test command: " + os.environ["TEST"]],
+                       "criteria": json.loads(os.environ["CRITERIA"])}
+   with open(path, "w", encoding="utf-8") as f:
+       json.dump(data, f, indent=2, ensure_ascii=False)
+       f.write("\n")
+   EOF
+   ```
+
+4. Check it.
+
+   ```bash
+   python3 <grooming>/scripts/backlog.py validate "$BACKLOG"
+   python3 <grooming>/scripts/backlog.py trace "$BACKLOG"
+   ```
+
+   `validate` must print `0 errors`. A record that misses a criterion, adds one, or uses another
+   value is refused (for example `delivery criteria must list exactly [...]`): fix the record,
+   never drop the criterion. In `trace`, the item's row reads `delivered`, or `partial: <IDs> not
+   met`. `trace` exits 1 while other gaps remain, such as features not yet signed off; those are
+   not this step's to close.
+
+5. List each record in the checkpoint report under `Done`. The backlog file is local; copying the
+   records to a tracker with `syncing` is an outside effect, done only when the contract
+   pre-authorizes it.
+
+At close-out, only check: every story or bug each milestone delivered has a record, and `trace`
+shows it. Record a missing one with the steps above, and list the records under `Criteria and
+evidence`.

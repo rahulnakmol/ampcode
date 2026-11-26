@@ -1,0 +1,89 @@
+{
+  "status": "candidate-independent-arithmetic-not-domain-validation",
+  "convention": "Exact Decimal inputs; money shown to two decimals; no inferred tax, price, currency conversion or calendar duration. Null contingency means not supplied, not approved zero.",
+  "estimates": [
+    {
+      "id": "manufacturing-r1", "sources": ["M11.a", "M11.b"], "currency": "GBP",
+      "rows": [["1", "8", "12", "900"], ["10", "2", "3", "700"], ["10", "1", "2", "600"], ["1", "4", "6", "900"]],
+      "row_order": ["shared design", "local validation", "training", "governance/handover"],
+      "contingency_percent": "15", "expected_days": ["42", "68"],
+      "expected_base": ["30800", "49200"], "expected_contingency": ["4620", "7380"], "expected_total": ["35420", "56580"]
+    },
+    {
+      "id": "manufacturing-r2", "sources": ["M11.a", "M11.b", "M12.a"], "currency": "GBP",
+      "rows": [["1", "8", "12", "900"], ["10", "2", "3", "750"], ["10", "1", "2", "600"], ["1", "4", "6", "900"]],
+      "row_order": ["shared design", "local validation", "training", "governance/handover"],
+      "contingency_percent": "15", "expected_days": ["42", "68"],
+      "expected_base": ["31800", "50700"], "expected_contingency": ["4770", "7605"], "expected_total": ["36570", "58305"]
+    },
+    {
+      "id": "finance-mapping", "sources": ["F07.a"], "currency": "GBP",
+      "rows": [["4", "3", "3", "640"], ["1", "2", "2", "640"]],
+      "row_order": ["cost-centre mapping", "shared review"],
+      "contingency_percent": null, "expected_days": ["14", "14"], "expected_base": ["8960", "8960"],
+      "expected_contingency": null, "expected_total": null
+    },
+    {
+      "id": "presales-discovery", "sources": ["P04.a", "P04.b"], "currency": "EUR",
+      "rows": [["3", "2", "3", "800"], ["1", "5", "8", "900"], ["3", "1", "2", "700"]],
+      "row_order": ["discovery", "prototype", "validation"],
+      "contingency_percent": "10", "expected_days": ["14", "23"],
+      "expected_base": ["11400", "18600"], "expected_contingency": ["1140", "1860"], "expected_total": ["12540", "20460"]
+    },
+    {
+      "id": "rfp-original-base", "sources": ["R04.b"], "currency": "EUR",
+      "rows": [["18", "0.5", "0.5", "600"], ["1", "4", "6", "800"]],
+      "row_order": ["setup", "transition"],
+      "contingency_percent": null, "expected_days": ["13", "15"], "expected_base": ["8600", "10200"],
+      "expected_contingency": null, "expected_total": null
+    },
+    {
+      "id": "rfp-current-base", "sources": ["R04.b", "R05.a"], "currency": "EUR",
+      "rows": [["20", "0.5", "0.5", "600"], ["1", "4", "6", "800"]],
+      "row_order": ["setup", "transition"],
+      "contingency_percent": null, "expected_days": ["14", "16"], "expected_base": ["9200", "10800"],
+      "expected_contingency": null, "expected_total": null
+    },
+    {
+      "id": "rfp-original-optional", "sources": ["R04.b"], "currency": "EUR",
+      "rows": [["18", "0.25", "0.25", "500"]], "row_order": ["optional training"],
+      "contingency_percent": null, "expected_days": ["4.5", "4.5"], "expected_base": ["2250", "2250"],
+      "expected_contingency": null, "expected_total": null
+    },
+    {
+      "id": "rfp-current-optional", "sources": ["R04.b", "R05.a"], "currency": "EUR",
+      "rows": [["20", "0.25", "0.25", "500"]], "row_order": ["optional training"],
+      "contingency_percent": null, "expected_days": ["5", "5"], "expected_base": ["2500", "2500"],
+      "expected_contingency": null, "expected_total": null
+    }
+  ],
+  "metrics": [
+    {"id": "physical-stock", "sources": ["M06.a"], "expression": ["+", "90", "55", "35"], "expected": "180", "unit": "housings"},
+    {"id": "released-shortfall", "sources": ["M06.a"], "expression": ["-", "140", "90"], "expected": "50", "unit": "housings"},
+    {"id": "pilot-missed-percent", "sources": ["M03.a"], "expression": ["*", ["/", "15", "60"], "100"], "expected": "25", "unit": "percent"},
+    {"id": "pilot-target-percent", "sources": ["M03.a"], "expression": ["*", ["/", "15", "60"], "0.8", "100"], "expected": "20", "unit": "percent target"},
+    {"id": "pilot-target-count", "sources": ["M03.a"], "expression": ["*", "60", "0.2"], "expected": "12", "unit": "missed orders at equal exposure, target"},
+    {"id": "pilot-percentage-points", "sources": ["M03.a"], "expression": ["-", "25", "20"], "expected": "5", "unit": "percentage points target"},
+    {"id": "cost-change-low", "sources": ["M11.a", "M12.a"], "expression": ["*", "10", "2", ["-", "750", "700"], "1.15"], "expected": "1150", "unit": "GBP including contingency"},
+    {"id": "cost-change-high", "sources": ["M11.a", "M12.a"], "expression": ["*", "10", "3", ["-", "750", "700"], "1.15"], "expected": "1725", "unit": "GBP including contingency"},
+    {"id": "distinct-reopen-percent", "sources": ["S05.a"], "expression": ["*", ["/", "24", "200"], "100"], "expected": "12", "unit": "percent"},
+    {"id": "service-target-percent", "sources": ["S05.a"], "expression": ["*", ["/", "24", "200"], "0.75", "100"], "expected": "9", "unit": "percent target"},
+    {"id": "service-target-count", "sources": ["S05.a"], "expression": ["*", "24", "0.75"], "expected": "18", "unit": "distinct tickets at equal exposure, target"},
+    {"id": "service-target-reduction", "sources": ["S05.a"], "expression": ["-", "24", "18"], "expected": "6", "unit": "distinct tickets target"},
+    {"id": "repeat-events", "sources": ["S05.a"], "expression": ["-", "30", "24"], "expected": "6", "unit": "events beyond first per ticket"},
+    {"id": "invoice-basket", "sources": ["F05.b"], "expression": ["+", "4800", "5000", "5200"], "expected": "15000", "unit": "GBP; not approval authority"},
+    {"id": "second-contact-percent", "sources": ["P03.a"], "expression": ["*", ["/", "45", "180"], "100"], "expected": "25", "unit": "percent, one-week sample"},
+    {"id": "rfp-current-with-option-low", "sources": ["R04.b", "R05.a"], "expression": ["+", "9200", "2500"], "expected": "11700", "unit": "EUR one-time cost illustration"},
+    {"id": "rfp-current-with-option-high", "sources": ["R04.b", "R05.a"], "expression": ["+", "10800", "2500"], "expected": "13300", "unit": "EUR one-time cost illustration"}
+  ],
+  "calendar": {
+    "sources": ["M01.d", "M10.a"], "zone": "Europe/London",
+    "raised": "2027-04-02T16:00:00", "holidays": ["2027-04-05"],
+    "expected_due": "2027-04-06T16:00:00+01:00", "expected_utc": "2027-04-06T15:00:00+00:00",
+    "observed": "2027-04-06T17:00:00", "expected_overdue_seconds": 3600
+  },
+  "invoice_routes": {
+    "sources": ["F02.a", "F05.b"], "inclusive_department_limit": "5000",
+    "invoices": ["4800", "5000", "5200"], "expected": ["department", "department", "director"]
+  }
+}
