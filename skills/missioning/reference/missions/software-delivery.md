@@ -59,7 +59,11 @@ match the exact candidate.
 
 Every acceptance criterion maps to an executed test or journey on the released revision, both
 reviews are recorded against that revision, the trace has no gaps, and the release is verified on
-its target.
+its target. Each test written for a new or changed behaviour keeps its failing run on the unchanged
+code; a refactor's checks pass on both. When accessibility is in scope, each in-scope WCAG 2.2 A
+and AA criterion reads pass, fail or not examined. Built screens are compared with the approved
+renders when states were rendered, and the threat model is updated after the build when the design
+has one.
 
 ## Red flags
 

@@ -59,6 +59,9 @@ case (8 and 9), M4 portfolio decision and handover (10 and 11).
 Each funded initiative has a charter, a named owner who agreed, a business case whose numbers
 trace to evidence or labelled assumptions, a stage gate, and a planning mission ready to start.
 The steering committee decision is recorded with the named client authority and version.
+The design traces each documented cause it addresses; contradictions between sources are in a
+register; estimates are ranges, not single figures; every judgement-based score carries a
+data-confidence label; and each cost maps to a budget line, with unfunded spend flagged.
 
 ## Red flags
 
