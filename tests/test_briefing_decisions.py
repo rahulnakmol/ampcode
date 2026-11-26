@@ -93,5 +93,66 @@ class Briefs(unittest.TestCase):
         self.assertTrue(cr.stdout.startswith("characters:"), cr.stdout)
 
 
+
+class Page(unittest.TestCase):
+    """brief_page.py: the approver reads a page made only from the checked brief."""
+
+    PAGE = SCRIPT.parent / "brief_page.py"
+
+    def test_page_shows_every_part_of_the_checked_brief(self):
+        import hashlib
+        import html
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "brief.md"
+            source.write_text(GOOD)
+            done = subprocess.run([sys.executable, str(self.PAGE), str(source)], capture_output=True, text=True)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            page = (Path(tmp) / "brief.html").read_text()
+            shown = " ".join(html.unescape(re.sub(r"<[^>]+>", " ", page)).split())
+            self.assertIn(hashlib.sha256(source.read_bytes()).hexdigest(), page)
+            self.assertNotIn("<script", page)
+            self.assertNotIn("**", shown)  # bold is rendered, not shown as Markdown
+            data, _, body = brief_check.front_matter(GOOD)
+            prose, record, _ = brief_check.split_body(body)
+            expected = [data["decision"], data["yes"], data["no"], *data["risks"]]
+            for line in (prose + record).splitlines():
+                text = re.sub(r"^(#+|\s*(?:[-*]|\d+\.))\s+", "", line.strip())
+                text = re.sub(r"\*\*|`|\[([^\]]+)\]\([^)]+\)", lambda m: m.group(1) or "", text)
+                if text and not text.startswith("|"):
+                    expected.append(text)
+            for text in expected:
+                with self.subTest(text=text[:50]):
+                    self.assertIn(" ".join(text.split()), shown)
+
+    def test_page_escapes_text_and_draws_tables(self):
+        text = replace("## What changes\n", """## What changes
+
+| Part | Cost |
+| --- | --- |
+| Hosting | 25 dollars |
+
+Costs stay low when a < b & c. See [the notes](javascript:alert) first.
+""")
+        self.assertEqual(brief_check.check(text), [])
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "brief.md"
+            source.write_text(text)
+            done = subprocess.run([sys.executable, str(self.PAGE), str(source)], capture_output=True, text=True)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            page = (Path(tmp) / "brief.html").read_text()
+        self.assertIn("<td>Hosting</td><td>25 dollars</td>", page)
+        self.assertIn("a &lt; b &amp; c", page)
+        self.assertNotIn('href="javascript', page)
+
+    def test_a_brief_that_fails_the_check_gets_no_page(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "brief.md"
+            source.write_text(replace("## Not included", "## Left out"))
+            done = subprocess.run([sys.executable, str(self.PAGE), str(source)], capture_output=True, text=True)
+            self.assertEqual(done.returncode, 1)
+            self.assertIn("refused", done.stdout)
+            self.assertFalse((Path(tmp) / "brief.html").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
