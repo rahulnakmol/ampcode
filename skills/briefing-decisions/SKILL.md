@@ -1,6 +1,6 @@
 ---
 name: briefing-decisions
-description: "Writes a plain-English decision brief for any human sign-off: what the reader decides, what happens on yes and on no, what changes, what done looks like, what was and was not checked, the risks they accept, what is not included, how to undo it, and a glossary, with codes and hashes kept in a closing technical record. A standard-library checker enforces the structure, sentence length, reading ease, banned codes, and no HTML or Markdown that hides words. Use when a person must approve, sign off, acknowledge or choose: a design, a merge, a release, a budget, a roadmap, a vendor or a plan; when asked for a decision brief, an approval summary or an executive sign-off; or when a sign-off text is too technical for its reader."
+description: "Writes a plain-English decision brief for any human sign-off: what the reader decides, what happens on yes and on no, what changes, what done looks like, what was and was not checked, the risks they accept, what is not included, how to undo it, and a glossary, with codes and hashes kept in a closing technical record. A standard-library checker enforces the structure, sentence length, reading ease, banned codes, and no HTML or Markdown that hides words; a second script renders the checked brief as one readable HTML page the approver reads before approving in a dialog. Use when a person must approve, sign off, acknowledge or choose: a design, a merge, a release, a budget, a roadmap, a vendor or a plan; when asked for a decision brief, an approval summary or an executive sign-off; or when a sign-off text is too technical for its reader."
 ---
 
 # Briefing decisions
@@ -53,12 +53,25 @@ included. Repair every wrong or missing answer in the brief and check it again.
 
 ## Hand it over
 
-- **Amp:** publish the checked text as a document artifact. With mission-control, pass
-  `bundle.brief = { markdown, url }` in the design action, where `url` is that document
-  (see `delivering`). In a contract mission the kickoff brief is the contract's Brief field
-  (`mission_start({ contract })`), and `mission_approve` shows it in the kickoff dialog.
-  Publish from the checked text: the dialog cannot prove the page matches.
-- **Other hosts:** give the Markdown file to the approver. An HTML picture opens in a browser.
+Every approval shows the approver a readable page first, then asks in a dialog. Render the
+checked brief, never a hand-written page:
+
+```bash
+python3 scripts/brief_page.py brief.md   # writes brief.html; refuses a brief that fails the check
+```
+
+The page has the decision and the summary on top, the sections, the technical record folded
+away, and the brief's sha256 at the foot. Then ask with the host's dialog, offering Approve and
+Change (say what), and record the choice. Render and show the page again after every repair:
+the sha256 at its foot must match the brief the reviewer read.
+
+- **Amp:** publish `brief.html` as a visual artifact (`content_path`) and show it in the reply,
+  then ask with the choice-question tool. With mission-control, pass `bundle.brief = { markdown,
+  url }` in the design action, where `url` is that page (see `delivering`). In a contract mission
+  the kickoff brief is the contract's Brief field (`mission_start({ contract })`), and
+  `mission_approve` shows it in the kickoff dialog, with the page's link.
+- **Other hosts:** open `brief.html` in a browser (VS Code: its built-in browser), then ask with
+  the question tool (`AskUserQuestion` in Claude Code, `ask_user` in Copilot).
 - Record the approval with the brief's revision. Approval in chat is not approval of the brief
   unless the approver names it.
 

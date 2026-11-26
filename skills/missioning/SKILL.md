@@ -119,7 +119,7 @@ The mission file holds both; each gate is one ledger row. Every playbook uses th
    lenses the gate needs on the work itself.
 3. At a high-risk human gate, use a review by another model provider when one is available.
 4. Ask the decision owner through the host's tool, and any other approver for a tracker approval
-   or written record, with the brief's first lines and its link. Record the answer with the brief.
+   or written record, after showing the brief's HTML page or link. Record it with the brief's sha256.
 
 A gate stays `pending` if its review could not run or repairs made after it lack a passed
 `goldfishing` fix-check; a self-review is not fresh. Name the reviewed brief's sha256 in the review
