@@ -88,9 +88,9 @@ The mission file holds both; each gate is one ledger row. Every playbook uses th
 
 | Gate | The owner decides | The agent does |
 | --- | --- | --- |
-| Kickoff | The whole baseline, once: charter, criteria, design or plan, defaults, effects | Drafts it, finds facts first, asks the owner facts, runs the preflight, writes the brief |
+| Kickoff | The whole baseline, once: charter, criteria, design or plan, defaults, effects | Drafts it, finds facts first, asks the owner facts, runs the preflight, writes the brief; after a rejection, checks and reviews the whole brief again, not only the named defect |
 | Effects | Each outside effect the charter does not pre-authorize, when it arises | Shows the exact plan, applies only that plan, reads the result back |
-| Stops | One question for one of the five stop reasons | Keeps working on everything the stop does not block |
+| Stops | One question for one of the five stop reasons | Prepares the question as a human gate (section 6); keeps working on everything the stop does not block |
 | Outcome | Reviews the close-out; the review blocks no merge | Evidence, trace, gaps, lessons |
 
 - **Approval is a recorded row.** A human gate passes only with a named decider who is the
