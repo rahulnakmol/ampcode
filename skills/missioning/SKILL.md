@@ -143,7 +143,7 @@ kickoff brief lists the last review's open findings; never ask to approve an unr
 2. List what needs the owner's attention: waived gates, accepted risks, assumptions taken, filed
    items and follow-ups, each with one owner and a date.
 3. Propose skill edits from lessons (lesson, file, change); apply each only once the owner approves.
-4. Report the state of every gate. Distinguish done, verified, approved and released.
+4. Report every gate's state; keep done, verified, approved and released apart, each with its evidence.
 
 ## Common rationalizations
 
