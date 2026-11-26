@@ -3,6 +3,7 @@
 Run: python3 -m unittest tests.test_missioning -v
 """
 
+import hashlib
 import re
 import shutil
 import subprocess
@@ -65,7 +66,8 @@ def workspace(tmp):
     (base / "briefs").mkdir()
     (base / "reviews").mkdir()
     shutil.copy(BRIEF, base / "briefs" / "charter.md")
-    (base / "reviews" / "charter-novice.md").write_text("Novice reader: all four answers correct.\n")
+    digest = hashlib.sha256((base / "briefs" / "charter.md").read_bytes()).hexdigest()
+    (base / "reviews" / "charter-novice.md").write_text(f"Brief sha256 {digest}\nNovice reader: all four answers correct.\n")
     return base
 
 
@@ -252,6 +254,32 @@ class Rules(unittest.TestCase):
         self.assertRule(edit("reviews/charter-novice.md", "http://example.com/review"), "R9")
         self.assertRule(edit("reviews/charter-novice.md", "briefs/charter.md"), "R9")
 
+    def test_r14_approved_brief_is_the_reviewed_revision(self):
+        # 3b, 3c and 7b had a revision approved that no reviewer read; the record named another hash.
+        with tempfile.TemporaryDirectory() as tmp:
+            base = workspace(tmp)
+            digest = hashlib.sha256((base / "briefs" / "charter.md").read_bytes()).hexdigest()
+            record = base / "reviews" / "charter-novice.md"
+            rules = lambda: sorted({p.split(":", 1)[0] for p in ledger_check.check(GOOD, base)})
+            self.assertEqual(rules(), [])
+            record.write_text(f"Reviewed {digest[:8]}\n")  # a short prefix is enough
+            self.assertEqual(rules(), [])
+            record.write_text(f"Reviewed {digest.upper()}\n")  # hex case does not matter
+            self.assertEqual(rules(), [])
+            record.write_text(f"Reviewed {digest[:7]}\n")  # too short to identify a revision
+            self.assertEqual(rules(), ["R14"])
+            record.write_text("Reviewed fa4130a8c0de, all answers correct.\n")  # another revision
+            self.assertEqual(rules(), ["R14"])
+            record.write_text(f"Reviewed {digest}0\n")  # a longer hex run is not this digest
+            self.assertEqual(rules(), ["R14"])
+            # The brief changed after review: the record still names the old hash.
+            record.write_text(f"Reviewed {digest}\n")
+            brief = base / "briefs" / "charter.md"
+            brief.write_text(brief.read_text() + "\n")  # any change, even a blank line
+            self.assertEqual(rules(), ["R14"])
+        # A published review record cannot be read, and an agent gate has no brief.
+        self.assertEqual(self.rules(edit("reviews/charter-novice.md", "https://ampcode.com/artifacts/review")), [])
+
     def test_r10_agent_evidence(self):
         self.assertRule(edit(AGENT, AGENT.replace("threat-model.md, 14 threats", "-")), "R10")
         self.assertRule(edit(AGENT, AGENT.replace("threat-model.md, 14 threats", "TBD")), "R10")
@@ -323,6 +351,8 @@ class Files(unittest.TestCase):
                 for path in re.findall(r"\b((?:briefs|reviews)/[\w.-]+\.md)\b", line):
                     (base / path).parent.mkdir(exist_ok=True)
                     shutil.copy(BRIEF, base / path)
+                    if path.startswith("reviews/"):
+                        (base / path).write_text("Brief sha256 " + hashlib.sha256(BRIEF.read_bytes()).hexdigest() + "\n")
             self.assertEqual(ledger_check.check(example, base), [])
             self.assertIn("R1", {p.split(":", 1)[0] for p in ledger_check.check(template, base)})
 

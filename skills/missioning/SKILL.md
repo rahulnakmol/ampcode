@@ -121,13 +121,13 @@ The mission file holds both; each gate is one ledger row. Every playbook uses th
 4. Ask the decision owner through the host's tool, and any other approver for a tracker approval
    or written record, with the brief's first lines and its link. Record the answer with the brief.
 
-A gate whose review could not run stays `pending`, never `passed`; a self-review is not fresh.
-Name the reviewed brief's sha256 in the review record. At any review cap (3 failed rounds), this
-disposition policy decides, never the owner: fix each Blocker or Major inside the closed case
-list or the criteria; if still open, reopen and re-plan the items; file findings outside the list
-as later items, or follow-ups in the last milestone, without failing the review; fix or decline a
-Nit, which never fails one. Record `fixed`, `replanned` or `filed`. Before kickoff, the kickoff
-brief lists the last review's open findings; never ask to approve an unreviewed revision.
+A gate stays `pending` if its review could not run or repairs made after it lack a passed
+`goldfishing` fix-check; a self-review is not fresh. Name the reviewed brief's sha256 in the review
+record. At any review cap (3 failed rounds), this disposition policy decides, never the owner: fix
+each Blocker or Major inside the closed case list or the criteria; if still open, reopen and re-plan
+the items; file findings outside the list as later items or last-milestone follow-ups without failing
+the review; fix or decline a Nit, which never fails one. Record `fixed`, `replanned` or `filed`. The
+kickoff brief lists the last review's open findings; never ask to approve an unreviewed revision.
 
 ## 7. Report usage honestly
 

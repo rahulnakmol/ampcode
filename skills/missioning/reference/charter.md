@@ -85,6 +85,7 @@ recorded assumption, taken from the open question's default or a safe, reversibl
 | R11 | A waived gate gives its reason in Evidence, not a placeholder; it is never reported as passed |
 | R12 | The decision trail table has its five headers, and every row names a Decider |
 | R13 | Pre-authorized effects is `none` (which grants no ID, even one named after it) or a list of `E<n> <effect>` entries. An `agent` row whose Evidence starts with "pre-authorized", whose Gate names `(E<n>)`, or whose Evidence speaks of pre-authorization and names an `E<n>` (upper case) has Evidence `pre-authorized: <source>`, and names only `E<n>` IDs the charter lists, at least one. A human row's Evidence never starts with "pre-authorized" and never speaks of pre-authorization while naming a listed `E<n>`, and its Gate never names a listed `(E<n>)`. Other codes such as `E501` are plain evidence |
+| R14 | A passed human gate's local Review record names the sha256 of its Brief, in full or by its first 8 or more hex digits, so the approved brief is the revision a fresh reader read. The checker cannot tell whether that reading passed. An `https` review record is not read |
 
 ## Template
 
