@@ -461,6 +461,9 @@ class Playbooks(unittest.TestCase):
             self.assertIn(f"(reference/missions/{name}.md)", skill)
         for ref in ("reference/charter.md", "reference/hosts.md", "scripts/ledger_check.py"):
             self.assertIn(ref, skill)
+        # Every playbook has its owner-facts questions, asked before the design or plan.
+        facts = re.findall(r"(?m)^\| ([a-z][a-z-]*) \| \S", "\n".join(ledger_check.section(CHARTER.read_text(), "Owner facts by playbook") or []))
+        self.assertEqual(sorted(facts), names)
 
     def test_playbook_shape(self):
         for path in sorted(MISSIONS.glob("*.md")):

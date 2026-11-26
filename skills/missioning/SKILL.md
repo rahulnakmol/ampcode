@@ -15,8 +15,8 @@ hosts without an owner-only dialog its rules are not a security boundary.
 
 ## 1. Write the charter
 
-Draft the charter, the mission's contract, from the owner's ask with
-[reference/charter.md](reference/charter.md). Find facts first. It names:
+Draft the charter, the mission's contract, with [reference/charter.md](reference/charter.md). Find
+facts first, then ask the owner for the facts only they hold ("Owner facts by playbook"). It names:
 
 - **Outcome**, **Decision owner** and **Approvers** (client and outside approvers included);
 - **Success criteria** and **Definition of Done**, each with a finite set of cases;
@@ -88,7 +88,7 @@ The mission file holds both; each gate is one ledger row. Every playbook uses th
 
 | Gate | The owner decides | The agent does |
 | --- | --- | --- |
-| Kickoff | The whole baseline, once: charter, criteria, design or plan, defaults, effects | Drafts it, finds facts first, runs the preflight, writes the brief |
+| Kickoff | The whole baseline, once: charter, criteria, design or plan, defaults, effects | Drafts it, finds facts first, asks the owner facts, runs the preflight, writes the brief |
 | Effects | Each outside effect the charter does not pre-authorize, when it arises | Shows the exact plan, applies only that plan, reads the result back |
 | Stops | One question for one of the five stop reasons | Keeps working on everything the stop does not block |
 | Outcome | Reviews the close-out; the review blocks no merge | Evidence, trace, gaps, lessons |

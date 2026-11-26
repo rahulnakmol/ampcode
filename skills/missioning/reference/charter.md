@@ -57,6 +57,25 @@ below are allowed and ignored by the checker.
   Evidence, Decider. Add rows; never rewrite them (the checker cannot verify this). A conductor
   that already keeps decision provenance adds one row that links it.
 
+## Owner facts by playbook
+
+Before drafting the design or plan, ask the owner once for the facts only they hold that the
+sources do not settle: all questions in one message, each with the default the agent takes. This
+is not a `grilling` round; its three-question limit does not apply. Write each answer into the
+charter, or a decision trail row with the owner as Decider. An unanswered one becomes an open
+question with that default. This round is part of kickoff, not a stop.
+
+| Playbook | Ask for |
+| --- | --- |
+| transformation | discount rate and horizon; how many initiatives to fund; funding lines; the firm's own delivery capabilities |
+| product-operations | guardrails and the re-plan trigger (such as a P85 date); hard dates, legal ones included; dependency and release rules |
+| software-delivery | how and where it deploys; known related issues; target devices |
+| campaigns-and-research | the decision the work informs; dates; who counts as the audience; pilot or sample size; house rules; budget |
+| experience-design | users' screens, zoom and assistive technology; brand rules and banned assets |
+| security-review | the deployment as run (identity provider, sign-in methods, TLS, rotated secrets); tenant settings; the standard and its version |
+| infrastructure | tagging and policy rules; cost limit; SLO targets and their windows; service tier |
+| product-assessment | must-haves; the tier or plan to assess; the document that governs each plan |
+
 ## The five stop reasons
 
 After kickoff, the agent asks the owner only when one of these holds. Anything else becomes a
