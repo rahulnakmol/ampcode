@@ -1,0 +1,31 @@
+WEBVTT
+
+00:01:05.000 --> 00:01:40.000
+<v Maya Chen>Thanks all. Goal today: agree how we move Relaybase from seat pricing to usage pricing on build minutes. Seats don't track value anymore; one team with 4 seats runs 90,000 minutes a month.
+
+00:03:12.000 --> 00:03:50.000
+<v Daniel Ortiz>From finance: 31% of our compute cost comes from 6% of accounts, and gross margin on those is negative. Company margin is 61%, board target is 70% by end of year.
+
+00:05:30.000 --> 00:06:10.000
+<v Priyanka Shah>Sales view: customers hate surprise bills. Two lost deals last quarter cited a competitor's bill shock. If we do usage, we need spend caps and alerts, otherwise I can't sell it.
+
+00:07:45.000 --> 00:08:20.000
+<v Daniel Ortiz>Caps are fine but they have to be soft. If a build stops at 2 a.m. because of a hard cap, that's a support incident and a churn risk.
+
+00:09:02.000 --> 00:09:40.000
+<v Priyanka Shah>I'd actually say hard caps by default for the self-serve tier. Enterprise can have soft caps.
+
+00:11:15.000 --> 00:11:55.000
+<v Tom Becker>Engineering: metering already exists for internal dashboards, accurate to the second, but it's not billing grade. No idempotency, and we lose about 0.3% of events on runner restarts. Billing needs zero loss or a reconciliation.
+
+00:13:40.000 --> 00:14:10.000
+<v Maya Chen>Launch target is April 1 for new customers. Existing customers migrate in Q3 with 90 days' notice.
+
+00:14:30.000 --> 00:15:00.000
+<v Tom Becker>April 1 is tight. Billing-grade metering plus Stripe invoicing plus caps is a quarter of work for my team of five. I'd say June.
+
+00:16:20.000 --> 00:16:50.000
+<v Lena Fischer>Support: we get about 40 billing tickets a month today. Usage pricing usually doubles that in the first quarter. We need a usage page customers can check themselves.
+
+00:18:05.000 --> 00:18:30.000
+<v Maya Chen>Price point: finance proposed 0.8 cents per Linux minute, 2.4 for macOS. Free tier 2,000 minutes. We'll validate with 10 design-partner customers.

@@ -1,0 +1,31 @@
+{
+  "products": [
+    {
+      "name": "Alpha",
+      "scores": {
+        "fit": {"score": 5, "evidence": "Sandbox test of all 32 requirements, 2026-11-04: 30 supported, 2 configuration (notes/alpha-fit.md)", "status": "verified"},
+        "soc2": {"score": 4, "evidence": "SOC 2 Type II report, period 2025-10-01 to 2026-09-30, read 2026-11-06: covers the service; 1 exception with a management response", "status": "verified"},
+        "cost": {"score": 3, "evidence": "Written quote Q-2026-118, 2026-11-07: 3-year total 186,000 EUR including the SSO add-on", "status": "verified"},
+        "exit": {"score": 1, "evidence": "Sandbox export test, 2026-11-05: receipts export only as PDF; no API for expense history", "status": "verified"}
+      }
+    },
+    {
+      "name": "Beta",
+      "scores": {
+        "fit": {"score": 4, "evidence": "Sandbox test of all 32 requirements, 2026-11-04: 27 supported, 3 configuration, 2 process change (notes/beta-fit.md)", "status": "verified"},
+        "soc2": {"score": 4, "evidence": "Vendor trust page, read 2026-11-03, says SOC 2 Type II; report requested 2026-11-03, not received", "status": "claimed"},
+        "cost": {"score": 3, "evidence": "Written quote BQ-5521, 2026-11-06: 3-year total 179,000 EUR", "status": "verified"},
+        "exit": {"score": 3, "evidence": "Sandbox export test, 2026-11-05: full CSV export and a documented history API", "status": "verified"}
+      }
+    },
+    {
+      "name": "Gamma",
+      "scores": {
+        "fit": {"score": 3, "evidence": "Sandbox test of all 32 requirements, 2026-11-04: 22 supported, 6 configuration, 4 unresolved (notes/gamma-fit.md)", "status": "verified"},
+        "soc2": {"score": 3, "evidence": "SOC 2 Type II report, period 2025-07-01 to 2026-06-30, read 2026-11-06: card-issuing service out of scope", "status": "verified"},
+        "cost": {"score": 4, "evidence": "Public price page, read 2026-11-02; no written quote yet", "status": "claimed"},
+        "exit": {"score": 3, "evidence": "Sandbox export test, 2026-11-05: CSV export of all records; attachments by API only", "status": "verified"}
+      }
+    }
+  ]
+}

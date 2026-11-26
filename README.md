@@ -7,7 +7,9 @@ This GitHub repository is the readable source of truth. Amp loads published copi
 ## User guides
 
 - **[Using the skills](./docs/using-skills.md):** choose a skill, learn when to use it, copy a prompt, and understand what a good result looks like.
-- **[Mission-driven development](./docs/mission-driven-development.md):** take an idea or requirement through design, implementation, review and delivery; start or resume a mission.
+- **[Mission-driven development](./docs/mission-driven-development.md):** take an idea or requirement to one contract, one approval at kickoff, and milestones merged into `dev`; start or resume a mission.
+- **[Mission-driven planning](./docs/mission-driven-planning.md):** take a product, operations, or marketing initiative from workshop notes to a signed-off PRD and an executable backlog in GitHub or Excel, traced to delivered outcomes.
+- **[Start a Blueprinting engagement](./docs/blueprinting.md):** use the published functional-discovery skills, prepare the first workshop, select an engagement root and templates, and resume safely.
 - **[Advisory team](./docs/advisory-team.md):** use Archi, Darci and Opsci for architecture and operational advice.
 
 ## Layout
@@ -20,6 +22,54 @@ tests/                    Bun plugin tests and Python skill-script tests
 ```
 
 See [`plugins/README.md`](./plugins/README.md) and [`skills/README.md`](./skills/README.md) before adding an extension.
+
+## Blueprinting
+
+The six skills below are published to Rahul's Amp User Skills. Start with the
+[engagement guide](./docs/blueprinting.md) for copyable kickoff/resume prompts and
+the separate template prerequisite. Other users need their own authorized installation.
+
+[`skills/blueprinting/`](./skills/blueprinting/SKILL.md) is the enterprise functional-discovery
+capability for consultant workshops, operating models, kickoff, pre-sales and RFP work. Its first
+local helper retains exact Markdown revisions, records pending corrections and reports stale
+dependencies without overwriting human notes. It also checks reported written-client baselines
+and records explicit reconciliation. Functional coverage, estimate arithmetic and recipient-bound
+content packets now support generic local Markdown, Word, PowerPoint, Excel and PDF exports.
+Excel includes literal registers and bounded native estimate scenarios, not a business baseline.
+Registered file observation, explicit Start/Resume, staged template upgrades and derived indexes
+are implemented locally; see [the template contract](./skills/blueprinting/reference/templates.md).
+The separate `blueprinting-engagement-template` source is qualified locally but not published;
+template-backed Start requires an explicitly supplied compatible local copy.
+Native Obsidian 1.15.0 has bounded synthetic editing, filtering, navigation and save/reopen evidence.
+Selected local ZIP handoffs stage files for reported inspection and package their exact bytes;
+see [the export contract](./skills/blueprinting/reference/exports.md). Export is not delivery.
+Reviewed theme-only brand configuration can bind typography, colors and issuer/classification
+to exact source revisions; it does not import arbitrary templates or mandatory logo assets.
+Schema-4 diagrams add a bounded native Word/PowerPoint mapping with evidence-linked entities,
+directed relationships and cross-view registers. Bounded English synthetic/redacted evaluation,
+two independent reviews and owner acceptance of the demonstrated editable handoff are complete.
+This is not production-client validation or Microsoft desktop certification. Notion qualification
+includes a controlled human-edit simulation; two reminder wakes and later manual recovery do not
+establish continuous monitoring. Google Slides/Docs are deferred. Revision freshness does not
+establish client approval. Loading a published skill does not activate integrations or grant
+permission to process client data; GitHub source alone does not install skills into Amp.
+
+| Blueprinting task | Skill |
+| --- | --- |
+| Engagement continuity, policy and shared helpers | [blueprinting](./skills/blueprinting/SKILL.md) |
+| Opportunity, pre-sales and RFP, including a weighted fit-gap scored with `assessing-products` | [shaping-engagements](./skills/shaping-engagements/SKILL.md) |
+| Workshops, questionnaires and evidence | [discovering-requirements](./skills/discovering-requirements/SKILL.md) |
+| Process, operating model and functional handover | [designing-functions](./skills/designing-functions/SKILL.md) |
+| Narrative, reviewed packets and exports | [publishing-engagements](./skills/publishing-engagements/SKILL.md) |
+| Source-grounded functional and communication review | [reviewing-engagements](./skills/reviewing-engagements/SKILL.md) |
+
+Domain entries load the host-selected coordinator and use its shared contracts and helpers;
+they do not duplicate state or create a subagent per skill. Standalone coordinator/helper use
+remains supported. Keep complete packages together when preparing an explicitly authorized
+Personal publication; do not copy helpers into domain packages. Publication verification checked
+all 45 text files against integrated source, all five domain contracts and six native skill loads.
+Installed-host qualification remains bounded to the tested orb. Verify the selected package in
+your environment; lifecycle observations do not establish production outcomes.
 
 ## Meet the advisory team
 
@@ -95,7 +145,8 @@ Recommended invocation: Medium mode with Fast where supported (a user preference
 [`skills/grilling/`](./skills/grilling/SKILL.md) interviews you at the start of a task to turn a vague or partly detailed requirement, plan, or question into a confirmed, agent-ready brief. It sizes the request first (clear requests proceed without questions), looks up facts instead of asking, asks one to three high-impact questions per round with a recommended answer for each, runs an edge-case and pre-mortem pass using [`reference/edge-cases.md`](./skills/grilling/reference/edge-cases.md), and keeps grilling until a concreteness checklist passes. It ends with a confirmed brief covering the final shape, scope, requirements, edge cases, and verification, plus a step-by-step work plan and a ready-to-paste prompt for the agent that picks it up. It is model-invoked: it triggers at the start of most planning, design, build, or decision tasks and on phrases such as "grill me", "red-team this", "pre-mortem", "what could go wrong", "spec this out", or "write a PRD", and skips clear, small requests. Sources and design choices are in [`docs/grilling-research.md`](./docs/grilling-research.md). LLM-judged trigger and behavior evaluations live in [`evals/grilling/`](./evals/grilling/README.md), with results in [`docs/grilling-evaluation.md`](./docs/grilling-evaluation.md).
 
 For consequential handoffs, the Elephant-Goldfish adaptation separates the problem from the
-grading criteria and tests the brief with a fresh, read-only reader. Missing context is repaired
+grading criteria and tests the brief with a fresh, read-only reader through
+[`goldfishing`](./skills/goldfishing/SKILL.md). Missing context is repaired
 in the brief, not explained privately to the reviewer. Clear small edits skip this overhead.
 See the [paired scenario evaluation](./evals/egm/README.md) and
 [source rationale](./docs/delivering-research.md#elephant-goldfish-adaptation).
@@ -114,85 +165,199 @@ LLM-judged routing and behavior evaluations live in [`evals/crafting/`](./evals/
 
 ## Delivering
 
-[`skills/delivering/`](./skills/delivering/SKILL.md) carries a major feature, use case, or concrete
-requirement through outcome-driven delivery. Requirements retain their original purpose;
-`grilling` makes them concrete. A spec, plan, technical design, and relevant `crafting` UX design
-need the initiator's acknowledgment **before whiteboard defense or build**. Material changes reopen
-acknowledgment and defense. The unchanged approved brief does not need another interview.
-The integration owner explains the outcome,
-data flow, choices, invariants, threats, and failure limits. The receiving agent explains the plan
-back from the transferred materials; function-name recall is not required.
-Invoke it with “use delivering for this feature” or “deliver this approved brief.”
+[`skills/delivering/`](./skills/delivering/SKILL.md) carries a major feature, use case or concrete
+requirement through a **contract mission**. `grilling` makes the requirement concrete, with
+criteria that each name a finite set of cases; `crafting` renders every changed state; a
+whiteboard defense and a readiness preflight of the repository, CI, credentials and every outside
+target come before kickoff. All of it becomes one baselined contract with open questions (each
+with a default) and outside effects (each pre-authorized or not). The owner approves it **once**,
+at kickoff. Execution is then autonomous, milestone by milestone: M and L items in child threads,
+XS and S items in subagents, each test-first with a fresh review. A milestone squash-merges into
+`dev` after tests, CI and two fresh reviews of the same head, and a checkpoint report that asks
+nothing follows. Missions have no budgets and use no agent teams. Invoke it with "use delivering
+for this feature" or "deliver this approved brief."
 
 **Start a mission:** open the target project in Amp and paste:
 
 ```text
 Use delivering to start a mission for [outcome] in [repository]. Use grilling
-to make the expectations concrete, then present the specification, technical
-and relevant UX design for my acknowledgment before whiteboard defense or build.
-Use the default v1 integration workflow. Deliver through a checked PR to dev;
-ask separately before release, deployment or Personal publication.
+to make the criteria concrete and crafting to render every changed state.
+Write one contract with milestones, items, open questions with defaults and
+every outside effect, run the readiness preflight on it, and ask me for one
+approval at kickoff. Pre-authorize the milestone merges into dev and pushing
+mission branches.
 ```
 
-See [Ways to kick off a mission](./docs/mission-control.md#ways-to-kick-off-a-mission)
-for copyable prompts for an idea, concrete requirement, approved plan, issue/PR,
-design-only exploration, interrupted work, native subagent coordination, and v2
-shadow traceability. These are prompts to Amp, not custom slash commands.
+See [Ways to kick off a mission](./docs/mission-control.md#ways-to-kick-off-a-mission) for
+prompts for an idea, a concrete requirement, an approved plan, an issue or PR, design-only work,
+interrupted work and a separate delivery thread. These are prompts to Amp, not slash commands.
 
-Each small slice follows assessment, measurable outcome, meaningful failing harness, minimal
-implementation and working commits, real user journeys, correctness/security review, regression
-repair and revalidation, a distinct second review, customer-value assessment, and authorized dev
-integration. Consequential changes require independent reviews. Compact mission records support
-safe resumption; missing evidence, stale approvals, and ambiguous side effects do not become passes.
+After kickoff the owner is asked only for one of the five stop reasons:
 
-Before owner design acknowledgment, fresh-context reviewers check comprehension, design risks
-against source, and implementation readiness. Gate two and resume also check spec/code drift,
-distinguishing defects from approved changes. These checks retain both build-review gates and
-never turn an exhausted review budget into risk acceptance. The mission plugin's runtime schema
-is unchanged; these are skill instructions, not a new automatically enforced plugin gate.
+1. Change to the baseline: a criterion, scope item or design decision is wrong or conflicts, and no reading inside the contract works.
+2. Outside effect not in the contract: an irreversible or outside effect that the contract does not pre-authorize.
+3. A fact only a person holds, with no safe, reversible default.
+4. A red line: security, legal or safety.
+5. A milestone cannot meet its exit criteria after the work was re-planned and split.
 
-Communication supports standard/formal records and editorial explanations with descriptive
-headers, both guided by ASD-STE100 principles without an unvalidated compliance claim. ELI5 short
-forms contain fewer than 300 words and keep essential risks and blockers. Default budgets are
-4,000 tokens per task and 30,000 per session unless explicitly overridden; exact accounting and
-enforcement require runtime telemetry and are disclosed as unavailable when absent. The workflow
-uses deterministic tools for mechanical work, preserves repository conventions, and requires
-direct inspection of the produced artifact before completion.
+Anything else is a recorded assumption, listed in the next checkpoint report. New scope becomes a
+filed item in a later milestone. At a review cap (3 failed rounds at a gate) the disposition
+policy decides, never the owner: fix, re-plan and split, or file. There is no owner merge gate at
+any risk level; high risk means independent reviewers and the full case list. The steering thread
+watches its children and restarts or re-plans any that settle without a report. The close-out
+report gives evidence per criterion, every assumption, filed items, the effects performed, the
+gate ledger and the human tests.
 
-The skill supplies guidance; [`mission-control`](./plugins/mission-control/) supplies operational
-coordination when installed. Its [guide](./docs/mission-control.md) covers the trust boundary and
-setup prerequisites. At build entry, low/medium risk defaults to automatic merge into **dev**, with
-optional owner-selected ask-before-merge. Automatic mode needs no response or timer. High risk
-always needs acknowledgment of the exact candidate; unknown risk blocks merge. Evidence, inspected
-artifacts, and a try-it procedure precede a merge request. Completion means verified remote
-integration, not merely requesting auto-merge.
+The kickoff brief is written with [`briefing-decisions`](./skills/briefing-decisions/SKILL.md) and
+reviewed with [`goldfishing`](./skills/goldfishing/SKILL.md). In the kickoff dialog the owner
+ticks one box per default and pre-authorized effect, or writes what to change; there is no typed
+word and no secret field. Communication supports standard and editorial records, guided by
+ASD-STE100 principles without an unvalidated compliance claim, and ELI5 summaries under 300 words.
 
-The opt-in **v2 traceability foundation** retains acknowledged intent snapshots,
-stable criterion IDs, per-PR candidate histories, evidence-bound reviews, and
-post-delivery/whole-mission reports. It preserves v1 bytes during explicit migration.
-V2 is **shadow-only**: submitted evidence remains reported, remote merges are disabled,
-and qualified closure stays blocked. V1 remains the default integration workflow.
-See the [v2 contract and migration guide](./docs/mission-control.md#opt-in-v2-traceability).
-This foundation complements native Amp specialists and execution; it does not add
-a scheduler, activate a trusted CI replacement, or change the default build system.
+The skill supplies guidance; [`mission-control`](./plugins/mission-control/) supplies the
+contract record when installed: `mission_start({ contract })`, `mission_preflight`,
+`mission_approve` (the one kickoff dialog), `mission_effect`, `mission_update` with 12 actions,
+`mission_status`, `mission_merge`, `mission_reconcile`, `mission_recover` and `mission_report`.
+Its [guide](./docs/mission-control.md) covers the tools, the dialogs, the merge blockers, the
+trust boundary and the setup prerequisites. It uses the GitHub credentials `gh` already has;
+protected `dev` must enforce strict required checks pinned to their source Apps and include
+administrators. The plugin does not provision CI or protection, and its local state enforces the
+workflow, not security against an unrestricted executor. The v1 single-PR flow and the v2 shadow
+flow are retired: their records report a retired schema and stay unchanged.
 
-Version one supports a thread-owner initiator or a mission explicitly adopted by the thread owner.
-Owner-restricted dialogs take non-sensitive typed acknowledgments, **never secrets**. Local state
-enforces the workflow, not security against an unrestricted executor. The coordinator uses existing
-GitHub credentials through `gh` in the Amp environment; no custom controller, App, or approval
-service is required. Protected `dev` must enforce strict required CI checks pinned to their source
-Apps and include administrators. The plugin does not provision CI/protection; this repository's
-configured gate is described under Validate below. Missing or failing requirements block merge.
-Neither plugin loading nor local records imply hostile-shell isolation.
+Its [mission record](./skills/delivering/reference/mission-record.md) lists the contract fields,
+the tools and the path for hosts without the plugin;
+[review/recovery guidance](./skills/delivering/reference/review-and-recovery.md) keeps reviews
+bound to the exact head and resumption safe. Both milestone gates review with
+`interrogating-changes` (gate 2 also runs its lowered-bar check), a mission picks the ship or
+stop variant for its PRs, and [hosts-pr-watch](./skills/delivering/reference/hosts-pr-watch.md)
+waits on PRs where Amp's GitHub events are not available. [Research](./docs/delivering-research.md)
+records the earlier design rationale; [evaluations](./evals/delivering/README.md), including the
+stop-replay eval, distinguish simulated decisions from live execution. Install `grilling`
+alongside it. Source integration does not publish skills to Amp Personal Skills or the plugin to
+Amp Personal Plugins. Promotion to `rolling` or `main`, deployment and Personal publication are
+outside effects that run only when the contract pre-authorizes them or the owner approves each
+one once in the effect dialog (without the plugin, that question is stop reason 2).
 
-Its [mission record](./skills/delivering/reference/mission-record.md) lists coordinator tools and
-manual fallback; [review/recovery guidance](./skills/delivering/reference/review-and-recovery.md)
-preserves revision-bound reviews and safe resumption. [Research](./docs/delivering-research.md) records the design rationale;
-[evaluations](./evals/delivering/README.md) distinguish simulated decisions from live execution.
-Install/publish `grilling` alongside it for the expectation loop; if unavailable, the agent reports
-the dependency rather than silently installing it. Source integration does not publish skills to
-Amp Personal Skills or the coordinator to Amp Personal Plugins. Rolling, stable release, deployment, and Personal publication retain
-their separate gates.
+## Goldfishing
+
+[`skills/goldfishing/`](./skills/goldfishing/SKILL.md) is the one fresh-reader review protocol the
+other skills call. A reviewer with no access to the author's conversation reads only the artifact,
+its sources and the grading criteria. It covers four lenses (comprehension, critic, readiness,
+novice reader), Blocker/Major/Nit severity, how each finding is fixed, contested, escalated or
+declined, round limits, what happens when a reviewer fails, a codeword isolation check, and the
+review record. [`reference/hosts.md`](./skills/goldfishing/reference/hosts.md) shows how to start a
+fresh reviewer on Amp, Claude Code, VS Code with Copilot and the Copilot app (the last three from
+documentation, not tested). `grilling`, `planning` and `delivering` add their own questions; a
+test keeps the generic rules in this one skill.
+
+**Use it:** "Use goldfishing to review `docs/plan.md` with the critic lens against
+`src/billing/`." **Adapt it:** add questions and change the round cap in the calling skill; change
+the novice persona to match the real approver.
+
+## Briefing decisions
+
+[`skills/briefing-decisions/`](./skills/briefing-decisions/SKILL.md) writes a plain-English
+decision brief for any human sign-off: what you decide, what happens on yes and on no, what
+changes, what done looks like, what was and was not checked, the risks you accept, what is not
+included, how to undo it, and a glossary. Codes, hashes and IDs go into a closing technical
+record. `scripts/brief_check.py` (standard library) checks the structure, sentence length,
+reading ease, banned codes, and HTML or Markdown that hides words. `mission-control` requires a
+brief and its document link in every contract and links it from the kickoff dialog. On a
+synthetic case, run before the contract dialogs, a fresh non-technical reader answered all four
+sign-off questions from the brief and two of four from the dialog text of that time
+([results](./evals/briefing-decisions/results.md)).
+
+**Use it:** "Use briefing-decisions to write the sign-off brief for this vendor choice, for our
+finance director." **Adapt it:** headings, limits and banned codes are constants in the script
+and `banned.json`; mission-control's `lib/brief.ts` keeps a copy that a test compares.
+
+## Missioning
+
+[`skills/missioning/`](./skills/missioning/SKILL.md) is the thin conductor every mission starts
+from. One mission file holds a charter (outcome, decision owner, approvers, success criteria,
+Definition of Done, open questions with defaults, pre-authorized effects and what the agent may do
+without asking), a gate ledger and a decision trail. There is no budget. The success criteria are agreed before the work. The chosen playbook's steps go
+into the host's todo list, with `skip: <reason>` for any step not done. The owner approves the
+charter once, at kickoff; after that the agent asks only for the five stop reasons. Before every
+human gate it writes a `briefing-decisions` brief and runs a
+`goldfishing` novice-reader review. An approval counts only as a ledger row naming an approver,
+where they answered (`dialog`, `question`, `tracker` or `written`), the brief and its review;
+never chat. `scripts/ledger_check.py` (standard library) rejects a row without these. It cannot
+prove a person really answered; on Amp, `mission-control`'s kickoff dialog is the stronger record.
+Close-out audits the trail and proposes skill edits for approval.
+
+Eight playbooks of about 60 lines, loaded only when used, cover ERP and AI transformation
+(through `blueprinting`), product delivery operations (`planning`), software delivery
+(`delivering`), campaigns and research, UX and UI design (`crafting`), code and security review,
+infrastructure and DevSecOps, and product and SaaS assessment. Skills from later waves are marked
+*planned* with a manual fallback; a playbook never reports that a planned skill ran.
+[`reference/hosts.md`](./skills/missioning/reference/hosts.md) maps each step to the tools of
+Amp, Claude Code, Copilot in VS Code and the Copilot app; the last three come from their
+documentation and are not tested. There are no teams, swarms or scheduled workers.
+
+**Use it:** "Use missioning to run a security review of acme/payments on Claude Code. I decide;
+Priya Shah approves the report release." **Adapt it:** add a playbook with the same six headings
+and register it in the checker's `PLAYBOOKS`; change charter fields in the checker and
+[`reference/charter.md`](./skills/missioning/reference/charter.md) together; add a host column to
+`hosts.md`. Simulated scenario runs are in [`evals/missioning/`](./evals/missioning/README.md).
+
+## Engineering, security and operations skills
+
+Waves 1 and 2 of the mission skill plan add skills that the `missioning` playbooks for software
+delivery, security review, infrastructure, delivery operations and product assessment call. Each
+skill works on its own; each has deterministic checks in `scripts/` (Python standard library) and a
+fresh-agent evaluation in `evals/<skill>/`. Skills that could promote, apply, write to a tracker
+or publish run that effect only when the mission contract pre-authorizes it or the owner approves
+the exact plan.
+
+| Task | Skill |
+| --- | --- |
+| Technical design: contracts, ADRs, measurable NFRs; data and AI architecture | [architecting](./skills/architecting/SKILL.md) |
+| Adversarial fresh-context review of a diff or PR, with proven findings and a patch-bound verdict | [interrogating-changes](./skills/interrogating-changes/SKILL.md) |
+| Promotion from dev to rolling to main, release notes, rollback before GO | [releasing](./skills/releasing/SKILL.md) |
+| Threat model: trust zones, STRIDE and LINDDUN per flow, abuse cases, OWASP ASVS review | [threat-modelling](./skills/threat-modelling/SKILL.md) |
+| Merge and triage scanner SARIF (code, dependencies, secrets, IaC, containers) with stated coverage | [scanning-vulnerabilities](./skills/scanning-vulnerabilities/SKILL.md) |
+| Vendor or product assessment with weights frozen before scoring and cited evidence | [assessing-products](./skills/assessing-products/SKILL.md) |
+| Infrastructure as code on Azure, AWS or Google Cloud: preview, policy, cost, a change summary digest, approved apply, drift check | [provisioning](./skills/provisioning/SKILL.md) |
+| SLOs and error budgets from NFRs, burn-rate alerts with runbooks, proven to fire outside production | [monitoring](./skills/monitoring/SKILL.md) |
+| Read-only incident investigation with competing hypotheses, a post-incident review and fixes filed as bugs | [investigating-incidents](./skills/investigating-incidents/SKILL.md) |
+| Weekly steering of delivery: flow metrics, Monte Carlo forecast, risks, issues and decisions log, five-line status | [steering](./skills/steering/SKILL.md) |
+
+Archi and Darci load `architecting`, and Opsci loads `investigating-incidents`; install them in Personal skills before using those modes.
+
+## Planning
+
+A planning mission is for a product, operations, or marketing strategist who is also the
+delivery lead. It takes one initiative from workshop notes, transcripts, minutes, or rough drafts
+to a PRD stakeholders sign off and a backlog of executable stories in the tracker they use, then
+keeps score against the initiative's business drivers. Five small skills, each usable alone:
+
+| Skill | Does | Output |
+| --- | --- | --- |
+| [`planning`](./skills/planning/SKILL.md) | Charters the mission, picks the entry point, runs gates G1–G7, defines done | Charter and gate-by-gate report |
+| [`synthesizing`](./skills/synthesizing/SKILL.md) | Turns raw inputs into cited evidence, then grills the owner to a confirmed intent and places each ask in the backlog (new initiative, goal, feature, change, bug, feedback) | `evidence.md`, `intake.md` (kickoff or session agenda) |
+| [`specifying`](./skills/specifying/SKILL.md) | Writes the PRD with `grilling`: drivers, measurable goals, requirements, criteria; fresh-reader review | `prd.md`, initiative and goals in `backlog.json` |
+| [`grooming`](./skills/grooming/SKILL.md) | Builds and maintains the backlog contract; splits, sizes, triages, records delivery | `backlog.json`, checked by `backlog.py` |
+| [`syncing`](./skills/syncing/SKILL.md) | Plans and applies GitHub, Azure DevOps or Linear sync (items, parent links, milestones or iterations; GitHub Project fields and roadmap view); pulls `/approve` and comments; exports Excel | Tracker items; sign-offs and feedback in the file |
+
+The [backlog contract](./skills/grooming/reference/contract.md) is SAFe-inspired without epics:
+initiative (drivers, PRD) → goals (metric, baseline, target) → features (benefit hypothesis,
+WSJF) → stories sized XS–L with measurable acceptance criteria, plus bugs with urgency and
+feedback filed on exactly one feature. `backlog.py trace` reports the chain from what was
+described, to what was agreed, delivered, and achieved, and lists every gap.
+
+Stakeholders work only in the tracker: they comment, and sign off with `/approve`. Every tracker
+write and every reply in the user's name waits for the user's approval of a shown plan. Scripts
+are standard-library Python; GitHub calls use the signed-in `gh`. The Azure DevOps and Linear
+adapters use their REST and GraphQL APIs with a token from an environment variable; they are
+tested offline only and labelled "not tested live", with the mapping in
+[`trackers.md`](./skills/syncing/reference/trackers.md). There is no audio transcription and no
+plugin. Once delivery starts, [`steering`](./skills/steering/SKILL.md) runs the weekly loop:
+flow metrics and a seeded forecast, a risks, issues and decisions log, and a five-line status. See the [guide](./docs/mission-driven-planning.md) for prompts, entry points, and limits.
+Five simulated end-to-end missions, judged by stakeholder and product-lens judges, live in
+[`evals/planning/`](./evals/planning/README.md), with results in
+[`docs/planning-evaluation.md`](./docs/planning-evaluation.md).
 
 ## Using modes without changing the Dial
 
@@ -224,8 +389,8 @@ GitHub-hosted Ubuntu runners; no Depot runner is configured for this repository.
 `dev` requires a pull request, an up-to-date successful **Extension checks** result
 from GitHub Actions, and resolved review conversations. Protection applies to
 administrators and disallows force pushes and deletion. No mandatory human review
-count is imposed: mission-owner acknowledgment for high-risk/ask-mode work belongs
-to the delivery workflow, while low/medium work may merge automatically. These
+count is imposed: a contract mission merges each milestone into `dev` after its own
+tests, CI and two fresh reviews, with no owner merge gate. These
 controls do not make an agent with repository-administration credentials unable
 to change policy. Rolling/stable promotion and extension publication remain separate.
 

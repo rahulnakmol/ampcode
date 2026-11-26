@@ -75,7 +75,7 @@ attachment URL or payload is needed to use the skill.
 | 3. Surgical changes | Step 4: task-owned changes only, no adjacent cleanup/refactoring for taste |
 | 4. Goal-driven execution | Acceptance-to-evidence mapping, outcome-first execution, customer-value gate |
 | 5. Model for judgment | Step 4: code/tools handle deterministic routing, retries, transforms and counts |
-| 6. Token budgets | 4,000/task and 30,000/session unless overridden; disclose unavailable telemetry, preserve usage across handoff, no reset evasion |
+| 6. Token budgets | Set per mission in the `missioning` charter (until wave 0 a fixed 4,000/task and 30,000/session default; one large file read exceeded it); disclose unavailable telemetry, preserve usage across handoff, no reset evasion |
 | 7. Surface conflicts | Step 1: choose by authority, provenance, recency and tested behavior, never average contradictions |
 | 8. Read before writing | Step 1: exports, callers, shared utilities, contracts and observed behavior |
 | 9. Test intent | Step 3: customer rationale, independent expected results, plausible wrong-business-rule controls |

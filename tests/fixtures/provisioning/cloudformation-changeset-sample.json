@@ -1,0 +1,107 @@
+{
+  "Changes": [
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Add",
+        "LogicalResourceId": "ReportsBucket",
+        "ResourceType": "AWS::S3::Bucket",
+        "Scope": [],
+        "Details": []
+      }
+    },
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Modify",
+        "LogicalResourceId": "OrdersFunction",
+        "PhysicalResourceId": "orders-prod-OrdersFunction-1A2B3C4D5E6F",
+        "ResourceType": "AWS::Lambda::Function",
+        "Replacement": "False",
+        "Scope": ["Properties"],
+        "Details": [
+          {
+            "Target": {"Attribute": "Properties", "Name": "MemorySize", "RequiresRecreation": "Never", "Path": "/Properties/MemorySize", "BeforeValue": "512", "AfterValue": "1024", "AttributeChangeType": "Modify"},
+            "Evaluation": "Static",
+            "ChangeSource": "DirectModification"
+          }
+        ]
+      }
+    },
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Modify",
+        "LogicalResourceId": "OrdersDatabase",
+        "PhysicalResourceId": "orders-prod-db",
+        "ResourceType": "AWS::RDS::DBInstance",
+        "Replacement": "True",
+        "PolicyAction": "ReplaceAndSnapshot",
+        "Scope": ["Properties"],
+        "Details": [
+          {
+            "Target": {"Attribute": "Properties", "Name": "DBInstanceIdentifier", "RequiresRecreation": "Always", "Path": "/Properties/DBInstanceIdentifier", "BeforeValue": "orders-prod-db", "AfterValue": "orders-prod-db-v2", "AttributeChangeType": "Modify"},
+            "Evaluation": "Static",
+            "ChangeSource": "DirectModification"
+          }
+        ]
+      }
+    },
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Modify",
+        "LogicalResourceId": "SessionsTable",
+        "PhysicalResourceId": "orders-prod-SessionsTable-7G8H9I0J1K2L",
+        "ResourceType": "AWS::DynamoDB::Table",
+        "Replacement": "Conditional",
+        "Scope": ["Properties"],
+        "Details": [
+          {
+            "Target": {"Attribute": "Properties", "Name": "TableName", "RequiresRecreation": "Always", "Path": "/Properties/TableName", "BeforeValue": "orders-prod-sessions", "AfterValue": "orders-prod-sessions-v2", "AttributeChangeType": "Modify"},
+            "Evaluation": "Dynamic",
+            "ChangeSource": "ParameterReference",
+            "CausingEntity": "TablePrefix"
+          }
+        ]
+      }
+    },
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Remove",
+        "LogicalResourceId": "LegacyTopic",
+        "PhysicalResourceId": "arn:aws:sns:us-east-1:123456789012:orders-prod-legacy",
+        "ResourceType": "AWS::SNS::Topic",
+        "Scope": [],
+        "Details": []
+      }
+    },
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Remove",
+        "LogicalResourceId": "ArchiveBucket",
+        "PhysicalResourceId": "orders-prod-archive",
+        "ResourceType": "AWS::S3::Bucket",
+        "PolicyAction": "Retain",
+        "Scope": [],
+        "Details": []
+      }
+    }
+  ],
+  "ChangeSetName": "orders-prod-2026-11-22",
+  "ChangeSetId": "arn:aws:cloudformation:us-east-1:123456789012:changeSet/orders-prod-2026-11-22/00000000-0000-0000-0000-000000000002",
+  "StackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/orders-prod/00000000-0000-0000-0000-000000000003",
+  "StackName": "orders-prod",
+  "Parameters": [
+    {"ParameterKey": "TablePrefix", "ParameterValue": "orders-prod"}
+  ],
+  "CreationTime": "2026-11-22T09:00:00.000Z",
+  "ExecutionStatus": "AVAILABLE",
+  "Status": "CREATE_COMPLETE",
+  "NotificationARNs": [],
+  "RollbackConfiguration": {},
+  "Capabilities": [],
+  "IncludeNestedStacks": false
+}

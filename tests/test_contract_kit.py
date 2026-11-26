@@ -1,0 +1,150 @@
+"""Contract-mission kit checks: banned phrases, the canonical stop and report text, the cap policy.
+
+The file lists below grow as each skill, the plugin and the guides adopt the contract
+(see the mission contract, section 6). Paths are relative to the repository root; a
+directory is searched recursively.
+
+Run: python3 -m unittest tests.test_contract_kit -v
+"""
+
+import json
+import re
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+CONTRACT_TEXT = ROOT / "plugins/mission-control/lib/contract-text.json"
+STOP_REPLAY = ROOT / "evals/delivering/stop-replay.json"
+
+# List B, matched case-insensitively.
+BANNED = (
+    "Budget used",
+    "**Budget:**",
+    "token budget",
+    "review budget",
+    "budget call",
+    "remaining budget",
+    "beyond it needs explicit approval",
+    "merge mode",
+    "mission_merge_mode",
+    "ask-before-merge",
+    "ask mode",
+    "Owner merge acknowledgment",
+    "high-risk merge",
+    "high risk always requires",
+)
+
+# Files searched with list B (part of file set F).
+BANNED_SEARCH = ("skills/delivering", "skills/missioning", "skills/goldfishing/SKILL.md", "skills/briefing-decisions/SKILL.md",
+                 "skills/grilling/SKILL.md", "skills/crafting/SKILL.md", "plugins/mission-control")
+# The mission guides (W12), searched with list B and part of list L.
+GUIDES = ("README.md", "docs/mission-control.md", "docs/mission-driven-development.md", "docs/using-skills.md",
+          "plugins/README.md")
+BANNED_SEARCH += GUIDES
+# List L: files that list the five stop reasons.
+STOP_TEXT_FILES = ("skills/delivering/SKILL.md", "skills/missioning/SKILL.md", "skills/missioning/reference/charter.md",
+                   *GUIDES)
+# Files that must name the disposition policy for a review cap (K3).
+DISPOSITION_FILES = ("skills/delivering/SKILL.md", "skills/missioning/SKILL.md", "skills/goldfishing/SKILL.md")
+# The copy of reportSections that published skills and other hosts read.
+REPORT_SECTIONS_FILE = "skills/delivering/SKILL.md"
+
+
+def files(paths):
+    for name in paths:
+        path = ROOT / name
+        yield from sorted(p for p in path.rglob("*") if p.is_file()) if path.is_dir() else [path]
+
+
+def searchable(text):
+    """Lower-case text with blockquote markers, line wraps, runs of spaces and `\\_` escapes removed."""
+    text = re.sub(r"(?m)^[ \t]*>+", " ", text)
+    return " ".join(text.split()).replace("\\_", "_").lower()
+
+
+def contract_text():
+    return json.loads(CONTRACT_TEXT.read_text())
+
+
+class BannedPhrases(unittest.TestCase):
+    def test_list_b_finds_nothing(self):
+        for path in files(BANNED_SEARCH):
+            try:
+                text = searchable(path.read_text())
+            except UnicodeDecodeError:
+                continue  # binary files hold no instructions
+            for phrase in BANNED:
+                with self.subTest(file=str(path.relative_to(ROOT)), phrase=phrase):
+                    self.assertFalse(phrase.lower() in text, f"list B phrase {phrase!r} found")
+
+
+class CanonicalText(unittest.TestCase):
+    def test_contract_text_shape(self):
+        data = contract_text()
+        self.assertEqual(len(data["stopReasons"]), 5)
+        self.assertEqual(set(data["reportSections"]), {"checkpoint", "closeOut"})
+        for value in [*data["stopReasons"], *data["reportSections"]["checkpoint"], *data["reportSections"]["closeOut"]]:
+            self.assertIsInstance(value, str)
+            self.assertEqual(value, value.strip())
+            self.assertTrue(value)
+
+    def test_stop_reasons_verbatim(self):
+        reasons = contract_text()["stopReasons"]
+        for path in files(STOP_TEXT_FILES):
+            text = path.read_text()
+            for number, reason in enumerate(reasons, 1):
+                with self.subTest(file=str(path.relative_to(ROOT)), reason=number):
+                    line = f"{number}. {reason}"
+                    pattern = rf"^[ \t>]*{re.escape(line)}[ \t]*$"
+                    self.assertTrue(re.search(pattern, text, re.M), f"missing verbatim line: {line}")
+
+    def test_report_sections_verbatim(self):
+        text = (ROOT / REPORT_SECTIONS_FILE).read_text()
+        for kind, sections in contract_text()["reportSections"].items():
+            with self.subTest(kind=kind):
+                expected = ", ".join(f"`{name}`" for name in sections) + "."
+                self.assertTrue(expected in text, f"missing verbatim sections: {expected}")
+
+
+class KickoffPrompts(unittest.TestCase):
+    def test_each_kickoff_prompt_names_the_contract_the_preflight_and_one_approval(self):
+        text = (ROOT / "docs/mission-control.md").read_text()
+        section = text.split("## Ways to kick off a mission", 1)[1].split("\n## ", 1)[0]
+        prompts = re.findall(r"```text\n(.*?)```", section, re.S)
+        self.assertGreaterEqual(len(prompts), 7)
+        # The delivering kickoff prompts in the other guides.
+        for name in ("README.md", "docs/mission-driven-development.md", "docs/using-skills.md"):
+            found = [p for p in re.findall(r"```text\n(.*?)```", (ROOT / name).read_text(), re.S) if "Use delivering" in p]
+            self.assertTrue(found, f"{name} has no delivering kickoff prompt")
+            prompts += found
+        for prompt in prompts:
+            words = " ".join(prompt.split())
+            with self.subTest(prompt=words[:60]):
+                self.assertRegex(words, r"\bcontract\b")
+                self.assertIn("readiness preflight", words)
+                self.assertRegex(words, r"\bone (kickoff )?approval\b")
+
+
+class CapDisposition(unittest.TestCase):
+    def test_cap_names_the_disposition_policy(self):
+        for path in files(DISPOSITION_FILES):
+            with self.subTest(file=str(path.relative_to(ROOT))):
+                self.assertTrue("disposition policy" in path.read_text(), "does not name the disposition policy")
+
+
+
+class StopReplay(unittest.TestCase):
+    def test_sixteen_situations_with_expected_decisions(self):
+        situations = json.loads(STOP_REPLAY.read_text())["situations"]
+        self.assertEqual([s["id"] for s in situations], [f"R{n}" for n in range(1, 17)])
+        for s in situations:
+            with self.subTest(situation=s["id"]):
+                self.assertIn(s["expected_decision"], ("kickoff", "stop", "proceed"))
+                self.assertTrue(s["situation"].strip() and s["expected_action"].strip())
+                self.assertEqual("stop_reason" in s, s["expected_decision"] == "stop")
+        decided = {d: [s["id"] for s in situations if s["expected_decision"] == d] for d in ("kickoff", "stop")}
+        self.assertEqual(decided, {"kickoff": ["R1", "R8", "R15"], "stop": ["R9"]})
+
+
+if __name__ == "__main__":
+    unittest.main()

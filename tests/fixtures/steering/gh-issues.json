@@ -1,0 +1,14 @@
+[
+  {"closedAt": null, "createdAt": "2026-11-15T23:40:00Z", "number": 12},
+  {"closedAt": null, "createdAt": "2026-11-14T08:05:00Z", "number": 11},
+  {"closedAt": null, "createdAt": "2026-11-01T12:00:00Z", "number": 10},
+  {"closedAt": "2026-11-24T23:59:59Z", "createdAt": "2026-11-16T00:00:01Z", "number": 9},
+  {"closedAt": "2026-11-16T17:00:00Z", "createdAt": "2026-11-10T09:00:00Z", "number": 8},
+  {"closedAt": "2026-11-20T10:15:00Z", "createdAt": "2026-11-09T14:30:00Z", "number": 7},
+  {"closedAt": "2026-11-11T16:00:00Z", "createdAt": "2026-11-10T11:00:00Z", "number": 6},
+  {"closedAt": "2026-11-12T09:00:00Z", "createdAt": "2026-11-02T09:00:00Z", "number": 5},
+  {"closedAt": "2026-11-04T15:20:00Z", "createdAt": "2026-10-29T08:00:00Z", "number": 4},
+  {"closedAt": "2026-11-02T07:45:00Z", "createdAt": "2026-10-27T10:00:00Z", "number": 3},
+  {"closedAt": "2026-11-03T18:00:00Z", "createdAt": "2026-10-26T06:30:00Z", "number": 2},
+  {"closedAt": "2026-10-28T12:00:00Z", "createdAt": "2026-10-26T09:00:00Z", "number": 1}
+]

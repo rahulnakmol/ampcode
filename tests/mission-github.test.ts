@@ -1,20 +1,19 @@
 import { expect, test } from 'bun:test'
-import { assertMergeReady, GitHub } from '../plugins/mission-control/lib/github'
-import { createMission, advance } from '../plugins/mission-control/lib/mission'
+import { assertMergeReady, GitHub, type MilestoneCandidate } from '../plugins/mission-control/lib/github'
 
 const head = 'a'.repeat(40), base = 'b'.repeat(40)
 function fixture() {
-	let mission = createMission('T-fixture', 'Export safely')
-	mission = advance(mission, { type: 'design', bundle: { spec: 'Exact rows', plan: 'Test then fix', technical: 'Offsets', ux: 'CLI recovery' }, criteria: ['Exact rows'] })
-	mission.candidate = { repo: 'acme/app', pr: 7, head, base, risk: 'low' }
 	const pr = { state: 'open', merged: false, isMergeQueueEnabled: false, isInMergeQueue: false, mergeQueueEntry: null, head: { sha: head }, base: { sha: base, ref: 'dev', repo: { full_name: 'acme/app' } } }
 	const protection = { enforce_admins: { enabled: true }, required_pull_request_reviews: { bypass_pull_request_allowances: { users: [], teams: [], apps: [] } }, required_status_checks: { strict: true, contexts: ['test'], checks: [{ context: 'test', app_id: 15368 }] } }
 	const runs = [{ name: 'test', app: { id: 15368 }, head_sha: head, status: 'completed', conclusion: 'success' }]
-	return { mission, pr, protection, runs }
+	// A milestone candidate is the structural type { repo, pr, head, base }.
+	const candidate: MilestoneCandidate = { repo: 'acme/app', pr: 7, head, base }
+	return { candidate, pr, protection, runs }
 }
+
 test('only exact-candidate checks from required pinned apps authorize the adapter', () => {
 	const f = fixture()
-	expect(() => assertMergeReady(f.mission, f.pr, f.protection, f.runs)).not.toThrow()
+	expect(() => assertMergeReady(f.candidate, f.pr, f.protection, f.runs)).not.toThrow()
 	for (const change of [
 		{ pr: { ...f.pr, isMergeQueueEnabled: true } },
 		{ pr: { ...f.pr, isInMergeQueue: true } },
@@ -39,7 +38,7 @@ test('only exact-candidate checks from required pinned apps authorize the adapte
 		{ runs: [...f.runs, f.runs[0]] },
 	]) {
 		const c = { ...f, ...change }
-		expect(() => assertMergeReady(c.mission, c.pr, c.protection, c.runs)).toThrow()
+		expect(() => assertMergeReady(c.candidate, c.pr, c.protection, c.runs)).toThrow()
 	}
 })
 
@@ -52,11 +51,11 @@ test('adapter reads remote state before requesting exact-head squash merge', asy
 		if (path === 'graphql') return JSON.stringify({ data: { repository: { pullRequest: { isMergeQueueEnabled: false, isInMergeQueue: false, mergeQueueEntry: null } } } })
 		return JSON.stringify(path.includes('/protection') ? f.protection : path.includes('/check-runs') ? { total_count: 1, check_runs: f.runs } : f.pr)
 	})
-	await gh.preflight(f.mission)
-	await gh.request(f.mission)
+	await gh.preflight(f.candidate)
+	await gh.request(f.candidate)
 	expect(effects.at(-1)).toEqual(['pr', 'merge', '7', '--repo', 'acme/app', '--squash', '--match-head-commit', head])
 	const bad = new GitHub(async () => { throw new Error('Disconnected') })
-	await expect(bad.preflight(f.mission)).rejects.toThrow('Disconnected')
+	await expect(bad.preflight(f.candidate)).rejects.toThrow('Disconnected')
 })
 
 test('unready mutation fails without leaving deferred authorization for a later head', async () => {
@@ -65,6 +64,61 @@ test('unready mutation fails without leaving deferred authorization for a later 
 		if (args.includes('--auto')) { deferred = true; return '' }
 		throw new Error('Required conversation unresolved')
 	})
-	await expect(gh.request(fixture().mission)).rejects.toThrow('Required conversation unresolved')
+	await expect(gh.request(fixture().candidate)).rejects.toThrow('Required conversation unresolved')
 	expect(deferred).toBe(false)
 })
+
+// Readiness preflight (contract section 3): six named predicates, checked without a candidate.
+const devSha = 'd'.repeat(40)
+const httpError = (status: number, message: string) => new Error(`Command failed: gh api\ngh: ${message} (HTTP ${status})\n`)
+function remote() {
+	return {
+		'repos/acme/app': { full_name: 'acme/app', permissions: { admin: false, push: true, pull: true } } as any,
+		'repos/acme/app/branches/dev': { name: 'dev', protected: true, commit: { sha: devSha } } as any,
+		'repos/acme/app/branches/dev/protection': fixture().protection as any,
+		[`repos/acme/app/commits/${devSha}/check-runs?filter=latest&per_page=100`]: { total_count: 1, check_runs: [{ name: 'test', app: { id: 15368 }, head_sha: devSha, status: 'completed', conclusion: 'success' }] } as any,
+	}
+}
+function fakeGh(responses: Record<string, any>) {
+	return new GitHub(async args => {
+		const response = args[0] === 'api' ? responses[args[1]] : undefined
+		if (response instanceof Error) throw response
+		if (response === undefined) throw httpError(404, 'Not Found')
+		return JSON.stringify(response)
+	})
+}
+const predicates = ['repository visible with push permission', 'dev exists', 'branch protection readable', 'protection enforced', 'required checks pinned to apps', 'dev CI successful']
+
+test('readiness passes all six named predicates on a ready repository', async () => {
+	const results = await fakeGh(remote()).readiness('acme/app')
+	expect(results.map(r => r.name)).toEqual(predicates)
+	for (const r of results) expect(r).toMatchObject({ pass: true, reason: expect.any(String) })
+})
+
+for (const [label, change, failing, reason, passing] of [
+	['1: no push permission', (r: any) => { r['repos/acme/app'].permissions.push = false }, 1, /push permission/, []],
+	['2: dev missing', (r: any) => { r['repos/acme/app/branches/dev'] = httpError(404, 'Branch not found') }, 2, /dev missing: Branch not found \(HTTP 404\)/, [1]],
+	['2: dev renamed (the branch read redirects to another name)', (r: any) => { r['repos/acme/app/branches/dev'].name = 'main' }, 2, /dev missing: the branch read returned 'main'/, [1]],
+	['3: protection forbidden (403)', (r: any) => { r['repos/acme/app/branches/dev/protection'] = httpError(403, 'Upgrade to GitHub Pro or make this repository public to enable this feature.') }, 3, /^protection unreadable: needs a plan that supports it, or admin access$/, [1, 2]],
+	['3: protection absent', (r: any) => { r['repos/acme/app/branches/dev'].protected = false; r['repos/acme/app/branches/dev/protection'] = httpError(404, 'Branch not protected') }, 3, /^protection absent/, [1, 2]],
+	['4: administrators not enforced', (r: any) => { r['repos/acme/app/branches/dev/protection'].enforce_admins.enabled = false }, 4, /administrator enforcement/, [1, 2, 3, 5, 6]],
+	['4: checks not strict', (r: any) => { r['repos/acme/app/branches/dev/protection'].required_status_checks.strict = false }, 4, /strict checks/, [1, 2, 3, 5, 6]],
+	['4: a review bypass allowance', (r: any) => { r['repos/acme/app/branches/dev/protection'].required_pull_request_reviews.bypass_pull_request_allowances.users = [{ login: 'ops' }] }, 4, /bypass allowances/, [1, 2, 3, 5, 6]],
+	['3: protection read failed (503)', (r: any) => { r['repos/acme/app/branches/dev/protection'] = httpError(503, 'Service Unavailable') }, 3, /^protection unreadable: Service Unavailable/, [1, 2]],
+	['6: latest dev commit check still running', (r: any) => { Object.assign(r[`repos/acme/app/commits/${devSha}/check-runs?filter=latest&per_page=100`].check_runs[0], { status: 'in_progress', conclusion: null }) }, 6, /Required check not successful: test/, [1, 2, 3, 4, 5]],
+	['5: required check not pinned', (r: any) => { delete r['repos/acme/app/branches/dev/protection'].required_status_checks.checks[0].app_id }, 5, /pinned source App/, [1, 2, 3, 4]],
+	['6: latest dev commit check failed', (r: any) => { r[`repos/acme/app/commits/${devSha}/check-runs?filter=latest&per_page=100`].check_runs[0].conclusion = 'failure' }, 6, /Required check not successful: test/, [1, 2, 3, 4, 5]],
+] as const) {
+	test(`readiness names predicate ${label}`, async () => {
+		const responses = remote()
+		change(responses)
+		const results = await fakeGh(responses).readiness('acme/app')
+		expect(results.map(r => r.name)).toEqual(predicates)
+		expect(results[failing - 1].pass).toBe(false)
+		expect(results[failing - 1].reason).toMatch(reason)
+		results.forEach((r, i) => {
+			if ((passing as readonly number[]).includes(i + 1)) expect(r.pass).toBe(true)
+			else expect(r.pass).toBe(false)
+		})
+	})
+}

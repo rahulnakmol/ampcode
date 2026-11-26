@@ -1,0 +1,10 @@
+{
+  "assessment": "Pre-sales fit-gap: order-to-cash requirements, weights agreed with the client on 2026-11-10",
+  "criteria": [
+    {"id": "R1", "name": "Create sales orders from customer EDI messages", "weight": 30},
+    {"id": "R2", "name": "Approve credit limits by customer group", "weight": 25},
+    {"id": "R3", "name": "Price by contract with volume tiers", "weight": 20},
+    {"id": "R4", "name": "Send invoices to the client's tax portal", "weight": 15},
+    {"id": "R5", "name": "Handle returns without a warehouse scan", "weight": 10}
+  ]
+}

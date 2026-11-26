@@ -2,6 +2,8 @@
 
 These three advisors return recommendations, not source changes. Use a dedicated mode for a conversation, or a consultation tool for a bounded question inside an implementation thread.
 
+For client workshops, functional specifications, operating models and pre-sales/RFP discovery, use [Blueprinting](blueprinting.md). These advisors address technical architecture, data and operations; their recommendations do not substitute for a named client's business acceptance.
+
 ## Choose the advisor
 
 | Mode / CLI key | Consultation tool | Best for | Main model |
@@ -11,6 +13,22 @@ These three advisors return recommendations, not source changes. Use a dedicated
 | **Opsci** / `opsci` | `consult_opsci` | Incident investigation across telemetry and deployed source | Astra, high |
 
 Oracle and other specialists retain Amp's automatic model routing. No Fast or Pro feature is requested by these definitions. Normal Amp model usage and orb costs still apply. Model choice is a starting configuration, not a performance guarantee.
+
+## Archi and Darci follow the `architecting` skill
+
+Archi and Darci are thin wrappers. Each mode loads the [`architecting`](../skills/architecting/SKILL.md) skill and follows it. Darci also follows the skill's `reference/data-and-ai.md`. The skill holds the design method: the interview, the technical remit, the design format, ADRs and measurable NFRs. The role files keep only the persona and the limits of the mode.
+
+- **Install the skill.** The modes need `architecting` in your Amp Personal Skills. It is published there after this milestone. Until then, or when the skill is missing, the mode says that it cannot load the skill and advises from the advisory contract only.
+- **Other hosts.** The skill is not tied to these modes. Other Amp modes, and other agent hosts that read skills, can use it directly.
+- **No shell checks.** The modes still have no shell. They cannot run `design_check.py`. They give you the exact command and label the check "not run". Run the command yourself after you save the design.
+
+## Opsci follows the `investigating-incidents` skill
+
+Opsci is a thin wrapper too. The mode loads the [`investigating-incidents`](../skills/investigating-incidents/SKILL.md) skill and follows it. The skill holds the incident method: the workflow, competing hypotheses, telemetry guidance, the recommended response and the post-incident review. The role file keeps only the persona and the limits of the mode, including "Never execute mitigation, change alert thresholds, restart services, deploy, or run destructive diagnostics".
+
+- **Install the skill.** The mode needs `investigating-incidents` in your Amp Personal Skills. Until it is published, or when it is missing, Opsci says that it cannot load the skill and advises from the advisory contract only.
+- **No shell checks.** Opsci cannot run `pir_check.py` or grooming's `backlog.py`. It returns the review with each action marked `to file`, gives you the commands in order (`bugs`, then `backlog.py validate`, then `check`) and labels them "not run". It never invents bug IDs.
+- **Other hosts.** The skill's [read-only host wrappers](../skills/investigating-incidents/reference/read-only-hosts.md) give a Claude Code subagent and a Copilot custom agent with read and search tools only. Check the tool names against your host's documentation.
 
 ## Install and verify
 
@@ -22,7 +40,7 @@ For personal use across projects, publish the complete `plugins/advisory-team/` 
 amp plugins repositories
 ```
 
-Use the printed `amp clone` command and keep the clone under `~/.cache/amp/repositories/ampcode.com-user-plugins`. Preserve any existing local changes; do not reset a dirty publication checkout. Copy all five files, including the Markdown instructions. Review the diff, commit it, and push only after explicit approval. No separate Personal Skills publication is needed for this plugin.
+Use the printed `amp clone` command and keep the clone under `~/.cache/amp/repositories/ampcode.com-user-plugins`. Preserve any existing local changes; do not reset a dirty publication checkout. Copy all five files, including the Markdown instructions. Review the diff, commit it, and push only after explicit approval. Archi and Darci also need the `architecting` skill, and Opsci the `investigating-incidents` skill, in your Amp Personal Skills repository; publish them separately, after explicit approval.
 
 After publication, new threads pick up the plugin. Ask Amp to reload plugins in an existing thread, or run `plugins: reload` from the command palette. Verify that all three modes appear in the full mode picker. Existing Swift, Weave and Prime modes are unaffected. If a mode is absent, check the publication destination, copied Markdown files, plugin load errors, and reload status.
 
@@ -72,7 +90,7 @@ To skip the interview:
 
 > Work autonomously from this brief. State assumptions and recommend one option. Identify decisions that need my confirmation before implementation.
 
-Expected output: recommendation, constraints, alternatives and tradeoffs, boundaries/diagrams, risks, phased implementation, validation and rollback. Guidance is ASD-STE100-inspired, not certified compliance.
+Expected output: recommendation, constraints, alternatives and tradeoffs, boundaries/diagrams, ADRs, NFRs with numbers and units, risks, phased implementation, validation and rollback. The design follows the `architecting` format, with `design_check.py: not run` and the command to run it. Guidance is ASD-STE100-inspired, not certified compliance.
 
 ## Work with Darci
 
@@ -84,7 +102,7 @@ For agentic data systems:
 
 Provide sanitized schemas, metric definitions, query plans and architecture proposals. Never paste credentials or connection strings. Darci separates time to first insight, query latency, dashboard responsiveness, freshness and retrieval quality. It should propose measurable scaling triggers instead of imposing a user-count threshold.
 
-Expected output: business-to-metric mapping, data/evidence flows, model and semantic contracts, platform decisions, governance, evaluation and an incremental delivery plan.
+Expected output: business-to-metric mapping, data/evidence flows, model and semantic contracts, platform decisions, governance, evaluation and an incremental delivery plan, in the `architecting` design format with the check labelled "not run".
 
 ## Work with Opsci
 
@@ -93,6 +111,14 @@ Expected output: business-to-metric mapping, data/evidence flows, model and sema
 Supply the symptom, impact, time window/time zone, deployment identity, sanitized telemetry, recent changes and expected behavior. Opsci should ask only for missing details that block progress. It must not blame current source when the deployed revision differs.
 
 Expected output: impact/timeline, confirmed facts, hypotheses and counter-evidence, implicated code where supported, missing evidence, bounded follow-up queries, mitigation and repair guidance. It does not restart services, deploy, tune alerts or execute remediation.
+
+After the incident, ask for a post-incident review in the `investigating-incidents` format. Opsci returns it as text, with each action marked `to file`. Save it, then file its fixes and missing alerts as draft bugs in your grooming backlog and check both files:
+
+```sh
+python3 skills/investigating-incidents/scripts/pir_check.py bugs review.md --backlog backlog.json --feature F-2
+python3 skills/grooming/scripts/backlog.py validate backlog.json
+python3 skills/investigating-incidents/scripts/pir_check.py check review.md
+```
 
 ## Connect live data and telemetry deliberately
 
@@ -118,7 +144,7 @@ Reports are returned in chat. A host may save requested Markdown/HTML to an appr
 
 ## Change models and evaluate updates
 
-Model pins live in `plugins/advisory-team/index.ts`; behavior lives in the neighboring Markdown files. Discover current supported IDs and efforts before changing a pin:
+Model pins live in `plugins/advisory-team/index.ts`; behavior lives in the neighboring Markdown files and in the skills they load: `architecting` for Archi and Darci, `investigating-incidents` for Opsci. Discover current supported IDs and efforts before changing a pin:
 
 ```sh
 amp plugins show-agent-options --json

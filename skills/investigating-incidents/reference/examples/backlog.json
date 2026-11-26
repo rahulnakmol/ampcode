@@ -1,0 +1,119 @@
+{
+  "contract": "backlog/v1",
+  "title": "Order export reliability",
+  "approvers": [
+    {
+      "name": "Ana Silva (Integrations lead)",
+      "github": "ana-silva"
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "title": "Q4 2026: exports on time",
+      "due": "2026-12-18"
+    }
+  ],
+  "items": [
+    {
+      "id": "I-1",
+      "type": "initiative",
+      "title": "Orders reach the warehouse on time",
+      "domain": "operations",
+      "problem": "Late order exports delayed 4 dispatch waves in September 2026.",
+      "drivers": [
+        {
+          "id": "D-1",
+          "statement": "Late dispatch breaks the next-day delivery promise"
+        }
+      ],
+      "outcome": "Every order reaches the warehouse within 5 minutes of payment.",
+      "owner": "Ana Silva"
+    },
+    {
+      "id": "G-1",
+      "type": "goal",
+      "parent": "I-1",
+      "title": "Exports arrive within 5 minutes",
+      "metric": "Share of exports that arrive within 5 minutes, export audit table",
+      "baseline": "96%",
+      "target": "at least 99.5%",
+      "by": "2026-12-18",
+      "drivers": [
+        "D-1"
+      ],
+      "trace": [
+        "R-1"
+      ]
+    },
+    {
+      "id": "F-1",
+      "type": "feature",
+      "parent": "G-1",
+      "title": "Reliable export worker",
+      "description": "An export worker that processes each order once and on time, under release changes.",
+      "benefit_hypothesis": "We believe a reliable worker will raise on-time exports; we will know when the 5-minute share reaches 99.5%.",
+      "wsjf": {
+        "business_value": 8,
+        "time_criticality": 8,
+        "risk_reduction": 5,
+        "job_size": 3
+      },
+      "milestone": "M1",
+      "owner": "Ana Silva",
+      "trace": [
+        "R-1"
+      ]
+    },
+    {
+      "id": "S-1",
+      "type": "story",
+      "parent": "F-1",
+      "title": "Exports retry a failed warehouse call 3 times",
+      "as_a": "order-export worker",
+      "i_want": "to retry a failed warehouse call 3 times with backoff",
+      "so_that": "a short warehouse outage does not delay exports",
+      "work": "build",
+      "acceptance": [
+        {
+          "id": "S-1.1",
+          "given": "the warehouse API fails twice and then succeeds",
+          "when": "an export runs",
+          "then": "the order is exported exactly once within 30 seconds"
+        }
+      ],
+      "priority": "should",
+      "size": "S",
+      "status": "ready",
+      "owner": "Ana Silva",
+      "trace": [
+        "R-1"
+      ]
+    },
+    {
+      "id": "B-1",
+      "type": "bug",
+      "parent": "F-1",
+      "title": "Export audit row shows the wrong time zone",
+      "observed": "Audit rows show local time without an offset, so lag reads 5 hours 30 minutes too high.",
+      "expected": "Audit rows store UTC with an offset.",
+      "steps": [
+        "Export one order",
+        "Read its audit row"
+      ],
+      "work": "build",
+      "acceptance": [
+        {
+          "id": "B-1.1",
+          "given": "one exported order",
+          "when": "its audit row is read",
+          "then": "the time ends in Z and matches the export log within 1 second"
+        }
+      ],
+      "priority": "could",
+      "urgency": "low",
+      "size": "XS",
+      "status": "draft"
+    }
+  ]
+}
