@@ -53,3 +53,4 @@ product. A measure built on real data checks for and states which rows it drops 
 - A screenshot taken but not inspected.
 - Paid research that is not pre-authorized, done without asking.
 - Accessibility left to "later".
+- A measure or term redefined after approval without a reason 1 stop.

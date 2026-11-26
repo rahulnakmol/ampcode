@@ -194,7 +194,8 @@ them in its ledger. After that the disposition policy decides, never the owner:
   keeping their criteria verbatim. Only "replanned" resets the gate's count. If the re-planned
   and split items reach the cap again, that is stop reason 5.
 - A finding outside them is **filed** as an item in a later milestone, or as a follow-up when the
-  current milestone is the last. It does not fail the review.
+  current milestone is the last. It does not fail the review. A user-visible change beyond the
+  baseline is never outside them: it is removed or raised as a stop (J3).
 - A Nit is fixed or declined and never fails a review.
 
 Item reviews follow the same policy; an item that reaches its cap again leaves its milestone
@@ -207,6 +208,9 @@ meet its exit criteria after its items were re-planned and split.
   checkpoint report.
 - New scope becomes an item in a later milestone (`file`), decided once, or a reason 1 stop when it
   changes the baseline. Re-planning or splitting an item keeps its criteria and is never a stop.
+- A user-visible change beyond the approved baseline (a behaviour, screen or page the plan
+  excludes, or one that goes beyond what it names) is removed before merge or raised as a reason 1
+  stop. It is never merged as "accepted unless the owner objects".
 - A pre-authorized effect is performed and recorded (`mission_effect` with its ID: no dialog).
   An effect that is not pre-authorized is stop reason 2.
 - A check that seems to need a person is scripted where possible (for example with browser
@@ -216,18 +220,23 @@ meet its exit criteria after its items were re-planned and split.
 ## J4 Watch the children
 
 - While any child runs, the steering thread watches it with `wait_for_threads` and keeps a
-  30-minute schedule (`building-schedules`) as a backstop. Clear the schedule when no child runs.
+  30-minute schedule (`building-schedules`) as a backstop. Clear it when nothing is pending.
 - When a child settles, read it. With a report, check the evidence. Without one, answer its
   question if the contract settles it, tell it to continue, restart it once from its branch, or
   re-plan its item. A child in error is restarted once from its branch, then re-planned.
 - Never leave a settled child idle. A child that paused itself over a usage limit is told to continue.
+- Until close-out or the owner's stop or pause, end a turn only while a stop answer, a child or a
+  job is pending, and keep the backstop schedule so the thread resumes. "Carrying on with M2" with
+  nothing running is an idle mission. A large context is no reason to pause: hand the next item
+  to a child.
 
 ## J5 Close out
 
-After the last milestone merges, send the close-out report. The owner's end review is a review,
-not a gate a merge waited on. Distinguish **implemented**, **verified**, **reviewed**,
-**integrated into dev** and **released**. Release to `rolling` or `main` (with `releasing`),
-deployment and publication happen only when the contract pre-authorizes them.
+After the last milestone's checkpoint report (merged, or ready under stop), send the close-out
+report. The owner's end review is a review, not a gate a merge waited on. Distinguish
+**implemented**, **verified**, **reviewed**, **integrated into dev** and **released**. Release to
+`rolling` or `main` (with `releasing`), deployment and publication happen only when the contract
+pre-authorizes them.
 
 Before the report, check that every story or bug each milestone delivered has its delivery record
 (gate step 7), with `backlog.py trace`; record a missing one with that step. Pushing the records

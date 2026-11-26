@@ -50,7 +50,9 @@ A missing input is not a reason to guess. Write "not examined" for what it would
    `--remaining` is the stories and bugs in that milestone not yet delivered, from the backlog
    (`backlog.py trace`). Use
    `--weeks 8` when the team or the way of working changed; older weeks no longer predict. When
-   the 85th percentile date is after the due date, raise a re-plan decision request (step 5).
+   the 85th percentile date is after the due date, raise a re-plan decision request (step 5)
+   unless that milestone's request is still `open` and its deadline has not passed. A decided or
+   default-applied request never covers a later late week.
    Never move a milestone yourself. An empty history refuses to forecast: write "not forecast:
    no finished work yet".
    Compute any rough rate you quote from the same weeks the forecast drew from.

@@ -86,6 +86,9 @@ Use the same words as `goldfishing`:
 - **Major:** the change can ship, but it will likely cause a fault or a wrong decision.
 - **Nit:** wording, naming, order or polish.
 
+A user-visible change (a behaviour, screen or page) that the approved plan or contract excludes,
+or that goes beyond what it names, is at least a Major, even when it looks like polish.
+
 Each finding gets the smallest fix. Prefer the fix that narrows or deletes code over one that adds
 code. Only a Nit may be declined, or a pre-existing Blocker or Major that is filed elsewhere. A
 regression Blocker or Major is fixed. Zero findings is a valid result when the ledger lists the
