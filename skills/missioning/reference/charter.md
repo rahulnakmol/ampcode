@@ -140,6 +140,7 @@ recorded assumption, taken from the open question's default or a safe, reversibl
 ## Close-out
 
 - Trail audit: <each passed gate checked against its evidence>
+- Evidence: <per claim: done cites the saved artifact; verified, a saved output file and the command or check that made it; reviewed, a review record that names what it read; approved, the ledger row; released, the read-back output. Any other claim says "claimed">
 - Needs your attention: <waived gates, accepted risks, open items with owner and date>
 - Proposed skill edits: <lesson, file, change; waiting for approval>
 ````
@@ -185,6 +186,7 @@ recorded assumption, taken from the open question's default or a safe, reversibl
 ## Close-out
 
 - Trail audit: not yet run.
+- Evidence: none yet.
 - Needs your attention: none yet.
 - Proposed skill edits: none yet.
 ````
