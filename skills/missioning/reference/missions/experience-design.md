@@ -44,7 +44,8 @@ owner may redirect at any time.
 ## Definition of Done
 
 `design_kit.py check` passes; every designed state has a matching inspected capture of the built
-product.
+product. A measure built on real data checks for and states which rows it drops or caps
+(negative durations, open items, duplicates) and how many.
 
 ## Red flags
 
