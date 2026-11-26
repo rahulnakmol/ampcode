@@ -3,13 +3,14 @@
 
   python3 ledger_check.py mission.md
 
-Exits 0 and prints "pass" when the file follows rules R1 to R13 (R3 is retired). Otherwise exits 1
+Exits 0 and prints "pass" when the file follows rules R1 to R14 (R3 is retired). Otherwise exits 1
 and prints each problem as "<rule>: <what to fix>". Standard library only. The grammar and the
 rules are in ../reference/charter.md. The check proves the record is complete and consistent. It
 cannot prove that a person really answered, and it cannot read Amp dialogs, tracker comments or
 URLs.
 """
 
+import hashlib
 import re
 import subprocess
 import sys
@@ -124,6 +125,17 @@ def local(reference, base):
     return (base / path).resolve() if ok else None
 
 
+def sha256(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def reviewed(brief, record):
+    """True when the review record names the brief's sha256, in full or by its first 8+ hex digits."""
+    digest = sha256(brief)
+    text = record.read_text(encoding="utf-8", errors="replace").lower()
+    return any(digest.startswith(h) for h in re.findall(r"(?<![0-9a-f])[0-9a-f]{8,64}(?![0-9a-f])", text))
+
+
 def check_brief(path):
     checker = brief_checker()
     if checker is None:
@@ -224,6 +236,9 @@ def check(text, base):
                 add("R8", f"gate '{gate}': Brief must be a local Markdown file that exists")
             elif (problem := check_brief(path)):
                 add("R8", f"gate '{gate}': {problem}")
+            elif (record := local(review, base)) is not None and record != path and not reviewed(path, record):
+                add("R14", f"gate '{gate}': review record {record.name} does not name the brief's sha256 "
+                    f"({sha256(path)[:12]}…): the approved brief must be the revision a fresh reader passed")
         if state == "passed":
             agent_ok = kind == "agent" and re.match(r"none needed: \S", review)
             record = local(review, base)

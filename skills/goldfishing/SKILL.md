@@ -89,6 +89,14 @@ next checkpoint report instead of asking).
   re-planned. A finding outside them is filed and does not
   fail the review; a Nit is fixed or declined. Without a contract, the owner decides: accept the
   open findings, continue, or rework. A cap never accepts findings by itself.
+- **Fix-check.** Any repair made after the last reading by a fresh reader (after a recheck, at a
+  cap, or a later edit) gets one fix-check before the artifact is published, used as evidence or
+  put to a decider, unless the calling skill's round rule says otherwise (`planning` lists those
+  changes for the owner instead). A new fresh reader gets the findings, the diff of the repairs
+  and the changed passages with their surroundings. It says for each repair whether its finding
+  is closed, and reports any new Blocker or Major in the changed text. Until it passes, the
+  artifact's gate is `pending`. A passed fix-check is not a round; a failed one counts as a failed
+  round, so the cap and its disposition policy (or the owner, without a contract) still bound it.
 
 ## 6. Failed reviewers
 
@@ -118,7 +126,7 @@ Keep one record per review with the artifact:
 - reviewer (tool and identifier) and lens;
 - artifact revision and the files the reviewer read;
 - each finding: location, severity, outcome, and the evidence for a contest;
-- the recheck and what it found;
+- the recheck and the fix-check, and what each found;
 - what was not run, and why.
 
 ## 9. Start a fresh reviewer
