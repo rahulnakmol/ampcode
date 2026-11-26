@@ -58,3 +58,4 @@ measures have readings against target; lessons are filed.
 - No time left for a resubmission before the deadline.
 - A market number with no source.
 - A post or email sent without the launch gate.
+- Content the approved brief excludes, added on a chat request without a reason 1 stop.
