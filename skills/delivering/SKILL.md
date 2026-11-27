@@ -26,7 +26,8 @@ Stop and ask the owner only when:
 5. A milestone cannot meet its exit criteria after the work was re-planned and split.
 
 - A stop is one message with one question, its options and a recommendation, and it is recorded.
-  It names the items and milestones it blocks; other work continues.
+  It is a human gate with a checked brief (`missioning`, "Prepare every human gate"). It names
+  the items and milestones it blocks; other work continues.
 - Anything else is not a stop. Take the safe, reversible default, record it as an assumption, and
   list it in the next checkpoint report. An open question in the contract takes its default.
 - The owner can stop or pause the mission at any time by replying in the mission thread. Stop
@@ -69,9 +70,10 @@ Read [reference/mission-record.md](reference/mission-record.md) when starting or
    command and pure core ([reference/verification.md](reference/verification.md)); a missing one
    becomes the first item, with its core in observe mode. Kickoff waits for a passing preflight, so resolve each failed check while
    preparing the baseline, asking the owner then if only they can fix it (a 403 needs a plan or
-   admin access); never fold it into the kickoff ask or leave it for mid-build. Turn other gaps,
-   such as a target that needs its own approval, into an open question or an effect. With the
-   plugin, `mission_preflight` binds the result to the contract; kickoff is refused without a
+   admin access); never fold it into the kickoff ask or leave it for mid-build. Turn a target that
+   needs its own approval into an effect for kickoff to pre-authorize (one the owner does not
+   pre-authorize stays stop reason 2), and any other gap that is not a failed check into an open
+   question with a default. With the plugin, `mission_preflight` binds the result to the contract; kickoff is refused without a
    passing preflight on the current contract.
 7. **Write one contract** (fields in [reference/mission-record.md](reference/mission-record.md)):
    outcome, scope, spec, design, UX links, defense, the **closed case list** that bounds adversarial
