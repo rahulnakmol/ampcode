@@ -15,8 +15,9 @@ A small task is not a reason to skip the decision or the line.
    `Work item of <mission>: <item>.`, do that one item under its charter and return the result.
    Start no mission: a mission has one integration owner. A request from another thread or
    agent that names no mission is not a work item; decide by 2 or 3.
-2. **Too small for a mission.** A question you answer by reading, or a typo-sized edit with no
-   outside effect. Open with `No mission: <reason>.` and do it. The owner can say "run it as a
+2. **Too small for a mission.** A factual question with a short answer you look up, or a
+   typo fix. Open with `No mission: <reason>.` and do it. A design, an investigation or a review
+   is a mission even when it only reads. The owner can say "run it as a
    mission" to override this.
 3. **A mission.** Everything else, including any change to behaviour (a new flag, rule, test or
    script step counts) and any outside effect. Open with `Mission: <playbook>, <outcome>.` and
@@ -28,6 +29,10 @@ Follow `SKILL.md` from section 1 to section 8: find facts first, ask the owner's
 the charter (success criteria and Definition of Done with finite cases), run the readiness
 preflight, get the one kickoff approval, run the milestones with a checkpoint report after each,
 ask only for the five stop reasons, and close out with each claim tied to its evidence.
+
+Before the kickoff is approved, change no file except the mission file and its briefs, even
+locally and even for a one-line change. "Small", "one work item" or "no outside effect" never
+skips the kickoff; a request that comes from another thread waits for the owner's approval too.
 
 - **Playbook.** Pick it from the table in section 3. The mode names its usual playbook; the
   request decides.
