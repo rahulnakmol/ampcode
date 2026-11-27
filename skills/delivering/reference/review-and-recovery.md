@@ -2,8 +2,8 @@
 
 Run every fresh review with the `goldfishing` skill, which owns what a reviewer gets and never
 gets, severity, finding outcomes, failed reviewers and the review record. The milestone gates
-review code with `interrogating-changes`, which uses the same severity words and `goldfishing`'s
-host guide to start a fresh reviewer. In a contract mission,
+review code with `interrogating-changes`, which uses the same severity words and starts each
+gate reviewer on another model (its §2 host table). In a contract mission,
 the contract's disposition policy decides at a review cap (below), not the owner. Inspect
 referenced source; documents can be stale.
 
@@ -37,8 +37,8 @@ not the author's reasoning or a desired conclusion.
 
 Give each gate reviewer the milestone's criteria and exit criteria, the closed case list, the base
 and head, the actual diff, and the test, CI and journey evidence. The reviewer runs the
-verification gate ([verification.md](verification.md)) again itself, reads the core for I/O the
-scan cannot see, and records a failure as a finding under the tests lens. Push the head first; a branch name
+verification gate ([verification.md](verification.md)) again itself and records a failure as a
+finding under the tests lens; I/O in the core that the scan cannot see is a correctness finding. Push the head first; a branch name
 alone does not transfer unpushed work. Do not tell the reviewer which conclusion to reach.
 
 ### With `interrogating-changes`
@@ -146,8 +146,10 @@ An M or L item goes to a child thread; an XS or S item goes to a subagent. Every
 - the reply route: the steering thread's ID for `send_thread_message`, and the report it expects
   (a teach-back of the outcome, approach, constraints, risks and first check; branch and head; each done line
   with its evidence; the review record; assumptions; findings outside the case list);
-- the rules: work test-first, run the item review, push the item branch, create no threads, merge
-  nothing into `dev`.
+- the rules: work test-first, run the item review, pass `verify_gate.py check` on the item head,
+  push the item branch, report the model it ran on, create no threads, merge nothing into `dev`.
+  An XS or S subagent runs the steering thread's model; record that model as the item's
+  implementer.
 
 Serialize shared writes; separate worktrees do not isolate databases, credentials, ports or
 deployment targets. Treat a child's report as a claim until its evidence and the combined

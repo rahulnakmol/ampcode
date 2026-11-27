@@ -31,7 +31,9 @@ For each changed function or block:
 - [ ] Pure core: the domain rules sit in the package's core (verify.json `core`) and take plain
   data in and give plain data out. No I/O, clock or randomness reaches the core, also not
   through a function passed in and called there; adapters parse and format; the shell performs
-  the effects. Run `verify_gate.py core` (in the `delivering` skill) and read what it cannot see.
+  the effects. When the repository has a `verify.json`, run `verify_gate.py core` (in the
+  `delivering` skill); a failure it reports goes under the tests lens. Read the core for what it
+  cannot see; I/O it misses is a finding under this lens.
 
 ## Security
 
@@ -73,7 +75,8 @@ For each changed function or block:
   mutation and the green run as its `run:` evidence.
 - [ ] Flaky tests: a test that passes only on a retry is a finding, not a pass. An added retry,
   sleep or skip is a finding; `floor_guard.py` flags retries and skips.
-- [ ] End to end: run `verify_gate.py run` and `check` against the base yourself. Each changed
+- [ ] End to end: when the repository has a `verify.json`, run `verify_gate.py run` and `check`
+  against the base yourself. Each changed
   package's e2e command drives the real program (HTTP, CLI or browser) and covers the criteria's
   Given/When/Then scenarios; a failure or a missing package is a finding.
 

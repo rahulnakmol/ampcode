@@ -37,7 +37,10 @@ pre-authorized effects.
 | One per design slice | Each work item built test-first and freshly reviewed; the verification gate before each pull request; review gates one and two on the milestone's exact candidate, on another model; merge into `dev`; checkpoint report | `delivering`, `interrogating-changes` |
 | Release and close-out | Promotion with a rollback plan, verified on the target; each criterion traced to executed evidence on the released revision | `releasing` |
 
-`delivering` is the conductor; on Amp, `mission-control` enforces its gates.
+`delivering` is the conductor; on Amp, `mission-control` blocks a milestone merge until both
+reviews and the evidence match the candidate. The scripts enforce the rest: `verify_gate.py check`
+fails without fresh end-to-end evidence or with I/O in a pure core, and `review_ledger.py check`
+fails a ledger whose reviewer ran on an implementer's model.
 
 ## How it verifies the work
 

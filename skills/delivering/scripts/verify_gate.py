@@ -126,53 +126,94 @@ def blank(match):
     return re.sub(r"[^\n]", " ", match.group(0))
 
 
-def expression_end(token, i):
-    """Index just past the } that closes the ${ expression starting at i, skipping strings and comments."""
-    depth, j = 0, i + 1
-    while j < len(token) - 1:
-        c = token[j]
-        if c in "\"'`":
-            j += 1
-            while j < len(token) - 1 and token[j] != c:
-                j += 2 if token[j] == "\\" else 1
-        elif token.startswith("//", j):
-            j = token.find("\n", j) if "\n" in token[j:] else len(token) - 2
-        elif token.startswith("/*", j):
-            j = token.find("*/", j) + 1 if "*/" in token[j:] else len(token) - 2
-        elif c in "{}":
-            depth += 1 if c == "{" else -1
-            if not depth:
+JS_BEFORE_REGEX = {"", *"(,=:[!&|?{};+-*%<>~^"}
+JS_KEYWORDS_BEFORE_REGEX = {"return", "typeof", "case", "in", "of", "yield", "await", "delete", "void", "throw", "new", "else", "do"}
+
+
+def js_code(text, keep_strings=False):
+    """JavaScript or TypeScript with comments blanked, and string, template and regular expression
+    text too unless keep_strings; ${...} expressions (nested templates included) stay code.
+    Same length as text, so offsets and line numbers hold."""
+    out, n = list(text), len(text)
+
+    def clear(a, b):
+        for k in range(a, min(b, n)):
+            if out[k] != "\n":
+                out[k] = " "
+
+    def template(i):
+        j = i + 1
+        while j < n:
+            if text[j] == "\\":
+                if not keep_strings:
+                    clear(j, j + 2)
+                j += 2
+            elif text[j] == "`":
                 return j + 1
-        j += 1
-    return len(token) - 1
+            elif text.startswith("${", j):
+                j = code(j + 2, True)
+            else:
+                if not keep_strings:
+                    clear(j, j + 1)
+                j += 1
+        return n
 
+    def code(i, in_expression):
+        depth, prev = 0, ""
+        while i < n:
+            c = text[i]
+            if text.startswith("//", i):
+                j = text.find("\n", i)
+                j = n if j < 0 else j
+                clear(i, j)
+                i = j
+            elif text.startswith("/*", i):
+                j = text.find("*/", i + 2)
+                j = n if j < 0 else j + 2
+                clear(i, j)
+                i = j
+            elif c in "\"'":
+                j = i + 1
+                while j < n and text[j] not in (c, "\n"):
+                    j += 2 if text[j] == "\\" else 1
+                if not keep_strings:
+                    clear(i + 1, j)
+                i, prev = j + 1, ")"
+            elif c == "`":
+                i, prev = template(i), ")"
+            elif c == "/" and (prev in JS_BEFORE_REGEX or prev in JS_KEYWORDS_BEFORE_REGEX):
+                j, in_class = i + 1, False
+                while j < n and text[j] != "\n" and (in_class or text[j] != "/"):
+                    in_class = (in_class or text[j] == "[") and text[j] != "]"
+                    j += 2 if text[j] == "\\" else 1
+                if not keep_strings:
+                    clear(i + 1, j)
+                i, prev = j + 1, ")"
+            elif c.isalnum() or c in "_$":
+                j = i
+                while j < n and (text[j].isalnum() or text[j] in "_$"):
+                    j += 1
+                i, prev = j, text[i:j]
+            else:
+                if in_expression and c in "{}":
+                    if c == "}" and not depth:
+                        return i + 1
+                    depth += 1 if c == "{" else -1
+                if not c.isspace():
+                    prev = c
+                i += 1
+        return n
 
-def template_code(token):
-    """A JavaScript template literal with its text blanked and its ${...} expressions kept.
-
-    An escaped \\${ is text. Braces inside strings and comments in an expression do not close it.
-    """
-    out, i = [token[0]], 1
-    while i < len(token) - 1:
-        if token[i] == "\\":
-            out.append("  " if token[i + 1] != "\n" else " \n")
-            i += 2
-        elif token.startswith("${", i):
-            j = expression_end(token, i)
-            out.append("${" + code_only(token[i + 2:j - 1], "js") + token[j - 1])
-            i = j
-        else:
-            out.append(token[i] if token[i] == "\n" else " ")
-            i += 1
-    return "".join(out)[:len(token) - 1] + token[-1]
+    code(0, False)
+    return "".join(out)
 
 
 def code_only(text, lang, keep_strings=False):
-    """Text with comments blanked, and string contents too unless keep_strings; line numbers kept.
-
-    A JavaScript template literal keeps its ${...} expressions, which are code.
-    """
-    strings = [r'"""[\s\S]*?"""', r"'''[\s\S]*?'''"] if lang == "py" else [r"`(?:\\[\s\S]|[^`\\])*`"]
+    """Text with comments blanked, and string contents too unless keep_strings; line numbers kept."""
+    if lang == "js":
+        return js_code(text, keep_strings)
+    # A Go raw string has no escapes: a backslash in it is text.
+    strings = [r'"""[\s\S]*?"""', r"'''[\s\S]*?'''"] if lang == "py" else [r"`[^`]*`"]
     strings += [r'"(?:\\.|[^"\\\n])*"', r"'(?:\\.|[^'\\\n])*'"]
     comments = [r"#[^\n]*"] if lang == "py" else [r"/\*[\s\S]*?\*/", r"//[^\n]*"]
     pattern = re.compile("|".join(f"(?:{p})" for p in strings + comments))
@@ -183,15 +224,14 @@ def code_only(text, lang, keep_strings=False):
             return blank(match)
         if keep_strings:
             return token
-        if token[0] == "`" and lang == "js":
-            return template_code(token)
         q = 3 if token[:3] in ('"""', "'''") else 1
         return token[:q] + blank(re.match(r"[\s\S]*", token[q:-q])) + token[-q:]
     return pattern.sub(keep, text)
 
 
 def py_imports(text):
-    """[(line, module)] from Python's own parser; the pattern fallback for a file it cannot parse."""
+    """[(line, name)] from Python's own parser: each imported module, and module.name for each
+    name a `from` import takes. The pattern fallback serves a file Python cannot parse."""
     try:
         tree = ast.parse(text)
     except (SyntaxError, ValueError):
@@ -206,42 +246,75 @@ def py_imports(text):
         if isinstance(node, ast.Import):
             found += [(node.lineno, alias.name) for alias in node.names]
         elif isinstance(node, ast.ImportFrom):
-            found.append((node.lineno, "." * node.level + (node.module or "")))
+            prefix = "." * node.level + (f"{node.module}." if node.module else "")
+            found += [(node.lineno, prefix + alias.name) for alias in node.names if alias.name != "*"]
+            if any(alias.name == "*" for alias in node.names):
+                found.append((node.lineno, "." * node.level + (node.module or "")))
     return found
 
 
+SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)
+
+
 def scope_imports(body, names=None):
-    """{bound name: full name} for the imports directly in one scope, in source order so a later
-    import of a name replaces an earlier one; nested scopes keep their own."""
+    """{bound name: {full names}} for every import directly in one scope; nested scopes keep theirs."""
     names = {} if names is None else names
     for node in body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+        if isinstance(node, SCOPES):
             continue
-        if isinstance(node, ast.Import):
-            for a in node.names:
-                names[a.asname or a.name.split(".")[0]] = a.name if a.asname else a.name.split(".")[0]
-        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
-            for a in node.names:
-                names[a.asname or a.name] = f"{node.module}.{a.name}"
+        for bound, full in bindings(node):
+            names.setdefault(bound, set()).add(full)
         scope_imports(ast.iter_child_nodes(node), names)
     return names
 
 
-class ClockCalls(ast.NodeVisitor):
-    """Clock and randomness calls, each resolved against the imports of its own scope and the
-    scopes around it, so a sibling function's import cannot hide or fake one."""
+def bindings(node):
+    """[(bound name, full name)] an import statement binds."""
+    if isinstance(node, ast.Import):
+        return [(a.asname or a.name.split(".")[0], a.name if a.asname else a.name.split(".")[0]) for a in node.names]
+    if isinstance(node, ast.ImportFrom) and node.module and not node.level:
+        return [(a.asname or a.name, f"{node.module}.{a.name}") for a in node.names]
+    return []
+
+
+class PyEffects(ast.NodeVisitor):
+    """Side-effect calls in a Python file: the builtins open, print and input (also inside
+    f-strings), and clock and randomness calls resolved through imports and aliases.
+
+    A scope binds names in source order; a name not yet bound in the current scope, or bound in
+    an enclosing scope, may be any of that scope's imports of it. A class body's names are not
+    visible in its methods, as in Python."""
 
     def __init__(self, tree):
-        self.scopes, self.found = [scope_imports(tree.body)], []
+        self.scopes, self.found = [("module", scope_imports(tree.body), {})], []
         self.generic_visit(tree)
 
     def scoped(self, node):
         body = node.body if isinstance(node.body, list) else [node.body]
-        self.scopes.append(scope_imports(body))
+        kind = "class" if isinstance(node, ast.ClassDef) else "function"
+        self.scopes.append((kind, scope_imports(body), {}))
         self.generic_visit(node)
         self.scopes.pop()
 
     visit_FunctionDef = visit_AsyncFunctionDef = visit_ClassDef = visit_Lambda = scoped
+
+    def bind(self, node):
+        for bound, full in bindings(node):
+            self.scopes[-1][2][bound] = full
+
+    visit_Import = visit_ImportFrom = bind
+
+    def resolve(self, name):
+        """The full names a name may refer to here; {} for a name no import binds."""
+        for index in range(len(self.scopes) - 1, -1, -1):
+            kind, every, seen = self.scopes[index]
+            if kind == "class" and index != len(self.scopes) - 1:
+                continue
+            if index == len(self.scopes) - 1 and name in seen:
+                return {seen[name]}
+            if name in every:
+                return every[name]
+        return set()
 
     def visit_Call(self, node):
         parts, func = [], node.func
@@ -249,20 +322,23 @@ class ClockCalls(ast.NodeVisitor):
             parts.append(func.attr)
             func = func.value
         if isinstance(func, ast.Name):
-            bound = next((scope[func.id] for scope in reversed(self.scopes) if func.id in scope), None)
-            full = ".".join([bound, *reversed(parts)]) if bound else ""
-            if PY_CLOCK.match(full):
-                self.found.append((node.lineno, full))
+            bound = self.resolve(func.id)
+            if not bound and not parts and func.id in ("open", "print", "input"):
+                self.found.append((node.lineno, f"calls {func.id}(; side effects belong in the shell"))
+            for full in sorted(".".join([b, *reversed(parts)]) for b in bound):
+                if PY_CLOCK.match(full):
+                    self.found.append((node.lineno, f"calls {full}(; pass the time or random value in"))
+                    break
         self.generic_visit(node)
 
 
-def py_clock_calls(text):
-    """[(line, full name)] of each clock or randomness call; None when Python cannot parse the file."""
+def py_effects(text):
+    """[(line, what)] of each side-effect call; None when Python cannot parse the file."""
     try:
         tree = ast.parse(text)
     except (SyntaxError, ValueError):
         return None
-    return sorted(ClockCalls(tree).found)
+    return sorted(PyEffects(tree).found)
 
 
 IMPORT = {
@@ -307,8 +383,16 @@ def go_module(tree, path):
     return None, None
 
 
-def local_target(tree, file, lang, module):
-    """The repository path an import names, or None for a library or the standard library."""
+def py_exists(tree, target):
+    return f"{target}.py" in tree.files or tree.is_dir(target)
+
+
+def local_target(tree, file, lang, module, package_path=""):
+    """The repository path an import names, or None for a library or the standard library.
+
+    A Python import resolves from the importing file (relative), or from the package's own
+    directory, its src/, the repository root or src/; `from a import b` names a/b when that
+    exists, else a."""
     here = posixpath.dirname(file)
     if lang == "js":
         if not module.startswith("."):
@@ -320,29 +404,36 @@ def local_target(tree, file, lang, module):
             return posixpath.normpath(posixpath.join(root, module[len(mod):].lstrip("/")))
         return None
     dots = len(module) - len(module.lstrip("."))
-    rest = module[dots:].replace(".", "/")
+    parts = [p for p in module[dots:].split(".") if p]
     if dots:
         base = here
         for _ in range(dots - 1):
             base = posixpath.dirname(base)
-        return posixpath.normpath(posixpath.join(base, rest)) if rest else base
-    for root in ("", "src/"):
-        target = root + rest
-        if f"{target}.py" in tree.files or tree.is_dir(target):
-            return target
+        for k in range(len(parts), 0, -1):
+            target = posixpath.normpath(posixpath.join(base, *parts[:k]))
+            if py_exists(tree, target):
+                return target
+        return posixpath.normpath(base)
+    package_path = package_path.strip("/").strip(".")
+    roots = [f"{package_path}/", f"{package_path}/src/"] if package_path else []
+    for root in roots + ["", "src/"]:
+        for k in range(len(parts), 0, -1):
+            target = root + "/".join(parts[:k])
+            if py_exists(tree, target):
+                return target
     return None
 
 
+def bare(path):
+    return re.sub(r"\.(?:py|go|[cm]?[jt]sx?)$", "", path)
+
+
 def inside(path, roots):
-    """Whether path (a file, a directory, or a module path without its extension) is in a root."""
-    for root in roots:
-        bare = re.sub(r"\.(?:py|go|[cm]?[jt]sx?)$", "", root)
-        if path in (root, bare) or path.startswith(root.rstrip("/") + "/"):
-            return True
-    return False
+    """Whether path (a file, a directory, or a module path with or without its extension) is in a root."""
+    return any(bare(path) == bare(root) or path.startswith(root.rstrip("/") + "/") for root in roots)
 
 
-def scan_file(tree, file, core):
+def scan_file(tree, file, core, package_path=""):
     lang = CODE[os.path.splitext(file)[1]]
     text = tree.read(file) or ""
     stripped = code_only(text, lang)
@@ -353,25 +444,24 @@ def scan_file(tree, file, core):
         if name in IO_MODULES[lang] or top in IO_MODULES[lang] or name.startswith(IO_PREFIXES[lang]):
             out.append((file, line, "io-import", f"imports {module}, an I/O module; move the call to the shell"))
             continue
-        target = local_target(tree, file, lang, module)
+        target = local_target(tree, file, lang, module, package_path)
         if target and not NON_CODE.search(target) and not inside(target, core):
             out.append((file, line, "outward-import",
                         f"imports {target}, outside the core; dependencies point inward, so pass its result in"))
-    for m in re.finditer(SIDE_EFFECTS[lang], stripped):
-        line = stripped.count("\n", 0, m.start()) + 1
-        out.append((file, line, "side-effect", f"calls {m.group(0).strip()}; side effects belong in the shell"))
-    clocks = py_clock_calls(text) if lang == "py" else []
-    if clocks is None:
-        clocks = [(stripped.count("\n", 0, m.start()) + 1, m.group(0).rstrip("( "))
-                  for m in re.finditer(PY_CLOCK_TEXT, stripped)]
-    for line, name in clocks:
-        out.append((file, line, "side-effect", f"calls {name}(; pass the time or random value in"))
+    effects = py_effects(text) if lang == "py" else []
+    if effects is None:  # Python that does not parse: read the patterns as text
+        effects = [(stripped.count("\n", 0, m.start()) + 1, f"calls {m.group(0).strip()}; side effects belong in the shell")
+                   for m in re.finditer(SIDE_EFFECTS[lang] + "|" + PY_CLOCK_TEXT, stripped)]
+    elif lang != "py":
+        effects = [(stripped.count("\n", 0, m.start()) + 1, f"calls {m.group(0).strip()}; side effects belong in the shell")
+                   for m in re.finditer(SIDE_EFFECTS[lang], stripped)]
+    out += [(file, line, "side-effect", what) for line, what in effects]
     return out
 
 
 def scan_core(tree, package):
     """(violations, problems) for one package's core paths."""
-    core = [c.strip("/") for c in package.get("core") or []]
+    core = [posixpath.normpath(c.strip("/")) for c in package.get("core") or []]
     violations, problems = [], []
     if not core:
         problems.append("no core paths: list the pure domain code under \"core\"")
@@ -380,7 +470,7 @@ def scan_core(tree, package):
         if not files:
             problems.append(f"core path {root} holds no source files: the check would pass on nothing")
         for file in files:
-            violations += scan_file(tree, file, core)
+            violations += scan_file(tree, file, core, package.get("path", ""))
     return sorted(set(violations)), problems
 
 
@@ -404,8 +494,10 @@ def parse_manifest(text, where):
         raise SystemExit(f"{where}: needs a non-empty \"packages\" list")
     out = {}
     for p in packages:
-        if not isinstance(p, dict) or not p.get("name") or not isinstance(p.get("path"), str):
+        if not isinstance(p, dict) or not isinstance(p.get("name"), str) or not isinstance(p.get("path"), str):
             raise SystemExit(f"{where}: each package needs \"name\" and \"path\"")
+        if not re.fullmatch(r"[A-Za-z0-9@_][A-Za-z0-9@._/-]*", p["name"]) or ".." in p["name"]:
+            raise SystemExit(f"{where}: package name {p['name']!r}: letters, digits and @ . _ / - only, no '..'")
         if p.get("mode", "enforce") not in ("enforce", "observe"):
             raise SystemExit(f"{where}: {p['name']}: \"mode\" is \"enforce\" or \"observe\"")
         out[p["name"]] = p
@@ -413,10 +505,13 @@ def parse_manifest(text, where):
 
 
 def judges(repo, base, head=None):
-    """({name: package definition that judges the change}, ignore globs, notes, new package names).
+    """(packages, ignore globs, notes, new names, forced names) for a change from base to head.
 
-    verify.json at base judges when base has it; a package new at head is judged by head's
-    definition, and the notes say so for the reviewer. Without head, head is the worktree.
+    verify.json at base judges: a change cannot weaken its own judge. A package new at head is
+    judged by its own definition. A package whose definition the change edits keeps its base
+    definition, except that enforce at head wins over observe at base, so tightening takes
+    effect at once. New and edited packages are forced: they run and need evidence even when
+    none of their files changed. Without head, head is the worktree.
     """
     if head:
         head_text = git(repo, "show", f"{head}:{MANIFEST}")
@@ -428,20 +523,34 @@ def judges(repo, base, head=None):
     base_text = git(repo, "show", f"{base}:{MANIFEST}") if base else None
     if head_text is None and base_text is None:
         raise SystemExit(f"no {MANIFEST} in {repo}: write one (see reference/verification.md)")
-    head, head_ignore = parse_manifest(head_text, f"{MANIFEST} at HEAD") if head_text else ({}, [])
+    head, head_ignore = parse_manifest(head_text, f"{MANIFEST} at head") if head_text else ({}, [])
     if base_text is None:
-        notes = [f"{MANIFEST} is new in this change: its definitions judge it; the reviewer reads them"] if base else []
-        return head, head_ignore, notes, set()
+        notes = [f"{MANIFEST} is new in this change: every package runs, judged by its own definition"] if base else []
+        return head, head_ignore, notes, set(head) if base else set(), set(head) if base else set()
     packages, ignore = parse_manifest(base_text, f"{MANIFEST} at {base}")
-    notes, new = [], set()
+    notes, new, forced = [], set(), set()
+    if head_text is None:
+        notes.append(f"this change deletes {MANIFEST}; the definitions at base still judge it")
     for name, p in head.items():
         if name not in packages:
             packages[name] = p
             new.add(name)
+            forced.add(name)
             notes.append(f"{name}: new package, defined by this change; the reviewer reads its definition")
         elif fingerprint(p) != fingerprint(packages[name]):
-            notes.append(f"{name}: this change edits its definition; {MANIFEST} at base judges it")
-    return packages, ignore, notes, new
+            forced.add(name)
+            if p.get("mode", "enforce") == "enforce" and packages[name].get("mode", "enforce") == "observe":
+                packages[name] = {**packages[name], "mode": "enforce"}
+            notes.append(f"{name}: this change edits its definition; {MANIFEST} at base judges it"
+                         f"{' (in enforce mode, as head sets)' if packages[name].get('mode') == 'enforce' else ''}")
+    for name in packages.keys() - head.keys() if head_text else ():
+        notes.append(f"{name}: this change removes the package; {MANIFEST} at base still judges its files")
+    return packages, ignore, notes, new, forced
+
+
+def slug(name):
+    """A file name for a package's evidence: scoped names such as @acme/web keep one file."""
+    return name.replace("/", "__")
 
 
 def fingerprint(package):
@@ -468,15 +577,16 @@ def longest(path, packages):
     return best
 
 
-def changed(repo, base, head, packages, ignore, new=()):
+def changed(repo, base, head, packages, ignore, new=(), forced=()):
     """({package names changed}, [files outside every package and not ignored]).
 
-    Renames count as a deletion and an addition, so a move changes both packages.
+    Renames count as a deletion and an addition, so a move changes both packages. Forced
+    packages (new or with an edited definition) count as changed.
     """
-    names, outside = set(), []
+    names, outside = set(forced), []
     for path in (git(repo, "diff", "--name-only", "--no-renames", f"{base}...{head}") or "").splitlines():
         if path == MANIFEST:
-            continue  # judged at base; judges() notes each edited definition
+            continue  # judges() forces each package whose definition it adds or edits
         found = owners(path, packages, new)
         if found:
             names.update(p["name"] for p in found)
@@ -511,13 +621,16 @@ def cmd_core(args):
 
 def cmd_run(args):
     head = rev_commit(args.repo, "HEAD")
+    if not head or args.base and not rev_commit(args.repo, args.base):
+        print(f"cannot resolve HEAD or --base {args.base}: not run")
+        return 1
     if git(args.repo, "status", "--porcelain", "--untracked-files=no"):
         print("uncommitted changes: commit first, so the evidence binds to a commit")
         return 1
-    packages, ignore, notes, new = judges(args.repo, args.base)
+    packages, ignore, notes, new, forced = judges(args.repo, args.base)
     for note in notes:
         print(f"note: {note}")
-    names = args.package or (sorted(changed(args.repo, args.base, head, packages, ignore, new)[0]) if args.base
+    names = args.package or (sorted(changed(args.repo, args.base, head, packages, ignore, new, forced)[0]) if args.base
                              else list(packages))
     directory = out_dir(args.repo, args.out)
     os.makedirs(directory, exist_ok=True)
@@ -526,7 +639,7 @@ def cmd_run(args):
         if name not in packages:
             raise SystemExit(f"no package {name!r} in {MANIFEST}")
         p = packages[name]
-        log_path = os.path.join(directory, f"{name}.log")
+        log_path = os.path.join(directory, f"{slug(name)}.log")
         steps, passed = [], True
         with open(log_path, "w", encoding="utf-8") as log:
             plan = [("check", c) for c in p.get("checks") or []] + [("core", None)]
@@ -556,9 +669,9 @@ def cmd_run(args):
             passed = False
         evidence = {"package": name, "head": head, "definition": fingerprint(p), "steps": steps, "passed": passed,
                     "log": log_path, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
-        with open(os.path.join(directory, f"{name}.json"), "w", encoding="utf-8") as handle:
+        with open(os.path.join(directory, f"{slug(name)}.json"), "w", encoding="utf-8") as handle:
             json.dump(evidence, handle, indent=2)
-        print(f"{name}: {'passed' if passed else 'failed'} on {head[:12]}; evidence {os.path.join(directory, name)}.json")
+        print(f"{name}: {'passed' if passed else 'failed'} on {head[:12]}; evidence {os.path.join(directory, slug(name))}.json")
         failed |= not passed
     if not names:
         print("no package changed")
@@ -571,17 +684,17 @@ def cmd_check(args):
     if not base or not head:
         print(f"cannot resolve --base {args.base} or --head {args.head}: not run")
         return 1
-    packages, ignore, notes, new = judges(args.repo, base, head)
+    packages, ignore, notes, new, forced = judges(args.repo, base, head)
     for note in notes:
         print(f"note: {note}")
-    names, outside = changed(args.repo, base, head, packages, ignore, new)
+    names, outside = changed(args.repo, base, head, packages, ignore, new, forced)
     problems = [f"{path}: changed, but outside every package and not under \"ignore\"" for path in outside]
     directory = out_dir(args.repo, args.out)
     tree = Tree(args.repo, head)
     for name in sorted(names):
         p = packages[name]
         try:
-            with open(os.path.join(directory, f"{name}.json"), encoding="utf-8") as handle:
+            with open(os.path.join(directory, f"{slug(name)}.json"), encoding="utf-8") as handle:
                 ev = json.load(handle)
         except (OSError, json.JSONDecodeError):
             problems.append(f"{name}: no evidence: run verify_gate.py run on this head")

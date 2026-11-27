@@ -46,8 +46,13 @@ One file at the repository root lists the packages:
 
 `verify.json` at the base commit judges a change. A change that edits its own package's
 definition is still judged by the base's definition, so a change cannot weaken the check that
-judges it. Land a manifest change in its own pull request first. A package new in the change is
-judged by its own definition, and `check` says so for the reviewer.
+judges it, with one exception: `"mode": "enforce"` at head beats `observe` at base, so tightening
+takes effect at once. Land a manifest change in its own pull request first. A package new in the
+change, and every package when `verify.json` itself is new, is judged by its own definition, and
+`check` says so for the reviewer. A new or edited package runs and needs evidence even when none
+of its files changed. A package the change removes is still judged by the base, and `check` notes
+it; `floor_guard.py` flags the removal and every package set to observe. Package names are
+letters, digits and `@ . _ / -`; `@acme/web` keeps its evidence in `@acme__web.json`.
 
 ## Commands
 
@@ -59,7 +64,7 @@ python3 $G check --base origin/dev              # passes only with fresh, passin
 ```
 
 - `run` refuses uncommitted changes, runs each package's steps cheapest first, and stops at the
-  first failure. It writes `<package>.json` and `<package>.log` under `git rev-parse --git-path
+  first failure. It refuses a `--base` it cannot resolve. It writes `<package>.json` and `<package>.log` under `git rev-parse --git-path
   verify`, so evidence stays out of the commit.
 - `check` passes only when every changed package has evidence on this head, made with the
   judging definition, with a passing e2e step, and its core passes at head. A changed file
@@ -95,7 +100,10 @@ Work test-first in this order:
 - The core scan reads text patterns for Python, JavaScript/TypeScript and Go: imports, a list of
   I/O modules, and calls such as `print`, `fetch`, `time.Now` and `Date.now`. In Python it reads
   imports and aliases with Python's parser, so `from time import time as now; now()` is the clock
-  call `time.time`, while `t.gmtime(0)` and `dt(2000, 1, 2)` stay pure. It misses I/O through
+  call `time.time`, while `t.gmtime(0)` and `dt(2000, 1, 2)` stay pure; `open`, `print` and
+  `input` count also inside f-strings, and a local variable or parameter named `open` still
+  counts as the builtin. JavaScript strings, comments, regex literals and nested `${...}`
+  templates are read in one pass, so only code counts. It misses I/O through
   a library it does not list, or through a function passed in and called. The reviewer reads the
   core for those.
 - The evidence file is written by `run` on the author's machine. `check` proves it names this

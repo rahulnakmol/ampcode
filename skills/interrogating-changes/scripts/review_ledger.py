@@ -163,7 +163,7 @@ def model_of(entry):
     model, source = entry.get("model"), entry.get("source")
     if not (isinstance(model, str) and model.strip() and isinstance(source, str) and source.strip()):
         return None
-    return model.strip().lower()
+    return re.sub(r"\s+", "", model).lower()
 
 
 def check_models(ledger, add):

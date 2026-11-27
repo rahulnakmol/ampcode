@@ -83,7 +83,7 @@ the new head, so rules L3 to L5 check it there.
 | L7 | A `declined` finding that is not a Nit, unless it is pre-existing and names where it is `filed` |
 | L8 | A failed round past the cap without a `disposition` of `fixed`, `replanned` or `filed`; any other disposition value; or a disposition on a round that is not a failed round past the cap |
 | L9 | A `fixed` entry on the same `patch_id` as the round where that ID was last open: a fix needs a new patch |
-| L10 | `models` is missing; an entry has no `model` or `source`; or the reviewer's model (case and spaces ignored) is one of the implementers' |
+| L10 | `models` is missing; an entry has no `model` or `source`; or the reviewer's model (ignoring case and all spaces) is one of the implementers' |
 
 A round **fails** when, after it, a Blocker or Major is open.
 

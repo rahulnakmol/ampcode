@@ -157,6 +157,8 @@ class Check(LedgerCase):
         ledger["models"] = copy.deepcopy(MODELS)
         ledger["models"]["implementers"].append({"model": "OpenAI/GPT-6-Astra ", "source": "T-child"})
         self.assertFails(self.check(ledger), "L10", "openai/gpt-6-astra")
+        ledger["models"]["implementers"][-1]["model"] = "openai / gpt-6-astra"
+        self.assertFails(self.check(ledger), "L10")
 
     def test_l10_models_need_a_source(self):
         ledger = self.ledger()
@@ -300,6 +302,8 @@ class Verdict(LedgerCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(f"patch-id: {expected}", result.stdout)
         self.assertIn("verdict: pass", result.stdout)
+        self.assertIn("anthropic/claude-opus-5-5", result.stdout)
+        self.assertIn("openai/gpt-6-astra", result.stdout)
 
     def test_w3_5_new_commit_makes_the_verdict_stale(self):
         ledger = self.ledger([PRE_EXISTING])
@@ -443,13 +447,28 @@ class FloorGuard(unittest.TestCase):
             with self.subTest(line=line):
                 self.assertFlags(diff("playwright.config.ts", added=[line]), "test retry added")
         self.assertFlags(diff(".mocharc.json", removed=['  "retries": 0'], added=['  "retries": 2']), "test retry added")
-        for line in ("  retries: 0,", "jest.retryTimes(0);"):
+        for path, line in (("Makefile", "\tpytest --retries 2"), (".github/workflows/ci.yml", "  run: npx jest --retry=2"),
+                           ("package.json", '  "test": "vitest --retry 3"'), ("pyproject.toml", "reruns = 2"),
+                           ("pytest.ini", "addopts = --reruns=1"), ("web/e2e/login.spec.ts", "test.describe.configure({ retries: 2 });")):
+            with self.subTest(path=path):
+                self.assertFlags(diff(path, added=[line]), "test retry added")
+        for line in ("  retries: 0,", "jest.retryTimes(0);", "  # retries: 2,"):
             self.assertClean(diff("playwright.config.ts", added=[line]))
+        # A lowered count, and retries in application code or docs, are not test retries.
+        self.assertClean(diff("playwright.config.ts", removed=["  retries: 3,"], added=["  retries: 1,"]))
+        self.assertFlags(diff("playwright.config.ts", removed=["  retries: 1,"], added=["  retries: 3,"]), "test retry added")
+        for path in ("src/http/client.ts", "docs/retries.md", "skills/x/scripts/floor_guard.py"):
+            self.assertClean(diff(path, added=["const policy = { retries: 3 };"]))
 
     def test_verify_json_set_to_observe_is_flagged(self):
         line = '      "mode": "observe"'
         self.assertFlags(diff("verify.json", removed=['      "mode": "enforce"'], added=[line]), "observe")
         self.assertClean(diff("docs/verify.md", added=[line]))
+        # Moving observe from one package to another still sets a package to observe.
+        self.assertFlags(diff("verify.json", removed=['  {"name": "api", "mode": "observe"},', '  {"name": "web"},'],
+                              added=['  {"name": "api"},', '  {"name": "web", "mode": "observe"},']), "observe")
+        self.assertFlags(diff("packages/verify.json", removed=['    "name": "billing",']), "package removed")
+        self.assertClean(diff("verify.json", removed=['    "name": "billing",'], added=['    "name": "billing", "e2e": "make e2e",']))
 
     def test_w4_1_replaced_assertion_is_not_flagged(self):
         self.assertClean(diff("tests/test_total.py", removed=["    self.assertEqual(total([1, 2]), 3)"],
