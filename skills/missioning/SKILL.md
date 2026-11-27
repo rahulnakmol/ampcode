@@ -68,9 +68,9 @@ Load only the chosen playbook:
 ## 4. Ask only at kickoff and for the five stop reasons
 
 Settle facts by lookup or a bounded experiment. Choices of priority, taste, risk or money go into
-the kickoff as open questions with a recommended default. After kickoff, take the default or a
-safe, reversible choice, record it as an assumption and report it at the next checkpoint. Stop
-and ask only when one of these holds, with one question, options and a recommendation:
+the kickoff as open questions with a recommended default. After kickoff, take the default or a safe,
+reversible choice, record it as an assumption and report it at the next checkpoint. Stop and ask
+only when one of these holds, as a human gate with one question, options and a recommendation:
 
 1. Change to the baseline: a criterion, scope item or design decision is wrong or conflicts, and no reading inside the contract works.
 2. Outside effect not in the contract: an irreversible or outside effect that the contract does not pre-authorize.

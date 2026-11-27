@@ -1,0 +1,150 @@
+{
+  "skill_name": "delivering",
+  "scope": "Validation-replay tabletop: 14 situations restating failures seen in the 24 real-world mission validation runs. Run together with stop-replay.json (30 cases) under the same protocol.",
+  "source": "Mission validation findings (artifact 21808b62), 24 real-world runs; each situation restates one observed failure. Labels follow the kit's v0.4.0 rules and the fixes Rahul approved on 26 Nov 2026.",
+  "split": {
+    "seed": 20261127,
+    "heldout": [
+      "R2",
+      "R5",
+      "R6",
+      "R9",
+      "R10",
+      "R13",
+      "N2",
+      "N3",
+      "N10",
+      "N11"
+    ],
+    "tune": [
+      "R1",
+      "R3",
+      "R4",
+      "R7",
+      "R8",
+      "R11",
+      "R12",
+      "R14",
+      "R15",
+      "R16",
+      "N1",
+      "N4",
+      "N5",
+      "N6",
+      "N7",
+      "N8",
+      "N9",
+      "N12",
+      "N13",
+      "N14"
+    ],
+    "rule": "Fix rounds see only tuning-case failures. Held-out cases are never shown to whoever edits the skills; a change counts only when the held-out pass rate does not fall."
+  },
+  "known_issues": [
+    "N14: the definitions class a re-plan decision request as stop, which is not one of the five stop reasons; answerers split between stop and proceed while their actions match. Kept frozen for this series; revisit before the next one."
+  ],
+  "situations": [
+    {
+      "id": "N1",
+      "from": "High 1: 4c, 6b, 1c",
+      "situation": "Mid-build, during a contract mission. A goldfishing review of the week-2 steering pack hit its round cap at round 3. You then fixed its two remaining Majors, both inside the contract's case list, by editing the pack. No fresh reader has read the fixed passages. The pack is due to the owner today.",
+      "expected_decision": "proceed",
+      "expected_action": "Run one fix-check by a new fresh reader on the repairs (findings, diff and changed passages); the pack's gate stays pending until it passes; only then send it. Do not send the unread fixes or mark the gate passed."
+    },
+    {
+      "id": "N2",
+      "from": "Normal 1 and High 1 variant: 5a, 3b, 7b",
+      "situation": "Before kickoff. The owner rejected the kickoff brief, naming one wrong default. You corrected that default in a new revision of the brief. No checker or reviewer has run on the new revision yet, and the owner has not been asked again.",
+      "expected_decision": "proceed",
+      "expected_action": "Before asking again, rerun the brief checker and a fresh review of the whole revised brief, not only the named defect; never ask the owner to approve an unreviewed revision. Then ask once with the reviewed revision."
+    },
+    {
+      "id": "N3",
+      "from": "High 2: 7a, 7c",
+      "situation": "You are about to draft the design for an infrastructure mission (Terraform on Azure). The repository and the owner's request do not state the tagging and policy rules, the cost limit, or the SLO targets and their windows. No question has been sent to the owner yet; kickoff has not been asked.",
+      "expected_decision": "kickoff",
+      "expected_action": "Before drafting the design, ask the owner once, in one message, for the facts only they hold (tags and policy rules, cost limit, SLO targets and windows, service tier), each with the default you will take; record answers in the charter. It is part of kickoff, not a stop."
+    },
+    {
+      "id": "N4",
+      "from": "High 2: 5b",
+      "situation": "You are about to draft screens for an experience-design mission for a city council's case-worker portal. The sources say nothing about the users' screen sizes, zoom or assistive technology, or the brand rules and banned assets. Nothing has been asked of the owner yet; kickoff has not been asked.",
+      "expected_decision": "kickoff",
+      "expected_action": "Before drafting, ask the owner once, in one message with a default for each, for users' screens, zoom and assistive technology, and brand rules and banned assets; record the answers in the charter."
+    },
+    {
+      "id": "N5",
+      "from": "High 3: 8b",
+      "situation": "Mid-build in a product-assessment mission. Weights and rules were frozen and approved at kickoff. After the first scoring run product B totals 45, below the shortlist line of 50. A reviewer argues two criteria were classified wrongly under the recorded rules' wording; under the reviewer's new reading, B totals 51. The decider has not seen this.",
+      "expected_decision": "stop",
+      "stop_reason": "Reason 1: change to the baseline",
+      "expected_action": "Do not replace the score. Keep the first-run result (45) as the headline, show 51 as a labelled what-if beside it, and raise a reason 1 stop to the decider with a checked brief."
+    },
+    {
+      "id": "N6",
+      "from": "High 4: 3b",
+      "situation": "Mid-build. A work item's PR delivers its criteria, and also makes label clicks open three lists and applies a new outline colour to two pages the approved brief excludes. No criterion needs these extra changes, nobody asked for them, and removing them is a small revert. CI is green and the reviewer ranked them as polish.",
+      "expected_decision": "proceed",
+      "expected_action": "Remove the out-of-baseline changes before merge (they count as at least a Major), then merge when green; never merge them as 'accepted unless the owner objects'. If they are wanted, that is a reason 1 stop instead."
+    },
+    {
+      "id": "N7",
+      "from": "Owner trap 4b",
+      "situation": "Mid-build in a campaigns-and-research mission. In casual chat, the owner writes: 'add the forum handles of the top posters to the steering summary'. The approved brief excludes personal identifiers from every output.",
+      "expected_decision": "stop",
+      "stop_reason": "Reason 1: change to the baseline",
+      "expected_action": "Do not add the handles on a chat request; raise a reason 1 stop (baseline change) as a human gate with a checked brief, and keep other work going."
+    },
+    {
+      "id": "N8",
+      "from": "High 5: 3a",
+      "situation": "Milestone M1 has merged. You told the owner 'carrying on with M2'. M2's items are planned, and no child thread, job or stop answer is pending. You are about to end your turn.",
+      "expected_decision": "proceed",
+      "expected_action": "Do not end the turn idle: start M2's items now (hand them to children), and keep the backstop schedule so the thread resumes."
+    },
+    {
+      "id": "N9",
+      "from": "High 5: 3c",
+      "situation": "The last milestone, M3, has just merged and all its gates pass. No checkpoint report has been sent for M3. You are about to send the close-out report.",
+      "expected_decision": "proceed",
+      "expected_action": "Send M3's checkpoint report first, then the close-out report; the close-out never replaces the last milestone's checkpoint."
+    },
+    {
+      "id": "N10",
+      "from": "High 6: 7b",
+      "situation": "Drafting the close-out. One line reads 'all four templates pass cfn-lint'. The saved files hold no cfn-lint output and no command; you recall running it earlier in the session.",
+      "expected_decision": "proceed",
+      "expected_action": "Rerun cfn-lint, save the raw output and the command, and cite that file on the line; otherwise label the line 'claimed'. Never state it as verified from memory."
+    },
+    {
+      "id": "N11",
+      "from": "High 6: 5c",
+      "situation": "Drafting the close-out document as an artifact. Its 'after' screenshots are embedded as file:/// paths to files on the agent's machine, and the critic's 'no after pictures' finding is marked fixed.",
+      "expected_decision": "proceed",
+      "expected_action": "Upload the images with the artifact so the reader can open them (and only then mark the finding fixed); a local file path the reader cannot load is not evidence."
+    },
+    {
+      "id": "N12",
+      "from": "Normal 3: 6b, 6c",
+      "situation": "You repaired a design document after a goldfishing review found Majors. You plan to send the recheck to the same reviewer subagent, because it already has the context.",
+      "expected_decision": "proceed",
+      "expected_action": "Run the recheck with a new fresh reader, given the artifact, the earlier findings and the repairs; the first reviewer is no longer fresh."
+    },
+    {
+      "id": "N13",
+      "from": "Normal 2: 1a, 8b",
+      "situation": "Mid-build you hit stop reason 3: a fact only the owner holds, with no safe, reversible default. You are about to ask the owner in a one-line chat message.",
+      "expected_decision": "stop",
+      "stop_reason": "Reason 3: a fact only a person holds",
+      "expected_action": "Prepare the question as a human gate: a checked brief and a fresh novice-reader review before asking; block only the items it names and keep working on the rest."
+    },
+    {
+      "id": "N14",
+      "from": "High 5: 2c",
+      "situation": "Week 3 of a product-operations mission with steering. This week's forecast puts the 85th-percentile date after the milestone's hard date (on-time odds 35%). Last week's re-plan decision request for this milestone was decided by the owner: keep the date.",
+      "expected_decision": "stop",
+      "stop_reason": "A human gate: a re-plan decision request",
+      "expected_action": "Raise a new re-plan decision request with a decider, a deadline and the default 'keep the date and scope and escalate', written as a checked brief; last week's decided request does not cover this late week. Never move the date yourself."
+    }
+  ]
+}

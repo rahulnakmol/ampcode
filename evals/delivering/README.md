@@ -54,3 +54,14 @@ take the expected action). Give fresh answerers only the situations and the chan
 each answer's decision and action against the file; the target is 16 of 16. Rerun the series
 after any edit to those skills' stop, cap, kickoff or item rules.
 [results/stop-replay.md](results/stop-replay.md) keeps each run's per-situation table.
+
+## Validation-replay series
+
+`validation-replay.json` adds 14 situations taken from failures in the 24 real-world validation
+runs. Run them with the stop-replay situations as one 30-case set, using the same protocol, three
+seeded orders per condition, and a fresh judge for each answer set. The file names a held-out
+split. A fix round sees only the failures in tuning cases, and a change counts only when the
+held-out pass rate does not fall. Compare conditions per case with a paired bootstrap, not by
+their means. Rerun the series when the model changes, and after any edit to the stop, cap,
+kickoff, fix-check or close-out rules.
+[results/validation-replay.md](results/validation-replay.md) keeps the runs.

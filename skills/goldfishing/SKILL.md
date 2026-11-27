@@ -95,7 +95,8 @@ next checkpoint report instead of asking).
   changes for the owner instead). A new fresh reader gets the findings, the diff of the repairs
   and the changed passages with their surroundings. It says for each repair whether its finding
   is closed, and reports any new Blocker or Major in the changed text. Until it passes, the
-  artifact's gate is `pending`. A passed fix-check is not a round; a failed one counts as a failed
+  artifact's gate is `pending` and the repaired artifact is not sent, not even labelled pending
+  or on its due date. A passed fix-check is not a round; a failed one counts as a failed
   round, so the cap and its disposition policy (or the owner, without a contract) still bound it.
 
 ## 6. Failed reviewers
