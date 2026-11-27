@@ -99,6 +99,10 @@ def make_repo(tmp):
     return repo, base, head
 
 
+MODELS = {"implementers": [{"model": "anthropic/claude-opus-5-5", "source": "get_thread_status T-impl"}],
+          "reviewer": {"model": "openai/gpt-6-astra", "source": "get_thread_status T-review"}}
+
+
 def round_(repo, base, head, findings, number=1, **extra):
     return {"round": number, "base": base, "head": head, "patch_id": patch_id(repo, base, head),
             "scope": ["app.py"], "findings": copy.deepcopy(findings), **extra}
@@ -118,6 +122,8 @@ class LedgerCase(unittest.TestCase):
         self.tmp.cleanup()
 
     def write(self, ledger):
+        if isinstance(ledger, dict) and "rounds" in ledger:
+            ledger.setdefault("models", copy.deepcopy(MODELS))
         path = Path(self.tmp.name) / "ledger.json"
         path.write_text(json.dumps(ledger, indent=2))
         return str(path)
@@ -145,6 +151,23 @@ class Check(LedgerCase):
         result = self.check(self.ledger())
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(result.stdout.strip(), "pass")
+
+    def test_l10_reviewer_on_an_implementer_model_fails(self):
+        ledger = self.ledger()
+        ledger["models"] = copy.deepcopy(MODELS)
+        ledger["models"]["implementers"].append({"model": "OpenAI/GPT-6-Astra ", "source": "T-child"})
+        self.assertFails(self.check(ledger), "L10", "openai/gpt-6-astra")
+
+    def test_l10_models_need_a_source(self):
+        ledger = self.ledger()
+        ledger["models"] = {"implementers": [{"model": "anthropic/claude-opus-5-5"}],
+                            "reviewer": {"model": "openai/gpt-6-astra", "source": " "}}
+        self.assertFails(self.check(ledger), "implementers[1]", "models.reviewer")
+
+    def test_l10_missing_models_give_no_verdict(self):
+        ledger = self.ledger([])
+        ledger["models"] = {}
+        self.assertFails(self.verdict(ledger), "L10", "ledger invalid")
 
     def test_w3_1_missing_field_is_named(self):
         for field in ("location", "quote", "severity", "lens"):
@@ -414,6 +437,18 @@ class FloorGuard(unittest.TestCase):
             with self.subTest(line=line):
                 self.assertFlags(diff("tests/t", removed=[line]), "assertion removed")
 
+    def test_added_test_retry_is_flagged(self):
+        for line in ("  retries: 2,", "jest.retryTimes(3);", "    this.retries(2);", "addopts = --reruns 3",
+                     "@pytest.mark.flaky(reruns=2)", "  test: { retry: 1 },"):
+            with self.subTest(line=line):
+                self.assertFlags(diff("playwright.config.ts", added=[line]), "test retry added")
+        self.assertClean(diff("playwright.config.ts", added=["  retries: 0,"]))
+
+    def test_verify_json_set_to_observe_is_flagged(self):
+        line = '      "mode": "observe"'
+        self.assertFlags(diff("verify.json", removed=['      "mode": "enforce"'], added=[line]), "observe")
+        self.assertClean(diff("docs/verify.md", added=[line]))
+
     def test_w4_1_replaced_assertion_is_not_flagged(self):
         self.assertClean(diff("tests/test_total.py", removed=["    self.assertEqual(total([1, 2]), 3)"],
                               added=["    self.assertEqual(total([1, 2, 3]), 6)"]))
@@ -566,7 +601,7 @@ class FloorGuard(unittest.TestCase):
                      "it('adds', {skip: true}, async () => {"):
             with self.subTest(line=line):
                 self.assertFlags(diff("src/total.test.ts", added=[line]), "skip marker added")
-        for line in ("const options = { retry: 2, skipped: true };", "if (test.ifMatch) {"):
+        for line in ("const options = { timeout: 2, skipped: true };", "if (test.ifMatch) {"):
             with self.subTest(line=line):
                 self.assertClean(diff("src/total.test.ts", added=[line]))
 

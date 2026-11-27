@@ -28,6 +28,10 @@ For each changed function or block:
 - [ ] A changed signature or return value matches every caller.
 - [ ] Removed code: nothing still depends on it.
 - [ ] Money and units: no floats for money, consistent rounding and units.
+- [ ] Pure core: the domain rules sit in the package's core (verify.json `core`) and take plain
+  data in and give plain data out. No I/O, clock or randomness reaches the core, also not
+  through a function passed in and called there; adapters parse and format; the shell performs
+  the effects. Run `verify_gate.py core` (in the `delivering` skill) and read what it cannot see.
 
 ## Security
 
@@ -67,7 +71,11 @@ For each changed function or block:
   flip a condition, delete a guard, change a boundary (`<` to `<=`), return a constant. Run the
   tests. Undo the change. A mutation that stays green is a finding under this lens; record the
   mutation and the green run as its `run:` evidence.
-- [ ] Flaky tests: a test that passes only on a retry is a finding, not a pass.
+- [ ] Flaky tests: a test that passes only on a retry is a finding, not a pass. An added retry,
+  sleep or skip is a finding; `floor_guard.py` flags retries and skips.
+- [ ] End to end: run `verify_gate.py run` and `check` against the base yourself. Each changed
+  package's e2e command drives the real program (HTTP, CLI or browser) and covers the criteria's
+  Given/When/Then scenarios; a failure or a missing package is a finding.
 
 ## When the reviewer cannot run anything
 

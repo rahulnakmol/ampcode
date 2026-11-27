@@ -65,7 +65,9 @@ Read [reference/mission-record.md](reference/mission-record.md) when starting or
 6. **Run the readiness preflight** on the repository, CI, credentials and every outside target:
    push access, `dev` exists, branch protection is readable (name a 403), required checks are
    pinned and green on `dev`, the child-thread tools exist, and each deploy, publish or tracker
-   target is reachable. Kickoff waits for a passing preflight, so resolve each failed check while
+   target is reachable, and the repository has a `verify.json` naming each package's end-to-end
+   command and pure core ([reference/verification.md](reference/verification.md)); a missing one
+   becomes the first item, with its core in observe mode. Kickoff waits for a passing preflight, so resolve each failed check while
    preparing the baseline, asking the owner then if only they can fix it (a 403 needs a plan or
    admin access); never fold it into the kickoff ask or leave it for mid-build. Turn other gaps,
    such as a target that needs its own approval, into an open question or an effect. With the
@@ -104,8 +106,9 @@ repository's isolation policy; preserve existing work and never reset or clean i
   automated and human tests, trace, the cases it touches, the defense, the milestone branch on `origin`, the five
   stop reasons, and the reply route (the steering thread's ID, for `send_thread_message`).
 - **The child** works test-first with the build loop below, runs one fresh `goldfishing` critic
-  review against its definition of done and the cases it touches, pushes its item branch, and
-  reports: a teach-back (outcome, approach, constraints, key risks, first check), branch and head,
+  review against its definition of done and the cases it touches, passes the verification gate
+  (`verify_gate.py check`) on its head, pushes its item branch, and reports its model (on Amp,
+  from `get_thread_status`) and: a teach-back (outcome, approach, constraints, key risks, first check), branch and head,
   each done line with its evidence, the review record, assumptions taken and findings outside the
   case list. It creates no threads and merges nothing into `dev`.
 - **A child stops only for the five reasons**, and sends them to the steering thread, never to the
@@ -116,17 +119,21 @@ repository's isolation policy; preserve existing work and never reset or clean i
 
 ### The milestone gates
 
-1. Open the milestone PR into `dev` once all its items are done; with the plugin, record it as the
-   `candidate`.
+1. Open the milestone PR into `dev` once all its items are done and the **verification gate**
+   passes on its head: `verify_gate.py run --base <dev>`, then `verify_gate.py check --base <dev>`
+   prints `pass` ([reference/verification.md](reference/verification.md)). Paste the check output
+   in the PR body. With the plugin, record the PR as the `candidate`.
 2. Run the tests. **Wait for PR and CI results** with the host's tool in `missioning`'s
    [reference/hosts.md](../missioning/reference/hosts.md). On a host without Amp's GitHub events,
    `scripts/pr_watch.py` waits; [reference/hosts-pr-watch.md](reference/hosts-pr-watch.md) gives
    its usage. Red CI is fixed on the milestone branch.
 3. **Gate 1:** a fresh critic review with `interrogating-changes` of the whole milestone diff
-   against the milestone's criteria and the closed case list. Its findings go in a ledger that
-   `review_ledger.py check` passes.
+   against the milestone's criteria and the closed case list, **on a model that implemented none
+   of the milestone**. The reviewer runs the verification gate again itself. Its findings and both
+   models go in a ledger that `review_ledger.py check` passes (rule L10 refuses a reviewer on an
+   implementer's model).
 4. **Gate 2:** after gate 1 passes, a second independent fresh review of the same head with
-   `interrogating-changes`, in its own ledger. It runs the lowered-bar check `floor_guard.py` on
+   `interrogating-changes`, in its own ledger, also on a model that implemented none of it. It runs the lowered-bar check `floor_guard.py` on
    the whole candidate diff; a flag without an accepted reason blocks, as a finding of at least
    Major. Its record holds the drift check against the contract and the refreshed defense.
 5. Record one evidence line per criterion and per exit criterion, bound to that head.
@@ -279,10 +286,18 @@ expected results independently. A test that passes on empty output proves nothin
 refactor, use unchanged behavioral checks. For instructions and documents, use task scenarios and
 observable outputs; keyword presence alone is not behavioral proof.
 
+Write the end-to-end test first: each acceptance criterion as a Given/When/Then scenario that
+drives the real program. Then unit and property tests for the pure core, and differential tests
+for a rewrite ([reference/verification.md](reference/verification.md#what-each-kind-of-test-covers)).
+
 ### 4. Implement the smallest useful layer
 
 Reuse local patterns and APIs; avoid speculative abstractions and unrelated cleanup. Keep
-behavior-preserving refactors separate from behavior changes. Use code, not model calls, for
+behavior-preserving refactors separate from behavior changes. Put domain rules in the package's
+pure core, named in the domain's words: plain data in, plain data out, no I/O, clock or
+randomness. Adapters parse input into domain types and format the core's decision; the outer
+shell gathers input and performs the effects (files, network, database, LLM calls). Dependencies
+point inward: the core imports nothing from the adapters or the shell. Use code, not model calls, for
 deterministic routing, transforms, counting and checks. Commit coherent increments at green
 boundaries, keep the red-run evidence, and stage only owned, relevant changes.
 
@@ -293,7 +308,8 @@ Check actual outputs and persisted state, and exercise failure and recovery path
 changes, render the affected states and inspect the captures. Open the produced artifact and
 compare it with the request. Record commands, expected and observed results, revision and
 environment. A skipped required check blocks completion; an unavailable environment is reported,
-not substituted.
+not substituted. Before any pull request, commit and run `verify_gate.py run` and `check` for
+the packages the change touched; a failure blocks the pull request.
 
 ### 6. Review, fix and recheck
 
@@ -301,7 +317,8 @@ Review the item against its definition of done and the cases it touches with a f
 (see [reference/review-and-recovery.md](reference/review-and-recovery.md)). Turn each real bug
 into a regression test that fails without the fix, make the smallest correction and rerun the
 affected checks. Never suppress failures, delete useful assertions, hard-code answers or rerun a
-flaky test until it passes.
+flaky test until it passes; never add a retry, sleep or skip to a flaky test: fix its cause or
+delete it with a written reason.
 
 ### 7. Apply the customer-value gate
 

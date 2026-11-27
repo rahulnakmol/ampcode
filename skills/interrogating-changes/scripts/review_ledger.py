@@ -4,7 +4,7 @@
   python3 review_ledger.py check <ledger.json> [--repo <path>]
   python3 review_ledger.py verdict --base <rev> --head <rev> [--ledger <ledger.json>] [--repo <path>]
 
-check: exits 0 and prints "pass" when the ledger follows rules L1 to L9 in
+check: exits 0 and prints "pass" when the ledger follows rules L1 to L10 in
 ../reference/ledger.md. Otherwise exits 1 and prints each problem as "<rule>: <what to fix>".
 
 verdict: prints the candidate's patch ID (`git diff <base>...<head> | git patch-id --verbatim`;
@@ -156,11 +156,43 @@ def blocking(state):
     return [f for f in state.values() if f.get("status") == "open" and f.get("severity") in BLOCKING]
 
 
+def model_of(entry):
+    """The normalised model name of a {model, source} entry, or None when either is missing."""
+    if not isinstance(entry, dict):
+        return None
+    model, source = entry.get("model"), entry.get("source")
+    if not (isinstance(model, str) and model.strip() and isinstance(source, str) and source.strip()):
+        return None
+    return model.strip().lower()
+
+
+def check_models(ledger, add):
+    """L10: the reviewer runs on a model that implemented none of the change, both read back."""
+    models = ledger.get("models")
+    implementers = models.get("implementers") if isinstance(models, dict) else None
+    if not isinstance(implementers, list) or not implementers:
+        add("L10", "'models.implementers' must list each model that wrote the change, as {model, source}")
+        implementers = []
+    built = set()
+    for index, entry in enumerate(implementers, 1):
+        name = model_of(entry)
+        if name is None:
+            add("L10", f"models.implementers[{index}] needs 'model' and 'source' (where the model was read)")
+        else:
+            built.add(name)
+    reviewer = model_of(models.get("reviewer") if isinstance(models, dict) else None)
+    if reviewer is None:
+        add("L10", "'models.reviewer' needs 'model' and 'source' (where the model was read)")
+    elif reviewer in built:
+        add("L10", f"the reviewer ran on {reviewer}, a model that implemented the change; review on another model")
+
+
 def check(ledger, repo):
     problems = []
     add = lambda rule, message: problems.append(f"{rule}: {message}")
     if not isinstance(ledger, dict) or not isinstance(ledger.get("rounds"), list) or not ledger["rounds"]:
         return ["L1: the ledger is an object with a non-empty 'rounds' list"]
+    check_models(ledger, add)
     cap = ledger.get("cap", CAP)
     if cap not in (CAP, RAISED_CAP):
         add("L1", f"'cap' is {cap!r}: use {CAP}, or {RAISED_CAP} when the calling contract says so")
@@ -263,6 +295,9 @@ def verdict(args):
         return 1
     last = ledger["rounds"][-1]
     print(f"ledger patch-id: {last['patch_id']} (round {last['round']})")
+    models = ledger["models"]
+    print(f"reviewer model: {models['reviewer']['model']}; implementer models: "
+          f"{', '.join(m['model'] for m in models['implementers'])}")
     if last["patch_id"] != candidate:
         print("verdict: stale: the ledger reviewed another patch; review this one again")
         return 1
@@ -285,7 +320,7 @@ def verdict(args):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
-    one = sub.add_parser("check", help="check a ledger against rules L1 to L9")
+    one = sub.add_parser("check", help="check a ledger against rules L1 to L10")
     one.add_argument("ledger")
     one.add_argument("--repo", default=".")
     two = sub.add_parser("verdict", help="patch ID and verdict for base...head")

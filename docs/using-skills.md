@@ -14,7 +14,7 @@ the skill explicitly when you want it, and ask Amp which skill it is using if un
 | Start, run or close any kind of mission with one charter and sign-off log | **missioning** | start a mission, mission charter, open questions and defaults, record or audit approvals, which playbook | Charter, gate ledger and decision trail checked by `ledger_check.py`; one kickoff approval; the playbook's steps in your todo list; a close-out audit |
 | Make an idea or requirement concrete | **grilling** | grill me, clarify requirements, pressure-test, pre-mortem, spec this out, write a PRD | Confirmed brief, acceptance criteria, risks, plan and handoff prompt |
 | Design how a person or agent experiences something | **crafting** | design, redesign, craft, prototype, mock up, polish, critique, accessibility audit, user flow | Journeys, states, design direction, mockups/specification and critique |
-| Deliver a substantial software outcome | **delivering** | use delivering, deliver this feature, execute this approved brief, resume this mission | One contract approved once at kickoff; milestones merged into `dev` after tests, CI and two fresh reviews; checkpoint and close-out reports |
+| Deliver a substantial software outcome | **delivering** | use delivering, deliver this feature, execute this approved brief, resume this mission | One contract approved once at kickoff; milestones merged into `dev` after local end-to-end evidence per package, a pure-core check, CI and two fresh reviews on another model; checkpoint and close-out reports |
 | Review a document with fresh eyes | **goldfishing** | fresh-eyes review, Goldfish review, can a newcomer follow this, novice-reader test | Findings with location, severity and smallest fix; a review record |
 | Write a sign-off a non-technical approver understands | **briefing-decisions** | decision brief, approval summary, sign-off text, executive sign-off | A checked plain-English brief with risks, exclusions, undo steps and a technical record |
 | Turn public YouTube research into an original article | **distill** | distill this video, distill these videos, write a whitepaper from these videos | Original evidence-backed article, research brief and supported offline package |
@@ -129,8 +129,9 @@ Do not release or deploy.
 ```
 
 **How it runs:** one contract, a readiness preflight, one approval at kickoff. Then milestones
-run on their own: items test-first in child threads or subagents, two fresh reviews per
-milestone, a squash merge into `dev` when the gates pass, and a checkpoint report that asks
+run on their own: items test-first in child threads or subagents, end-to-end tests run locally
+for each changed package before any pull request, two fresh reviews per milestone on a model that
+wrote none of it, a squash merge into `dev` when the gates pass, and a checkpoint report that asks
 nothing. After kickoff it asks you only when:
 
 1. Change to the baseline: a criterion, scope item or design decision is wrong or conflicts, and no reading inside the contract works.

@@ -15,6 +15,9 @@ It flags, per file in the diff:
   floor-   a lowered, removed or commented-out number on a coverage, threshold, min, minimum, fail_under,
            lines, branches, functions or statements key, also as XML (JaCoCo <minimum>0.80</minimum>)
   ci-      an added continue-on-error: true or allow_failure: true, or || true in a CI file
+  retry-   an added retry of failing tests (retries: 2, jest.retryTimes, this.retries, --reruns,
+           pytest.mark.flaky, @flaky, retry: 2): fix the flaky test's cause, or delete it with a reason
+  observe- an added "mode": "observe" in verify.json: the pure-core rule stops failing the build
 
 Each flag prints as "<id>: <path>:<line>: <what>". Exits 0 and prints "pass" when there is no
 flag, or when every flag is accepted with --accept <id>=<reason>; accepted flags print as
@@ -45,6 +48,10 @@ SKIP = re.compile(
 SILENCER = re.compile(
     r"\bnoqa\b|eslint-disable(?:-next-line|-line)?|@ts-(?:ignore|nocheck|expect-error)\b|\btype:\s*ignore\b|\bnosec\b"
     r"|\bnolint\b|pylint:\s*disable", re.I)
+RETRY = re.compile(
+    r"\bretries\s*[:=]\s*[1-9]|\bretryTimes\s*\(|\bthis\.retries\s*\(\s*[1-9]|--reruns\b|\bmark\.flaky\b|@flaky\b"
+    r"|\bretry\s*:\s*[1-9]")
+OBSERVE = re.compile(r"\"mode\"\s*:\s*\"observe\"")
 CI_IGNORE = re.compile(r"\b(?:continue-on-error|allow_failure)\s*:\s*true\b")
 OR_TRUE = re.compile(r"\|\|\s*(?:true|:)(?![\w-])")
 CI_PATHS = re.compile(
@@ -147,7 +154,10 @@ def scan(text):
         for row in gone[spare:] if len(gone) > spare else []:
             flags.append(("assert", path, row[1], f"assertion removed with no replacement: {row[3].strip()}"))
         # Markers: an added marker counts only when the file did not lose the same marker.
-        checks = [("skip", SKIP, "skip marker added"), ("ci", CI_IGNORE, "CI failure ignored")]
+        checks = [("skip", SKIP, "skip marker added"), ("ci", CI_IGNORE, "CI failure ignored"),
+                  ("retry", RETRY, "test retry added")]
+        if path.rsplit("/", 1)[-1] == "verify.json":
+            checks.append(("observe", OBSERVE, "pure-core rule set to observe"))
         if CI_PATHS.search(path):
             checks.append(("ci", OR_TRUE, "CI failure ignored"))
         for prefix, pattern, what in checks:

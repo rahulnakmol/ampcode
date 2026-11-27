@@ -1,6 +1,6 @@
 ---
 name: interrogating-changes
-description: "Adversarial, fresh-context review of a diff, branch or pull request, stricter than Amp's reviewing-code: a reviewer that never sees the author's claim that it works reads the change through five lenses (correctness, security, data and privacy, concurrency and state, tests with a mutation probe); a finding counts only when a run or a quoted read proves it and it was checked against callers, guards, tests and the base revision; regressions are labelled apart from defects that were already there; a severity ledger with stable IDs, a verdict tied to the exact patch (git patch-id), a lowered-bar check for weakened tests and CI, and the calling mission contract's disposition policy at the round cap. Use when a review gate in delivering or missioning needs a code review, for a standalone review of a diff, branch or pull request, or for an adversarial or security-minded review of a change. Not for reviewing documents, plans or designs (use goldfishing), or a quick informal second opinion (use Amp's reviewing-code)."
+description: "Adversarial, fresh-context review of a diff, branch or pull request, stricter than Amp's reviewing-code: a reviewer on another model, never told that it works, reads the change through five lenses (correctness, security, data and privacy, concurrency and state, tests with a mutation probe); a finding counts only when a run or a quoted read proves it and it was checked against callers, guards, tests and the base revision; regressions are labelled apart from defects that were already there; a severity ledger with stable IDs, a verdict tied to the exact patch (git patch-id), a lowered-bar check for weakened tests and CI, and the calling mission contract's disposition policy at the round cap. Use when a review gate in delivering or missioning needs a code review, for a standalone review of a diff, branch or pull request, or for an adversarial or security-minded review of a change. Not for reviewing documents, plans or designs (use goldfishing), or a quick informal second opinion (use Amp's reviewing-code)."
 ---
 
 # Interrogating changes
@@ -37,11 +37,23 @@ Give the reviewer:
 Never give it the author's claim that the change works, the test results the author reports, the
 author's conversation, or the verdict the author hopes for. The reviewer runs the tests itself.
 
-On Amp, start the reviewer with the host's subagent tool (the Task tool). For other hosts, and for
-the isolation check, see `reference/hosts.md` in the `goldfishing` skill; it is not repeated here.
-When no fresh reviewer is available, the review is **pending**. A review by the author is not
-fresh. If the request that reaches the reviewer already carries the author's claim, the reviewer
-sets it aside, says so in the report and runs every check itself; a reviewer that never saw the
+**Run the reviewer on another model.** The reviewer's model must differ from every model that
+wrote the change or its tests. Read each model from the host, not from an agent's claim, and
+record them in the ledger's `models` ([reference/ledger.md](reference/ledger.md)); rule L10
+refuses a reviewer on an implementer's model. Code a person wrote counts as `human`.
+
+| Host | Start a reviewer on another model | Read the models back |
+| --- | --- | --- |
+| Amp | `create_thread` with a `model` no implementer used (a Task subagent runs its parent's model) | `get_thread_status` on each thread: its `model` |
+| Claude Code | A subagent whose frontmatter `model` is a full model ID the implementer did not use (an alias such as `opus` on an Opus session runs the session's version). Source: https://code.claude.com/docs/en/sub-agents | The subagent file's `model` and the session's `/model`. From documentation, not tested |
+| VS Code or Copilot app | A custom agent (`.github/agents/<name>.agent.md`) with a `model` the implementer did not use and `model-policy: required`. Source: https://code.visualstudio.com/docs/copilot/customization/custom-agents | The agent file's `model`. From documentation, not tested |
+
+For the isolation check and the rest of each host's setup, see `reference/hosts.md` in the
+`goldfishing` skill; it is not repeated here.
+
+When no fresh reviewer on another model is available, the review is **pending**. A review by the
+author, or by another context on the author's model, is not fresh. If the request that reaches
+the reviewer already carries the author's claim, the reviewer sets it aside, says so in the report and runs every check itself; a reviewer that never saw the
 author's conversation still counts as fresh.
 
 ## 3. Run the five lenses
@@ -172,6 +184,7 @@ least a Major. That is how the verdict blocks on it.
 | "The bug was already there, so it is not ours." | Record it as pre-existing; do not hide it |
 | "One more round will fix it." | At the cap, follow the disposition policy |
 | "Only a small rebase happened." | Compare the patch ID. A different ID means a new review |
+| "A fresh subagent is independent enough." | It runs the author's model and shares its blind spots. Review on another model (L10) |
 | "The skip is temporary." | Accept it with a reason, or remove it |
 
 ## Red flags
@@ -181,6 +194,7 @@ least a Major. That is how the verdict blocks on it.
 - A "pass" with no list of files read.
 - A finding whose text changed but whose ID stayed.
 - The reviewer was given the author's claim that it works.
+- The reviewer ran on a model that wrote the change, or the models were not read from the host.
 - A new `noqa`, skip marker or lower threshold with no accepted reason.
 
 ## Adapt it
@@ -194,7 +208,7 @@ least a Major. That is how the verdict blocks on it.
 
 ## Check your work
 
-- `review_ledger.py check` prints `pass` on the final ledger.
+- `review_ledger.py check` prints `pass` on the final ledger, with the models read from the host.
 - `review_ledger.py verdict` prints the candidate's patch ID and a verdict, not "stale".
 - `floor_guard.py` prints `pass`, or every flag has an accepted reason in the report.
 - Every finding has a run or a quote, a severity, a lens and an origin.
