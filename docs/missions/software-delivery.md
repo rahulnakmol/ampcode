@@ -34,18 +34,29 @@ pre-authorized effects.
 | Milestone | What happens | Skills |
 | --- | --- | --- |
 | Kickoff | Concrete criteria with finite case lists; rendered states; technical design with contracts, ADRs and measurable NFRs; threat model when trust boundaries change; fresh design review | `grilling`, `crafting`, `architecting`, `threat-modelling`, `goldfishing`, `briefing-decisions` |
-| One per design slice | Each work item built test-first and freshly reviewed; review gates one and two on the milestone's exact candidate; merge into `dev`; checkpoint report | `delivering`, `interrogating-changes` |
+| One per design slice | Each work item built test-first and freshly reviewed; the verification gate before each pull request; review gates one and two on the milestone's exact candidate, on another model; merge into `dev`; checkpoint report | `delivering`, `interrogating-changes` |
 | Release and close-out | Promotion with a rollback plan, verified on the target; each criterion traced to executed evidence on the released revision | `releasing` |
 
 `delivering` is the conductor; on Amp, `mission-control` enforces its gates.
 
 ## How it verifies the work
 
-Each test for new or changed behaviour keeps its failing run on the unchanged code. A milestone
-merges only when tests, CI and two fresh reviews of the same candidate pass against its criteria;
-`interrogating-changes` ties each verdict to the exact patch. The rules for end-to-end evidence
-before a pull request, the reviewer's model and the code's structure are defined in
-[`delivering`](../../skills/delivering/SKILL.md), which is the source of truth.
+Each test for new or changed behaviour keeps its failing run on the unchanged code. Three rules
+hold for every item and milestone:
+
+- **End-to-end before the pull request.** Every package the change touches runs its end-to-end
+  tests locally on the exact head, with saved evidence; `verify_gate.py check` must pass before
+  a pull request opens, judged by `verify.json` at the base so a change cannot weaken its judge.
+- **A reviewer on another model.** Both review gates run `interrogating-changes` on a model that
+  wrote none of the change, read from the host; its ledger rule L10 refuses a reviewer on an
+  implementer's model, and each verdict is tied to the exact patch.
+- **A pure core, side effects at the edge.** Domain rules sit in each package's pure core, with
+  I/O, clocks and LLM calls only in the outer shell; `verify_gate.py core` fails the build on a
+  violation, after an observe-mode start for a new gate.
+
+A milestone merges only when these, CI and both reviews pass on the same candidate. The details
+are in [`delivering`](../../skills/delivering/SKILL.md) and its
+[verification gate](../../skills/delivering/reference/verification.md).
 
 ## Gates you decide
 
@@ -57,8 +68,9 @@ Every merge into `dev` is an agent row once both reviews and the evidence match 
 
 ## Done when
 
-Every acceptance criterion maps to an executed test or journey on the released revision, both
-reviews are recorded against it, and the release is verified on its target. When accessibility
+Every acceptance criterion maps to an executed test or journey on the released revision, every
+milestone pull request carries a passing `verify_gate.py check` for its head, both reviews are
+recorded against it with reviewer and implementer models that differ, and the release is verified on its target. When accessibility
 is in scope, each WCAG 2.2 A and AA criterion reads pass, fail or not examined; built screens are
 compared with the approved renders; the threat model is updated after the build.
 
