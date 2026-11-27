@@ -6,6 +6,7 @@ This GitHub repository is the readable source of truth. Amp loads published copi
 
 ## User guides
 
+- **[Missions you can run](./docs/missions/README.md):** the eight mission types, what each is for, how to start it, the skills it runs in order, what it delivers and when it is done, with an example from real validation runs.
 - **[Using the skills](./docs/using-skills.md):** choose a skill, learn when to use it, copy a prompt, and understand what a good result looks like.
 - **[Mission-driven development](./docs/mission-driven-development.md):** take an idea or requirement to one contract, one approval at kickoff, and milestones merged into `dev`; start or resume a mission.
 - **[Mission-driven planning](./docs/mission-driven-planning.md):** take a product, operations, or marketing initiative from workshop notes to a signed-off PRD and an executable backlog in GitHub or Excel, traced to delivered outcomes.
@@ -290,7 +291,8 @@ Close-out audits the trail and proposes skill edits for approval.
 Eight playbooks of about 60 lines, loaded only when used, cover ERP and AI transformation
 (through `blueprinting`), product delivery operations (`planning`), software delivery
 (`delivering`), campaigns and research, UX and UI design (`crafting`), code and security review,
-infrastructure and DevSecOps, and product and SaaS assessment. Skills from later waves are marked
+infrastructure and DevSecOps, and product and SaaS assessment; [Missions you can run](./docs/missions/README.md)
+has a guide to each and shows which skills each uses. Skills from later waves are marked
 *planned* with a manual fallback; a playbook never reports that a planned skill ran.
 [`reference/hosts.md`](./skills/missioning/reference/hosts.md) maps each step to the tools of
 Amp, Claude Code, Copilot in VS Code and the Copilot app; the last three come from their

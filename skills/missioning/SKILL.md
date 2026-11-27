@@ -165,8 +165,8 @@ kickoff brief lists the last review's open findings; never ask to approve an unr
 
 ## Adapt it
 
-- **New mission type:** copy a playbook, keep its six headings, add it to the table above and to
-  `PLAYBOOKS` in the checker. Keep it near 60 lines.
+- **New mission type:** copy a playbook, keep its six headings, add it to the table above, to
+  `PLAYBOOKS` in the checker and to the kit's `docs/missions/` guide. Keep it near 60 lines.
 - **Charter fields, gate kinds or sources:** change `FIELDS` or `SOURCES` in
   `scripts/ledger_check.py` and the grammar and template in `reference/charter.md` together.
 - **Another host:** add a column to `reference/hosts.md`; label it "not tested" until you run it.
