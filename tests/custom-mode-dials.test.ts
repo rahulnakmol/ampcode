@@ -32,7 +32,7 @@ test('selected routing keeps Fast variants on the same model, effort and workflo
 			})
 		}
 	}
-	expect(missionCore).toContain('`missioning` skill and follow its `reference/agent-modes.md`')
+	expect(missionCore).toContain('load the `missioning` skill and read its `reference/agent-modes.md` before you write any text')
 	const source = readFileSync(new URL('../plugins/amp-custom-mode-dials.ts', import.meta.url), 'utf8')
 	const metadata = [...source.matchAll(/^\/\/ @amp-agent-mode (.+)$/gm)].map(m => JSON.parse(m[1]))
 	expect(metadata).toEqual(modes.map(m => ({ key: m.key, label: (m.agent as CreateAgentConfig).display!.label })))

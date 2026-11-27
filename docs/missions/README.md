@@ -50,10 +50,12 @@ the kickoff as a dialog and enforces the delivery gates.
 
 Every agent mode in this kit shares one mission core,
 [`missioning`'s agent-modes reference](../../skills/missioning/reference/agent-modes.md). Pick a
-mode and describe the work: the mode opens with `Mission: <playbook>, <outcome>` and runs the
-steps above. It opens with `No mission: <reason>` only for a question it answers by reading or a
-typo-sized edit; say "run it as a mission" to override. A consultation or a work item inside a
-running mission stays part of that mission. Each mode adds only its specialism and limits:
+mode and describe the work: the mode loads the core first and opens with `Mission: <playbook>,
+<outcome>`, then runs the steps above, even for a small change such as a new flag. It opens with
+`No mission: <reason>` only for a question it answers by reading or a typo-sized edit; say "run
+it as a mission" to override. A request that names a running mission (its file, charter or ID),
+or a `consult_*` call, opens with `Work item of <mission>` and stays part of that mission. Each
+mode adds only its specialism and limits:
 
 | Mode | Usual playbook | Specialism | Limits |
 | --- | --- | --- | --- |

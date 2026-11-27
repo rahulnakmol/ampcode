@@ -16,7 +16,7 @@ Oracle and other specialists retain Amp's automatic model routing. No Fast or Pr
 
 ## Each advisor runs its work as a mission
 
-All three share the mission core of every agent mode in this kit: the [`missioning`](../skills/missioning/SKILL.md) skill and its [agent-modes reference](../skills/missioning/reference/agent-modes.md). The shared advisory contract points there in one line; each role file names its usual playbook. A mode opens with `Mission: <playbook>, <outcome>`, or `No mission: <reason>` for a question it answers by reading. A `consult_*` call is a work item of the caller's mission, so it starts no mission of its own.
+All three share the mission core of every agent mode in this kit: the [`missioning`](../skills/missioning/SKILL.md) skill and its [agent-modes reference](../skills/missioning/reference/agent-modes.md). The shared advisory contract points there in one line; each role file names its usual playbook. A mode loads the core before it writes anything and opens with `Mission: <playbook>, <outcome>`, `No mission: <reason>` for a question it answers by reading, or `Work item of <mission>` when the request names a running mission. A `consult_*` call is a work item of the caller's mission, so it starts no mission of its own.
 
 The advisors stay read-only. They do the design or investigation at once as a draft, return the mission file with the `ledger_check.py`, `brief_check.py` and review steps labelled "not run", and leave the kickoff `pending`. Save the file, run the checks and the review, then approve the kickoff. See [Missions you can run](missions/README.md#agent-modes-run-as-missions).
 
