@@ -93,19 +93,32 @@ class Core(Gate):
                               "web/src/core/cart.ts:3: side-effect: calls fetch(")
         self.assertNotIn("datetime, an I/O module", out)
 
-    def test_python_clock_and_randomness_calls_resolve_through_aliases(self):
-        effects = ("import time as t\nfrom random import choice as pick\nfrom datetime import datetime as dt\n"
-                   "from time import time\nimport uuid\n\n"
-                   "def f(items):\n    return (t.time(), pick(items), dt.now(), time(), uuid.uuid4())\n")
-        self.write({"app/core/price.py": effects})
-        self.assertGate(["core"], 1, "price.py:8: side-effect: calls time.time(", "price.py:8: side-effect: calls random.choice(",
-                        "price.py:8: side-effect: calls datetime.datetime.now(", "price.py:8: side-effect: calls uuid.uuid4(")
-        pure = ("import time as t\nimport uuid as u\nimport datetime as d\nfrom datetime import datetime as dt\n"
-                "from uuid import UUID\nfrom random import Random\n\n"
-                "def f():\n    return (t.gmtime(0), u.UUID(int=0), UUID(int=1), d.timedelta(seconds=2), dt(2000, 1, 2),"
-                " Random(1).random())\n")
-        self.write({"app/core/price.py": pure})
-        self.assertGate(["core"], 0, "app: core pass")
+    def test_python_clock_and_randomness_calls_resolve_through_imports(self):
+        cases = {  # file: (source, the clock call's line or None for pure code)
+            "named.py": ("from time import time\n\ndef f():\n    return time()\n", 4),
+            "alias.py": ("import time as t\n\ndef f():\n    return t.time()\n", 4),
+            "chain.py": ("import datetime\n\ndef f():\n    return datetime.datetime.now()\n", 4),
+            "pick.py": ("from random import choice as pick\n\ndef f(xs):\n    return pick(xs)\n", 4),
+            "local.py": ("import time\n\ndef total():\n    return time.time()\n\n"
+                         "def pure():\n    import math as time\n    return time.sqrt(4)\n", 4),
+            "siblings.py": ("def a():\n    from math import sin as now\n    return now(0)\n\n"
+                            "def b():\n    from time import time as now\n    return now()\n", 7),
+            "shadow.py": ("from math import sin as now\n\ndef f():\n    from time import time as now\n    return now()\n", 5),
+            "nested.py": ("def a():\n    from time import time as now\n    return 1\n\n"
+                          "def now():\n    return 0\n\nx = now()\n", None),
+            "pure.py": ("import time as t\nimport uuid as u\nimport datetime as d\nfrom datetime import datetime as dt\n"
+                        "from uuid import UUID\nfrom random import Random\n\n"
+                        "def f():\n    return (t.gmtime(0), u.UUID(int=0), UUID(int=1), d.timedelta(seconds=2),"
+                        " dt(2000, 1, 2), d.datetime(2000, 1, 2), Random(1).random())\n", None),
+        }
+        for name, (source, line) in cases.items():
+            with self.subTest(name=name):
+                self.write({"app/core/price.py": source})
+                if line:
+                    out = self.assertGate(["core"], 1, f"price.py:{line}: side-effect: calls")
+                    self.assertEqual(out.count("side-effect"), 1, out)
+                else:
+                    self.assertGate(["core"], 0, "app: core pass")
 
     def test_go_core_imports(self):
         self.write({"go.mod": "module example.com/m\n\ngo 1.22\n",

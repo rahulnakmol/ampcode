@@ -210,33 +210,59 @@ def py_imports(text):
     return found
 
 
-def py_clock_calls(text):
-    """[(line, full name)] of each clock or randomness call, resolved through imports and aliases;
-    None when Python cannot parse the file."""
-    try:
-        tree = ast.parse(text)
-    except (SyntaxError, ValueError):
-        return None
-    names = {}
-    for node in ast.walk(tree):
+def scope_imports(body):
+    """{bound name: full name} for the imports directly in one scope, not in nested scopes."""
+    names, todo = {}, list(body)
+    while todo:
+        node = todo.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            continue
         if isinstance(node, ast.Import):
             for a in node.names:
                 names[a.asname or a.name.split(".")[0]] = a.name if a.asname else a.name.split(".")[0]
         elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
             for a in node.names:
                 names[a.asname or a.name] = f"{node.module}.{a.name}"
-    found = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call):
-            parts, func = [], node.func
-            while isinstance(func, ast.Attribute):
-                parts.append(func.attr)
-                func = func.value
-            if isinstance(func, ast.Name) and func.id in names:
-                full = ".".join([names[func.id], *reversed(parts)])
-                if PY_CLOCK.match(full):
-                    found.append((node.lineno, full))
-    return sorted(found)
+        todo.extend(ast.iter_child_nodes(node))
+    return names
+
+
+class ClockCalls(ast.NodeVisitor):
+    """Clock and randomness calls, each resolved against the imports of its own scope and the
+    scopes around it, so a sibling function's import cannot hide or fake one."""
+
+    def __init__(self, tree):
+        self.scopes, self.found = [scope_imports(tree.body)], []
+        self.generic_visit(tree)
+
+    def scoped(self, node):
+        body = node.body if isinstance(node.body, list) else [node.body]
+        self.scopes.append(scope_imports(body))
+        self.generic_visit(node)
+        self.scopes.pop()
+
+    visit_FunctionDef = visit_AsyncFunctionDef = visit_ClassDef = visit_Lambda = scoped
+
+    def visit_Call(self, node):
+        parts, func = [], node.func
+        while isinstance(func, ast.Attribute):
+            parts.append(func.attr)
+            func = func.value
+        if isinstance(func, ast.Name):
+            bound = next((scope[func.id] for scope in reversed(self.scopes) if func.id in scope), None)
+            full = ".".join([bound, *reversed(parts)]) if bound else ""
+            if PY_CLOCK.match(full):
+                self.found.append((node.lineno, full))
+        self.generic_visit(node)
+
+
+def py_clock_calls(text):
+    """[(line, full name)] of each clock or randomness call; None when Python cannot parse the file."""
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return None
+    return sorted(ClockCalls(tree).found)
 
 
 IMPORT = {
