@@ -40,6 +40,8 @@ describe('advisory team', () => {
 		const roleMarkers = ['# Archi', '# Darci', '# Opsci']
 		for (const [i, agent] of agents.entries()) {
 			expect(agent.instructions).toContain('Never modify source')
+			expect(agent.instructions).toContain('Mission core: run every request through the `missioning` skill and follow its `reference/agent-modes.md`.')
+			expect(agent.instructions).toContain('Usual playbook: `')
 			expect(agent.instructions).toContain(roleMarkers[i])
 			expect(agent.reasoningEffort).toBe('high')
 			expect(agent.features).toEqual([])

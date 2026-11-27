@@ -87,11 +87,11 @@ your environment; lifecycle observations do not establish production outcomes.
 
 All three are advisory-only. Archi and Darci interview users and evolve a shared design brief. Opsci investigates supplied incident evidence. Specialist routing stays automatic. The plugin provides no live database/telemetry connectors or report-file writer; the guide explains these boundaries and how to extend access safely.
 
-Select a mode for an ongoing conversation, or ask an implementation agent to use its named consultation tool. Source lives in [`plugins/advisory-team/`](./plugins/advisory-team/). Publishing this GitHub repository alone does not install the modes in Amp.
+Select a mode for an ongoing conversation, or ask an implementation agent to use its named consultation tool. Source lives in [`plugins/advisory-team/`](./plugins/advisory-team/). Publishing this GitHub repository alone does not install the modes in Amp. Like every agent mode here, each advisor runs its work as a mission through the shared mission core in [`missioning`](./skills/missioning/reference/agent-modes.md).
 
 ## Amp Custom Mode Dials
 
-[`plugins/amp-custom-mode-dials.ts`](./plugins/amp-custom-mode-dials.ts) targets the gaps in Low → Swift → Medium → Weave → High → Prime → Ultra. These are intended workflow positions, not a benchmark-proven capability ranking:
+[`plugins/amp-custom-mode-dials.ts`](./plugins/amp-custom-mode-dials.ts) targets the gaps in Low → Swift → Medium → Weave → High → Prime → Ultra. Each mode runs its work as a mission through the same shared mission core, with its own workflow doing each work item. These are intended workflow positions, not a benchmark-proven capability ranking:
 
 | Mode | Position | Main agent | Serving |
 | --- | --- | --- | --- |

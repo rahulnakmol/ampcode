@@ -2,7 +2,8 @@
 
 Store personal Amp plugin source here.
 
-[`amp-custom-mode-dials.ts`](./amp-custom-mode-dials.ts) adds Swift, Weave, and Prime without replacing Amp's built-in Dial modes.
+[`amp-custom-mode-dials.ts`](./amp-custom-mode-dials.ts) adds Swift, Weave, and Prime without replacing Amp's built-in Dial modes. Every agent mode here and in `advisory-team/` starts from one `Mission core:` line that points at
+[`missioning`'s agent-modes reference](../skills/missioning/reference/agent-modes.md), so each runs its work as a mission and adds only its own specialism.
 
 [`advisory-team/`](./advisory-team/) adds Archi, Darci, and Opsci as modes and consultation tools. Read the [usage guide](../docs/advisory-team.md). Copy the entire directory when installing or publishing; its Markdown files contain the role instructions.
 

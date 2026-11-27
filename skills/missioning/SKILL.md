@@ -6,8 +6,8 @@ description: "Conducts a mission of any kind with one charter, one gate ledger a
 # Missioning
 
 A mission is a piece of work with a clear outcome, run by an agent after one approval at kickoff.
-This skill is the thin conductor: it decides what happens next and records it; other skills do the
-work, the same on every host ([reference/hosts.md](reference/hosts.md) names each host's tools).
+This skill is its thin conductor, shared by every agent mode in the kit ([reference/agent-modes.md](reference/agent-modes.md)):
+it decides what happens next and records it; other skills do the work, the same on every host ([reference/hosts.md](reference/hosts.md) names its tools).
 
 It starts no agent teams, swarms or multi-agent Projects; work items run as the conductor says.
 It never holds authority the owner did not grant, and one integration owner stays accountable. On

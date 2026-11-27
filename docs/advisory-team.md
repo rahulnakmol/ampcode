@@ -14,6 +14,12 @@ For client workshops, functional specifications, operating models and pre-sales/
 
 Oracle and other specialists retain Amp's automatic model routing. No Fast or Pro feature is requested by these definitions. Normal Amp model usage and orb costs still apply. Model choice is a starting configuration, not a performance guarantee.
 
+## Each advisor runs its work as a mission
+
+All three share the mission core of every agent mode in this kit: the [`missioning`](../skills/missioning/SKILL.md) skill and its [agent-modes reference](../skills/missioning/reference/agent-modes.md). The shared advisory contract points there in one line; each role file names its usual playbook. A mode opens with `Mission: <playbook>, <outcome>`, or `No mission: <reason>` for a question it answers by reading. A `consult_*` call is a work item of the caller's mission, so it starts no mission of its own.
+
+The advisors stay read-only. They do the design or investigation at once as a draft, return the mission file with the `ledger_check.py`, `brief_check.py` and review steps labelled "not run", and leave the kickoff `pending`. Save the file, run the checks and the review, then approve the kickoff. See [Missions you can run](missions/README.md#agent-modes-run-as-missions).
+
 ## Archi and Darci follow the `architecting` skill
 
 Archi and Darci are thin wrappers. Each mode loads the [`architecting`](../skills/architecting/SKILL.md) skill and follows it. Darci also follows the skill's `reference/data-and-ai.md`. The skill holds the design method: the interview, the technical remit, the design format, ADRs and measurable NFRs. The role files keep only the persona and the limits of the mode.
