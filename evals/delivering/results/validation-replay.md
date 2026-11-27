@@ -67,6 +67,27 @@ Both fix rounds left N14 alone, as a label flaw in the eval (see `known_issues`)
 the stop wait until the owner pressed the request. The hand round called that run-to-run variance,
 but its stop edit also covers N7's missing brief.
 
+## Rerun on the merged wording
+
+All 30 cases were run again on the skills exactly as this PR ships them, with the review fixes and
+the shortened `missioning` sentence. The protocol was the same: 3 seeded orders, fresh answerers
+and blind judges. The merge bar was set before this run. No held-out case may do worse than on
+v0.4.0, and the cases the edits target must pass.
+
+| Condition | Held-out (30 runs) | Tuning (60 runs) |
+| --- | --- | --- |
+| v0.4.0 | 27 (0.900) | 52 (0.867) |
+| This PR | 29 (0.967) | 60 (1.000) |
+
+**The merge bar is met.**
+
+- **No held-out case did worse.** The only held-out failure is R5, which failed in one of three
+  runs. It did the same on v0.4.0, with a different run failing.
+- **The targeted cases pass.** N1, N5, N7 and R15 pass in 3 of 3 runs.
+- **Stop-replay passes.** Every stop-replay case except R5's one run passes in all 3 runs.
+
+The held-out gain is still within noise.
+
 ## What the hand edits changed
 
 - **A stop is a human gate.** `delivering` (The five stop reasons) and `missioning` section 4
