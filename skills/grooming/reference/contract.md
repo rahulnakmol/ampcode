@@ -153,7 +153,7 @@ anyone a question. The checked part of that is the Definition of Ready below; th
 | `depends_on` | no | Story or bug IDs that must finish first |
 | `milestone` | no | Overrides the feature's milestone |
 | `owner` | for ready | Person, team with its contact ("Claims data team (lead: Ana Silva)"), or `agent`. With no contact named yet, the mission owner stands in: "Team Atlas (contact: Dana Whitfield until she names the lead by 27 April)". `--require-ready` fails on a `ready` story with none. A placeholder such as "lead (to be named)" fails `--require-ready` (a warning before) |
-| `delivery` | no | Added when the work is done; see [Delivery](#delivery) |
+| `delivery` | no | Added when the work is done; see [Delivery](#delivery-checked) |
 | `in_scope` | no | A non-empty list of non-empty strings: what this story changes |
 | `out_of_scope` | no | A non-empty list of non-empty strings: what it deliberately leaves alone |
 | `automated_test` | no | A non-empty string: the test that proves the acceptance criteria, written before the work |
