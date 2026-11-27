@@ -39,33 +39,39 @@ Both fix rounds saw only the failures in the 20 tuning cases.
 | --- | --- | --- | --- |
 | Baseline | 27 (0.900) | 52 (0.867) | |
 | Optimizer | 28 (0.933) | 59 (0.983) | +0.033 [0.000, +0.100] |
-| Hand | 30 (1.000) | 59 (0.983) | +0.100 [+0.033, +0.200] |
+| Hand | 30 (1.000) | 59 (0.983) | +0.100 [0.000, +0.200] |
 
 The gate was set before the run: the held-out interval must be above zero, and no held-out case
-may get worse. The hand round passes it. The optimizer round does not, because its interval
-touches zero. No held-out case got worse in either round.
+may get worse. **Neither round passes it.**
+
+- **The intervals touch zero.** For the hand round, three held-out cases gained a third each and
+  seven did not move. A resample that draws only the seven unmoved cases has a probability of
+  0.7^10 ≈ 2.8%, which is above the 2.5% tail. So the lower bound sits at that edge. With evalkit
+  bootstrap seed 42 it came out at +0.033, but with seeds 1 to 7 it is 0.000.
+- **No held-out case got worse** in either round.
 
 **Read the held-out gain as noise.** The hand round gained on three held-out cases: R5, N2 and
-N3. Its edits touch none of the rules those cases depend on. Each gain is one run flipping, and
-judges also differ in how strictly they grade the same kind of answer. What the result does show:
+N3. Its edits touch none of the rules those cases depend on. Each gain is one run flipping.
+Judges also differ in how strictly they grade the same kind of answer: one judge marked a
+conditional stop as partial, and another marked the same kind of answer as a match.
 
-- The edits caused no regression on cases that no fix round saw.
-- The targeted tuning cases now pass: N1, N5, N7 and R15 pass in 3 of 3 runs in the hand round.
-- Every stop-replay case passes in all 3 runs, which this README requires after a change to the
-  stop rules.
+What the result does show:
 
-Baseline failures that were not edited:
+- **No regression on unseen cases.** The edits did not make any held-out case worse.
+- **The targeted tuning cases now pass.** In the hand round, N1, N5, N7 and R15 pass in 3 of 3
+  runs, and only one tuning run fails: N14 in run 3. That is in-sample evidence only.
+- **Stop-replay still passes.** Every stop-replay case passes in all 3 runs, which
+  [`evals/delivering/README.md`](../README.md) requires after a change to the stop rules.
 
-| Case | Why it was left alone |
-| --- | --- |
-| N14 | A label flaw in the eval (see `known_issues`) |
-| N7, run 1 | Run-to-run variance |
+Both fix rounds left N14 alone, as a label flaw in the eval (see `known_issues`). N7's run 1 made
+the stop wait until the owner pressed the request. The hand round called that run-to-run variance,
+but its stop edit also covers N7's missing brief.
 
 ## What the hand edits changed
 
 - **A stop is a human gate.** `delivering` (The five stop reasons) and `missioning` section 4
-  now say a stop is prepared as a human gate with a checked brief. Before, only the table in
-  missioning section 5 said so.
+  now say a stop is a human gate. Missioning section 6 makes a human gate a checked brief with a
+  fresh review. Before, only the table in missioning section 5 said so.
 
   The tested `missioning` sentence ended "…prepared as a human gate with a checked brief
   (section 6)". It was shortened to "as a human gate" to stay within the skill's 180-line limit.
@@ -73,9 +79,16 @@ Baseline failures that were not edited:
   rerun.
 - **A pending fix-check holds the artifact back.** In `goldfishing` section 5, an artifact whose
   fix-check is pending is not sent, not even labelled pending or on its due date.
-- **Preflight gaps get one rule.** `delivering` J1 step 6: a target that needs its own approval
-  becomes an effect for kickoff to pre-authorize. Any other gap becomes an open question with a
-  default, so nothing is asked mid-build.
+- **Preflight gaps get one rule.** In `delivering` J1 step 6 and `missioning` section 2, a target
+  that needs its own approval becomes an effect for kickoff to pre-authorize. Any other gap that
+  is not a failed check becomes an open question with a default.
+- **After review.** A fresh code review followed. It led to these changes:
+  - An effect the owner does not pre-authorize stays stop reason 2.
+  - The fix-check hold uses goldfishing's own verbs (published, used as evidence or put to a
+    decider).
+  - The missioning wording is aligned.
+
+  None of this wording was rerun.
 
 The optimizer made the same three repairs in different words. It also added "raise it when its
 reason arises", and it put the pending rule under goldfishing section 6 instead.

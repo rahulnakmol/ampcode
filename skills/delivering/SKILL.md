@@ -71,9 +71,9 @@ Read [reference/mission-record.md](reference/mission-record.md) when starting or
    becomes the first item, with its core in observe mode. Kickoff waits for a passing preflight, so resolve each failed check while
    preparing the baseline, asking the owner then if only they can fix it (a 403 needs a plan or
    admin access); never fold it into the kickoff ask or leave it for mid-build. Turn a target that
-   needs its own approval into an effect for kickoff to pre-authorize, and any other gap into an
-   open question with a default, so none of them is asked mid-build. With the
-   plugin, `mission_preflight` binds the result to the contract; kickoff is refused without a
+   needs its own approval into an effect for kickoff to pre-authorize (one the owner does not
+   pre-authorize stays stop reason 2), and any other gap that is not a failed check into an open
+   question with a default. With the plugin, `mission_preflight` binds the result to the contract; kickoff is refused without a
    passing preflight on the current contract.
 7. **Write one contract** (fields in [reference/mission-record.md](reference/mission-record.md)):
    outcome, scope, spec, design, UX links, defense, the **closed case list** that bounds adversarial
