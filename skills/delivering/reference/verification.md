@@ -102,7 +102,8 @@ Work test-first in this order:
   imports and aliases with Python's parser, so `from time import time as now; now()` is the clock
   call `time.time`, while `t.gmtime(0)` and `dt(2000, 1, 2)` stay pure; `open`, `print` and
   `input` count also inside f-strings, and a local variable or parameter named `open` still
-  counts as the builtin. JavaScript strings, comments, regex literals and nested `${...}`
+  counts as the builtin, as does `from builtins import open`. A name an enclosing scope rebinds
+  has the binding that scope ends with. JavaScript strings, comments, regex literals and nested `${...}`
   templates are read in one pass, so only code counts. It misses I/O through
   a library it does not list, or through a function passed in and called. The reviewer reads the
   core for those.

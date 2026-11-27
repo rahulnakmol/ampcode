@@ -457,6 +457,13 @@ class FloorGuard(unittest.TestCase):
         # A lowered count, and retries in application code or docs, are not test retries.
         self.assertClean(diff("playwright.config.ts", removed=["  retries: 3,"], added=["  retries: 1,"]))
         self.assertFlags(diff("playwright.config.ts", removed=["  retries: 1,"], added=["  retries: 3,"]), "test retry added")
+        # A setting newly raised counts even beside an unchanged one on the same line.
+        self.assertFlags(diff("package.json", removed=['  "e2e": "playwright test --retry 3 --retries 0"'],
+                              added=['  "e2e": "playwright test --retry 3 --retries 2"']), "test retry added")
+        self.assertFlags(diff("package.json", removed=['  "e2e": "playwright test --retry 3"'],
+                              added=['  "e2e": "playwright test --retries 2"']), "test retry added")
+        self.assertFlags(diff("verify.json", removed=['  "e2e": "playwright test",'],
+                              added=['  "e2e": "playwright test --retries 2",']), "test retry added")
         for path in ("src/http/client.ts", "docs/retries.md", "skills/x/scripts/floor_guard.py"):
             self.assertClean(diff(path, added=["const policy = { retries: 3 };"]))
 
@@ -467,7 +474,17 @@ class FloorGuard(unittest.TestCase):
         # Moving observe from one package to another still sets a package to observe.
         self.assertFlags(diff("verify.json", removed=['  {"name": "api", "mode": "observe"},', '  {"name": "web"},'],
                               added=['  {"name": "api"},', '  {"name": "web", "mode": "observe"},']), "observe")
+        self.assertFlags(diff("verify.json", removed=['      "mode": "observe"', '    },', '    {', '      "name": "web",'],
+                              added=['    },', '    {', '      "name": "web",', '      "mode": "observe"']), "observe")
+        self.assertFlags(diff("verify.json", removed=['  {"name": "api", "mode": "observe"},', '  {"name": "web"},'],
+                              added=['  {"name": "web", "mode": "observe"},', '  {"name": "api"},']), "observe")
+        # Editing a package that already observes is not setting it to observe.
+        self.assertClean(diff("verify.json", removed=['      "mode": "observe"'],
+                              added=['      "mode": "observe",', '      "checks": ["ruff check app"]']))
+        self.assertClean(diff("verify.json", removed=['  {"name": "api", "mode": "observe"},'],
+                              added=['  {"name": "api", "mode": "observe", "checks": ["ruff check"]},']))
         self.assertFlags(diff("packages/verify.json", removed=['    "name": "billing",']), "package removed")
+        self.assertClean(diff("verify.json", removed=['    "name": "billing",'], added=['    "name":"billing",']))
         self.assertClean(diff("verify.json", removed=['    "name": "billing",'], added=['    "name": "billing", "e2e": "make e2e",']))
 
     def test_w4_1_replaced_assertion_is_not_flagged(self):

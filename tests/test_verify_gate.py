@@ -109,6 +109,14 @@ class Core(Gate):
                           "def now():\n    return 0\n\nx = now()\n", None),
             "later.py": ("import math as t\nimport time as t\n\ndef f():\n    return t.time()\n", 5),
             "later_pure.py": ("import time as t\nimport math as t\n\ndef f():\n    return t.sqrt(4)\n", None),
+            "rebound_pure.py": ("from time import time as fn\nfrom math import sin as fn\n\ndef f():\n    return fn(0)\n", None),
+            "between.py": ("def f():\n    from time import time as now\n    x = now()\n"
+                           "    from math import sin as now\n    return x\n", 3),
+            "local_rebound.py": ("def f():\n    from time import time as now\n    from math import sin as now\n    return now(0)\n", None),
+            "maybe.py": ("from math import sin as now\ntry:\n    from time import time as now\nexcept ImportError:\n    pass\n\n"
+                         "def f():\n    return now()\n", 8),
+            "class_hidden.py": ("from time import time as now\n\nclass C:\n    from math import sin as now\n\nstamp = now()\n", 6),
+            "async_hidden.py": ("from time import time as now\n\nasync def g():\n    from math import sin as now\n\nstamp = now()\n", 6),
             "class.py": ("class C:\n    from time import time as now\n    stamp = now()\n", 3),
             "async.py": ("async def f():\n    from time import time as now\n    return now()\n", 3),
             "block.py": ("if True:\n    import time as t\n\ndef f():\n    return t.time()\n", 5),
@@ -206,12 +214,16 @@ class Core(Gate):
                                           "func f() { _ = time.Now() }\nconst end = `x`\n",
                     "web/src/core/cart.ts": "export const a = `${ ok ? `label` : fetch('/real') }`;\n"
                                             "export const b = `${ ok ? `fetch('/fake')` : 'none' }`;\n"
-                                            "export const c = s.replace(/\"/g, \"\") + fetch(\"/x\")\n",
+                                            "export const c = s.replace(/\"/g, \"\") + fetch(\"/x\")\n"
+                                            "export const d = n++ / fetch('/y')\n"
+                                            "if (s) /console.log/.test(s)\n"
+                                            "export const e = /[/]fetch(/.test(s)\n",
                     "verify.json": json.dumps({"packages": MANIFEST["packages"] + [
                         {"name": "svc", "path": "svc", "core": ["svc/domain"], "e2e": "true"}]})})
         out = self.assertGate(["core"], 1, "rule.go:5: side-effect", "cart.ts:1: side-effect: calls fetch(",
-                              "cart.ts:3: side-effect: calls fetch(")
-        self.assertNotIn("cart.ts:2", out)
+                              "cart.ts:3: side-effect: calls fetch(", "cart.ts:4: side-effect: calls fetch(")
+        for line in (2, 5, 6):
+            self.assertNotIn(f"cart.ts:{line}", out)
         self.assertNotIn("rule.go:4", out)
 
     def test_python_builtins_in_f_strings_and_scopes(self):
@@ -221,15 +233,33 @@ class Core(Gate):
                                "    def m(self, p):\n        return open(p)\n", 6),
             "rebind.py": ("def f(p):\n    x = open(p)\n    open = len\n    return x\n", 2),
             "imported.py": ("from builtins import len as open\n\ndef f(p):\n    return open(p)\n", None),
+            "builtin_import.py": ("from builtins import open\n\ndef f(p):\n    return open(p).read()\n", 4),
+            "builtins_module.py": ("import builtins\n\ndef f(x):\n    builtins.print(x)\n", 4),
         }
         for name, (source, line) in cases.items():
             with self.subTest(name=name):
                 self.write({"app/core/price.py": source})
                 if line:
-                    out = self.assertGate(["core"], 1, f"price.py:{line}: side-effect: calls open(")
+                    out = self.assertGate(["core"], 1, f"price.py:{line}: side-effect: calls ")
                     self.assertEqual(out.count("side-effect"), 1, out)
                 else:
                     self.assertGate(["core"], 0, "app: core pass")
+
+    def test_file_listed_python_core_and_dotted_core_roots(self):
+        manifest = {"packages": [{"name": "app", "path": "app", "core": ["./app/core/price.py", "app/core/rule.py"],
+                                  "e2e": "true"}]}
+        self.write({"verify.json": json.dumps(manifest), "app/core/rule.py": "X = 1\n",
+                    "app/core/price.py": "from . import rule\nfrom ..shell import db\nfrom .. import settings\n"})
+        out = self.assertGate(["core"], 1, "app/core/price.py:2: outward-import", "app/core/price.py:3: outward-import")
+        self.assertNotIn("price.py:1", out)
+        self.assertNotIn("holds no source files", out)
+
+    def test_bad_package_names_are_refused(self):
+        for name in ("bad name", "app/../x", "/abs"):
+            with self.subTest(name=name):
+                self.write({"verify.json": json.dumps({"packages": [{"name": name, "path": "app", "core": ["app/core"],
+                                                                    "e2e": "true"}]})})
+                self.assertGate(["core"], 1, "package name")
 
     def test_scoped_io_packages_are_io(self):
         self.write({"web/src/core/cart.ts": "import { S3Client } from '@aws-sdk/client-s3'\nexport const s = S3Client\n"})
@@ -399,6 +429,16 @@ class Evidence(Gate):
         record["head"] = self.commit("I/O after the run")
         evidence.write_text(json.dumps(record))
         self.assertGate(["check", "--base", self.base], 1, "app/core/price.py:1: io-import")
+
+    def test_removing_a_package_or_the_manifest_is_noted_and_judged_by_base(self):
+        manifest = json.loads(json.dumps(MANIFEST))
+        del manifest["packages"][1]
+        self.write({"verify.json": json.dumps(manifest), "web/src/core/fmt.ts": "export const fmt = 1\n"})
+        self.commit("drop web and change it")
+        self.assertGate(["check", "--base", self.base], 1, "web: this change removes the package", "web: no evidence")
+        git(self.repo, "rm", "-q", "verify.json")
+        self.commit("drop the manifest")
+        self.assertGate(["check", "--base", self.base], 1, "this change deletes verify.json", "web: no evidence")
 
     def test_bad_base_is_refused(self):
         for command in ("run", "check"):

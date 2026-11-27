@@ -15,10 +15,11 @@ It flags, per file in the diff:
   floor-   a lowered, removed or commented-out number on a coverage, threshold, min, minimum, fail_under,
            lines, branches, functions or statements key, also as XML (JaCoCo <minimum>0.80</minimum>)
   ci-      an added continue-on-error: true or allow_failure: true, or || true in a CI file
-  retry-   an added or raised retry of failing tests in a test, test or build config, or CI file
+  retry-   an added or raised retry of failing tests in a test, test or build config, CI file or verify.json
            (retries: 2, --retries 2, --retry=2, reruns = 2, jest.retryTimes(2), this.retries(2),
            pytest.mark.flaky, @flaky): fix the flaky test's cause, or delete it with a reason
-  observe- an added "mode": "observe" in verify.json: the pure-core rule stops failing the build
+  observe- a package newly set to "mode": "observe" in verify.json (editing a package that already
+           observes is not): the pure-core rule stops failing the build
   removed- a package's "name" removed from verify.json: its end-to-end and pure-core checks go
 A commented-out line holds no marker.
 
@@ -59,9 +60,9 @@ RETRY = re.compile(
 RETRY_PATHS = re.compile(
     r"(?:^|/)(?:tests?|spec|__tests__|e2e)/|(?:^|/)test_[^/]*\.py$|_test\.(?:py|go)$|\.(?:test|spec)\.[cm]?[jt]sx?$"
     r"|(?:^|/)(?:conftest\.py|[^/]*\.config\.[cm]?[jt]s|\.mocharc[^/]*|pytest\.ini|pyproject\.toml|setup\.cfg|tox\.ini"
-    r"|package\.json|bunfig\.toml|Makefile|[^/]*\.mk)$")
+    r"|package\.json|bunfig\.toml|verify\.json|Makefile|[^/]*\.mk)$")
 OBSERVE = re.compile(r"\"mode\"\s*:\s*\"observe\"")
-PACKAGE_NAME = re.compile(r"\"name\"\s*:\s*\"[^\"]*\"")
+PACKAGE_NAME = re.compile(r"\"name\"\s*:\s*\"([^\"]*)\"")
 CI_IGNORE = re.compile(r"\b(?:continue-on-error|allow_failure)\s*:\s*true\b")
 OR_TRUE = re.compile(r"\|\|\s*(?:true|:)(?![\w-])")
 CI_PATHS = re.compile(
@@ -144,9 +145,32 @@ def silencers(text):
 
 
 def retries(text):
-    """The highest retry count on a line (1 for mark.flaky or @flaky), or 0 for none."""
-    counts = [int(m["n"] or m["m"] or m["k"] or 1) for m in RETRY.finditer(text)]
-    return max(counts, default=0)
+    """[(setting, count)] for each retry on a line: '--retries 2' gives ('--retries', 2), and
+    mark.flaky or @flaky without a count gives a count of 1."""
+    found = []
+    for m in RETRY.finditer(text):
+        count = m["n"] or m["m"] or m["k"]
+        setting = re.sub(r"[\s\"'=:(]", "", m.group(0)[:m.start("n" if m["n"] else "m" if m["m"] else "k") - m.start()]
+                         if count else m.group(0))
+        found.append((setting, int(count or 1)))
+    return found
+
+
+def changed_pairs(hunks):
+    """[(removed row or None, added row)] for each added row: within a run of removed then added
+    lines, the i-th added line replaces the i-th removed line."""
+    pairs = []
+    for hunk in hunks:
+        gone, came = [], []
+        for row in hunk + [(" ", None, None, "")]:
+            if row[0] == "-" and not came:
+                gone.append(row)
+            elif row[0] == "+":
+                came.append(row)
+            else:
+                pairs += [(gone[i] if i < len(gone) else None, r) for i, r in enumerate(came)]
+                gone, came = ([row] if row[0] == "-" else []), []
+    return pairs
 
 
 def markers(pattern, text):
@@ -177,23 +201,30 @@ def scan(text):
         if CI_PATHS.search(path):
             checks.append(("ci", OR_TRUE, "CI failure ignored"))
         if RETRY_PATHS.search(path) or CI_PATHS.search(path):
-            # A retry counts unless the file lost a retry at least as high.
-            old = sorted((retries(r[3]) for r in removed_code if retries(r[3])), reverse=True)
+            # Each retry setting counts unless the file lost the same setting at least as high.
+            old = [r for row in removed_code for r in retries(row[3])]
             for row in added_code:
-                count = retries(row[3])
-                if count and old and old[0] >= count:
-                    old.pop(0)
-                elif count:
-                    flags.append(("retry", path, row[2], f"test retry added: {row[3].strip()}"))
+                for setting, count in retries(row[3]):
+                    cover = max((o for o in old if o[0] == setting and o[1] >= count), default=None)
+                    if cover:
+                        old.remove(cover)
+                    elif count:
+                        flags.append(("retry", path, row[2], f"test retry added: {row[3].strip()}"))
+                        break
         if path.rsplit("/", 1)[-1] == "verify.json":
-            # Each package set to observe counts, even when another package leaves observe.
-            flags += [("observe", path, r[2], f"pure-core rule set to observe: {r[3].strip()}")
-                      for r in added_code if OBSERVE.search(r[3])]
-            names = Counter(m.group(0) for r in added_code for m in PACKAGE_NAME.finditer(r[3]))
+            # An added observe line counts unless it replaces an observe line of the same package
+            # (an edit such as a trailing comma); observe moved to another package counts.
+            for gone, row in changed_pairs(hunks):
+                if COMMENT.match(row[3]) or not OBSERVE.search(row[3]):
+                    continue
+                if gone and OBSERVE.search(gone[3]) and PACKAGE_NAME.findall(gone[3]) == PACKAGE_NAME.findall(row[3]):
+                    continue
+                flags.append(("observe", path, row[2], f"pure-core rule set to observe: {row[3].strip()}"))
+            names = Counter(m[1] for r in added_code for m in PACKAGE_NAME.finditer(r[3]))
             for row in removed_code:
                 for m in PACKAGE_NAME.finditer(row[3]):
-                    if names[m.group(0)]:
-                        names[m.group(0)] -= 1
+                    if names[m[1]]:
+                        names[m[1]] -= 1
                     else:
                         flags.append(("removed", path, row[1], f"package removed from verify.json: {row[3].strip()}"))
         for prefix, pattern, what in checks:

@@ -159,7 +159,9 @@ def js_code(text, keep_strings=False):
         return n
 
     def code(i, in_expression):
-        depth, prev = 0, ""
+        # prev is the last token; parens records whether each open ( follows if, while, for or
+        # with, after whose ) a slash starts a regex literal.
+        depth, prev, parens = 0, "", []
         while i < n:
             c = text[i]
             if text.startswith("//", i):
@@ -194,6 +196,15 @@ def js_code(text, keep_strings=False):
                 while j < n and (text[j].isalnum() or text[j] in "_$"):
                     j += 1
                 i, prev = j, text[i:j]
+            elif text.startswith(("++", "--"), i):
+                i, prev = i + 2, ")"  # x++ / y divides
+            elif c in "()":
+                if c == "(":
+                    parens.append(prev in ("if", "while", "for", "with"))
+                    prev = "("
+                else:
+                    prev = "(" if parens and parens.pop() else ")"
+                i += 1
             else:
                 if in_expression and c in "{}":
                     if c == "}" and not depth:
@@ -256,15 +267,20 @@ def py_imports(text):
 SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)
 
 
-def scope_imports(body, names=None):
-    """{bound name: {full names}} for every import directly in one scope; nested scopes keep theirs."""
+def scope_imports(body, names=None, top=True):
+    """{bound name: {full names}} a scope's imports may leave bound once its body has run; nested
+    scopes keep theirs. An import statement directly in the body replaces what came before it; an
+    import inside a block (if, try, with) may or may not run, so it adds to them."""
     names = {} if names is None else names
     for node in body:
         if isinstance(node, SCOPES):
             continue
         for bound, full in bindings(node):
-            names.setdefault(bound, set()).add(full)
-        scope_imports(ast.iter_child_nodes(node), names)
+            if top:
+                names[bound] = {full}
+            else:
+                names.setdefault(bound, set()).add(full)
+        scope_imports(ast.iter_child_nodes(node), names, top=False)
     return names
 
 
@@ -282,7 +298,8 @@ class PyEffects(ast.NodeVisitor):
     f-strings), and clock and randomness calls resolved through imports and aliases.
 
     A scope binds names in source order; a name not yet bound in the current scope, or bound in
-    an enclosing scope, may be any of that scope's imports of it. A class body's names are not
+    an enclosing scope, has the binding that scope's body leaves (see scope_imports). Importing
+    open, print or input from builtins is still the builtin. A class body's names are not
     visible in its methods, as in Python."""
 
     def __init__(self, tree):
@@ -326,6 +343,9 @@ class PyEffects(ast.NodeVisitor):
             if not bound and not parts and func.id in ("open", "print", "input"):
                 self.found.append((node.lineno, f"calls {func.id}(; side effects belong in the shell"))
             for full in sorted(".".join([b, *reversed(parts)]) for b in bound):
+                if full in ("builtins.open", "builtins.print", "builtins.input"):
+                    self.found.append((node.lineno, f"calls {full}(; side effects belong in the shell"))
+                    break
                 if PY_CLOCK.match(full):
                     self.found.append((node.lineno, f"calls {full}(; pass the time or random value in"))
                     break

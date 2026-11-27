@@ -164,8 +164,8 @@ It flags a removed assertion with no replacement, an added skip or focus marker,
 widened checker silencer (`noqa`, `eslint-disable`, `@ts-ignore`, `type: ignore`, `nosec`,
 `nolint`), a lowered, removed or commented-out threshold (also a JaCoCo `<minimum>` in a pom or
 Gradle file), an ignored failure in CI, an added or raised test retry (`retries: 2`, `--retries 2`,
-`reruns = 2`, `pytest.mark.flaky`) in a test, test or build config, or CI file, and in
-`verify.json` a package set to `"mode": "observe"` or a package removed. It knows the skip forms of pytest, Jest, Vitest and
+`reruns = 2`, `pytest.mark.flaky`) in a test, test or build config, CI file or `verify.json`,
+and in `verify.json` a package newly set to `"mode": "observe"` or a package removed. It knows the skip forms of pytest, Jest, Vitest and
 bun (`test.if`, `describe.if`, `it.runIf`, `test.failing`, `{ skip: true }`) and XCTest
 (`XCTSkip`, `XCTSkipIf`). A line commented out with `#`, `//`, `;`, `/*`, `<!--` or `--` holds
 no assertion and no threshold. Input with no diff prints "not run", never `pass`. It reads text
