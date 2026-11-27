@@ -222,7 +222,9 @@ software delivery, campaigns and research, UX and UI design, code and security r
 infrastructure and DevSecOps, product and SaaS assessment) list the steps, human gates and
 Definition of Done; only the chosen one is loaded. `blueprinting`, `planning`, `delivering` and
 `crafting` stay the conductors their playbooks call. Skills planned for later waves are marked
-*planned* with a manual fallback.
+*planned* with a manual fallback. [Missions you can run](missions/README.md) explains each
+mission type: when to use it, how to start it, the skills it runs in order, what it delivers and
+its Definition of Done.
 
 **Use when:** you start or resume a mission of any kind, want one place that shows who approved
 what and on which brief, or work on Claude Code or Copilot where no owner dialog exists.
@@ -385,7 +387,8 @@ preview/confirmation boundary, domain choices, resume prompt and current limits.
 - **“The backlog is agreed; build the software stories.”** Hand ready stories to
   delivering; the backlog's acceptance criteria become its expectations.
 - **“Run a security review / product assessment / infrastructure change.”** Start with
-  missioning; its playbook names the steps, the sign-offs and what is not built yet.
+  missioning; its playbook names the steps, the sign-offs and what is not built yet. See
+  [Missions you can run](missions/README.md).
 - **“Fix this typo.”** Use a normal Amp request. A mission is disproportionate.
 
 Skills must be installed to be loaded. Ask Amp to check availability and reload existing

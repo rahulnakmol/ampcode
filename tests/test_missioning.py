@@ -387,6 +387,7 @@ class Files(unittest.TestCase):
 
 
 MISSIONS = SKILL / "reference" / "missions"
+DOCS = ROOT / "docs" / "missions"  # the user guide to each playbook
 # The canonical stop reasons (mission contract, section 8). tests/test_contract_kit.py checks the
 # same text against plugins/mission-control/lib/contract-text.json.
 STOP_REASONS = (
@@ -540,6 +541,35 @@ class Playbooks(unittest.TestCase):
                     with self.subTest(playbook=path.stem):
                         self.assertIn("pre-authorizes", bullet)
                         self.assertIn("stop reason 2", bullet)
+
+    def test_every_skill_is_used_by_a_mission_and_the_guide_matches(self):
+        # The mission guide's matrix: one row per skill, one column per playbook, in this order.
+        columns = ("transformation", "product-operations", "software-delivery", "campaigns-and-research",
+                   "experience-design", "security-review", "infrastructure", "product-assessment")
+        self.assertEqual(sorted(columns), sorted(ledger_check.PLAYBOOKS))
+        every_mission = {"missioning", "briefing-decisions", "goldfishing"}  # SKILL.md sections 1 and 6
+        uses = {name: {s for s in re.findall(r"`([a-z][a-z-]*)`", "\n".join(ledger_check.section((MISSIONS / f"{name}.md").read_text(), "Skills")))}
+                for name in columns}
+        index = (DOCS / "README.md").read_text()
+        for skill in sorted(p.parent.name for p in (ROOT / "skills").glob("*/SKILL.md")):
+            with self.subTest(skill=skill):
+                expected = [name for name in columns if skill in uses[name]]
+                if skill in every_mission:
+                    self.assertIn(f"`{skill}`", index.split("## Which skills each mission uses")[1].split("|")[0])
+                    continue
+                self.assertTrue(expected, "no playbook's Skills section names this skill")
+                row = re.search(rf"(?m)^\| `{skill}` \|(.*)\|$", index)
+                self.assertTrue(row, "the mission guide's matrix has no row for this skill")
+                marked = [name for name, cell in zip(columns, row.group(1).split("|")) if "●" in cell]
+                self.assertEqual(marked, expected)
+
+    def test_every_mission_has_a_guide_linked_from_the_index(self):
+        index = (DOCS / "README.md").read_text()
+        for name in ledger_check.PLAYBOOKS:
+            with self.subTest(playbook=name):
+                self.assertIn(f"]({name}.md)", index)
+                guide = (DOCS / f"{name}.md").read_text()
+                self.assertIn(f"(../../skills/missioning/reference/missions/{name}.md)", guide)
 
 
 if __name__ == "__main__":
