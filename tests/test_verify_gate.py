@@ -93,6 +93,17 @@ class Core(Gate):
                               "web/src/core/cart.ts:3: side-effect: calls fetch(")
         self.assertNotIn("datetime, an I/O module", out)
 
+    def test_python_clock_and_randomness_imported_by_name(self):
+        self.write({"app/core/price.py": "from time import time, gmtime\nfrom random import choice\nfrom uuid import UUID\n\n"
+                                         "def total(items):\n    return time() + choice(items)\n"})
+        out = self.assertGate(["core"], 1, "price.py:1: side-effect: imports time.time", "price.py:2: side-effect: imports random.choice")
+        self.assertNotIn("gmtime", out)
+        self.write({"app/core/price.py": "import time as t\nimport math as m\nfrom datetime import datetime as dt, timedelta\n"})
+        out = self.assertGate(["core"], 1, "price.py:1: side-effect: imports time as t", "price.py:3: side-effect: imports datetime.datetime as dt")
+        self.assertNotIn("math", out)
+        self.assertNotIn("timedelta", out)
+        self.assertNotIn("UUID", out)
+
     def test_go_core_imports(self):
         self.write({"go.mod": "module example.com/m\n\ngo 1.22\n",
                     "svc/domain/rule.go": 'package domain\n\nimport (\n\t"strings"\n\t"os"\n\n'

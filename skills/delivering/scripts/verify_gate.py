@@ -72,6 +72,11 @@ SIDE_EFFECTS = {
           r"|\bXMLHttpRequest\b|(?<![\w.])(?:Bun|Deno)\.\w+",
     "go": r"\btime\.(?:Now|Since|Until|Sleep|After|Tick|NewTimer|NewTicker)\s*\(|\bfmt\.(?:Print|Scan)\w*\s*\(",
 }
+# Clock and randomness callables a Python file can import by name, so they are called without
+# their module prefix: `from time import time`.
+PY_EFFECT_NAMES = {"time": {"time", "time_ns", "sleep", "monotonic", "monotonic_ns", "perf_counter", "localtime", "ctime"},
+                   "random": None, "uuid": {"uuid1", "uuid4"}, "secrets": None}
+CLOCK_MODULES = set(PY_EFFECT_NAMES) | {"datetime"}
 NON_CODE = re.compile(r"\.(?:json|css|scss|svg|png|txt|md|ya?ml|html)$")
 
 
@@ -199,8 +204,17 @@ def py_imports(text):
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             found += [(node.lineno, alias.name) for alias in node.names]
+            # An alias hides the module's clock and randomness calls from the call patterns.
+            found += [(node.lineno, f"{a.name} as {a.asname}") for a in node.names
+                      if a.asname and a.name in CLOCK_MODULES]
         elif isinstance(node, ast.ImportFrom):
             found.append((node.lineno, "." * node.level + (node.module or "")))
+            if node.module == "datetime" and not node.level:
+                found += [(node.lineno, f"datetime.{a.name} as {a.asname}") for a in node.names
+                          if a.asname and a.name in ("datetime", "date")]
+            effects = PY_EFFECT_NAMES.get(node.module or "", set()) if not node.level else set()
+            found += [(node.lineno, f"{node.module}.{a.name}") for a in node.names
+                      if effects is None and a.name != "Random" or effects and a.name in effects]
     return found
 
 
@@ -289,6 +303,10 @@ def scan_file(tree, file, core):
     for line, module in imports(text, lang):
         name = module[5:] if lang == "js" and module.startswith("node:") else module
         top = name.split(".")[0] if lang == "py" else name.split("/")[0] if lang == "js" else name
+        if lang == "py" and (" as " in name or top in PY_EFFECT_NAMES and name != top):
+            out.append((file, line, "side-effect", f"imports {name}, a clock or randomness call by another "
+                                                   "name; pass the value in"))
+            continue
         if name in IO_MODULES[lang] or top in IO_MODULES[lang] or name.startswith(IO_PREFIXES[lang]):
             out.append((file, line, "io-import", f"imports {module}, an I/O module; move the call to the shell"))
             continue

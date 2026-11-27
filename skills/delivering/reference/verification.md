@@ -93,7 +93,9 @@ Work test-first in this order:
 ## What the gate cannot prove
 
 - The core scan reads text patterns for Python, JavaScript/TypeScript and Go: imports, a list of
-  I/O modules, and calls such as `print`, `fetch`, `time.Now` and `Date.now`. It misses I/O through
+  I/O modules, and calls such as `print`, `fetch`, `time.Now` and `Date.now`. In Python it also
+  refuses a clock or randomness call imported by name or under an alias (`from time import time`,
+  `import random as r`), so the call patterns stay visible. It misses I/O through
   a library it does not list, or through a function passed in and called. The reviewer reads the
   core for those.
 - The evidence file is written by `run` on the author's machine. `check` proves it names this
