@@ -65,18 +65,19 @@ IO_MODULES = {
 }
 IO_PREFIXES = {"js": ("@aws-sdk/", "@azure/", "@google-cloud/"), "py": (), "go": ("github.com/aws/aws-sdk-go",)}
 SIDE_EFFECTS = {
-    "py": r"(?<![\w.])(?:open|print|input)\s*\(|\b(?:datetime|date)\.(?:now|utcnow|today)\s*\(|\btime\.(?:time|sleep|monotonic)\s*\("
-          r"|\brandom\.\w+\s*\(|\buuid\.uuid[14]\s*\(",
+    "py": r"(?<![\w.])(?:open|print|input)\s*\(",
     "js": r"(?<![\w.])fetch\s*\(|\bconsole\.\w+|(?<![\w.])process\.\w+|\bDate\.now\s*\(|\bnew\s+Date\s*\(\s*\)"
           r"|\bMath\.random\s*\(|\brandomUUID\s*\(|(?<![\w.])set(?:Timeout|Interval)\s*\(|\b(?:localStorage|sessionStorage|document|window)\.\w+"
           r"|\bXMLHttpRequest\b|(?<![\w.])(?:Bun|Deno)\.\w+",
     "go": r"\btime\.(?:Now|Since|Until|Sleep|After|Tick|NewTimer|NewTicker)\s*\(|\bfmt\.(?:Print|Scan)\w*\s*\(",
 }
-# Clock and randomness callables a Python file can import by name, so they are called without
-# their module prefix: `from time import time`.
-PY_EFFECT_NAMES = {"time": {"time", "time_ns", "sleep", "monotonic", "monotonic_ns", "perf_counter", "localtime", "ctime"},
-                   "random": None, "uuid": {"uuid1", "uuid4"}, "secrets": None}
-CLOCK_MODULES = set(PY_EFFECT_NAMES) | {"datetime"}
+# Python clock and randomness calls, by the full name a call resolves to through its imports and
+# aliases: `from time import time as now; now()` is time.time.
+PY_CLOCK = re.compile(r"^(?:time\.(?:time|time_ns|sleep|monotonic|monotonic_ns|perf_counter|perf_counter_ns|localtime|ctime)"
+                      r"|random\.(?!Random$)\w+|secrets\.\w+|uuid\.uuid[14]|datetime\.(?:datetime|date)\.(?:now|utcnow|today))$")
+# The same calls as text, for a file Python cannot parse.
+PY_CLOCK_TEXT = (r"\b(?:datetime|date)\.(?:now|utcnow|today)\s*\(|\btime\.(?:time|sleep|monotonic)\s*\("
+                 r"|\brandom\.\w+\s*\(|\buuid\.uuid[14]\s*\(")
 NON_CODE = re.compile(r"\.(?:json|css|scss|svg|png|txt|md|ya?ml|html)$")
 
 
@@ -204,18 +205,38 @@ def py_imports(text):
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             found += [(node.lineno, alias.name) for alias in node.names]
-            # An alias hides the module's clock and randomness calls from the call patterns.
-            found += [(node.lineno, f"{a.name} as {a.asname}") for a in node.names
-                      if a.asname and a.name in CLOCK_MODULES]
         elif isinstance(node, ast.ImportFrom):
             found.append((node.lineno, "." * node.level + (node.module or "")))
-            if node.module == "datetime" and not node.level:
-                found += [(node.lineno, f"datetime.{a.name} as {a.asname}") for a in node.names
-                          if a.asname and a.name in ("datetime", "date")]
-            effects = PY_EFFECT_NAMES.get(node.module or "", set()) if not node.level else set()
-            found += [(node.lineno, f"{node.module}.{a.name}") for a in node.names
-                      if effects is None and a.name != "Random" or effects and a.name in effects]
     return found
+
+
+def py_clock_calls(text):
+    """[(line, full name)] of each clock or randomness call, resolved through imports and aliases;
+    None when Python cannot parse the file."""
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return None
+    names = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for a in node.names:
+                names[a.asname or a.name.split(".")[0]] = a.name if a.asname else a.name.split(".")[0]
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            for a in node.names:
+                names[a.asname or a.name] = f"{node.module}.{a.name}"
+    found = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            parts, func = [], node.func
+            while isinstance(func, ast.Attribute):
+                parts.append(func.attr)
+                func = func.value
+            if isinstance(func, ast.Name) and func.id in names:
+                full = ".".join([names[func.id], *reversed(parts)])
+                if PY_CLOCK.match(full):
+                    found.append((node.lineno, full))
+    return sorted(found)
 
 
 IMPORT = {
@@ -303,10 +324,6 @@ def scan_file(tree, file, core):
     for line, module in imports(text, lang):
         name = module[5:] if lang == "js" and module.startswith("node:") else module
         top = name.split(".")[0] if lang == "py" else name.split("/")[0] if lang == "js" else name
-        if lang == "py" and (" as " in name or top in PY_EFFECT_NAMES and name != top):
-            out.append((file, line, "side-effect", f"imports {name}, a clock or randomness call by another "
-                                                   "name; pass the value in"))
-            continue
         if name in IO_MODULES[lang] or top in IO_MODULES[lang] or name.startswith(IO_PREFIXES[lang]):
             out.append((file, line, "io-import", f"imports {module}, an I/O module; move the call to the shell"))
             continue
@@ -317,6 +334,12 @@ def scan_file(tree, file, core):
     for m in re.finditer(SIDE_EFFECTS[lang], stripped):
         line = stripped.count("\n", 0, m.start()) + 1
         out.append((file, line, "side-effect", f"calls {m.group(0).strip()}; side effects belong in the shell"))
+    clocks = py_clock_calls(text) if lang == "py" else []
+    if clocks is None:
+        clocks = [(stripped.count("\n", 0, m.start()) + 1, m.group(0).rstrip("( "))
+                  for m in re.finditer(PY_CLOCK_TEXT, stripped)]
+    for line, name in clocks:
+        out.append((file, line, "side-effect", f"calls {name}(; pass the time or random value in"))
     return out
 
 

@@ -93,16 +93,19 @@ class Core(Gate):
                               "web/src/core/cart.ts:3: side-effect: calls fetch(")
         self.assertNotIn("datetime, an I/O module", out)
 
-    def test_python_clock_and_randomness_imported_by_name(self):
-        self.write({"app/core/price.py": "from time import time, gmtime\nfrom random import choice\nfrom uuid import UUID\n\n"
-                                         "def total(items):\n    return time() + choice(items)\n"})
-        out = self.assertGate(["core"], 1, "price.py:1: side-effect: imports time.time", "price.py:2: side-effect: imports random.choice")
-        self.assertNotIn("gmtime", out)
-        self.write({"app/core/price.py": "import time as t\nimport math as m\nfrom datetime import datetime as dt, timedelta\n"})
-        out = self.assertGate(["core"], 1, "price.py:1: side-effect: imports time as t", "price.py:3: side-effect: imports datetime.datetime as dt")
-        self.assertNotIn("math", out)
-        self.assertNotIn("timedelta", out)
-        self.assertNotIn("UUID", out)
+    def test_python_clock_and_randomness_calls_resolve_through_aliases(self):
+        effects = ("import time as t\nfrom random import choice as pick\nfrom datetime import datetime as dt\n"
+                   "from time import time\nimport uuid\n\n"
+                   "def f(items):\n    return (t.time(), pick(items), dt.now(), time(), uuid.uuid4())\n")
+        self.write({"app/core/price.py": effects})
+        self.assertGate(["core"], 1, "price.py:8: side-effect: calls time.time(", "price.py:8: side-effect: calls random.choice(",
+                        "price.py:8: side-effect: calls datetime.datetime.now(", "price.py:8: side-effect: calls uuid.uuid4(")
+        pure = ("import time as t\nimport uuid as u\nimport datetime as d\nfrom datetime import datetime as dt\n"
+                "from uuid import UUID\nfrom random import Random\n\n"
+                "def f():\n    return (t.gmtime(0), u.UUID(int=0), UUID(int=1), d.timedelta(seconds=2), dt(2000, 1, 2),"
+                " Random(1).random())\n")
+        self.write({"app/core/price.py": pure})
+        self.assertGate(["core"], 0, "app: core pass")
 
     def test_go_core_imports(self):
         self.write({"go.mod": "module example.com/m\n\ngo 1.22\n",
