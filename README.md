@@ -18,8 +18,11 @@ This GitHub repository is the readable source of truth. Amp loads published copi
 ```text
 plugins/                  TypeScript or JavaScript Amp plugins
 skills/<skill-name>/      Agent Skills, each rooted at SKILL.md
-scripts/check.sh          Repository validation
+docs/                     User guides; docs/missions/ has one guide per mission type
+evals/                    Fresh-agent evaluations per skill: scenarios, rubrics and results
 tests/                    Bun plugin tests and Python skill-script tests
+scripts/check.sh          Repository validation (run with `make check`)
+.amp/plugins/             Project-only plugins, such as the mission-control dialog preview
 ```
 
 See [`plugins/README.md`](./plugins/README.md) and [`skills/README.md`](./skills/README.md) before adding an extension.

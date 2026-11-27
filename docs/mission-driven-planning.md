@@ -25,7 +25,7 @@ logins]. Sync to [owner/repo] and Project [owner/number, optional]. Success mean
 ```
 
 Amp drafts a short charter (initiative, entry point, approvers, tracker, success criteria,
-folder, budget and what it may do without asking) with the [`missioning`](../skills/missioning/SKILL.md)
+folder and what it may do without asking) with the [`missioning`](../skills/missioning/SKILL.md)
 template in `mission.md`, and asks you to confirm it before any stage starts. The same file
 keeps the gate ledger and the decision trail; the README links it.
 
