@@ -442,7 +442,9 @@ class FloorGuard(unittest.TestCase):
                      "@pytest.mark.flaky(reruns=2)", "  test: { retry: 1 },"):
             with self.subTest(line=line):
                 self.assertFlags(diff("playwright.config.ts", added=[line]), "test retry added")
-        self.assertClean(diff("playwright.config.ts", added=["  retries: 0,"]))
+        self.assertFlags(diff(".mocharc.json", removed=['  "retries": 0'], added=['  "retries": 2']), "test retry added")
+        for line in ("  retries: 0,", "jest.retryTimes(0);"):
+            self.assertClean(diff("playwright.config.ts", added=[line]))
 
     def test_verify_json_set_to_observe_is_flagged(self):
         line = '      "mode": "observe"'

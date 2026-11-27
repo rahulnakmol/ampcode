@@ -49,8 +49,8 @@ SILENCER = re.compile(
     r"\bnoqa\b|eslint-disable(?:-next-line|-line)?|@ts-(?:ignore|nocheck|expect-error)\b|\btype:\s*ignore\b|\bnosec\b"
     r"|\bnolint\b|pylint:\s*disable", re.I)
 RETRY = re.compile(
-    r"\bretries\s*[:=]\s*[1-9]|\bretryTimes\s*\(|\bthis\.retries\s*\(\s*[1-9]|--reruns\b|\bmark\.flaky\b|@flaky\b"
-    r"|\bretry\s*:\s*[1-9]")
+    r"\bretries[\"']?\s*[:=]\s*[1-9]|\bretryTimes\s*\(\s*[1-9]|\bthis\.retries\s*\(\s*[1-9]|--reruns\b|\bmark\.flaky\b"
+    r"|@flaky\b|\bretry[\"']?\s*:\s*[1-9]")
 OBSERVE = re.compile(r"\"mode\"\s*:\s*\"observe\"")
 CI_IGNORE = re.compile(r"\b(?:continue-on-error|allow_failure)\s*:\s*true\b")
 OR_TRUE = re.compile(r"\|\|\s*(?:true|:)(?![\w-])")

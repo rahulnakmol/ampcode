@@ -29,6 +29,7 @@ language's syntax: a pass means no pattern matched, not that the core is pure.
 """
 
 import argparse
+import ast
 import datetime
 import fnmatch
 import hashlib
@@ -119,8 +120,28 @@ def blank(match):
     return re.sub(r"[^\n]", " ", match.group(0))
 
 
-def code_only(text, lang):
-    """Text with comments and string contents blanked; quotes and line numbers kept."""
+def template_code(token):
+    """A JavaScript template literal with its text blanked and its ${...} expressions kept."""
+    out, i = [token[0]], 1
+    while i < len(token) - 1:
+        if token.startswith("${", i):
+            depth, j = 1, i + 2
+            while j < len(token) - 1 and depth:
+                depth += {"{": 1, "}": -1}.get(token[j], 0)
+                j += 1
+            out.append("${" + code_only(token[i + 2:j - 1], "js") + "}")
+            i = j
+        else:
+            out.append(token[i] if token[i] == "\n" else " ")
+            i += 1
+    return "".join(out) + token[-1]
+
+
+def code_only(text, lang, keep_strings=False):
+    """Text with comments blanked, and string contents too unless keep_strings; line numbers kept.
+
+    A JavaScript template literal keeps its ${...} expressions, which are code.
+    """
     strings = [r'"""[\s\S]*?"""', r"'''[\s\S]*?'''"] if lang == "py" else [r"`(?:\\[\s\S]|[^`\\])*`"]
     strings += [r'"(?:\\.|[^"\\\n])*"', r"'(?:\\.|[^'\\\n])*'"]
     comments = [r"#[^\n]*"] if lang == "py" else [r"/\*[\s\S]*?\*/", r"//[^\n]*"]
@@ -128,32 +149,64 @@ def code_only(text, lang):
 
     def keep(match):
         token = match.group(0)
-        if token[0] in "\"'`":
-            q = 3 if token[:3] in ('"""', "'''") else 1
-            return token[:q] + blank(re.match(r"[\s\S]*", token[q:-q])) + token[-q:]
-        return blank(match)
+        if token[0] not in "\"'`":
+            return blank(match)
+        if keep_strings:
+            return token
+        if token[0] == "`" and lang == "js":
+            return template_code(token)
+        q = 3 if token[:3] in ('"""', "'''") else 1
+        return token[:q] + blank(re.match(r"[\s\S]*", token[q:-q])) + token[-q:]
     return pattern.sub(keep, text)
 
 
-def imports(text, lang):
-    """[(line, module)] imported by the file; relative modules keep their dots or ./ prefix."""
-    found = []
-    if lang == "py":
-        for m in re.finditer(r"^[ \t]*(?:from[ \t]+(\.*[\w.]*)[ \t]+import\b|import[ \t]+([\w.]+(?:[ \t]*,[ \t]*[\w.]+)*))",
-                             text, re.M):
-            line = text.count("\n", 0, m.start()) + 1
-            names = [m[1]] if m[1] is not None else [n.strip() for n in m[2].split(",")]
+def py_imports(text):
+    """[(line, module)] from Python's own parser; the pattern fallback for a file it cannot parse."""
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        found, code = [], code_only(text, "py")
+        for m in re.finditer(r"^[ \t]*(?:from[ \t]+(\.*[\w.]*)[ \t]+import\b|import[ \t]+([\w., \t]+))", code, re.M):
+            line = code.count("\n", 0, m.start()) + 1
+            names = [m[1]] if m[1] is not None else [n.split()[0] for n in m[2].split(",") if n.strip()]
             found += [(line, n) for n in names]
-    elif lang == "js":
-        for m in re.finditer(r"(?:\bfrom\s*|^\s*import\s*|\brequire\s*\(\s*|\bimport\s*\(\s*)(['\"])([^'\"\n]+)\1", text, re.M):
-            found.append((text.count("\n", 0, m.start()) + 1, m[2]))
-    else:
-        for m in re.finditer(r"^import\s*\(([\s\S]*?)^\)|^import\s+(?:[\w.]+\s+)?\"([^\"]+)\"", text, re.M):
-            if m[2]:
-                found.append((text.count("\n", 0, m.start()) + 1, m[2]))
-                continue
-            for s in re.finditer(r"^\s*(?:[\w.]+\s+)?\"([^\"]+)\"", m[1], re.M):
-                found.append((text.count("\n", 0, m.start(1) + s.start()) + 1, s[1]))
+        return found
+    found = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            found += [(node.lineno, alias.name) for alias in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            found.append((node.lineno, "." * node.level + (node.module or "")))
+    return found
+
+
+IMPORT = {
+    "js": re.compile(r"(?:\bfrom\s*|^\s*import\s*|\brequire\s*\(\s*|\bimport\s*\(\s*)(['\"])([^'\"\n]+)\1", re.M),
+    "go": re.compile(r"^[ \t]*import\s*\(([^)]*)\)|^[ \t]*import\s+(?:[\w.]+\s+)?\"([^\"]+)\"", re.M),
+}
+
+
+def imports(text, lang):
+    """[(line, module)] imported by the file; relative modules keep their dots or ./ prefix.
+
+    JavaScript and Go imports are read with comments removed, and count only where their keyword
+    is code, not text inside a string.
+    """
+    if lang == "py":
+        return py_imports(text)
+    plain, masked, found = code_only(text, lang, keep_strings=True), code_only(text, lang), []
+    for m in IMPORT[lang].finditer(plain):
+        word = m.start() + len(m.group(0)) - len(m.group(0).lstrip())
+        if masked[word] != plain[word]:
+            continue  # the keyword is inside a string
+        line = plain.count("\n", 0, m.start()) + 1
+        if lang == "js":
+            found.append((line, m[2]))
+        elif m[2]:
+            found.append((line, m[2]))
+        else:
+            for s in re.finditer(r"(?:[\w.]+\s+)?\"([^\"]+)\"", m[1]):
+                found.append((plain.count("\n", 0, m.start(1) + s.start()) + 1, s[1]))
     return found
 
 
@@ -209,7 +262,7 @@ def scan_file(tree, file, core):
     text = tree.read(file) or ""
     stripped = code_only(text, lang)
     out = []
-    for line, module in imports(stripped if lang == "py" else text, lang):
+    for line, module in imports(text, lang):
         name = module[5:] if lang == "js" and module.startswith("node:") else module
         top = name.split(".")[0] if lang == "py" else name.split("/")[0] if lang == "js" else name
         if name in IO_MODULES[lang] or top in IO_MODULES[lang] or name.startswith(IO_PREFIXES[lang]):
@@ -269,7 +322,7 @@ def parse_manifest(text, where):
 
 
 def judges(repo, base, head=None):
-    """({name: package definition that judges the change}, ignore globs, notes).
+    """({name: package definition that judges the change}, ignore globs, notes, new package names).
 
     verify.json at base judges when base has it; a package new at head is judged by head's
     definition, and the notes say so for the reviewer. Without head, head is the worktree.
@@ -287,24 +340,34 @@ def judges(repo, base, head=None):
     head, head_ignore = parse_manifest(head_text, f"{MANIFEST} at HEAD") if head_text else ({}, [])
     if base_text is None:
         notes = [f"{MANIFEST} is new in this change: its definitions judge it; the reviewer reads them"] if base else []
-        return head, head_ignore, notes
+        return head, head_ignore, notes, set()
     packages, ignore = parse_manifest(base_text, f"{MANIFEST} at {base}")
-    notes = []
+    notes, new = [], set()
     for name, p in head.items():
         if name not in packages:
             packages[name] = p
+            new.add(name)
             notes.append(f"{name}: new package, defined by this change; the reviewer reads its definition")
         elif fingerprint(p) != fingerprint(packages[name]):
             notes.append(f"{name}: this change edits its definition; {MANIFEST} at base judges it")
-    return packages, ignore, notes
+    return packages, ignore, notes, new
 
 
 def fingerprint(package):
     return hashlib.sha256(json.dumps(package, sort_keys=True).encode()).hexdigest()[:16]
 
 
-def owner(path, packages):
-    """The package whose path is the longest prefix of path, or None."""
+def owner(path, packages, new=()):
+    """The package whose path is the longest prefix of path, or None.
+
+    Packages that existed at base own their paths first; a new package owns only paths no base
+    package covers, so adding a package cannot take files away from their judge.
+    """
+    old = {n: p for n, p in packages.items() if n not in new}
+    return longest(path, old) or longest(path, {n: packages[n] for n in new})
+
+
+def longest(path, packages):
     best = None
     for p in packages.values():
         root = p["path"].strip("/")
@@ -314,13 +377,16 @@ def owner(path, packages):
     return best
 
 
-def changed(repo, base, head, packages, ignore):
-    """({package names changed}, [files outside every package and not ignored])."""
+def changed(repo, base, head, packages, ignore, new=()):
+    """({package names changed}, [files outside every package and not ignored]).
+
+    Renames count as a deletion and an addition, so a move changes both packages.
+    """
     names, outside = set(), []
-    for path in (git(repo, "diff", "--name-only", f"{base}...{head}") or "").splitlines():
+    for path in (git(repo, "diff", "--name-only", "--no-renames", f"{base}...{head}") or "").splitlines():
         if path == MANIFEST:
             continue  # judged at base; judges() notes each edited definition
-        p = owner(path, packages)
+        p = owner(path, packages, new)
         if p:
             names.add(p["name"])
         elif not any(fnmatch.fnmatch(path, g) for g in ignore):
@@ -339,7 +405,7 @@ def out_dir(repo, out):
 
 def cmd_core(args):
     tree = Tree(args.repo, args.rev)
-    packages, _, _ = judges(args.repo, None, args.rev)
+    packages = judges(args.repo, None, args.rev)[0]
     failed = False
     for name in args.package or list(packages):
         if name not in packages:
@@ -357,10 +423,10 @@ def cmd_run(args):
     if git(args.repo, "status", "--porcelain", "--untracked-files=no"):
         print("uncommitted changes: commit first, so the evidence binds to a commit")
         return 1
-    packages, ignore, notes = judges(args.repo, args.base)
+    packages, ignore, notes, new = judges(args.repo, args.base)
     for note in notes:
         print(f"note: {note}")
-    names = args.package or (sorted(changed(args.repo, args.base, head, packages, ignore)[0]) if args.base
+    names = args.package or (sorted(changed(args.repo, args.base, head, packages, ignore, new)[0]) if args.base
                              else list(packages))
     directory = out_dir(args.repo, args.out)
     os.makedirs(directory, exist_ok=True)
@@ -387,6 +453,10 @@ def cmd_run(args):
                 steps.append({"step": step, "command": command or "verify_gate.py core", "exit": code,
                               "seconds": round(time.monotonic() - start, 1)})
                 print(f"{name}: {step}: {command or 'core'}: exit {code}")
+                if not code and (rev_commit(args.repo, "HEAD") != head
+                                 or git(args.repo, "status", "--porcelain", "--untracked-files=no")):
+                    print(f"{name}: {step} changed HEAD or tracked files, so later steps would not test {head[:12]}")
+                    code = steps[-1]["exit"] = 1
                 if code:
                     passed = False
                     break
@@ -410,10 +480,10 @@ def cmd_check(args):
     if not base or not head:
         print(f"cannot resolve --base {args.base} or --head {args.head}: not run")
         return 1
-    packages, ignore, notes = judges(args.repo, base, head)
+    packages, ignore, notes, new = judges(args.repo, base, head)
     for note in notes:
         print(f"note: {note}")
-    names, outside = changed(args.repo, base, head, packages, ignore)
+    names, outside = changed(args.repo, base, head, packages, ignore, new)
     problems = [f"{path}: changed, but outside every package and not under \"ignore\"" for path in outside]
     directory = out_dir(args.repo, args.out)
     tree = Tree(args.repo, head)

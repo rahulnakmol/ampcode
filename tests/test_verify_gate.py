@@ -114,6 +114,28 @@ class Core(Gate):
                     "web/src/core/cart.test.ts": "import fs from 'fs'\nconsole.log(fs)\n"})
         self.assertGate(["core"], 0, "app: core pass", "web: core pass")
 
+    def test_imports_in_js_and_go_comments_or_strings_are_not_imports(self):
+        self.write({"web/src/core/cart.ts": "// import fs from 'fs'\n/* require('child_process') */\n"
+                                            "export const doc = \"import { x } from 'node:fs'\"\n",
+                    "go.mod": "module example.com/m\n",
+                    "svc/domain/rule.go": 'package domain\n\n/*\nimport "os"\n*/\nconst doc = `\nimport "net/http"\n`\n',
+                    "verify.json": json.dumps({"packages": MANIFEST["packages"] + [
+                        {"name": "svc", "path": "svc", "core": ["svc/domain"], "e2e": "true"}]})})
+        self.assertGate(["core"], 0, "web: core pass", "svc: core pass")
+
+    def test_aliased_python_imports_and_one_line_go_groups_are_read(self):
+        self.write({"app/core/price.py": "import math as m, os\n\ndef total(items):\n    return m.fsum(items)\n",
+                    "go.mod": "module example.com/m\n",
+                    "svc/domain/rule.go": 'package domain\n\nimport ("os")\n\nfunc X() string { return os.Getenv("X") }\n',
+                    "verify.json": json.dumps({"packages": MANIFEST["packages"] + [
+                        {"name": "svc", "path": "svc", "core": ["svc/domain"], "e2e": "true"}]})})
+        self.assertGate(["core"], 1, "app/core/price.py:1: io-import: imports os", "svc/domain/rule.go:3: io-import: imports os")
+
+    def test_template_literal_expressions_are_code(self):
+        self.write({"web/src/core/cart.ts": "export const v = `total: ${fetch('/x')}`\nexport const w = `fetch(` + 'console.log'\n"})
+        out = self.assertGate(["core"], 1, "web/src/core/cart.ts:1: side-effect: calls fetch(")
+        self.assertNotIn("cart.ts:2", out)
+
     def test_observe_mode_reports_without_failing(self):
         manifest = json.loads(json.dumps(MANIFEST))
         manifest["packages"][0]["mode"] = "observe"
@@ -168,6 +190,31 @@ class Evidence(Gate):
                               "app: evidence ran another definition")
         self.assertNotIn("verify.json: changed", out)
         self.assertGate(["run", "--base", self.base], 1, "app: e2e: python3 -m app.e2e: exit 1")
+
+    def test_a_move_between_packages_changes_both(self):
+        git(self.repo, "mv", "app/shell/db.py", "web/db.py")
+        self.commit("move db")
+        out = self.assertGate(["run", "--base", self.base], 0, "app: e2e", "web: e2e")
+        self.assertGate(["check", "--base", self.base], 0, "app: pass", "web: pass")
+
+    def test_a_new_nested_package_cannot_take_files_from_their_judge(self):
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["packages"].append({"name": "new-core", "path": "app/core", "core": ["app/core"], "e2e": "true"})
+        self.write({"verify.json": json.dumps(manifest), "app/core/price.py": "def total(items):\n    return 0\n"})
+        self.commit("nested package and a broken total")
+        self.assertGate(["run", "--base", self.base], 1, "app: check", "app: e2e: python3 -m app.e2e: exit 1")
+        self.assertGate(["check", "--base", self.base], 1, "app: no passing e2e step")
+
+    def test_a_step_that_rewrites_tracked_code_fails(self):
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["packages"][0]["checks"] = ["printf 'def total(items):\\n    return 3\\n' > app/core/price.py"]
+        self.write({"verify.json": json.dumps(manifest)})
+        base = self.commit("a check that edits code")
+        self.write({"app/core/price.py": "def total(items):\n    return 0\n"})
+        self.commit("break total")
+        self.assertGate(["run", "--base", base], 1, "changed HEAD or tracked files")
+        git(self.repo, "checkout", "-q", "--", ".")
+        self.assertGate(["check", "--base", base], 1, "app: no passing e2e step")
 
     def test_changed_file_outside_every_package_fails_unless_ignored(self):
         self.write({"tools/x.py": "x = 1\n", "NOTES.md": "n\n"})
