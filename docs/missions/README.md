@@ -46,6 +46,29 @@ Every approval is a row in the mission file's gate ledger naming who answered an
 good" in chat never counts. On Amp, the [mission-control](../mission-control.md) plugin shows
 the kickoff as a dialog and enforces the delivery gates.
 
+## Agent modes run as missions
+
+Every agent mode in this kit shares one mission core,
+[`missioning`'s agent-modes reference](../../skills/missioning/reference/agent-modes.md). Pick a
+mode and describe the work: the mode opens with `Mission: <playbook>, <outcome>` and runs the
+steps above. It opens with `No mission: <reason>` only for a question it answers by reading or a
+typo-sized edit; say "run it as a mission" to override. A consultation or a work item inside a
+running mission stays part of that mission. Each mode adds only its specialism and limits:
+
+| Mode | Usual playbook | Specialism | Limits |
+| --- | --- | --- | --- |
+| Archi | software-delivery (design steps), infrastructure, product-assessment | `architecting` | Read-only, no shell |
+| Darci | software-delivery (design steps), product-assessment | `architecting` with its data-and-AI method | Read-only, no shell |
+| Opsci | infrastructure (incident step) | `investigating-incidents` | Read-only, no shell; never mitigates |
+| Swift | software-delivery | Direct execution, medium effort | Full tools |
+| Weave, Weave Fast | software-delivery | Focused implementation lead | Full tools |
+| Prime, Prime Fast | software-delivery | Implementation and verification lead | Full tools |
+
+The request decides the playbook; the usual one is only the starting guess. The read-only modes
+do their specialist work at once as a draft (an incident never waits for a kickoff), return the
+mission file and the check commands labelled "not run", and leave the kickoff `pending`: save the
+file, run the checks and the review, then approve from a mode with tools or by written reply.
+
 A start message has the same shape for every mission:
 
 ```text

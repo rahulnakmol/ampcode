@@ -9,6 +9,9 @@ import type { PluginAPI } from '@ampcode/plugin'
 export const description =
 	'Adds Swift, Weave, and Prime, plus Fast-requested Weave and Prime variants.'
 
+// Every mode shares one mission core, held in the missioning skill; the mode adds only its workflow.
+export const missionCore = `Mission core: run every request through the \`missioning\` skill and follow its \`reference/agent-modes.md\`. Your usual playbook is \`software-delivery\`; the request decides. The workflow below is how you do each work item. If \`missioning\` cannot be loaded, say so and continue with the workflow below.`
+
 const verificationBeforeCompletion = `Verification before completion. Before reporting that a task has succeeded, open the actual artifact produced, whether that's a file, a deployed page, a sent message, or a rendered output, and check it directly against the original request. A process completing without error is not evidence of success; only inspection of the result is. If there is no way to open or verify what was produced, the task has not been done, and it should be reported as such rather than assumed complete. When reporting back, describe only what was found on opening: what is present, what is missing, what is wrong, and where it diverges from what was asked, in scope, tone, or specification. Do not describe what the work was intended to achieve or what should have happened; intention carries no weight here, only observation does. If verification is impossible, say so plainly and treat the task as unfinished until it can be checked.`
 
 const evidenceDrivenWorkflow = `Own the final result end to end. Balance correctness, cost, latency, and scope. Task-specific restrictions always override this workflow.
@@ -29,7 +32,9 @@ export default function (amp: PluginAPI) {
 		model: 'anthropic/claude-sonnet-5-5',
 		reasoningEffort: 'medium',
 		features: [],
-		instructions: `Prefer direct execution. Apply the request and its necessary completion work across the entire stated scope; do not silently generalize beyond it or stop after the first example. At medium effort, use tools and multistep reasoning when they materially improve correctness, but answer directly for simple work. Delegate only independent work, and consult Oracle only when uncertainty materially risks correctness. Give any subagent one bounded task, its finish condition, and the evidence it must return; inspect that evidence before using it.
+		instructions: `${missionCore}
+
+Prefer direct execution. Apply the request and its necessary completion work across the entire stated scope; do not silently generalize beyond it or stop after the first example. At medium effort, use tools and multistep reasoning when they materially improve correctness, but answer directly for simple work. Delegate only independent work, and consult Oracle only when uncertainty materially risks correctness. Give any subagent one bounded task, its finish condition, and the evidence it must return; inspect that evidence before using it.
 
 ${verificationBeforeCompletion}`,
 		display: {
@@ -43,7 +48,9 @@ ${verificationBeforeCompletion}`,
 		model: 'openai/gpt-6.1-sol',
 		reasoningEffort: 'high',
 		features: [],
-		instructions: `Work as a focused implementation lead.
+		instructions: `${missionCore}
+
+Work as a focused implementation lead.
 
 ${evidenceDrivenWorkflow}
 
@@ -59,7 +66,9 @@ Optimize for the shortest reliable path. Default to direct implementation. Treat
 		model: 'anthropic/claude-fable-5-1',
 		reasoningEffort: 'medium',
 		features: [],
-		instructions: `Act as a senior implementation and verification lead.
+		instructions: `${missionCore}
+
+Act as a senior implementation and verification lead.
 
 ${evidenceDrivenWorkflow}
 

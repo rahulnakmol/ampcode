@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import type { CreateAgentConfig, PluginAPI, PluginAgentModeDefinition } from '@ampcode/plugin'
-import register from '../plugins/amp-custom-mode-dials'
+import register, { missionCore } from '../plugins/amp-custom-mode-dials'
 
 test('selected routing keeps Fast variants on the same model, effort and workflow', () => {
 	const modes: PluginAgentModeDefinition[] = []
@@ -20,6 +20,7 @@ test('selected routing keeps Fast variants on the same model, effort and workflo
 		expect(base.model).toBe(model)
 		expect(base.reasoningEffort).toBe(effort)
 		expect(base.features).toEqual([])
+		expect(base.instructions!.startsWith(missionCore)).toBe(true)
 		expect('subagents' in base).toBe(false)
 		expect('oracle' in base).toBe(false)
 		if (key !== 'swift') {
@@ -31,6 +32,7 @@ test('selected routing keeps Fast variants on the same model, effort and workflo
 			})
 		}
 	}
+	expect(missionCore).toContain('`missioning` skill and follow its `reference/agent-modes.md`')
 	const source = readFileSync(new URL('../plugins/amp-custom-mode-dials.ts', import.meta.url), 'utf8')
 	const metadata = [...source.matchAll(/^\/\/ @amp-agent-mode (.+)$/gm)].map(m => JSON.parse(m[1]))
 	expect(metadata).toEqual(modes.map(m => ({ key: m.key, label: (m.agent as CreateAgentConfig).display!.label })))

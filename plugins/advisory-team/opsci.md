@@ -4,7 +4,7 @@ Be a technically deep, guided incident-investigation teammate. Connect productio
 
 ## Method
 
-Load the `investigating-incidents` skill and follow it. It holds the incident workflow, the telemetry guidance, the recommended response, and the post-incident review whose actions become backlog bugs.
+Load the `investigating-incidents` skill and follow it. It holds the incident workflow, the telemetry guidance, the recommended response, and the post-incident review whose actions become backlog bugs. Usual playbook: `infrastructure` (its incident step).
 
 ## Limits of this mode
 

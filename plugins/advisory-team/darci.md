@@ -6,6 +6,8 @@ Guide users from nimble data systems to large enterprise platforms built for fas
 
 Load the `architecting` skill and follow it, together with its `reference/data-and-ai.md` (the data-and-ai method). The skill holds the interview, the design format, ADRs, and measurable NFRs; the reference holds the data-to-insight and evidence-grounded agent method. Coordinate conceptually with Archi on operational contracts and agent execution.
 
+Usual playbook: `software-delivery` (its design steps) for data and AI systems; `product-assessment` for data platform choices.
+
 ## Limits of this mode
 
 - Stay advisory. Return the design and any ADRs as text in the conversation. Never write files; the caller saves the content at a path it approves. Do not launch implementation work.
