@@ -15,6 +15,13 @@ It flags, per file in the diff:
   floor-   a lowered, removed or commented-out number on a coverage, threshold, min, minimum, fail_under,
            lines, branches, functions or statements key, also as XML (JaCoCo <minimum>0.80</minimum>)
   ci-      an added continue-on-error: true or allow_failure: true, or || true in a CI file
+  retry-   an added or raised retry of failing tests in a test, test or build config, CI file or verify.json
+           (retries: 2, --retries 2, --retry=2, reruns = 2, jest.retryTimes(2), this.retries(2),
+           pytest.mark.flaky, @flaky): fix the flaky test's cause, or delete it with a reason
+  observe- a package newly set to "mode": "observe" in verify.json (editing a package that already
+           observes is not): the pure-core rule stops failing the build
+  removed- a package's "name" removed from verify.json: its end-to-end and pure-core checks go
+A commented-out line holds no marker.
 
 Each flag prints as "<id>: <path>:<line>: <what>". Exits 0 and prints "pass" when there is no
 flag, or when every flag is accepted with --accept <id>=<reason>; accepted flags print as
@@ -45,12 +52,23 @@ SKIP = re.compile(
 SILENCER = re.compile(
     r"\bnoqa\b|eslint-disable(?:-next-line|-line)?|@ts-(?:ignore|nocheck|expect-error)\b|\btype:\s*ignore\b|\bnosec\b"
     r"|\bnolint\b|pylint:\s*disable", re.I)
+# A test retry and its count; mark.flaky and @flaky retry without a count.
+RETRY = re.compile(
+    r"(?:--retries|--retry|--reruns)(?:=|\s+)(?P<n>\d+)|\b(?:retries|retry|reruns)[\"']?\s*[:=]\s*(?P<m>\d+)"
+    r"|\b(?:retryTimes|this\.retries)\s*\(\s*(?P<k>\d+)|\bmark\.flaky\b|@flaky\b")
+# Retries count only in tests, test and build configuration, and CI.
+RETRY_PATHS = re.compile(
+    r"(?:^|/)(?:tests?|spec|__tests__|e2e)/|(?:^|/)test_[^/]*\.py$|_test\.(?:py|go)$|\.(?:test|spec)\.[cm]?[jt]sx?$"
+    r"|(?:^|/)(?:conftest\.py|[^/]*\.config\.[cm]?[jt]s|\.mocharc[^/]*|pytest\.ini|pyproject\.toml|setup\.cfg|tox\.ini"
+    r"|package\.json|bunfig\.toml|verify\.json|Makefile|[^/]*\.mk)$")
+OBSERVE = re.compile(r"\"mode\"\s*:\s*\"observe\"")
+PACKAGE_NAME = re.compile(r"\"name\"\s*:\s*\"([^\"]*)\"")
 CI_IGNORE = re.compile(r"\b(?:continue-on-error|allow_failure)\s*:\s*true\b")
 OR_TRUE = re.compile(r"\|\|\s*(?:true|:)(?![\w-])")
 CI_PATHS = re.compile(
     r"(?:^|/)(?:\.github/(?:workflows|actions)/|\.gitlab-ci\.ya?ml$|\.gitlab/|\.circleci/|azure-pipelines[^/]*\.ya?ml$"
     r"|\.azure-pipelines/|Jenkinsfile$|\.buildkite/|bitbucket-pipelines\.ya?ml$|\.travis\.ya?ml$)")
-COMMENT = re.compile(r"^\s*(?:#|//|;|/\*|<!--|--(?=\s|$))")
+COMMENT = re.compile(r"^\s*(?:#(?!\[)|//|;|/\*|<!--|--(?=\s|$))")
 BAR_WORDS = {"coverage", "threshold", "min", "minimum", "lines", "branches", "functions", "statements"}
 NUMBER = r"(?P<num>-?\d+(?:\.\d+)?)"
 KEY_VALUE = re.compile(
@@ -60,7 +78,8 @@ XML_VALUE = re.compile(r"<(?P<key>[A-Za-z_][\w.\-]*)>\s*" + NUMBER + r"%?\s*</")
 
 
 def parse(text):
-    """Yield (path, hunk) for each hunk; a hunk is a list of (sign, old_line, new_line, text)."""
+    """Yield (path, hunk) for each hunk; a hunk is a list of (sign, old_line, new_line, text), with
+    sign "-", "+" or " " for an unchanged context line."""
     path, old_path, lines = None, None, iter(text.splitlines())
     for line in lines:
         if line.startswith("--- "):
@@ -92,6 +111,7 @@ def parse(text):
                     hunk.append(("+", None, new, rest))
                     new, new_left = new + 1, new_left - 1
                 else:
+                    hunk.append((" ", old, new, rest))
                     old, new, old_left, new_left = old + 1, new + 1, old_left - 1, new_left - 1
             yield path, hunk
 
@@ -126,6 +146,35 @@ def silencers(text):
     return found
 
 
+def retries(text):
+    """[(setting, count)] for each retry on a line: '--retries 2' gives ('--retries', 2), and
+    mark.flaky or @flaky without a count gives a count of 1."""
+    found = []
+    for m in RETRY.finditer(text):
+        count = m["n"] or m["m"] or m["k"]
+        setting = re.sub(r"[\s\"'=:(]", "", m.group(0)[:m.start("n" if m["n"] else "m" if m["m"] else "k") - m.start()]
+                         if count else m.group(0))
+        found.append((setting, int(count or 1)))
+    return found
+
+
+def changed_pairs(hunks):
+    """[(removed row or None, added row)] for each added row: within a run of removed then added
+    lines with no unchanged line between them, the i-th added line replaces the i-th removed line."""
+    pairs = []
+    for hunk in hunks:
+        gone, came = [], []
+        for row in hunk + [(" ", None, None, "")]:
+            if row[0] == "-" and not came:
+                gone.append(row)
+            elif row[0] == "+":
+                came.append(row)
+            else:
+                pairs += [(gone[i] if i < len(gone) else None, r) for i, r in enumerate(came)]
+                gone, came = ([row] if row[0] == "-" else []), []
+    return pairs
+
+
 def markers(pattern, text):
     return [m.group(0).replace(" ", "") for m in pattern.finditer(text)]
 
@@ -146,13 +195,43 @@ def scan(text):
         spare = len([r for r in added if ASSERTION.search(r[3]) and not COMMENT.match(r[3])])
         for row in gone[spare:] if len(gone) > spare else []:
             flags.append(("assert", path, row[1], f"assertion removed with no replacement: {row[3].strip()}"))
-        # Markers: an added marker counts only when the file did not lose the same marker.
+        # Markers: an added marker counts only when the file did not lose the same marker. A
+        # commented-out line holds no marker.
+        removed_code = [r for r in removed if not COMMENT.match(r[3])]
+        added_code = [r for r in added if not COMMENT.match(r[3])]
         checks = [("skip", SKIP, "skip marker added"), ("ci", CI_IGNORE, "CI failure ignored")]
         if CI_PATHS.search(path):
             checks.append(("ci", OR_TRUE, "CI failure ignored"))
+        if RETRY_PATHS.search(path) or CI_PATHS.search(path):
+            # Each retry setting counts unless the file lost the same setting at least as high.
+            old = [r for row in removed_code for r in retries(row[3])]
+            for row in added_code:
+                for setting, count in retries(row[3]):
+                    cover = max((o for o in old if o[0] == setting and o[1] >= count), default=None)
+                    if cover:
+                        old.remove(cover)
+                    elif count:
+                        flags.append(("retry", path, row[2], f"test retry added: {row[3].strip()}"))
+                        break
+        if path.rsplit("/", 1)[-1] == "verify.json":
+            # An added observe line counts unless it replaces an observe line of the same package
+            # (an edit such as a trailing comma); observe moved to another package counts.
+            for gone, row in changed_pairs(hunks):
+                if COMMENT.match(row[3]) or not OBSERVE.search(row[3]):
+                    continue
+                if gone and OBSERVE.search(gone[3]) and PACKAGE_NAME.findall(gone[3]) == PACKAGE_NAME.findall(row[3]):
+                    continue
+                flags.append(("observe", path, row[2], f"pure-core rule set to observe: {row[3].strip()}"))
+            names = Counter(m[1] for r in added_code for m in PACKAGE_NAME.finditer(r[3]))
+            for row in removed_code:
+                for m in PACKAGE_NAME.finditer(row[3]):
+                    if names[m[1]]:
+                        names[m[1]] -= 1
+                    else:
+                        flags.append(("removed", path, row[1], f"package removed from verify.json: {row[3].strip()}"))
         for prefix, pattern, what in checks:
-            kept = Counter(m for r in removed for m in markers(pattern, r[3]))
-            for row in added:
+            kept = Counter(m for r in removed_code for m in markers(pattern, r[3]))
+            for row in added_code:
                 for marker in markers(pattern, row[3]):
                     if kept[marker]:
                         kept[marker] -= 1

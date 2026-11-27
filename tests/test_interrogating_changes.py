@@ -99,6 +99,10 @@ def make_repo(tmp):
     return repo, base, head
 
 
+MODELS = {"implementers": [{"model": "anthropic/claude-opus-5-5", "source": "get_thread_status T-impl"}],
+          "reviewer": {"model": "openai/gpt-6-astra", "source": "get_thread_status T-review"}}
+
+
 def round_(repo, base, head, findings, number=1, **extra):
     return {"round": number, "base": base, "head": head, "patch_id": patch_id(repo, base, head),
             "scope": ["app.py"], "findings": copy.deepcopy(findings), **extra}
@@ -118,6 +122,8 @@ class LedgerCase(unittest.TestCase):
         self.tmp.cleanup()
 
     def write(self, ledger):
+        if isinstance(ledger, dict) and "rounds" in ledger:
+            ledger.setdefault("models", copy.deepcopy(MODELS))
         path = Path(self.tmp.name) / "ledger.json"
         path.write_text(json.dumps(ledger, indent=2))
         return str(path)
@@ -145,6 +151,25 @@ class Check(LedgerCase):
         result = self.check(self.ledger())
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(result.stdout.strip(), "pass")
+
+    def test_l10_reviewer_on_an_implementer_model_fails(self):
+        ledger = self.ledger()
+        ledger["models"] = copy.deepcopy(MODELS)
+        ledger["models"]["implementers"].append({"model": "OpenAI/GPT-6-Astra ", "source": "T-child"})
+        self.assertFails(self.check(ledger), "L10", "openai/gpt-6-astra")
+        ledger["models"]["implementers"][-1]["model"] = "openai / gpt-6-astra"
+        self.assertFails(self.check(ledger), "L10")
+
+    def test_l10_models_need_a_source(self):
+        ledger = self.ledger()
+        ledger["models"] = {"implementers": [{"model": "anthropic/claude-opus-5-5"}],
+                            "reviewer": {"model": "openai/gpt-6-astra", "source": " "}}
+        self.assertFails(self.check(ledger), "implementers[1]", "models.reviewer")
+
+    def test_l10_missing_models_give_no_verdict(self):
+        ledger = self.ledger([])
+        ledger["models"] = {}
+        self.assertFails(self.verdict(ledger), "L10", "ledger invalid")
 
     def test_w3_1_missing_field_is_named(self):
         for field in ("location", "quote", "severity", "lens"):
@@ -277,6 +302,8 @@ class Verdict(LedgerCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(f"patch-id: {expected}", result.stdout)
         self.assertIn("verdict: pass", result.stdout)
+        self.assertIn("anthropic/claude-opus-5-5", result.stdout)
+        self.assertIn("openai/gpt-6-astra", result.stdout)
 
     def test_w3_5_new_commit_makes_the_verdict_stale(self):
         ledger = self.ledger([PRE_EXISTING])
@@ -413,6 +440,58 @@ class FloorGuard(unittest.TestCase):
                      "        with self.assertRaises(ValueError):", "    with pytest.raises(ValueError):"):
             with self.subTest(line=line):
                 self.assertFlags(diff("tests/t", removed=[line]), "assertion removed")
+
+    def test_added_test_retry_is_flagged(self):
+        for line in ("  retries: 2,", "jest.retryTimes(3);", "    this.retries(2);", "addopts = --reruns 3",
+                     "@pytest.mark.flaky(reruns=2)", "  test: { retry: 1 },"):
+            with self.subTest(line=line):
+                self.assertFlags(diff("playwright.config.ts", added=[line]), "test retry added")
+        self.assertFlags(diff(".mocharc.json", removed=['  "retries": 0'], added=['  "retries": 2']), "test retry added")
+        for path, line in (("Makefile", "\tpytest --retries 2"), (".github/workflows/ci.yml", "  run: npx jest --retry=2"),
+                           ("package.json", '  "test": "vitest --retry 3"'), ("pyproject.toml", "reruns = 2"),
+                           ("pytest.ini", "addopts = --reruns=1"), ("web/e2e/login.spec.ts", "test.describe.configure({ retries: 2 });")):
+            with self.subTest(path=path):
+                self.assertFlags(diff(path, added=[line]), "test retry added")
+        for line in ("  retries: 0,", "jest.retryTimes(0);", "  # retries: 2,"):
+            self.assertClean(diff("playwright.config.ts", added=[line]))
+        # A lowered count, and retries in application code or docs, are not test retries.
+        self.assertClean(diff("playwright.config.ts", removed=["  retries: 3,"], added=["  retries: 1,"]))
+        self.assertFlags(diff("playwright.config.ts", removed=["  retries: 1,"], added=["  retries: 3,"]), "test retry added")
+        # A setting newly raised counts even beside an unchanged one on the same line.
+        self.assertFlags(diff("package.json", removed=['  "e2e": "playwright test --retry 3 --retries 0"'],
+                              added=['  "e2e": "playwright test --retry 3 --retries 2"']), "test retry added")
+        self.assertFlags(diff("package.json", removed=['  "e2e": "playwright test --retry 3"'],
+                              added=['  "e2e": "playwright test --retries 2"']), "test retry added")
+        self.assertFlags(diff("verify.json", removed=['  "e2e": "playwright test",'],
+                              added=['  "e2e": "playwright test --retries 2",']), "test retry added")
+        for path in ("src/http/client.ts", "docs/retries.md", "skills/x/scripts/floor_guard.py"):
+            self.assertClean(diff(path, added=["const policy = { retries: 3 };"]))
+
+    def test_verify_json_set_to_observe_is_flagged(self):
+        line = '      "mode": "observe"'
+        self.assertFlags(diff("verify.json", removed=['      "mode": "enforce"'], added=[line]), "observe")
+        self.assertClean(diff("docs/verify.md", added=[line]))
+        # Moving observe from one package to another still sets a package to observe.
+        self.assertFlags(diff("verify.json", removed=['  {"name": "api", "mode": "observe"},', '  {"name": "web"},'],
+                              added=['  {"name": "api"},', '  {"name": "web", "mode": "observe"},']), "observe")
+        self.assertFlags(diff("verify.json", removed=['      "mode": "observe"', '    },', '    {', '      "name": "web",'],
+                              added=['    },', '    {', '      "name": "web",', '      "mode": "observe"']), "observe")
+        self.assertFlags(diff("verify.json", removed=['  {"name": "api", "mode": "observe"},', '  {"name": "web"},'],
+                              added=['  {"name": "web", "mode": "observe"},', '  {"name": "api"},']), "observe")
+        # Observe moved between pretty-printed packages, as git prints it with unchanged lines between.
+        moved = ('diff --git a/verify.json b/verify.json\n--- a/verify.json\n+++ b/verify.json\n'
+                 '@@ -3,8 +3,8 @@\n     {\n       "name": "api",\n-      "mode": "observe",\n'
+                 '       "e2e": "make e2e"\n     },\n     {\n       "name": "web",\n'
+                 '+      "mode": "observe",\n       "e2e": "make e2e"\n')
+        self.assertFlags(moved, "observe")
+        # Editing a package that already observes is not setting it to observe.
+        self.assertClean(diff("verify.json", removed=['      "mode": "observe"'],
+                              added=['      "mode": "observe",', '      "checks": ["ruff check app"]']))
+        self.assertClean(diff("verify.json", removed=['  {"name": "api", "mode": "observe"},'],
+                              added=['  {"name": "api", "mode": "observe", "checks": ["ruff check"]},']))
+        self.assertFlags(diff("packages/verify.json", removed=['    "name": "billing",']), "package removed")
+        self.assertClean(diff("verify.json", removed=['    "name": "billing",'], added=['    "name":"billing",']))
+        self.assertClean(diff("verify.json", removed=['    "name": "billing",'], added=['    "name": "billing", "e2e": "make e2e",']))
 
     def test_w4_1_replaced_assertion_is_not_flagged(self):
         self.assertClean(diff("tests/test_total.py", removed=["    self.assertEqual(total([1, 2]), 3)"],
@@ -566,7 +645,7 @@ class FloorGuard(unittest.TestCase):
                      "it('adds', {skip: true}, async () => {"):
             with self.subTest(line=line):
                 self.assertFlags(diff("src/total.test.ts", added=[line]), "skip marker added")
-        for line in ("const options = { retry: 2, skipped: true };", "if (test.ifMatch) {"):
+        for line in ("const options = { timeout: 2, skipped: true };", "if (test.ifMatch) {"):
             with self.subTest(line=line):
                 self.assertClean(diff("src/total.test.ts", added=[line]))
 

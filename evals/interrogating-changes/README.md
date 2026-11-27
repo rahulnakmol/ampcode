@@ -16,7 +16,10 @@ and reported. The mission thread runs it and writes `results.md`.
    It never reads this README or `make-fixtures.sh`. Subagents cannot start further agents, so the
    agent acts as the fresh reviewer itself; it has no author context.
 4. Give it the request below, word for word, with the repository path filled in. It ends by
-   writing `ledger.json` and `report.md` in its working folder.
+   writing `ledger.json` and `report.md` in its working folder. The fixtures were written by a
+   person, so the ledger's `models` names the implementer as
+   `{"model": "human", "source": "make-fixtures.sh"}` and the reviewer as the agent's own model,
+   read from the host (`get_thread_status` on Amp).
 5. A separate fresh judge gets only this README, the operator's patch IDs, and the agent's
    working folder and repository, and grades the pass rules.
 

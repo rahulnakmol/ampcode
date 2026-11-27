@@ -16,7 +16,8 @@ a standalone review (`security-review`) or release-only work.
   options and measurable non-functional requirements. If not installed: write the contracts,
   decisions as short ADRs and each non-functional requirement with a number and a test.
 - `interrogating-changes`: the code review at `delivering`'s review gates one and two, with a
-  verdict tied to the exact patch. If not installed: `delivering`'s own review gates, with fresh
+  verdict tied to the exact patch, by a reviewer on a model that implemented none of the change
+  (its ledger rule L10 checks it). If not installed: `delivering`'s own review gates, with fresh
   reviewers for consequential changes.
 - `threat-modelling`, when trust boundaries change: the threat model the design links. If not
   installed: list actors, trust boundaries and abuse cases in the design package, each with a
@@ -34,9 +35,11 @@ a standalone review (`security-review`) or release-only work.
    items; run the fresh design review.
 4. Run the whiteboard defense and the readiness preflight; write the kickoff brief; get the one
    kickoff approval.
-5. Run `delivering`'s contract loop for the milestone: each work item test-first, freshly reviewed.
-6. Review gates one and two on the milestone's exact candidate; at a cap, follow the disposition
-   policy.
+5. Run `delivering`'s contract loop for the milestone: each item test-first, end-to-end first,
+   with a pure core and side effects in the shell. No pull request opens before `delivering`'s
+   verification gate (`verify_gate.py check`) passes on the exact head for each changed package.
+6. Review gates one and two on the milestone's exact candidate, each on a model that implemented
+   none of it; at a cap, follow the disposition policy.
 7. Merge the milestone into `dev` when its gates pass; read the merge back; send the checkpoint
    report.
 8. Release only as an effect: pre-authorized at kickoff or asked, with a rollback plan; verify on
@@ -57,8 +60,9 @@ match the exact candidate.
 
 ## Definition of Done
 
-Every acceptance criterion maps to an executed test or journey on the released revision, both
-reviews are recorded against that revision, the trace has no gaps, and the release is verified on
+Every acceptance criterion maps to an executed test or journey on the released revision, every
+milestone PR carries a passing `verify_gate.py check` for its head, both reviews are recorded
+against that revision with reviewer and implementer models that differ, the trace has no gaps, and the release is verified on
 its target. Each test written for a new or changed behaviour keeps its failing run on the unchanged
 code; a refactor's checks pass on both. When accessibility is in scope, each in-scope WCAG 2.2 A
 and AA criterion reads pass, fail or not examined. Built screens are compared with the approved
@@ -69,5 +73,7 @@ has one.
 
 - A merge request reported as a merge.
 - Green CI reported as a review verdict.
+- A pull request without passing local end-to-end evidence; a reviewer on the implementer's model.
+- I/O, a clock or randomness in the pure core; a retry, sleep or skip added to a flaky test.
 - Build started before the kickoff approval.
 - A release inferred from permission to merge.

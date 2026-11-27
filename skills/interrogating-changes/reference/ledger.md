@@ -1,7 +1,7 @@
 # The review ledger
 
 One JSON file per review. Each round adds an entry to `rounds`; earlier rounds never change.
-`scripts/review_ledger.py check` enforces rules L1 to L9 below.
+`scripts/review_ledger.py check` enforces rules L1 to L10 below.
 
 ## Format
 
@@ -9,6 +9,10 @@ One JSON file per review. Each round adds an entry to `rounds`; earlier rounds n
 {
   "contract": "mission/contract.md",
   "cap": 3,
+  "models": {
+    "implementers": [{"model": "anthropic/claude-opus-5-5", "source": "get_thread_status T-…impl"}],
+    "reviewer": {"model": "openai/gpt-6-astra", "source": "get_thread_status T-…review"}
+  },
   "rounds": [
     {
       "round": 1,
@@ -39,6 +43,7 @@ One JSON file per review. Each round adds an entry to `rounds`; earlier rounds n
 | --- | --- |
 | `contract` | The calling mission contract, if any. Needed for a cap of 5 |
 | `cap` | Failed rounds before the disposition policy applies: 3, or 5 when the contract says so |
+| `models` | `implementers`: each model that wrote the change or its tests; `reviewer`: the model this review ran on. Each is `{model, source}`; `source` says where the model was read (on Amp, `get_thread_status` and the thread ID). A person's code is `human` |
 | `round` | 1, 2, 3 … in order |
 | `base`, `head` | The revisions reviewed in this round: `base` is the target branch's commit, `head` the candidate's. Use commit hashes: a branch name moves. The change is `<base>...<head>`, from their merge-base |
 | `patch_id` | `git diff <base>...<head> \| git patch-id --verbatim`, first field (three dots: from the merge-base) |
@@ -78,6 +83,7 @@ the new head, so rules L3 to L5 check it there.
 | L7 | A `declined` finding that is not a Nit, unless it is pre-existing and names where it is `filed` |
 | L8 | A failed round past the cap without a `disposition` of `fixed`, `replanned` or `filed`; any other disposition value; or a disposition on a round that is not a failed round past the cap |
 | L9 | A `fixed` entry on the same `patch_id` as the round where that ID was last open: a fix needs a new patch |
+| L10 | `models` is missing; an entry has no `model` or `source`; or the reviewer's model (ignoring case and all spaces) is one of the implementers' |
 
 A round **fails** when, after it, a Blocker or Major is open.
 
@@ -88,7 +94,7 @@ computes the candidate's patch ID and compares it with the last round's `patch_i
 
 | Verdict | When | Exit |
 | --- | --- | --- |
-| `pass` | The ledger passes L1 to L9, the patch IDs match, and no Blocker or Major is open | 0 |
+| `pass` | The ledger passes L1 to L10, the patch IDs match, and no Blocker or Major is open | 0 |
 | `changes needed` | A Blocker or Major is open | 1 |
 | `stale` | The patch IDs differ: the ledger reviewed another patch | 1 |
 | `ledger invalid` | The ledger breaks a rule | 1 |
@@ -103,4 +109,5 @@ was cut does not change it. Name the same base and head the review used.
 
 The script proves that each quote is in the file at the reviewed head, and that its origin
 matches the lines the change touched. It cannot prove that the reviewer read the callers, guards and tests it names,
-or that a `run:` output is real. Those stay the reviewer's evidence, and the report says so.
+or that a `run:` output is real, or that the models were read from the host as `source` says.
+Those stay the reviewer's evidence, and the report says so.

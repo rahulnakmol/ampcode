@@ -232,8 +232,11 @@ flow are retired: their records report a retired schema and stay unchanged.
 Its [mission record](./skills/delivering/reference/mission-record.md) lists the contract fields,
 the tools and the path for hosts without the plugin;
 [review/recovery guidance](./skills/delivering/reference/review-and-recovery.md) keeps reviews
-bound to the exact head and resumption safe. Both milestone gates review with
-`interrogating-changes` (gate 2 also runs its lowered-bar check), a mission picks the ship or
+bound to the exact head and resumption safe. The
+[verification gate](./skills/delivering/reference/verification.md) opens no pull request until
+each changed package's end-to-end tests pass locally on the exact head and its pure core passes
+`verify_gate.py core`. Both milestone gates review with `interrogating-changes` on a model that
+implemented none of the change (gate 2 also runs its lowered-bar check), a mission picks the ship or
 stop variant for its PRs, and [hosts-pr-watch](./skills/delivering/reference/hosts-pr-watch.md)
 waits on PRs where Amp's GitHub events are not available. [Research](./docs/delivering-research.md)
 records the earlier design rationale; [evaluations](./evals/delivering/README.md), including the

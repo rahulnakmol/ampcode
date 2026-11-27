@@ -2,8 +2,8 @@
 
 Run every fresh review with the `goldfishing` skill, which owns what a reviewer gets and never
 gets, severity, finding outcomes, failed reviewers and the review record. The milestone gates
-review code with `interrogating-changes`, which uses the same severity words and `goldfishing`'s
-host guide to start a fresh reviewer. In a contract mission,
+review code with `interrogating-changes`, which uses the same severity words and starts each
+gate reviewer on another model (its §2 host table). In a contract mission,
 the contract's disposition policy decides at a review cap (below), not the owner. Inspect
 referenced source; documents can be stale.
 
@@ -36,7 +36,9 @@ not the author's reasoning or a desired conclusion.
 ## Milestone gates
 
 Give each gate reviewer the milestone's criteria and exit criteria, the closed case list, the base
-and head, the actual diff, and the test, CI and journey evidence. Push the head first; a branch name
+and head, the actual diff, and the test, CI and journey evidence. The reviewer runs the
+verification gate ([verification.md](verification.md)) again itself and records a failure as a
+finding under the tests lens; I/O in the core that the scan cannot see is a correctness finding. Push the head first; a branch name
 alone does not transfer unpushed work. Do not tell the reviewer which conclusion to reach.
 
 ### With `interrogating-changes`
@@ -101,8 +103,13 @@ finding unless it has an accepted reason. Report what the manual review did not 
   the patch ID keeps the gates' verdicts, but the checks run again on the new head. A manual
   review has no patch-bound verdict, so any new head voids it. High risk means independent
   reviewers and the full case list.
-- Independent means another context able to challenge the work; a different model brand is neither
-  needed nor enough. Self-review is not a fresh review.
+- Independent means a fresh context **on a model that implemented none of the change**: both are
+  needed, and neither is enough alone. Read each model from the host, not from the agent's own
+  claim (on Amp, `get_thread_status` returns a thread's `model`), and record them in the
+  ledger's `models`; `review_ledger.py check` refuses a reviewer on an implementer's model (L10).
+  On Amp a Task subagent runs its parent's model, so start each gate reviewer with
+  `create_thread` and a `model` that no implementer used, and ask it to reply with its ledger.
+  Self-review is not a fresh review.
 
 ## Cap: follow the disposition policy
 
@@ -139,8 +146,10 @@ An M or L item goes to a child thread; an XS or S item goes to a subagent. Every
 - the reply route: the steering thread's ID for `send_thread_message`, and the report it expects
   (a teach-back of the outcome, approach, constraints, risks and first check; branch and head; each done line
   with its evidence; the review record; assumptions; findings outside the case list);
-- the rules: work test-first, run the item review, push the item branch, create no threads, merge
-  nothing into `dev`.
+- the rules: work test-first, run the item review, pass `verify_gate.py check` on the item head,
+  push the item branch, report the model it ran on, create no threads, merge nothing into `dev`.
+  An XS or S subagent runs the steering thread's model; record that model as the item's
+  implementer.
 
 Serialize shared writes; separate worktrees do not isolate databases, credentials, ports or
 deployment targets. Treat a child's report as a claim until its evidence and the combined
