@@ -210,11 +210,11 @@ def py_imports(text):
     return found
 
 
-def scope_imports(body):
-    """{bound name: full name} for the imports directly in one scope, not in nested scopes."""
-    names, todo = {}, list(body)
-    while todo:
-        node = todo.pop()
+def scope_imports(body, names=None):
+    """{bound name: full name} for the imports directly in one scope, in source order so a later
+    import of a name replaces an earlier one; nested scopes keep their own."""
+    names = {} if names is None else names
+    for node in body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
             continue
         if isinstance(node, ast.Import):
@@ -223,7 +223,7 @@ def scope_imports(body):
         elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
             for a in node.names:
                 names[a.asname or a.name] = f"{node.module}.{a.name}"
-        todo.extend(ast.iter_child_nodes(node))
+        scope_imports(ast.iter_child_nodes(node), names)
     return names
 
 

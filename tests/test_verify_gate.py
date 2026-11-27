@@ -106,6 +106,10 @@ class Core(Gate):
             "shadow.py": ("from math import sin as now\n\ndef f():\n    from time import time as now\n    return now()\n", 5),
             "nested.py": ("def a():\n    from time import time as now\n    return 1\n\n"
                           "def now():\n    return 0\n\nx = now()\n", None),
+            "later.py": ("import math as t\nimport time as t\n\ndef f():\n    return t.time()\n", 5),
+            "later_pure.py": ("import time as t\nimport math as t\n\ndef f():\n    return t.sqrt(4)\n", None),
+            "class.py": ("class C:\n    from time import time as now\n    stamp = now()\n", 3),
+            "async.py": ("async def f():\n    from time import time as now\n    return now()\n", 3),
             "pure.py": ("import time as t\nimport uuid as u\nimport datetime as d\nfrom datetime import datetime as dt\n"
                         "from uuid import UUID\nfrom random import Random\n\n"
                         "def f():\n    return (t.gmtime(0), u.UUID(int=0), UUID(int=1), d.timedelta(seconds=2),"
