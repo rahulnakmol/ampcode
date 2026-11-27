@@ -115,6 +115,8 @@ class Core(Gate):
             "local_rebound.py": ("def f():\n    from time import time as now\n    from math import sin as now\n    return now(0)\n", None),
             "maybe.py": ("from math import sin as now\ntry:\n    from time import time as now\nexcept ImportError:\n    pass\n\n"
                          "def f():\n    return now()\n", 8),
+            "maybe_pure.py": ("from time import time as now\nif False:\n    from math import sin as now\n\n"
+                              "def f():\n    return now()\n", 6),
             "class_hidden.py": ("from time import time as now\n\nclass C:\n    from math import sin as now\n\nstamp = now()\n", 6),
             "async_hidden.py": ("from time import time as now\n\nasync def g():\n    from math import sin as now\n\nstamp = now()\n", 6),
             "class.py": ("class C:\n    from time import time as now\n    stamp = now()\n", 3),

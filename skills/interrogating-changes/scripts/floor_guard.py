@@ -78,7 +78,8 @@ XML_VALUE = re.compile(r"<(?P<key>[A-Za-z_][\w.\-]*)>\s*" + NUMBER + r"%?\s*</")
 
 
 def parse(text):
-    """Yield (path, hunk) for each hunk; a hunk is a list of (sign, old_line, new_line, text)."""
+    """Yield (path, hunk) for each hunk; a hunk is a list of (sign, old_line, new_line, text), with
+    sign "-", "+" or " " for an unchanged context line."""
     path, old_path, lines = None, None, iter(text.splitlines())
     for line in lines:
         if line.startswith("--- "):
@@ -110,6 +111,7 @@ def parse(text):
                     hunk.append(("+", None, new, rest))
                     new, new_left = new + 1, new_left - 1
                 else:
+                    hunk.append((" ", old, new, rest))
                     old, new, old_left, new_left = old + 1, new + 1, old_left - 1, new_left - 1
             yield path, hunk
 
@@ -158,7 +160,7 @@ def retries(text):
 
 def changed_pairs(hunks):
     """[(removed row or None, added row)] for each added row: within a run of removed then added
-    lines, the i-th added line replaces the i-th removed line."""
+    lines with no unchanged line between them, the i-th added line replaces the i-th removed line."""
     pairs = []
     for hunk in hunks:
         gone, came = [], []

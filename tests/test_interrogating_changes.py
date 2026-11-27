@@ -478,6 +478,12 @@ class FloorGuard(unittest.TestCase):
                               added=['    },', '    {', '      "name": "web",', '      "mode": "observe"']), "observe")
         self.assertFlags(diff("verify.json", removed=['  {"name": "api", "mode": "observe"},', '  {"name": "web"},'],
                               added=['  {"name": "web", "mode": "observe"},', '  {"name": "api"},']), "observe")
+        # Observe moved between pretty-printed packages, as git prints it with unchanged lines between.
+        moved = ('diff --git a/verify.json b/verify.json\n--- a/verify.json\n+++ b/verify.json\n'
+                 '@@ -3,8 +3,8 @@\n     {\n       "name": "api",\n-      "mode": "observe",\n'
+                 '       "e2e": "make e2e"\n     },\n     {\n       "name": "web",\n'
+                 '+      "mode": "observe",\n       "e2e": "make e2e"\n')
+        self.assertFlags(moved, "observe")
         # Editing a package that already observes is not setting it to observe.
         self.assertClean(diff("verify.json", removed=['      "mode": "observe"'],
                               added=['      "mode": "observe",', '      "checks": ["ruff check app"]']))
