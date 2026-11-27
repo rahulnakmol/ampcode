@@ -37,7 +37,7 @@ One file at the repository root lists the packages:
 
 | Field | Meaning |
 | --- | --- |
-| `name`, `path` | The package, and its directory (`.` for a single-package repository). A changed file belongs to the package with the longest matching path |
+| `name`, `path` | The package, and its directory (`.` for a single-package repository). A changed file belongs to the deepest package at base whose path holds it; a package the change adds, whose path holds the file, must pass as well. A moved file changes both packages |
 | `checks` | The cheap checks (build, lint, type check, unit and property tests), run first, from the repository root |
 | `core` | Directories or files of pure domain code. Test files in them are not scanned. A core path with no source files fails: a scan of nothing proves nothing |
 | `e2e` | The end-to-end command: it starts the real program and drives it the way a user or client does (HTTP, CLI, browser). Required for every package |

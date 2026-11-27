@@ -136,6 +136,13 @@ class Core(Gate):
         out = self.assertGate(["core"], 1, "web/src/core/cart.ts:1: side-effect: calls fetch(")
         self.assertNotIn("cart.ts:2", out)
 
+    def test_template_escapes_strings_and_comments(self):
+        self.write({"web/src/core/cart.ts": 'export const a = `\\${fetch("/x")}`\n'
+                                            'export const b = `${"}" + fetch("/y")}`\n'
+                                            'export const c = `${/* } */ fetch("/z")}`\n'})
+        out = self.assertGate(["core"], 1, "cart.ts:2: side-effect: calls fetch(", "cart.ts:3: side-effect: calls fetch(")
+        self.assertNotIn("cart.ts:1", out)
+
     def test_observe_mode_reports_without_failing(self):
         manifest = json.loads(json.dumps(MANIFEST))
         manifest["packages"][0]["mode"] = "observe"
@@ -204,6 +211,24 @@ class Evidence(Gate):
         self.commit("nested package and a broken total")
         self.assertGate(["run", "--base", self.base], 1, "app: check", "app: e2e: python3 -m app.e2e: exit 1")
         self.assertGate(["check", "--base", self.base], 1, "app: no passing e2e step")
+
+    def test_a_new_nested_package_is_judged_too(self):
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["packages"].append({"name": "addon", "path": "app/addon", "core": ["app/addon"], "e2e": "false"})
+        self.write({"verify.json": json.dumps(manifest), "app/addon/x.py": "X = 1\n"})
+        self.commit("new nested package with a failing e2e")
+        self.assertGate(["run", "--base", self.base], 1, "app: passed", "addon: e2e: false: exit 1")
+        self.assertGate(["check", "--base", self.base], 1, "addon: no passing e2e step")
+
+    def test_the_deepest_base_package_owns_a_file(self):
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["packages"].append({"name": "pricing", "path": "app/core", "core": ["app/core"], "e2e": "true"})
+        self.write({"verify.json": json.dumps(manifest)})
+        base = self.commit("nested package at base")
+        self.write({"app/core/price.py": "def total(items):\n    return sum(items, 0)\n"})
+        self.commit("change pricing")
+        out = self.assertGate(["run", "--base", base], 0, "pricing: passed")
+        self.assertNotIn("app: ", out)
 
     def test_a_step_that_rewrites_tracked_code_fails(self):
         manifest = json.loads(json.dumps(MANIFEST))

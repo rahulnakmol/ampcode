@@ -120,21 +120,45 @@ def blank(match):
     return re.sub(r"[^\n]", " ", match.group(0))
 
 
+def expression_end(token, i):
+    """Index just past the } that closes the ${ expression starting at i, skipping strings and comments."""
+    depth, j = 0, i + 1
+    while j < len(token) - 1:
+        c = token[j]
+        if c in "\"'`":
+            j += 1
+            while j < len(token) - 1 and token[j] != c:
+                j += 2 if token[j] == "\\" else 1
+        elif token.startswith("//", j):
+            j = token.find("\n", j) if "\n" in token[j:] else len(token) - 2
+        elif token.startswith("/*", j):
+            j = token.find("*/", j) + 1 if "*/" in token[j:] else len(token) - 2
+        elif c in "{}":
+            depth += 1 if c == "{" else -1
+            if not depth:
+                return j + 1
+        j += 1
+    return len(token) - 1
+
+
 def template_code(token):
-    """A JavaScript template literal with its text blanked and its ${...} expressions kept."""
+    """A JavaScript template literal with its text blanked and its ${...} expressions kept.
+
+    An escaped \\${ is text. Braces inside strings and comments in an expression do not close it.
+    """
     out, i = [token[0]], 1
     while i < len(token) - 1:
-        if token.startswith("${", i):
-            depth, j = 1, i + 2
-            while j < len(token) - 1 and depth:
-                depth += {"{": 1, "}": -1}.get(token[j], 0)
-                j += 1
-            out.append("${" + code_only(token[i + 2:j - 1], "js") + "}")
+        if token[i] == "\\":
+            out.append("  " if token[i + 1] != "\n" else " \n")
+            i += 2
+        elif token.startswith("${", i):
+            j = expression_end(token, i)
+            out.append("${" + code_only(token[i + 2:j - 1], "js") + token[j - 1])
             i = j
         else:
             out.append(token[i] if token[i] == "\n" else " ")
             i += 1
-    return "".join(out) + token[-1]
+    return "".join(out)[:len(token) - 1] + token[-1]
 
 
 def code_only(text, lang, keep_strings=False):
@@ -357,14 +381,14 @@ def fingerprint(package):
     return hashlib.sha256(json.dumps(package, sort_keys=True).encode()).hexdigest()[:16]
 
 
-def owner(path, packages, new=()):
-    """The package whose path is the longest prefix of path, or None.
-
-    Packages that existed at base own their paths first; a new package owns only paths no base
-    package covers, so adding a package cannot take files away from their judge.
+def owners(path, packages, new=()):
+    """The packages that must pass for a change to path: the deepest package that existed at
+    base, and the deepest new package. A new package cannot take files from their base judge,
+    and a new nested package is still judged itself.
     """
-    old = {n: p for n, p in packages.items() if n not in new}
-    return longest(path, old) or longest(path, {n: packages[n] for n in new})
+    old = longest(path, {n: p for n, p in packages.items() if n not in new})
+    added = longest(path, {n: packages[n] for n in new})
+    return [p for p in (old, added) if p]
 
 
 def longest(path, packages):
@@ -386,9 +410,9 @@ def changed(repo, base, head, packages, ignore, new=()):
     for path in (git(repo, "diff", "--name-only", "--no-renames", f"{base}...{head}") or "").splitlines():
         if path == MANIFEST:
             continue  # judged at base; judges() notes each edited definition
-        p = owner(path, packages, new)
-        if p:
-            names.add(p["name"])
+        found = owners(path, packages, new)
+        if found:
+            names.update(p["name"] for p in found)
         elif not any(fnmatch.fnmatch(path, g) for g in ignore):
             outside.append(path)
     return names, outside
