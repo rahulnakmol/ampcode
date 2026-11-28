@@ -12,8 +12,9 @@ a monorepo); ../reference/verification.md gives the format.
 core:  scans each package's core paths (Python, JavaScript/TypeScript, Go) and prints one line
        per violation: an I/O module imported, a side effect called (print, fetch, time.Now ...), or
        an import of code outside the core (dependencies point inward). Exits 1 when a package in
-       "enforce" mode has a violation, or a core path holds no source files; "observe" packages
-       print their violations and never fail. Reads the worktree, or the commit given by --rev.
+       "enforce" mode has a violation, names no core or has a core path with no source files;
+       "observe" packages print the same lines and never fail, so a repository in another
+       language can start in observe mode. Reads the worktree, or the commit given by --rev.
 run:   for each package (all, the named ones, or those base...HEAD changed), runs its checks,
        then core, then e2e, from the repository root, stopping at the first failure. Writes
        <out>/<package>.json and .log, bound to HEAD. Refuses a worktree with uncommitted changes.
@@ -495,10 +496,10 @@ def scan_core(tree, package):
 
 
 def core_report(name, mode, violations, problems):
-    lines = [f"{name}: {p}" for p in problems]
     tag = "observe: " if mode == "observe" else ""
+    lines = [f"{tag}{name}: {p}" for p in problems]
     lines += [f"{tag}{name}: {f}:{n}: {kind}: {what}" for f, n, kind, what in violations]
-    failed = bool(problems) or (bool(violations) and mode != "observe")
+    failed = bool(problems or violations) and mode != "observe"
     return lines, failed
 
 
