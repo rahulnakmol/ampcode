@@ -273,6 +273,18 @@ class Core(Gate):
         self.write({"verify.json": json.dumps(manifest), "app/core/price.py": "import socket\n"})
         self.assertGate(["core"], 0, "observe: app: app/core/price.py:1: io-import")
 
+    def test_observe_mode_reports_an_unscannable_core_without_failing(self):
+        # A Rust package: its core has no Python, JS/TS or Go source, and a second package names no core.
+        manifest = {"packages": [{"name": "rs", "path": "rs", "core": ["rs/src/domain"], "e2e": "true", "mode": "observe"},
+                                 {"name": "infra", "path": "infra", "e2e": "true", "mode": "observe"}]}
+        self.write({"verify.json": json.dumps(manifest), "rs/src/domain/price.rs": "pub fn total() -> i64 { 0 }\n"})
+        self.assertGate(["core"], 0, "observe: rs: core path rs/src/domain holds no source files",
+                        "observe: infra: no core paths")
+        for package in manifest["packages"]:
+            package["mode"] = "enforce"
+        self.write({"verify.json": json.dumps(manifest)})
+        self.assertGate(["core"], 1, "rs: core path rs/src/domain holds no source files", "infra: no core paths")
+
     def test_empty_core_fails(self):
         manifest = json.loads(json.dumps(MANIFEST))
         manifest["packages"][1]["core"] = ["web/src/missing"]

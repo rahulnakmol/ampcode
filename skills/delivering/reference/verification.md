@@ -39,7 +39,7 @@ One file at the repository root lists the packages:
 | --- | --- |
 | `name`, `path` | The package, and its directory (`.` for a single-package repository). A changed file belongs to the deepest package at base whose path holds it; a package the change adds, whose path holds the file, must pass as well. A moved file changes both packages |
 | `checks` | The cheap checks (build, lint, type check, unit and property tests), run first, from the repository root |
-| `core` | Directories or files of pure domain code. Test files in them are not scanned. A core path with no source files fails: a scan of nothing proves nothing |
+| `core` | Directories or files of pure domain code. Test files in them are not scanned. In enforce mode, a package with no core or a core path with no Python, JavaScript/TypeScript or Go source fails: a scan of nothing proves nothing. In observe mode both print and never fail |
 | `e2e` | The end-to-end command: it starts the real program and drives it the way a user or client does (HTTP, CLI, browser). Required for every package |
 | `mode` | `enforce` (default): a core violation fails. `observe`: violations print and never fail. A new gate starts in observe mode; it moves to enforce in its own pull request once its violations are fixed |
 | `ignore` | Globs for changed files that belong to no package and need no end-to-end test, such as documents |
