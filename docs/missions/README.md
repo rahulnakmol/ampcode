@@ -54,23 +54,20 @@ mode and describe the work: the mode loads the core first and opens with `Missio
 <outcome>`, then runs the steps above, even for a small change such as a new flag. It opens with
 `No mission: <reason>` only for a short factual question or a typo fix; a design, an
 investigation or a review is a mission. It changes no file except the mission record before you
-approve the kickoff. Say "run it as a mission" to override a `No mission`. A request that names a running mission (its file, charter or ID),
-or a `consult_*` call, opens with `Work item of <mission>` and stays part of that mission. Each
-mode adds only its specialism and limits:
+approve the kickoff. Say "run it as a mission" to override a `No mission`. A request that names
+a running mission (its file, charter or ID) opens with `Work item of <mission>` and stays part of
+that mission. Each mode adds only its model and workflow; domain expertise (architecture, data
+and AI, incidents) comes from the skills the playbook loads:
 
 | Mode | Usual playbook | Specialism | Limits |
 | --- | --- | --- | --- |
-| Archi | software-delivery (design steps), infrastructure, product-assessment | `architecting` | Read-only, no shell |
-| Darci | software-delivery (design steps), product-assessment | `architecting` with its data-and-AI method | Read-only, no shell |
-| Opsci | infrastructure (incident step) | `investigating-incidents` | Read-only, no shell; never mitigates |
 | Swift | software-delivery | Direct execution, medium effort | Full tools |
 | Weave, Weave Fast | software-delivery | Focused implementation lead | Full tools |
 | Prime, Prime Fast | software-delivery | Implementation and verification lead | Full tools |
 
-The request decides the playbook; the usual one is only the starting guess. The read-only modes
-do their specialist work at once as a draft (an incident never waits for a kickoff), return the
-mission file and the check commands labelled "not run", and leave the kickoff `pending`: save the
-file, run the checks and the review, then approve from a mode with tools or by written reply.
+The request decides the playbook; the usual one is only the starting guess. The Archi, Darci
+and Opsci advisory modes were retired in favour of these skills: `architecting` (with its
+data-and-AI reference) and `investigating-incidents` now run inside the playbooks' steps.
 
 A start message has the same shape for every mission:
 

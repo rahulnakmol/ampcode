@@ -134,7 +134,7 @@ delete `<plans>` after the apply. Details: [reference/identity.md](reference/ide
 
 ## Without a shell
 
-When you have no shell (a read-only advisory mode or a chat-only host), do not run or simulate
+When you have no shell (a read-only subagent or a chat-only host), do not run or simulate
 the script, and never write a digest by hand. Give the caller the exact command with their path,
 for example:
 

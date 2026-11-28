@@ -9,8 +9,8 @@ tests the "Without a shell" rule.
 
 - The agent is a fresh subagent. It may read only `skills/investigating-incidents/` and the
   scenario's fixtures, and write only its working folder.
-- **S1** has no shell: the agent may read files but may not run any command, as in the read-only
-  Opsci mode. **S2** has a shell and may also read `skills/grooming/scripts/backlog.py` to run it.
+- **S1** has no shell: the agent may read files but may not run any command, as for a read-only
+  caller. **S2** has a shell and may also read `skills/grooming/scripts/backlog.py` to run it.
 - The operator copies S2's backlog fixture into the agent's working folder before the run.
 - After the run, the operator runs, from the repository root, on S2's files (and on S1's review
   once saved, if the agent returned one):

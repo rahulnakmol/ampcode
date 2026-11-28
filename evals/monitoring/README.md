@@ -13,7 +13,7 @@ without it. S2 also tests the "Without a shell" rule.
 - **S1** has a shell that starts in its working folder (the operator sets the shell's working
   directory there), but no cluster, cloud account or `promtool`: nothing can be applied or
   fired. **S2** has no shell: the agent may read files but may not run any command, as in a
-  read-only advisory mode.
+  read-only caller.
 - `provisioning` is not available to the agent. The agent must not apply, deploy or fire
   anything in either scenario.
 - After the run, the operator runs `python3 skills/monitoring/scripts/slo_check.py check` and
