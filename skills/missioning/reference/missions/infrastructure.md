@@ -26,7 +26,7 @@ and incident response. Not for application code alone (`software-delivery`).
   otherwise it is stop reason 2. If not installed: follow the repository's promotion rules, with
   the rollback plan written first.
 - `investigating-incidents`: the read-only investigation, the post-incident review, and its fixes
-  and missing alerts as backlog bugs. If not installed: on Amp, the Opsci mode; elsewhere, keep
+  and missing alerts as backlog bugs. If not installed: keep
   competing hypotheses, correlate telemetry with the deployed revision, and separate mitigation
   from the durable fix.
 

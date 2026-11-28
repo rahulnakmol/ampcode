@@ -158,7 +158,7 @@ is true, that a query measures what `sli.good` says, or that a page reaches a pe
 
 ### Without a shell
 
-When you have no shell (a read-only advisory mode or a chat-only host), do not run or simulate
+When you have no shell (a read-only subagent or a chat-only host), do not run or simulate
 the check. Return the SLO file and the runbooks as text for the caller to save. Give the caller
 the exact command with the caller's path (or a placeholder), for example:
 

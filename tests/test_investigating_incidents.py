@@ -902,5 +902,21 @@ class SkillText(unittest.TestCase):
         self.assertIn("approves the exact plan", self.text)
 
 
+class ReadOnlyHosts(unittest.TestCase):
+    """The host wrappers list only read, search and web tools (moved from the retired Opsci tests)."""
+
+    def test_wrappers_list_no_write_shell_or_delegation_tool(self):
+        text = (SKILL / "reference" / "read-only-hosts.md").read_text()
+        sections = {s.split("\n", 1)[0]: s for s in re.split(r"(?m)^## ", text)}
+        claude = next(v for k, v in sections.items() if k.startswith("Claude Code"))
+        copilot = next(v for k, v in sections.items() if k.startswith("Copilot"))
+        tools = re.search(r"(?m)^tools: (.+)$", claude).group(1)
+        self.assertEqual([t.strip() for t in tools.split(",")], ["Read", "Grep", "Glob", "WebFetch", "WebSearch"])
+        tools = re.search(r"(?m)^tools: \[(.+)\]$", copilot).group(1)
+        self.assertEqual([t.strip().strip("'\"") for t in tools.split(",")], ["read", "search", "web"])
+        for section in (claude, copilot):
+            self.assertIn("check the tool names against your host's documentation", section)
+
+
 if __name__ == "__main__":
     unittest.main()

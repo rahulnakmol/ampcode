@@ -1,7 +1,7 @@
 # Read-only incident investigator on other hosts
 
-On Amp, the Opsci mode loads this skill with a fixed read-only tool list. On other hosts, copy one
-of the wrappers below. Each lists only read, search and web-reading tools: no edit, shell or
+On Amp, load the skill in the mission and give the investigation to a subagent told not to edit;
+Amp has no read-only tool list for it. On other hosts, copy one of the wrappers below. Each lists only read, search and web-reading tools: no edit, shell or
 delegation tool. The wrappers were written from the host documentation read on 22 Nov 2026 and
 have not been run with this skill. Check the tool names against your host's documentation before
 you rely on them.

@@ -93,7 +93,7 @@ Outside a contract mission, the owner approves the exact plan.
 
 ## Without a shell
 
-When you have no shell (for example in the read-only Archi or Darci mode, or on a chat-only
+When you have no shell (for example in a read-only subagent, or on a chat-only
 host), do not run or simulate a scanner or the script. Give the caller the exact commands: the
 scanner commands from [reference/scanners.md](reference/scanners.md) with their paths, then
 `python3 <skill>/scripts/sarif_triage.py merge ...` and `check report.md`. Until the caller

@@ -1,6 +1,6 @@
 # Data and AI architecture
 
-This is the data and AI method of `architecting` (it was the Darci advisory mode's remit). Use
+This is the data and AI method of `architecting` (it replaces the retired Darci advisory mode). Use
 it when the design includes analytics, reporting, data platforms, machine learning, retrieval or
 evidence-grounded agents. Guide the user from nimble data systems to large enterprise platforms
 built for fast, trustworthy analysis, visualization and recall. Be inventive but evidence-led.

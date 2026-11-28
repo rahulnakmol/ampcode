@@ -18,7 +18,7 @@ consistent. It does not prove the system resists attack.
 - **Callers:** `architecting`, when a design says `Trust boundaries change: yes`; the
   `missioning` playbooks for security review (step 3, build the threat model), software delivery
   and product assessment. `scanning-vulnerabilities` reads the model's entry points to judge
-  reachability. Read-only advisory modes may load this skill; see "Without a shell".
+  reachability. Read-only callers may load this skill; see "Without a shell".
 - **Output:** `<name>.json`, checked, and `<name>.md`, rendered from it. Write both where the
   design's `Threat model:` line points (for example `docs/threat-models/order-export.md` and
   `docs/threat-models/order-export.json`). Without such a line, write them beside the design or
@@ -100,7 +100,7 @@ a high-risk gate there. At the round cap, follow the calling contract's disposit
 
 ## Without a shell
 
-When you have no shell (for example in a read-only advisory mode, or on a chat-only host), do not
+When you have no shell (for example in a read-only subagent, or on a chat-only host), do not
 run or simulate the check. Return the model JSON for the caller to save at a path it approves,
 and give the exact commands with that path (or a placeholder when you do not know it):
 

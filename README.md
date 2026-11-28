@@ -18,7 +18,6 @@ Personal Plugins and Personal Skills repositories; cloning this one installs not
 | Build software from an idea or requirement | [Mission-driven development](./docs/mission-driven-development.md), then the [mission-control reference](./docs/mission-control.md) |
 | Take an initiative from workshop notes to a signed-off PRD and a backlog | [Mission-driven planning](./docs/mission-driven-planning.md) |
 | Run an enterprise functional-discovery or pre-sales engagement | [Start a Blueprinting engagement](./docs/blueprinting.md) |
-| Get architecture, data or operations advice | [Advisory team](./docs/advisory-team.md) |
 | Use the Swift, Weave and Prime modes | [Custom mode dials](./docs/custom-mode-dials.md) |
 | Add or change a skill or plugin | [`skills/README.md`](./skills/README.md), [`plugins/README.md`](./plugins/README.md) and [Validate](#validate) |
 
@@ -88,13 +87,13 @@ words and expected results for each are in [Using the skills](./docs/using-skill
 
 | Plugin | Adds | Guide |
 | --- | --- | --- |
-| [`advisory-team/`](./plugins/advisory-team/) | Archi, Darci and Opsci modes and `consult_*` tools for architecture, data and operations advice | [Advisory team](./docs/advisory-team.md) |
 | [`amp-custom-mode-dials.ts`](./plugins/amp-custom-mode-dials.ts) | Swift, Weave and Prime modes between Amp's Dial positions | [Custom mode dials](./docs/custom-mode-dials.md) |
 | [`mission-control/`](./plugins/mission-control/) | The contract record for `delivering`: kickoff dialog, preflight, merge blockers, reports | [Mission-control reference](./docs/mission-control.md) |
 
 Every agent mode here runs its work as a mission through the shared mission core in
-[`missioning`](./skills/missioning/reference/agent-modes.md). Archi and Darci load
-`architecting` and Opsci loads `investigating-incidents`; install those skills too.
+[`missioning`](./skills/missioning/reference/agent-modes.md). For architecture, data and AI, or
+incident advice, run a mission: its playbook loads `architecting` or `investigating-incidents`.
+The Archi, Darci and Opsci modes were retired for those skills.
 
 ## Layout
 
@@ -145,7 +144,7 @@ Amp stores personal plugins and personal skills in separate global repositories:
 - `amp plugins repositories`
 - `amp skills repositories`
 
-Copy standalone plugin entry points, or complete directory plugins such as `advisory-team/`, to the
+Copy standalone plugin entry points, or complete directory plugins such as `mission-control/`, to the
 root of the Personal Plugins repository. Do not omit supporting Markdown files. Copy each complete
 `skills/<skill-name>/` directory to the root of the Personal Skills repository. Review and commit
 changes, then push only after explicit approval; new threads load published versions

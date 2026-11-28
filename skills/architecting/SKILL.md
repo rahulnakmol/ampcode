@@ -1,6 +1,6 @@
 ---
 name: architecting
-description: "Turns confirmed intent into a technical design that an agent can build from: context and containers as text tables or square-corner text diagrams, interface and data contracts, ADRs with at least two options, a status and consequences, and non-functional requirements (NFRs) each with a stable ID, a number, a unit and a verification test. Carries the Archi guided design workflow and technical remit (domain-driven design, test-first delivery, distributed systems, languages, mobile and desktop, AWS, Azure and GCP) and the Darci data and AI method. Links a threat model when trust boundaries change. A standard-library checker enforces the design format. Use when asked to design, architect or re-architect a system, feature, platform or data and AI solution, compare platforms, write ADRs or measurable NFRs, or write the technical design step of a software-delivery or infrastructure mission. Not for confirming intent (use grilling or specifying), the threat model itself (use threat-modelling), or writing the code."
+description: "Turns confirmed intent into a technical design that an agent can build from: context and containers as text tables or square-corner text diagrams, interface and data contracts, ADRs with at least two options, a status and consequences, and non-functional requirements (NFRs) each with a stable ID, a number, a unit and a verification test. Carries the guided design workflow and technical remit (domain-driven design, test-first delivery, distributed systems, languages, mobile and desktop, AWS, Azure and GCP) and the data and AI method. Links a threat model when trust boundaries change. A standard-library checker enforces the design format. Use when asked to design, architect or re-architect a system, feature, platform or data and AI solution, compare platforms, write ADRs or measurable NFRs, or write the technical design step of a software-delivery or infrastructure mission. Not for confirming intent (use grilling or specifying), the threat model itself (use threat-modelling), or writing the code."
 ---
 
 # Architecting
@@ -22,7 +22,7 @@ recommendation.
   into requirements.
 - **Callers:** `missioning` calls this skill in the software-delivery playbook (step 3, technical
   design) and the infrastructure playbook (target design). `delivering` puts the design into its
-  design package. The Archi and Darci advisory modes load it read-only; see "Without a shell".
+  design package. A read-only or chat-only caller follows "Without a shell".
 - **Output:** one design file in the format of
   [reference/design-template.md](reference/design-template.md), and a handoff.
 
@@ -132,7 +132,7 @@ disposition policy (fixed, replanned or filed). Without a contract, the owner de
 
 ### Without a shell
 
-When you have no shell (for example in the read-only Archi mode, or on a chat-only host), do not
+When you have no shell (for example in a read-only subagent or on a chat-only host), do not
 run or simulate the check. Return the design as Markdown for the caller to save, and give the
 caller the exact command, with the caller's path for the design (or a placeholder when you do
 not know it), for example:

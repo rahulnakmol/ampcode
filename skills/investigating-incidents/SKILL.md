@@ -1,6 +1,6 @@
 ---
 name: investigating-incidents
-description: "Investigates production incidents from evidence, read-only: clarifies the symptom and window, correlates logs, metrics, traces and deployment markers across Azure Monitor, CloudWatch, Google Cloud, OpenTelemetry, Sentry and PostHog, reads the deployed revision of the code, keeps competing hypotheses with counter-evidence, and recommends mitigation separately from the durable fix. Writes a post-incident review with a zoned timeline, hypothesis statuses and a root cause only when confirmed, and files each fix and missing alert as a draft bug in a grooming backlog. A standard-library checker enforces the review and files the bugs. Carries the Opsci method. Use when asked to investigate an incident, outage, error spike or failed deployment, triage logs or traces, find a root cause, write a post-incident review or postmortem, or turn incident actions into backlog bugs. Not for running mitigation, restarting or deploying, writing alerts and runbooks (use monitoring), or pushing bugs to a tracker (use syncing)."
+description: "Investigates production incidents from evidence, read-only: clarifies the symptom and window, correlates logs, metrics, traces and deployment markers across Azure Monitor, CloudWatch, Google Cloud, OpenTelemetry, Sentry and PostHog, reads the deployed revision of the code, keeps competing hypotheses with counter-evidence, and recommends mitigation separately from the durable fix. Writes a post-incident review with a zoned timeline, hypothesis statuses and a root cause only when confirmed, and files each fix and missing alert as a draft bug in a grooming backlog. A standard-library checker enforces the review and files the bugs. Use when asked to investigate an incident, outage, error spike or failed deployment, triage logs or traces, find a root cause, write a post-incident review or postmortem, or turn incident actions into backlog bugs. Not for running mitigation, restarting or deploying, writing alerts and runbooks (use monitoring), or pushing bugs to a tracker (use syncing)."
 ---
 
 # Investigating incidents
@@ -16,8 +16,8 @@ observed facts, interpretations, assumptions and open questions.
 
 - **Input:** a symptom and whatever evidence exists: logs, metrics, traces, exceptions, release
   notes, source at a revision. Sanitized exports are the default.
-- **Callers:** the Opsci advisory mode loads it read-only; see "Without a shell". Any host can
-  use it; [reference/read-only-hosts.md](reference/read-only-hosts.md) has read-only wrappers
+- **Callers:** the infrastructure mission playbook's incident step; a read-only or chat-only
+  caller follows "Without a shell". Any host can use it; [reference/read-only-hosts.md](reference/read-only-hosts.md) has read-only wrappers
   for Claude Code and Copilot.
 - **Output:** an incident assessment (section 2), a recommended response (section 3), and a
   post-incident review in the format of
@@ -144,7 +144,7 @@ fix works.
 
 ### Without a shell
 
-When you have no shell (for example in the read-only Opsci mode, or on a chat-only host), do not
+When you have no shell (for example in a read-only subagent or on a chat-only host), do not
 run or simulate `pir_check.py` or `backlog.py`. Return the review as Markdown for the caller to
 save. Leave each action's line as `- Backlog: to file`; never invent bug IDs. Give the caller the
 exact commands of section 5, in order, with the caller's paths or placeholders, and label each
