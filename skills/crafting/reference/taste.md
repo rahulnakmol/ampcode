@@ -59,7 +59,9 @@ view that serves the chosen angle, not a pattern library:
 
 ## Proposing directions
 
-Each direction is a hypothesis about what this product should feel like. Write it like this:
+Each direction is a hypothesis about what this product should feel like. A touchpoint that no
+reference solves gets three to five prototyped directions instead (`quality-bar.md`). Write it
+like this:
 
 ```markdown
 ### Direction B: "Ledger"
@@ -123,7 +125,9 @@ dimension at 8 or above and no P0 or P1 findings.
 | **Craft** | Alignment, spacing rhythm, optical balance, consistent radii and strokes; nothing off by a pixel |
 | **Typography** | Few sizes with clear steps, comfortable measure and leading, correct numerals and punctuation |
 | **Color** | Purposeful: accent has one job, state colors are consistent, contrast passes, both themes are designed |
-| **Motion** | Purposeful, interruptible, on tokens, reduced-motion variant designed (see `motion.md`) |
+| **Motion** | Purposeful, interruptible, on tokens, reduced-motion variant designed (see `motion.md`); passes the motion purpose test in `quality-bar.md` |
+| **Efficiency** | (Interactive surfaces; otherwise N/A.) The main task takes no more steps or keystrokes than the best reference recorded in `research/`; every frequent action has a keyboard path and a shown shortcut; the interaction details in `quality-bar.md` that apply all hold |
+| **Speed and reliability** | (Interactive surfaces; otherwise N/A.) Before anything runs, every interaction has a time budget (split into stages when it crosses the network) that the architecture can meet; once a prototype or the product runs, it meets that budget as measured on a throttled network; no spinner for data the product already has; no layout shift, lost input, or blank screen on failure |
 | **States** | Every required and implied state designed with real content (see `states.md`) |
 | **Medium fidelity** | Indistinguishable from the best work in its medium: the platform's best apps in controls, navigation, gestures, and materials; the best CLIs, conversations, notifications, and APIs in theirs |
 | **Audience fit** | Matches the primary cohort's conventions, reading level, pace, and context, and meets its safety requirements (see `audiences.md`) |

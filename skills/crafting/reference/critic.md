@@ -110,6 +110,11 @@ Answer, in this structure:
 - System: information architecture, names across surfaces, tokens, the agent contract, and what
   breaks at 10x data, another language, or another platform.
 - Craft: hierarchy, typography, spacing, color, motion, medium fidelity, accessibility.
+- Feel: walk the main task by pointer and by keyboard where the artifacts allow. Name every
+  detail that would feel clumsy in daily use (a menu that does not open from its trigger, a
+  picked item that jumps, a lagging tooltip, a missing shortcut, a spinner for data already
+  shown, motion with no job), every budget missed or reported as met with no measurement (a budget not yet measurable on static
+mockups is a P3 note, not a finding), and every colour that is neither an input nor derived.
 - Findings: at most 12 (group related sub-items under one), P0 to P3, most important first, each with the artifact and place, why it
   matters, and the fix. Moments the brief defers and assumptions printed as fact go in separate
   lines after the findings, outside the cap.

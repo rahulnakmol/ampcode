@@ -52,7 +52,8 @@ that does the job without any screen, and the receipt.
           "trigger": "Pull down on the status card",
           "feedback": "Card stretches with resistance; status re-checks; time stamp updates",
           "motion": "standard spring, no overshoot",
-          "reduced_motion": "No stretch; spinner in the toolbar"
+          "reduced_motion": "No stretch; spinner in the toolbar",
+          "budget": "100 ms to the stretch; fresh status within 1 s, 3 s on Fast 3G with the last status kept"
         }
       ]
     }

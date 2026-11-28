@@ -75,12 +75,14 @@ and in `HANDOFF.md`.
   "motion": "instant for the press; quick crossfade for the label",
   "haptics_and_sound": "None on desktop; .success sensory feedback on iOS only for manual saves",
   "reduced_motion": "Label swaps without crossfade; status dot still changes color",
+  "budget": "100 ms from the key press to 'Saved' (local write); sync is background, not budgeted",
   "agent_state": "aria-live polite 'Saved'; data-state=saved on the editor; CLI equivalent prints 'saved' and exits 0"
 }
 ```
 
 `design_kit.py check` requires `trigger`, `feedback`, `motion`, and `reduced_motion` on every
-interaction.
+interaction (`"none"` when nothing moves), and a time `budget` with a number and unit on
+interactive surfaces. Budgets and the interaction-detail checklist are in `quality-bar.md`.
 
 ## Patterns worth getting right
 
@@ -94,7 +96,7 @@ interaction.
   where the object truly persists across screens.
 - **Sheets and dialogs**: enter from their anchor, dim the background with opacity only, and dismiss
   by gesture with velocity.
-- **Loading**: under 300 ms show nothing; under 2 s use a skeleton that matches the final layout
+- **Loading** (within the time budgets in `quality-bar.md`, which come first): under 300 ms show nothing; under 2 s use a skeleton that matches the final layout
   exactly (no layout shift when content lands); longer, show progress with real numbers. Prefer
   optimistic updates with a clear rollback for actions that usually succeed.
 - **Errors**: one horizontal nudge of about 4 to 6 px with a quick spring, never repeated; focus
