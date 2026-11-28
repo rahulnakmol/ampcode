@@ -81,7 +81,7 @@ None. No paid benchmark has been authorized or run.
 Each scenario lists the input, what a good run does, and what fails it. Run them with text
 fixtures (transcript JSON, synthetic frames) through the offline CLI; do not claim these are
 real-video transcription results. The source repository keeps fixtures and recorded results under
-`evals/distilling-videos/` when present.
+`evals/distill/` when present.
 
 | Scenario | Good behavior | Fails if |
 | --- | --- | --- |
@@ -140,7 +140,7 @@ deliverables, and this rubric, but not the author's self-assessment.
 For publication approval after a baseline change, rerun the newest real article when authorized
 and have it judged by an independent LLM in a fresh thread or subagent that did not write or revise
 it. A skill-only correction does not authorize modifying generated live articles: use the contrastive
-packet in `evals/distilling-videos/editorial-assessment.md` and leave live validation pending.
+packet in `evals/distill/editorial-assessment.md` and leave live validation pending.
 Give a publication judge `article.json`, `dist/article.html` or `article.md`, `coverage.json`
 (including `narrative`), the transcripts, and this rubric and `editorial.md`; withhold the author's
 notes and scores. The judge returns a 1–5 score with a one-line justification for each dimension
@@ -158,7 +158,7 @@ without scores, and a fresh independent review judges the revision.
 
 ### Print layout check
 
-`python3 evals/distilling-videos/print_layout.py dist/article.pdf --captures DIR` (needs PyMuPDF)
+`python3 evals/distill/print_layout.py dist/article.pdf --captures DIR` (needs PyMuPDF)
 fails on margin citations that overlap prose or cross into the reading column, and on headings or
 "Go deeper" summaries stranded at a page bottom. It writes one PNG per page for visual review.
 Inspect the captures as well: the check is geometric, not a judgment of the design.

@@ -1,6 +1,6 @@
 """Keeps the distilling-videos skill guidance executable.
 
-Run: python3 -m unittest discover -s tests -p 'test_distilling_skill_docs.py' -v
+Run: python3 -m unittest discover -s tests -p 'test_distill_skill_docs.py' -v
 Every JSON block preceded by `<!-- example: NAME -->` in SKILL.md or reference/*.md is run through
 the real CLI, so documented examples cannot drift from the contracts. No network or paid calls.
 """

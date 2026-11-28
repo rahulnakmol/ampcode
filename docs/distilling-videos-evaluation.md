@@ -2,7 +2,7 @@
 
 Date: 2026-10-19. Skill under test: `skills/distilling-videos` at commit `fa72b59`, then rerun
 (without the network probe) after the review fixes described in "Review fixes and rerun" below.
-Fixtures and harness: `evals/distilling-videos/` (see its `README.md` and `rubric.md`).
+Fixtures and harness: `evals/distill/` (see its `README.md` and `rubric.md`).
 
 The skill is now named `distill` at `skills/distill/`. Historical names and commit paths in this
 report refer to the versions tested; the current evaluation harness uses the new path.
@@ -41,7 +41,7 @@ Actions archive hand-off needs.
 .amp/in/venv/bin/static_ffmpeg_paths
 mkdir -p .amp/in/tools/bin   # symlinks to ffmpeg, ffprobe, yt-dlp
 
-python3 evals/distilling-videos/run_eval.py --tools-bin .amp/in/tools/bin \
+python3 evals/distill/run_eval.py --tools-bin .amp/in/tools/bin \
   --browser "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary" \
   --capture --live-youtube https://youtu.be/G3VbsTdgLWE --live-timeout 180 \
   --live-captions-json3 .amp/in/probe/caps/G3VbsTdgLWE.en.json3
@@ -108,7 +108,7 @@ rejects a gap entry that does not match `coverage.json` (exit 2).
 
 ## Editorial exercise and judgment scores
 
-I wrote the articles in `evals/distilling-videos/fixtures/articles/` from the transcripts, the
+I wrote the articles in `evals/distill/fixtures/articles/` from the transcripts, the
 frames I inspected, and primary sources I checked on 2026-10-19:
 
 - Colman 2009 (doi:10.1126/science.1173635)
@@ -202,7 +202,7 @@ Verification commands and results:
 ```sh
 python3 -m unittest discover -s tests -p 'test_*.py'      # Ran 98 tests, OK
 make check                                                # exit 0: bun 4 pass; Python 98 tests OK; "All checks passed."
-python3 evals/distilling-videos/run_eval.py --tools-bin .amp/in/tools/bin \
+python3 evals/distill/run_eval.py --tools-bin .amp/in/tools/bin \
   --browser "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary" --capture
 # exit 0; 287 pass, 0 fail across 9 categories (table above); no network probe. After the residual
 # fixes the rerun matched: report.json identical; six screenshots differed only by antialiasing noise
@@ -225,7 +225,7 @@ README. Commands and results (Chrome Canary, offline via a dead proxy):
 
 ```sh
 make check   # exit 0: bun 4 pass; Python 111 tests OK; "All checks passed."
-python3 evals/distilling-videos/run_eval.py --tools-bin .amp/in/tools/bin \
+python3 evals/distill/run_eval.py --tools-bin .amp/in/tools/bin \
   --browser "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary" --capture
 # exit 0; 429 pass, 0 fail (publication 61, rendered pages 172: tech-demo 59, ja-talk 56, g-bio 56)
 ```
@@ -277,7 +277,7 @@ Review defects fixed before the real-video evaluation:
 
 ```sh
 make check   # exit 0: bun 4 pass; Python 118 tests OK; "All checks passed."
-python3 evals/distilling-videos/run_eval.py --tools-bin .amp/in/tools/bin \
+python3 evals/distill/run_eval.py --tools-bin .amp/in/tools/bin \
   --browser "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary" --capture
 # exit 0; 471 pass, 0 fail (publication 64, rendered pages 211: tech-demo 72, ja-talk 69, g-bio 69)
 ```
@@ -318,7 +318,7 @@ Baseline amendment (recorded in `docs/superpowers/specs/2026-10-19-distilling-vi
 
 ```sh
 make check   # exit 0
-python3 evals/distilling-videos/run_eval.py --tools-bin .amp/in/tools/bin \
+python3 evals/distill/run_eval.py --tools-bin .amp/in/tools/bin \
   --browser "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary" --capture
 # exit 0; 475 pass, 0 fail (publication 68, negative controls 10, rendered pages 211)
 ```

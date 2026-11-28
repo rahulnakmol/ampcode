@@ -8,7 +8,7 @@ YouTube probe (--live-youtube) only reads public metadata, downloads media, samp
 fetches captions; it makes no paid calls and scores nothing about transcription accuracy.
 
 Usage:
-  python3 evals/distilling-videos/run_eval.py [--out DIR] [--tools-bin DIR] [--browser PATH]
+  python3 evals/distill/run_eval.py [--out DIR] [--tools-bin DIR] [--browser PATH]
         [--capture] [--live-youtube URL] [--live-timeout SECONDS]
 
 Exit: 0 when every executed check passes, 1 when any check fails, 3 when ffmpeg/ffprobe are missing.
@@ -1310,7 +1310,7 @@ def main(argv=None):
             parser.error(f"{out} exists and was not created by this harness; refusing to delete it")
         shutil.rmtree(out)
     out.mkdir(parents=True)
-    (out / MARKER).write_text("created by evals/distilling-videos/run_eval.py\n")
+    (out / MARKER).write_text("created by evals/distill/run_eval.py\n")
     bin_dir, found = prepare_bin(out, args.tools_bin)
     env = Env(out, bin_dir)
     environment = {"python": sys.version.split()[0], "tools": found, "browser": args.browser,
