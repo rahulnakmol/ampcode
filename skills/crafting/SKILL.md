@@ -202,7 +202,7 @@ Inspire or Refine work.
 ## 6. System
 
 Write `.design/DESIGN.md`: the direction as named tokens with values and jobs. Cover color (OKLCH
-for screens with light, dark, and contrast, derived from a few inputs (brand colours among
+for screens with light and dark, high contrast when the product has a contrast setting, derived from a few inputs (brand colours among
 them) by the rule in `quality-bar.md`, not hand-picked one by one; CMYK or spot equivalents when print is in scope),
 typography (screen and print sizes), spacing, radii, elevation and materials, iconography, imagery,
 voice and tone (sample copy for success, error, empty, waiting, and refusal), motion tokens mapped

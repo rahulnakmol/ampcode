@@ -71,7 +71,7 @@ INTERACTION_FIELDS = ("trigger", "feedback", "motion", "reduced_motion")
 # (reference/quality-bar.md).
 INTERACTIVE_SURFACES = ("cli", "tui", "web", "ios", "android", "macos", "windows", "watch", "tv", "car",
                         "spatial", "kiosk", "device", "chat", "voice")
-BUDGET = re.compile(r"\d+(\.\d+)?\s*(ms|s)\b")
+BUDGET = re.compile(r"\d+(\.\d+)?\s*(ms|s|sec|seconds?|min|minutes?)\b")
 
 # Parallel Task API, USD per run (docs.parallel.ai pricing, 2026-10-24). "-fast" variants cost the same.
 TASK_PRICES = {"lite": 0.005, "base": 0.01, "core": 0.025, "core2x": 0.05, "pro": 0.10,

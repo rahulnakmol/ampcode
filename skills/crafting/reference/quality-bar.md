@@ -5,13 +5,21 @@ Each has a test you run on the rendered states, the prototype or the built produ
 
 **What blocks.** A P0 or P1 finding, and a measured budget that is missed, block handoff (and, in
 `delivering`, leave the item not done): fix them, or raise a stop when the fix is out of reach.
-P2 and P3 findings are listed with their severity in `HANDOFF.md`. Polish is not deferred to make
-a date; a team that ships later and polished beats one that ships half-baked on time.
+P2 and P3 findings are listed with their severity in `HANDOFF.md`. What blocks is never deferred
+to make a date: ship later and polished rather than on time and half-baked.
 
-**Where it applies.** Interactive surfaces: screens (`web`, `ios`, `android`, `macos`, `windows`),
-terminals (`cli`, `tui`), ambient devices and conversation (`chat`, `voice`). For a voice or chat
-touchpoint, the keyboard and pointer checks become turns: the pass walks the spoken or typed
-turns, barge-in and recovery. For other surfaces (print, messaging, social, media, agent APIs)
+**Where it applies.** Interactive surfaces, each walked with its own inputs where this file says
+"pointer and keyboard":
+
+| Surfaces | Inputs to walk |
+| --- | --- |
+| `web`, `macos`, `windows`, `cli`, `tui` | Pointer and keyboard only |
+| `ios`, `android`, `watch`, `kiosk`, `device` | Touch (and crown, buttons or a hardware keyboard where the device has them), plus the screen reader |
+| `tv` | Remote focus navigation: arrows, select and back |
+| `car` | Touch, rotary or steering-wheel controls, and voice, at a glance |
+| `spatial` | Gaze and pinch, and direct touch |
+| `chat`, `voice` | Typed or spoken turns, barge-in, and recovery from a misheard or wrong turn |
+ For other surfaces (print, messaging, social, media, agent APIs)
 the rubric's Efficiency and Speed dimensions are "N/A", and agent APIs use `agent-experience.md`.
 
 **Sources.** Rows marked *(Linear)* come from Linear's design and engineering team in "Behind
@@ -71,14 +79,16 @@ Perceived speed is mostly architecture: Linear's sync engine keeps the workspace
 so views need no loading screen *(Linear)*. Give every interaction on an interactive surface a
 `budget` in `touchpoints.json`: a number with a unit for the time from the input to the result
 the person sees, the stages it splits into when it crosses the network, and the network it holds
-on. `design_kit.py check` requires a number and unit (`100 ms`, `1 s`).
+on. `design_kit.py check` requires a number and unit (`100 ms`, `1 s`). A budget is set before it
+is measured and never raised afterwards to make a miss pass: record the miss, then fix the stage
+that broke it, or, in a mission, raise a stop when only the owner can accept the slower time.
 
 | Interaction | Default budget when the brief sets none |
 | --- | --- |
 | Feedback to a press, key or hover | 100 ms |
 | Opening a menu, picker or tooltip (after its delay); filtering as you type | 100 ms |
 | Moving to a view whose data is already loaded or cached | 100 ms, with no spinner and no skeleton |
-| A view that needs the network | Shell and last-known data at once; fresh data within 1 s on a fast connection, and a stated time on a throttled one (for example "Fast 3G: 3 s") |
+| A view that needs the network | Shell and last-known data at once; fresh data within 1 s on a fast connection and 3 s on Fast 3G |
 | A long job (an export, a search over a large range) | Progress within 1 s, with real numbers; the rest of the view stays usable |
 
 These budgets take priority over the loading thresholds in `motion.md`, which then decide what a

@@ -45,8 +45,8 @@ built state with its mockup at `delivering`'s second review gate and lists every
 ## Done when
 
 `design_kit.py check` passes, every designed state has a matching inspected capture of the
-built product, and the last quality pass leaves no serious friction open. When a prototype or
-software is built, every interaction's time budget is measured on a fast and a slow connection. A measure built on real data states which rows it drops or caps, and how many.
+built product, and the last quality pass leaves no P0 or P1 friction open. When a prototype or software is
+built, every interaction's time budget is measured on a fast and a slow connection. A measure built on real data states which rows it drops or caps, and how many.
 
 ## Example
 
