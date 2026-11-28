@@ -16,8 +16,8 @@ a standalone review (`security-review`) or release-only work.
   options and measurable non-functional requirements. If not installed: write the contracts,
   decisions as short ADRs and each non-functional requirement with a number and a test.
 - `interrogating-changes`: the code review at `delivering`'s review gates one and two, with a
-  verdict tied to the exact patch, by a reviewer on a model that implemented none of the change
-  (its ledger rule L10 checks it). If not installed: `delivering`'s own review gates, with fresh
+  verdict tied to the exact patch, by a reviewer started on the model `goldfishing`'s
+  `reviewer_model.py` picks (another provider than the authors'; Gemini 4 for UI changes). If not installed: `delivering`'s own review gates, with fresh
   reviewers for consequential changes.
 - `threat-modelling`, when trust boundaries change: the threat model the design links. If not
   installed: list actors, trust boundaries and abuse cases in the design package, each with a

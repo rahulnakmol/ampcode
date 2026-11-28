@@ -37,19 +37,16 @@ Give the reviewer:
 Never give it the author's claim that the change works, the test results the author reports, the
 author's conversation, or the verdict the author hopes for. The reviewer runs the tests itself.
 
-**Run the reviewer on another model.** The reviewer's model must differ from every model that
-wrote the change or its tests. Read each model from the host, not from an agent's claim, and
-record them in the ledger's `models` ([reference/ledger.md](reference/ledger.md)); rule L10
-refuses a reviewer on an implementer's model. Code a person wrote counts as `human`.
-
-| Host | Start a reviewer on another model | Read the models back |
-| --- | --- | --- |
-| Amp | `create_thread` with a `model` no implementer used (a Task subagent runs its parent's model) | `get_thread_status` on each thread: its `model` |
-| Claude Code | A subagent whose frontmatter `model` is a full model ID the implementer did not use (an alias such as `opus` on an Opus session runs the session's version). Source: https://code.claude.com/docs/en/sub-agents | The subagent file's `model` and the session's `/model`. From documentation, not tested |
-| VS Code or Copilot app | A custom agent (`.github/agents/<name>.agent.md`) with a `model` the implementer did not use and `model-policy: required`. Source: https://code.visualstudio.com/docs/copilot/customization/custom-agents | The agent file's `model`. From documentation, not tested |
-
-For the isolation check and the rest of each host's setup, see `reference/hosts.md` in the
-`goldfishing` skill; it is not repeated here.
+**Start the reviewer on another model.** Before starting it, read every model that wrote the
+change or its tests from the host (code a person wrote is `human`) and pick the reviewer's model
+with the `goldfishing` skill's `scripts/reviewer_model.py`: `--kind code-1` for gate one or a
+single review, `--kind code-2 --not <gate one's model>` for gate two (`ui` or `ui-complex` when the
+change alters what a user sees). On Amp start it with `create_thread` and that `model`; a Task
+subagent runs its parent's model, so it never reviews. `goldfishing`'s
+`reference/reviewer-models.md` gives the rotation, the UI rule and how each host sets the model;
+its `reference/hosts.md` gives the rest of each host's setup. Record the models and the reason in
+the ledger's `models` ([reference/ledger.md](reference/ledger.md)): evidence of who reviewed, not
+a check that fails.
 
 When no fresh reviewer on another model is available, the review is **pending**. A review by the
 author, or by another context on the author's model, is not fresh. If the request that reaches
@@ -187,7 +184,7 @@ least a Major. That is how the verdict blocks on it.
 | "The bug was already there, so it is not ours." | Record it as pre-existing; do not hide it |
 | "One more round will fix it." | At the cap, follow the disposition policy |
 | "Only a small rebase happened." | Compare the patch ID. A different ID means a new review |
-| "A fresh subagent is independent enough." | It runs the author's model and shares its blind spots. Review on another model (L10) |
+| "A fresh subagent is independent enough." | It runs the author's model and shares its blind spots. Start the reviewer on the model `reviewer_model.py` picks |
 | "The skip is temporary." | Accept it with a reason, or remove it |
 
 ## Red flags
@@ -197,7 +194,7 @@ least a Major. That is how the verdict blocks on it.
 - A "pass" with no list of files read.
 - A finding whose text changed but whose ID stayed.
 - The reviewer was given the author's claim that it works.
-- The reviewer ran on a model that wrote the change, or the models were not read from the host.
+- The reviewer was started without picking its model first, or the models were not read from the host.
 - A new `noqa`, skip marker or lower threshold with no accepted reason.
 
 ## Adapt it
@@ -211,7 +208,8 @@ least a Major. That is how the verdict blocks on it.
 
 ## Check your work
 
-- `review_ledger.py check` prints `pass` on the final ledger, with the models read from the host.
+- `review_ledger.py check` prints `pass` on the final ledger, and its `models` names the reviewer's
+  model as picked, read from the host.
 - `review_ledger.py verdict` prints the candidate's patch ID and a verdict, not "stale".
 - `floor_guard.py` prints `pass`, or every flag has an accepted reason in the report.
 - Every finding has a run or a quote, a severity, a lens and an origin.

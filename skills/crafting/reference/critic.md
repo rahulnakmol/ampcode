@@ -29,11 +29,18 @@ taste (a judgment, argued). Never invents users, data, or test results; marks it
 
 ## Running the pass
 
-Start a fresh subagent with the prompt below, filled in. Give it the paths, not your summary. It
+Start the Critic on a Gemini 4 model picked by how complex the UI is: run `goldfishing`'s
+`scripts/reviewer_model.py --kind ui --implementer <your model>` for a bounded change (one screen
+or component, up to five states), `--kind ui-complex` for a flow, several screens, rich
+interaction, motion, a design-system change or an audit; when in doubt, `ui-complex`
+([the rule](../../goldfishing/reference/reviewer-models.md)). On Amp, start it with `create_thread`
+and that `model` (a Task subagent runs your own model); on other hosts, as that reference says.
+Record the model and the reason at the top of the critique file. Give it the prompt below, filled
+in, and the paths, not your summary. It
 reads the artifacts first (renders, captures, transcripts, `tools.json`) and only then `BRIEF.md`
 and `DESIGN.md`, so it judges what a person would actually receive before reading the intent.
 
-If you cannot start a subagent, run the pass yourself as a cold read in the same order, write
+If you cannot start a reviewer on another model, run the pass yourself as a cold read in the same order, write
 "self-run critic pass, not independent" at the top of the file, give no numeric scores (a self-run
 pass grades its own work too kindly), and give the user the prompt so they can run an independent
 pass. Never present a self-run pass as independent.

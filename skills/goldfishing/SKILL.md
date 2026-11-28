@@ -31,8 +31,9 @@ Never give it:
 - answers the artifact itself should contain.
 
 A missing source is a finding, not a reason to guess. Fresh means an independent conversation
-context. It does not mean a different model, and it is not a security sandbox. Ask the reviewer to
-list the files it actually read.
+context **on a model that wrote none of the artifact**: pick that model before starting the
+reviewer (section 9). It is not a security sandbox. Ask the reviewer to list the files it actually
+read.
 
 ## 2. Pick the lens
 
@@ -124,7 +125,7 @@ context. On a fail, treat that host's reviewers as not fresh, and the gate as pe
 
 Keep one record per review with the artifact:
 
-- reviewer (tool and identifier) and lens;
+- reviewer (tool and identifier), the model it ran on and why it was picked, and lens;
 - artifact revision and the files the reviewer read;
 - each finding: location, severity, outcome, and the evidence for a contest;
 - the recheck and the fix-check, and what each found;
@@ -132,9 +133,13 @@ Keep one record per review with the artifact:
 
 ## 9. Start a fresh reviewer
 
-[reference/hosts.md](reference/hosts.md) shows how on Amp, Claude Code, VS Code with Copilot and
-the Copilot app. Use the host's own delegation tool; do not start new threads or nested agents
-against the host's rules.
+First pick the reviewer's model with `scripts/reviewer_model.py` and the rotation in
+[reference/reviewer-models.md](reference/reviewer-models.md): code, documents and UI each have an
+order, and UI reviews go to a Gemini 4 model chosen by how complex the UI is. Then start the
+reviewer on that model; the same reference shows how on Amp (`create_thread` with `model`),
+Claude Code, VS Code with Copilot and the Copilot app, and [reference/hosts.md](reference/hosts.md)
+covers the rest of each host's setup. Do not start new threads or nested agents against the
+host's rules.
 
 ## 10. Adapt it
 

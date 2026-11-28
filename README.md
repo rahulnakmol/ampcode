@@ -253,9 +253,12 @@ other skills call. A reviewer with no access to the author's conversation reads 
 its sources and the grading criteria. It covers four lenses (comprehension, critic, readiness,
 novice reader), Blocker/Major/Nit severity, how each finding is fixed, contested, escalated or
 declined, round limits, what happens when a reviewer fails, a codeword isolation check, and the
-review record. [`reference/hosts.md`](./skills/goldfishing/reference/hosts.md) shows how to start a
-fresh reviewer on Amp, Claude Code, VS Code with Copilot and the Copilot app (the last three from
-documentation, not tested). `grilling`, `planning` and `delivering` add their own questions; a
+review record. Every reviewer starts on a model that wrote none of the artifact:
+`scripts/reviewer_model.py` picks it from the rotation in
+[`reference/reviewer-models.md`](./skills/goldfishing/reference/reviewer-models.md) (Claude work to
+GPT-6 Astra, then Gemini 4 Carbon; UI reviews to Gemini 4 Neon or Carbon by complexity), which
+also shows how to set the model on Amp, Claude Code, VS Code with Copilot and the Copilot app (the
+last three from documentation, not tested). `grilling`, `planning` and `delivering` add their own questions; a
 test keeps the generic rules in this one skill.
 
 **Use it:** "Use goldfishing to review `docs/plan.md` with the critic lens against

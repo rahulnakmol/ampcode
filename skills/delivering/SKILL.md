@@ -107,12 +107,17 @@ repository's isolation policy; preserve existing work and never reset or clean i
 - **The brief is the item's contract slice:** its outcome, in and out of scope, definition of done,
   automated and human tests, trace, the cases it touches, the defense, the milestone branch on `origin`, the five
   stop reasons, and the reply route (the steering thread's ID, for `send_thread_message`).
-- **The child** works test-first with the build loop below, runs one fresh `goldfishing` critic
-  review against its definition of done and the cases it touches, passes the verification gate
-  (`verify_gate.py check`) on its head, pushes its item branch, and reports its model (on Amp,
-  from `get_thread_status`) and: a teach-back (outcome, approach, constraints, key risks, first check), branch and head,
-  each done line with its evidence, the review record, assumptions taken and findings outside the
-  case list. It creates no threads and merges nothing into `dev`.
+- **The child** works test-first with the build loop below, passes the verification gate
+  (`verify_gate.py check`) on its head, pushes its item branch, and reports: a teach-back
+  (outcome, approach, constraints, key risks, first check), branch and head, each done line with
+  its evidence, assumptions taken and findings outside the case list. It creates no threads and
+  merges nothing into `dev`.
+- **The item review** runs on another model by construction: the steering thread reads the
+  child's model from the host (on Amp, `get_thread_status`; an XS or S subagent ran on the
+  steering thread's own model), picks the reviewer with `goldfishing`'s `reviewer_model.py`
+  (`--kind code-1`, or `ui`/`ui-complex` for a UI item), starts that fresh critic reviewer itself
+  (on Amp, `create_thread` with that `model`) against the definition of done and the cases the
+  item touches, and sends the findings back to the child.
 - **A child stops only for the five reasons**, and sends them to the steering thread, never to the
   owner. Everything else is a recorded assumption in its report.
 - **The steering thread** checks the evidence, merges the item branch into the milestone branch
@@ -130,12 +135,15 @@ repository's isolation policy; preserve existing work and never reset or clean i
    `scripts/pr_watch.py` waits; [reference/hosts-pr-watch.md](reference/hosts-pr-watch.md) gives
    its usage. Red CI is fixed on the milestone branch.
 3. **Gate 1:** a fresh critic review with `interrogating-changes` of the whole milestone diff
-   against the milestone's criteria and the closed case list, **on a model that implemented none
-   of the milestone**. The reviewer runs the verification gate again itself. Its findings and both
-   models go in a ledger that `review_ledger.py check` passes (rule L10 refuses a reviewer on an
-   implementer's model).
+   against the milestone's criteria and the closed case list. Start its reviewer on the model
+   `goldfishing`'s `reviewer_model.py --kind code-1` picks from every implementer's model, read
+   from the host (on Amp, `create_thread` with that `model`). The reviewer runs the verification
+   gate again itself. Its findings, and the models as a record, go in a ledger that
+   `review_ledger.py check` passes.
 4. **Gate 2:** after gate 1 passes, a second independent fresh review of the same head with
-   `interrogating-changes`, in its own ledger, also on a model that implemented none of it. It runs the lowered-bar check `floor_guard.py` on
+   `interrogating-changes`, in its own ledger, started on the model `reviewer_model.py --kind
+   code-2 --not <gate 1's model>` picks (`--kind ui` or `ui-complex` when the milestone changes
+   what a user sees; it then also gets the rendered states). It runs the lowered-bar check `floor_guard.py` on
    the whole candidate diff; a flag without an accepted reason blocks, as a finding of at least
    Major. Its record holds the drift check against the contract and the refreshed defense.
 5. Record one evidence line per criterion and per exit criterion, bound to that head.

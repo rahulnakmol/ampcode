@@ -50,9 +50,12 @@ hold for every item and milestone:
 - **End-to-end before the pull request.** Every package the change touches runs its end-to-end
   tests locally on the exact head, with saved evidence; `verify_gate.py check` must pass before
   a pull request opens, judged by `verify.json` at the base so a change cannot weaken its judge.
-- **A reviewer on another model.** Both review gates run `interrogating-changes` on a model that
-  wrote none of the change, read from the host; its ledger rule L10 refuses a reviewer on an
-  implementer's model, and each verdict is tied to the exact patch.
+- **A reviewer on another model.** Every review starts on a model that wrote none of the change,
+  by construction: before starting a reviewer, the gate reads the authors' models from the host
+  and `goldfishing`'s `reviewer_model.py` picks the reviewer's model from a stated rotation (Claude
+  work goes to GPT-6 Astra, then Gemini 4 Carbon; UI reviews go to Gemini 4 Neon or Carbon by how
+  complex the UI is). The ledger records which model reviewed, and each verdict is tied to the
+  exact patch.
 - **A pure core, side effects at the edge.** Domain rules sit in each package's pure core, with
   I/O, clocks and LLM calls only in the outer shell; `verify_gate.py core` fails the build on a
   violation, after an observe-mode start for a new gate.

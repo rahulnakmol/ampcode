@@ -14,9 +14,8 @@ mission, the **contract mission**:
 - the agent writes one contract (the baseline) and runs a readiness preflight on it;
 - the owner approves the contract **once**, at kickoff, in one dialog;
 - milestones then run on their own and each one squash-merges into `dev` after tests, CI, the
-  verification gate and two fresh reviews on another model, with no owner dialog (the plugin
-  checks the reviews and evidence; `verify_gate.py` and `review_ledger.py` check the gate and the
-  models);
+  verification gate and two fresh reviews, each started on another model, with no owner dialog
+  (the plugin checks the reviews and evidence; `verify_gate.py` checks the gate);
 - the owner is asked again only for one of the five stop reasons below.
 
 Missions have no budgets and use no agent teams. The plugin is a local workflow coordinator, **not
@@ -175,9 +174,9 @@ create no threads, merge nothing into `dev`, and send stops to the steering thre
    reads, researches, drafts and reviews.
 2. **Milestones (J2).** Items run in dependency order, each test-first with a fresh review. A
    milestone's gates are tests, CI, the verification gate (`verify_gate.py check`: end-to-end
-   evidence per changed package and a pure core) and two fresh reviews of the same head, each on a
-   model no implementer used (`review_ledger.py check`, rule L10; the plugin records the reviewer
-   thread but does not read its model). When they pass, the
+   evidence per changed package and a pure core) and two fresh reviews of the same head, each
+   started on the model `goldfishing`'s `reviewer_model.py` picks, which wrote none of it (the
+   plugin records the reviewer thread; the ledger records its model). When they pass, the
    milestone merges into `dev` and a checkpoint report goes out. The report asks nothing.
 3. **Questions (J3).** A question with a safe default becomes a recorded assumption. New scope
    becomes a filed item in a later milestone, or a reason 1 stop.

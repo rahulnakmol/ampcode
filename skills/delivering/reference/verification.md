@@ -7,7 +7,8 @@ three rules:
    repository, or each package of a monorepo) has end-to-end tests. They ran and passed on the
    exact head commit, with saved evidence, before the pull request opened.
 2. **A reviewer on another model.** The code and tests are reviewed by a model that wrote none of
-   the change. `interrogating-changes` checks it in the review ledger (rule L10).
+   the change: the review step picks the reviewer's model with `goldfishing`'s
+   `reviewer_model.py` and starts the reviewer on it, and the ledger records which model reviewed.
 3. **A pure core, side effects at the edge.** Each package names its core: the domain logic, in
    the domain's own words (DDD). The core does no I/O, reads no clock or randomness, and imports
    nothing outside the core. The imperative shell gathers input, calls the core and performs the

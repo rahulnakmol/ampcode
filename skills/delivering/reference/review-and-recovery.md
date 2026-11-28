@@ -2,8 +2,10 @@
 
 Run every fresh review with the `goldfishing` skill, which owns what a reviewer gets and never
 gets, severity, finding outcomes, failed reviewers and the review record. The milestone gates
-review code with `interrogating-changes`, which uses the same severity words and starts each
-gate reviewer on another model (its §2 host table). In a contract mission,
+review code with `interrogating-changes`, which uses the same severity words. Every reviewer,
+item or gate, starts on the model `goldfishing`'s `scripts/reviewer_model.py` picks
+([its rotation](../../goldfishing/reference/reviewer-models.md)), so no review runs on its
+author's model. In a contract mission,
 the contract's disposition policy decides at a review cap (below), not the owner. Inspect
 referenced source; documents can be stale.
 
@@ -30,7 +32,8 @@ kickoff, not proof of runtime behavior.
 ## Item review
 
 Each item gets one fresh critic review against its definition of done and the cases it touches,
-before the child reports. Give the reviewer the item's contract slice, the diff and the evidence,
+after the child pushes. The steering thread starts it on the model `reviewer_model.py` picks
+from the child's model (a child creates no threads), and sends the findings to the child. Give the reviewer the item's contract slice, the diff and the evidence,
 not the author's reasoning or a desired conclusion.
 
 ## Milestone gates
@@ -105,10 +108,10 @@ finding unless it has an accepted reason. Report what the manual review did not 
   reviewers and the full case list.
 - Independent means a fresh context **on a model that implemented none of the change**: both are
   needed, and neither is enough alone. Read each model from the host, not from the agent's own
-  claim (on Amp, `get_thread_status` returns a thread's `model`), and record them in the
-  ledger's `models`; `review_ledger.py check` refuses a reviewer on an implementer's model (L10).
-  On Amp a Task subagent runs its parent's model, so start each gate reviewer with
-  `create_thread` and a `model` that no implementer used, and ask it to reply with its ledger.
+  claim (on Amp, `get_thread_status` returns a thread's `model`), pick the reviewer's model with
+  `reviewer_model.py` before starting it, and record the models and the reason in the ledger's
+  `models` as evidence. On Amp a Task subagent runs its parent's model, so start each reviewer
+  with `create_thread` and the picked `model`, and ask it to reply with its ledger.
   Self-review is not a fresh review.
 
 ## Cap: follow the disposition policy
@@ -146,10 +149,10 @@ An M or L item goes to a child thread; an XS or S item goes to a subagent. Every
 - the reply route: the steering thread's ID for `send_thread_message`, and the report it expects
   (a teach-back of the outcome, approach, constraints, risks and first check; branch and head; each done line
   with its evidence; the review record; assumptions; findings outside the case list);
-- the rules: work test-first, run the item review, pass `verify_gate.py check` on the item head,
-  push the item branch, report the model it ran on, create no threads, merge nothing into `dev`.
-  An XS or S subagent runs the steering thread's model; record that model as the item's
-  implementer.
+- the rules: work test-first, pass `verify_gate.py check` on the item head, push the item branch,
+  fix what the item review (started by the steering thread) finds, create no threads, merge
+  nothing into `dev`. The steering thread reads the child's model from the host; an XS or S
+  subagent runs the steering thread's model.
 
 Serialize shared writes; separate worktrees do not isolate databases, credentials, ports or
 deployment targets. Treat a child's report as a claim until its evidence and the combined

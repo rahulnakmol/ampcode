@@ -24,7 +24,8 @@ decision.
 3. Run `crafting` to the need, angle, journeys and the touchpoint-by-state matrix.
 4. Research within `crafting`'s budget; present named directions.
 5. Build the experience system and a mockup or transcript for every state.
-6. Run `crafting`'s critic pass; repair.
+6. Run `crafting`'s critic pass on the Gemini 4 model `goldfishing`'s `reviewer_model.py` picks
+   (`ui` for a bounded UI, `ui-complex` otherwise); repair.
 7. Run `design_kit.py check` until the handoff gate passes.
 8. When software is built, compare each built state with its mockup.
 9. Close out with the comparison and open differences.
