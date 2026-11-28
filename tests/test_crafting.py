@@ -93,7 +93,7 @@ class Coverage(unittest.TestCase):
             del states["narrow"]
             touchpoint = {"id": "pricing-page", "surface": "web", "job": "Choose a plan", "states": states,
                           "interactions": [{"id": "toggle", "trigger": "click", "feedback": "slides",
-                                            "motion": "quick"}]}
+                                            "motion": "quick", "budget": "100 ms to the new price"}]}
             path = design / "touchpoints.json"
             data = json.loads(path.read_text())
             data["touchpoints"] = [touchpoint]
@@ -108,9 +108,9 @@ class Coverage(unittest.TestCase):
                              "mockups/missing.png not found", "toggle is missing reduced_motion",
                              "surface cli has no touchpoints",
                              "journey choose-plan: step 'checkout' is not a touchpoint id",
-                             "no critic pass"):
+                             "no quality pass", "no critic pass"):
                 self.assertTrue(any(expected in gap for gap in gaps), f"{expected!r} not in {gaps}")
-            self.assertEqual(len(gaps), 7, gaps)
+            self.assertEqual(len(gaps), 8, gaps)
 
             states["empty"] = {"skip": "Pricing always has plans"}
             states["dark"] = {"mockup": "mockups/dark.png"}
@@ -123,6 +123,14 @@ class Coverage(unittest.TestCase):
             (design / "critique" / "1-critic.md").write_text("# Round 1\n\nNo verdict yet.\n")
             self.assertIn("no critic pass", run(work, "check").stdout)
             (design / "critique" / "1-critic.md").write_text("# Round 1\n\n**Verdict:** revise\n")
+            del touchpoint["interactions"][0]["budget"]
+            path.write_text(json.dumps(data))
+            gaps = [line for line in run(work, "check").stdout.splitlines() if line.startswith("gap:")]
+            self.assertEqual(len(gaps), 2, gaps)
+            self.assertTrue(any("toggle is missing budget" in gap for gap in gaps), gaps)
+            touchpoint["interactions"][0]["budget"] = "100 ms to the new price"
+            path.write_text(json.dumps(data))
+            (design / "critique" / "quality-pass.md").write_text("# Quality pass\n")
             result = run(work, "check")
             self.assertEqual(result.returncode, 0, result.stdout)
             self.assertIn("1 touchpoints, 6 states mocked, 1 skipped", result.stdout)

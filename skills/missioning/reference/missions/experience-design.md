@@ -22,11 +22,15 @@ decision.
    measures.
 2. Use `grilling` when the need or the angle is unclear.
 3. Run `crafting` to the need, angle, journeys and the touchpoint-by-state matrix.
-4. Research within `crafting`'s budget; present named directions.
-5. Build the experience system and a mockup or transcript for every state.
+4. Research within `crafting`'s budget; present named directions. For the hardest touchpoint,
+   prototype three to five directions and use each for the main task (`crafting`'s
+   `reference/quality-bar.md`).
+5. Build the experience system, with tokens derived by its rule, and a mockup or transcript for
+   every state; give every interaction a budget; run the quality pass.
 6. Run `crafting`'s critic pass; repair.
 7. Run `design_kit.py check` until the handoff gate passes.
-8. When software is built, compare each built state with its mockup.
+8. When software is built, compare each built state with its mockup, and rerun the quality
+   pass on the built product with every budget measured.
 9. Close out with the comparison and open differences.
 
 Milestones: M1 directions (steps 3 and 4), M2 system and mockups (5 to 7), M3 built-product
@@ -44,7 +48,8 @@ owner may redirect at any time.
 ## Definition of Done
 
 `design_kit.py check` passes; every designed state has a matching inspected capture of the built
-product. A measure built on real data checks for and states which rows it drops or caps
+product; every interaction's budget has a measured time on a fast and a throttled network, and
+the last quality pass leaves no P0 or P1 open. A measure built on real data checks for and states which rows it drops or caps
 (negative durations, open items, duplicates) and how many.
 
 ## Red flags
@@ -53,4 +58,6 @@ product. A measure built on real data checks for and states which rows it drops 
 - A screenshot taken but not inspected.
 - Paid research that is not pre-authorized, done without asking.
 - Accessibility left to "later".
+- A budget reported as met with no measurement, or an animation with no named job.
+- Polish deferred to make a date: a missed quality check is a finding, not a follow-up.
 - A measure or term redefined after approval without a reason 1 stop.

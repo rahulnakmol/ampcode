@@ -123,7 +123,9 @@ dimension at 8 or above and no P0 or P1 findings.
 | **Craft** | Alignment, spacing rhythm, optical balance, consistent radii and strokes; nothing off by a pixel |
 | **Typography** | Few sizes with clear steps, comfortable measure and leading, correct numerals and punctuation |
 | **Color** | Purposeful: accent has one job, state colors are consistent, contrast passes, both themes are designed |
-| **Motion** | Purposeful, interruptible, on tokens, reduced-motion variant designed (see `motion.md`) |
+| **Motion** | Purposeful, interruptible, on tokens, reduced-motion variant designed (see `motion.md`); passes the motion purpose test in `quality-bar.md` |
+| **Efficiency** | The main task takes no more steps or keystrokes than the best reference; every frequent action has a keyboard path and a shown shortcut; the interaction details in `quality-bar.md` that apply all hold |
+| **Speed and reliability** | Every interaction meets its measured budget on a throttled network; no spinner for data the product already has; no layout shift, lost input, or blank screen on failure |
 | **States** | Every required and implied state designed with real content (see `states.md`) |
 | **Medium fidelity** | Indistinguishable from the best work in its medium: the platform's best apps in controls, navigation, gestures, and materials; the best CLIs, conversations, notifications, and APIs in theirs |
 | **Audience fit** | Matches the primary cohort's conventions, reading level, pace, and context, and meets its safety requirements (see `audiences.md`) |

@@ -75,12 +75,13 @@ and in `HANDOFF.md`.
   "motion": "instant for the press; quick crossfade for the label",
   "haptics_and_sound": "None on desktop; .success sensory feedback on iOS only for manual saves",
   "reduced_motion": "Label swaps without crossfade; status dot still changes color",
+  "budget": "100 ms from the key press to 'Saved' (local write); sync is background, not budgeted",
   "agent_state": "aria-live polite 'Saved'; data-state=saved on the editor; CLI equivalent prints 'saved' and exits 0"
 }
 ```
 
-`design_kit.py check` requires `trigger`, `feedback`, `motion`, and `reduced_motion` on every
-interaction.
+`design_kit.py check` requires `trigger`, `feedback`, `motion`, `reduced_motion`, and `budget`
+on every interaction. Budgets and the interaction-detail checklist are in `quality-bar.md`.
 
 ## Patterns worth getting right
 

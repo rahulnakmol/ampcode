@@ -65,7 +65,7 @@ SURFACE_STATES = {
     "dataviz": CORE_STATES + ("color-blind", "dense", "table-alternative"),
 }
 SURFACES = tuple(SURFACE_STATES)
-INTERACTION_FIELDS = ("trigger", "feedback", "motion", "reduced_motion")
+INTERACTION_FIELDS = ("trigger", "feedback", "motion", "reduced_motion", "budget")
 
 # Parallel Task API, USD per run (docs.parallel.ai pricing, 2026-10-24). "-fast" variants cost the same.
 TASK_PRICES = {"lite": 0.005, "base": 0.01, "core": 0.025, "core2x": 0.05, "pro": 0.10,
@@ -276,6 +276,8 @@ def check_touchpoints(root):
     brief = root / "BRIEF.md"
     if brief.is_file():
         gaps.extend(check_angle(brief.read_text()))
+    if any(t.get("interactions") for t in touchpoints) and not (root / "critique" / "quality-pass.md").is_file():
+        gaps.append("no quality pass: save .design/critique/quality-pass.md (see reference/quality-bar.md)")
     if touchpoints and not has_critic_pass(root):
         gaps.append("no critic pass: save .design/critique/<round>-critic.md with a 'Verdict:' line "
                     "(see reference/critic.md)")
