@@ -63,6 +63,9 @@ IO_MODULES = {
            "github.com/anthropics/anthropic-sdk-go", "github.com/jackc/pgx/v5", "gorm.io/gorm",
            "github.com/redis/go-redis/v9"},
 }
+# Environment members that read or change the process's surroundings.
+CS_ENVIRONMENT = (r"GetEnvironmentVariable\w*|SetEnvironmentVariable|Exit|CurrentDirectory|GetCommandLineArgs|TickCount\w*"
+                  r"|MachineName|UserName|ProcessId|GetFolderPath")
 IO_PREFIXES = {"js": ("@aws-sdk/", "@azure/", "@google-cloud/"), "py": (), "go": ("github.com/aws/aws-sdk-go",)}
 # C# namespaces and Rust paths that do I/O, clock or randomness: a match is the name itself or
 # anything under it (System.IO covers System.IO.Compression; std::fs covers std::fs::File).
@@ -83,8 +86,7 @@ SIDE_EFFECTS = {
           r"|\bXMLHttpRequest\b|(?<![\w.])(?:Bun|Deno)\.\w+",
     "go": r"\btime\.(?:Now|Since|Until|Sleep|After|Tick|NewTimer|NewTicker)\s*\(|\bfmt\.(?:Print|Scan)\w*\s*\(",
     "cs": r"(?<![\w.])(?:System\.(?:IO\.)?)?(?:Console|File|Directory)\.\w+|(?<![\w.])(?:System\.)?Environment\."
-          r"(?:GetEnvironmentVariable\w*|SetEnvironmentVariable|Exit|CurrentDirectory|GetCommandLineArgs|TickCount\w*"
-          r"|MachineName|UserName|ProcessId|GetFolderPath)\b|\b(?:DateTime|DateTimeOffset)\.(?:Now|UtcNow|Today)\b"
+          r"(?:" + CS_ENVIRONMENT + r")\b|\b(?:DateTime|DateTimeOffset)\.(?:Now|UtcNow|Today)\b"
           r"|\bStopwatch\.\w+|\bGuid\.NewGuid\s*\(|\bnew\s+(?:System\.)?Random\s*\(|\bRandom\.Shared\b"
           r"|\bRandomNumberGenerator\.\w+|\bProcess\.(?:Start|GetCurrentProcess|Kill)\b|\b(?:Thread\.Sleep|Task\.Delay)\s*\("
           r"|\bTimeProvider\.System\b|\b(?:Debug|Trace)\.Write\w*|\bnew\s+(?:[\w.]+\.)?(?:HttpClient|WebClient|TcpClient"
@@ -276,7 +278,7 @@ CS_STATIC_EFFECTS = {
     "Console": r"Write\w*|Read\w*|Clear|Beep|Out|Error|In", "Thread": r"Sleep", "Task": r"Delay",
     "File": r"(?:Read|Write|Append|Delete|Exists|Copy|Move|Create|Open|Replace|Encrypt|Decrypt)\w*",
     "Directory": r"(?:Get|Enumerate|Delete|Exists|Create|Move|Set)\w*", "Process": r"Start|Kill|GetCurrentProcess",
-    "Environment": r"GetEnvironmentVariable\w*|SetEnvironmentVariable|Exit|CurrentDirectory|GetCommandLineArgs|TickCount\w*",
+    "Environment": CS_ENVIRONMENT,
     "Stopwatch": r"\w+", "RandomNumberGenerator": r"\w+", "Random": r"Shared", "Debug": r"Write\w*", "Trace": r"Write\w*",
 }
 # Effect types a Rust `use ... as Alias` may hide.
@@ -293,7 +295,7 @@ def resolve_effect_names(code, lang):
             if last not in CS_STATIC_EFFECTS:
                 continue
             if m["alias"]:
-                code = re.sub(rf"(?<![\w.]){re.escape(m['alias'])}(?=\s*\.)", last, code)
+                code = re.sub(rf"(?<![\w.]){re.escape(m['alias'])}(?=\s*[.(])", last, code)  # R.X and new R()
             elif m["static"]:
                 code = re.sub(rf"(?<![\w.])(?=(?:{CS_STATIC_EFFECTS[last]})\b)", last + ".", code)
     elif lang == "rs":
@@ -329,7 +331,7 @@ def cs_rs_code(text, lang, keep_strings):
         quotes = 0
         while j + quotes < n and text[j + quotes] == '"':
             quotes += 1
-        raw = quotes >= 3
+        raw = quotes >= 3 and "@" not in prefix  # @"""" is a verbatim string holding one quote
         if not raw:
             quotes = 1
         j += quotes
@@ -358,9 +360,9 @@ def cs_rs_code(text, lang, keep_strings):
                     j = code(j + run, True)
                     start = j
                     continue
-                if not raw and run == 1:
-                    string_body(start, j)
-                    j = code(j + 1, True)
+                if not raw and run % 2:  # each {{ is a literal brace; an odd one opens a hole
+                    string_body(start, j + run - 1)
+                    j = code(j + run, True)
                     start = j
                     continue
                 j += max(run, 1)
@@ -435,14 +437,21 @@ def cs_rs_code(text, lang, keep_strings):
     if lang == "rs":
         attr = re.compile(r"#\[\s*cfg\s*\(\s*test\s*\)\s*\](?:\s*#\[[^\]]*\])*")
         for m in reversed(list(attr.finditer(result))):
-            brace, semi = result.find("{", m.end()), result.find(";", m.end())
-            if brace < 0 or (0 <= semi < brace):
-                end = n if semi < 0 else semi + 1
-            else:
-                depth, end = 1, brace + 1
-                while end < n and depth:
-                    depth += {"{": 1, "}": -1}.get(result[end], 0)
+            # The item ends at its first ; or {...} outside parentheses and brackets: fn f() -> [u8; 1] {...}.
+            end, nest = m.end(), 0
+            while end < n:
+                c = result[end]
+                nest += 1 if c in "([" else -1 if c in ")]" else 0
+                if not nest and c == ";":
                     end += 1
+                    break
+                if not nest and c == "{":
+                    depth, end = 1, end + 1
+                    while end < n and depth:
+                        depth += {"{": 1, "}": -1}.get(result[end], 0)
+                        end += 1
+                    break
+                end += 1
             result = result[:m.start()] + re.sub(r"[^\n]", " ", result[m.start():end]) + result[end:]
     return result
 

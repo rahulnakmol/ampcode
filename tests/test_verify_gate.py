@@ -316,6 +316,11 @@ class Core(Gate):
             "global": ("global using System.Net.Http;\nstatic class R { }\n", 1),
             "same-line": ("using System; using IO = System.IO;\nstatic class R { }\n", 1),
             "block-namespace": ("namespace App { using IO = System.IO; static class R { } }\n", 1),
+            "escaped-brace-hole": ('static class R {\n    static string A() => $"{{{System.DateTime.UtcNow}}}";\n}\n', 2),
+            "escaped-brace-literal": ('static class R {\n    const string A = $"{{DateTime.Now}}";\n}\n', None),
+            "verbatim-quote-then-code": ('static class R {\n    const string A = @"""";\n    static object B() => DateTime.UtcNow;\n}\n', 3),
+            "aliased-constructor": ("using R2 = System.Random;\nstatic class R {\n    static int A() => new R2().Next();\n}\n", 3),
+            "static-environment": ("using static System.Environment;\nstatic class R {\n    static string A() => MachineName;\n}\n", 3),
             "using-statement": ("static class R {\n    static int A(D d) { using var x = d.Open(); return 1; }\n}\n", None),
         })
 
@@ -329,6 +334,7 @@ class Core(Gate):
             "lifetime-then-effect": ("pub fn f<'a>(x: &'a str) -> &'a str { println!(\"{}\", x); x }\n", 1),
             "cfg-test-spaced": ('pub fn f() -> i64 { 1 }\n#[cfg( test )]\nmod tests {\n    fn t() { println!("x"); }\n}\n', None),
             "cfg-test-helper": ('pub fn f() -> i64 { 1 }\n#[cfg(test)]\n#[allow(dead_code)]\nfn helper() { println!("x"); }\n', None),
+            "cfg-test-array-type": ('#[cfg(test)]\nfn helper(x: [u8; 1]) -> [u8; 1] { println!("x"); x }\npub fn f() -> i64 { 1 }\n', None),
             "production-after-test": ('#[cfg(test)]\nfn helper() {}\npub fn f() { println!("x"); }\n', 3),
         }, extra)
 
