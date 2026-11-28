@@ -20,6 +20,12 @@ def pick(kind, *implementers, taken=()):
     return run.returncode, run.stdout.splitlines()[0] if run.stdout else ""
 
 
+def reason(kind, *implementers, taken=()):
+    args = [sys.executable, str(PICK), "--kind", kind]
+    args += [a for m in implementers for a in ("--implementer", m)] + [a for m in taken for a in ("--not", m)]
+    return subprocess.run(args, capture_output=True, text=True).stdout.splitlines()[1]
+
+
 class ReviewerModel(unittest.TestCase):
     def test_code_reviews_go_to_another_provider(self):
         self.assertEqual(pick("code-1", OPUS), (0, ASTRA))
@@ -39,6 +45,7 @@ class ReviewerModel(unittest.TestCase):
         self.assertEqual(pick("ui-complex", CARBON), (0, NEON))
         self.assertEqual(pick("ui", NEON), (0, CARBON))
         self.assertEqual(pick("ui", CARBON, taken=[NEON]), (0, ASTRA))
+        self.assertEqual(reason("ui", NEON), f"reason: the other Gemini 4 model: {NEON} wrote or reviewed this candidate")
         for kind in ("ui", "ui-complex"):
             self.assertEqual(pick(kind, CARBON, NEON, taken=[ASTRA]), (1, "no reviewer model: every listed reviewer model "
                                                                         "wrote or reviewed this candidate; choose one by hand and say why"))
@@ -51,9 +58,10 @@ class ReviewerModel(unittest.TestCase):
         self.assertEqual(pick("ui", " Google-Vertex/Gemini-4-Neon "), (0, CARBON))
         self.assertEqual(pick("code-2", "gemini-4-neon"), (0, ASTRA))
         self.assertEqual(pick("code-2", "google/gemini-4-neon"), (0, ASTRA))
-        run = subprocess.run([sys.executable, str(PICK), "--kind", "code-2", "--implementer", OPUS, "--not", ASTRA],
-                             capture_output=True, text=True)
-        self.assertEqual(run.stdout.splitlines()[1], "reason: first code-2 reviewer from a provider that wrote none of it (anthropic)")
+        # A Google model outside the Gemini family is still Google's.
+        self.assertEqual(pick("code-2", "google-vertex/imagen-9"), (0, ASTRA))
+        self.assertEqual(reason("code-2", OPUS, taken=[ASTRA]),
+                         "reason: first code-2 reviewer from a provider that wrote none of it (anthropic)")
 
     def test_bad_input(self):
         self.assertEqual(pick("code-1", " ")[0], 1)

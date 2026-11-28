@@ -40,6 +40,7 @@ import re
 import subprocess
 import sys
 import time
+import tomllib
 
 MANIFEST = "verify.json"
 CODE = {".py": "py", ".js": "js", ".jsx": "js", ".mjs": "js", ".cjs": "js", ".ts": "js", ".tsx": "js",
@@ -657,15 +658,18 @@ def imports(text, lang):
         return py_imports(text)
     if lang == "cs":
         code = code_only(text, "cs")
-        # An alias names a type, so its namespace is the name without its last part: mark it with "=".
-        return [(code.count("\n", 0, m.start(3)) + 1, m[3] + ("=" if m["alias"] else "")) for m in CS_USING.finditer(code)]
+        # An alias or `using static` names a type, so its namespace is the name without its last part:
+        # mark it with "=".
+        return [(code.count("\n", 0, m.start(3)) + 1, m[3] + ("=" if m["alias"] or m["static"] else ""))
+                for m in CS_USING.finditer(code)]
     if lang == "rs":
         # Use statements, then every path written in code (std::fs::read(...)), outside the uses.
         code = code_only(text, "rs")
         uses = rs_use_paths(code)
         found = [(code.count("\n", 0, at) + 1, rs_from_file_module(path, rs_inline_modules(code, at))) for at, path in uses]
         rest = re.sub(r"(?:^|(?<=[;{}]))[ \t]*(?:pub(?:\([^)]*\))?\s+)?use\s+[^;]+;", blank, code, flags=re.M)
-        found += [(rest.count("\n", 0, m.start()) + 1, m[1].lstrip(":")) for m in re.finditer(
+        found += [(rest.count("\n", 0, m.start()) + 1, rs_from_file_module(m[1].lstrip(":"), rs_inline_modules(code, m.start())))
+                  for m in re.finditer(
             r"(?<![\w:])((?:::)?[a-z_]\w*(?:::[A-Za-z_]\w*)+)", rest)]
         return found
     plain, masked, found = code_only(text, lang, keep_strings=True), code_only(text, lang), []
@@ -736,20 +740,22 @@ def rs_crates(tree):
 def rs_manifest(tree, cargo):
     """(package name or None, source directory, root file) of one Cargo.toml: [lib] path and its
     directory when set, else src/ and src/lib.rs."""
-    text = tree.read(cargo) or ""
-    section = lambda title: (re.search(rf"^\[{title}\][ \t]*$(.*?)(?=^\[|\Z)", text, re.M | re.S) or [None, ""])[1]
-    name = re.search(r'^name\s*=\s*"([^"]+)"', section("package"), re.M)
-    lib = re.search(r'^path\s*=\s*"([^"]+)"', section("lib"), re.M)
+    try:
+        manifest = tomllib.loads(tree.read(cargo) or "")
+    except tomllib.TOMLDecodeError:
+        manifest = {}
+    name, lib = manifest.get("package", {}).get("name"), manifest.get("lib", {}).get("path")
     top = lambda p: "" if posixpath.normpath(p) == "." else posixpath.normpath(p)
-    file = top(posixpath.join(posixpath.dirname(cargo), lib[1] if lib else "src/lib.rs"))
-    return (name[1] if name else None), top(posixpath.dirname(file) or "."), file
+    file = top(posixpath.join(posixpath.dirname(cargo), lib or "src/lib.rs"))
+    return name, top(posixpath.dirname(file) or "."), file
 
 
-def rs_module_dir(file):
+def rs_module_dir(tree, file):
     """The directory that holds a Rust file's child modules: src/a/b.rs has src/a/b; mod.rs,
-    lib.rs and main.rs have their own directory."""
+    lib.rs, main.rs and a crate root such as [lib] path = "lib/engine.rs" have their own directory."""
     head, name = posixpath.split(file)
-    return head if name in ("mod.rs", "lib.rs", "main.rs") else posixpath.join(head, name[:-3])
+    roots = {root for _, root in rs_crates(tree).values()}
+    return head if name in ("mod.rs", "lib.rs", "main.rs") or file in roots else posixpath.join(head, name[:-3])
 
 
 def rs_target(tree, file, path):
@@ -770,16 +776,16 @@ def rs_target(tree, file, path):
                 break
         base, parts = root, parts[1:]
     elif parts[0] in ("self", "super"):
-        base = rs_module_dir(file)
+        base = rs_module_dir(tree, file)
         while parts and parts[0] in ("self", "super"):
             base = posixpath.dirname(base) if parts.pop(0) == "super" else base
     elif parts[0] in rs_crates(tree):
         (base, root_file), parts = rs_crates(tree)[parts[0]], parts[1:]
     else:
-        child = posixpath.join(rs_module_dir(file), parts[0])
+        child = posixpath.join(rs_module_dir(tree, file), parts[0])
         if f"{child}.rs" not in tree.files and not tree.is_dir(child):
             return None
-        base = rs_module_dir(file)
+        base = rs_module_dir(tree, file)
     if base is None:
         return None
     for k in range(len(parts), -1, -1):

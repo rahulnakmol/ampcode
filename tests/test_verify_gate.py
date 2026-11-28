@@ -331,6 +331,8 @@ class Core(Gate):
             "unknown-namespace": ("using Shop.ExternalContracts;\nstatic class R { }\n", None),
             "nested-block-namespace": ("using Shop.Infrastructure;\nstatic class R { }\n", 1),
             "generic-outward-alias": ("using Repo = Shop.Infrastructure.Repo<int>;\nstatic class R { }\n", 1),
+            "static-outward": ("using static Shop.Infrastructure.Repo;\nstatic class R { }\n", 1),
+            "verbatim-interpolated-quotes": ('static class R {\n    static string A() => $@"a ""{System.DateTime.UtcNow}"" b";\n}\n', 2),
             "using-statement": ("static class R {\n    static int A(D d) { using var x = d.Open(); return 1; }\n}\n", None),
         }, {"Shop/Program.cs": "namespace Shop;\nclass Program { }\n",
             "Shop/Infrastructure/Repo.cs": "namespace Shop {\n    namespace Infrastructure {\n        class Repo<T> { }\n    }\n}\n",
@@ -349,6 +351,7 @@ class Core(Gate):
             "cfg-test-helper": ('pub fn f() -> i64 { 1 }\n#[cfg(test)]\n#[allow(dead_code)]\nfn helper() { println!("x"); }\n', None),
             "cfg-test-array-type": ('#[cfg(test)]\nfn helper(x: [u8; 1]) -> [u8; 1] { println!("x"); x }\npub fn f() -> i64 { 1 }\n', None),
             "inline-mod-super": ("pub struct Price;\nmod inner {\n    use super::Price;\n}\n", None),
+            "inline-mod-direct-super": ("fn helper() -> i64 { 1 }\nmod inner {\n    pub fn f() -> i64 { super::helper() }\n}\n", None),
             "raw-strings": ('pub const A: &str = r#"say "std::fs::read(x)" now"#;\npub const B: &[u8] = br#"x "println!()" y"#;\n', None),
             "extern-crate": ("extern crate reqwest;\n", 1),
             "glob-use": ("use std::fs::*;\n", 1),
@@ -372,7 +375,18 @@ class Core(Gate):
             "workspace-outward": ("use bank_store::save;\npub fn f() { save() }\n", 1),
             "child-of-listed-file": ("mod helper;\nuse helper::h;\npub fn f() { h() }\n", 2),
             "sibling-outward": ("use crate::shell::s;\npub fn f() { s() }\n", 1),
+            "self-child-outward": ("mod helper;\nuse self::helper::h;\npub fn f() { h() }\n", 2),
+            "inline-mod-direct-outward": ("mod inner {\n    pub fn f() { super::super::shell::s() }\n}\n", 2),
         }, files)
+        # A crate root not named lib.rs holds its child modules in its own directory.
+        self.core_cases(manifest, "rules/lib/rules.rs", {
+            "custom-root-child-inward": ("pub mod money;\nuse self::money::M;\n", None),
+            "custom-root-child-outward": ("pub mod shell;\nuse self::shell::s;\n", 2),
+        }, {**files, "rules/lib/shell.rs": "pub fn s() {}\n", "bank/src/core/mod.rs": "pub fn f() {}\n"})
+        # Any valid TOML spelling of the package name names the same workspace crate.
+        for cargo in ["[package]\nname = 'bank-store'\n", '[package]\n  name = "bank-store"\n', '[package] # id\nname = "bank-store"\n']:
+            self.core_cases(manifest, "bank/src/core/mod.rs", {cargo: ("use bank_store::save;\npub fn f() { save() }\n", 1)},
+                            {**files, "store/Cargo.toml": cargo})
 
     def test_rust_core(self):
         manifest = {"packages": [{"name": "bank", "path": "bank", "core": ["bank/src/domain"], "e2e": "true"}]}
