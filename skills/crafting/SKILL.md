@@ -17,7 +17,7 @@ Tools supply evidence, not taste. Every choice traces to the need, a reference, 
 medium's convention.
 
 **Floor and ceiling.** `design_kit.py` guards the floor: state coverage, alt text, tool contracts,
-interaction budgets, the quality pass, the critic pass, and the shape of the reply. Spend your attention on the ceiling: the angle that
+interaction time budgets, a quality-pass file, the critic pass, and the shape of the reply. Spend your attention on the ceiling: the angle that
 makes this matter, the moment a person (or an agent) would tell someone about, and the finish that
 carries it through every state. Competent and complete is the starting line, not the goal.
 
@@ -83,11 +83,12 @@ across sessions; it is the cache that keeps repeat work cheap.
   BRIEF.md            need, angle, audience, journeys, surfaces, constraints, measures (phases 1, 2)
   touchpoints.json    journeys, touchpoint × state matrix, interaction specs (phases 3, 6, 7)
   ledger.json         research spend and budget (phase 4)
-  research/           desk findings, studies/, accessibility audit, reference images in img/
+  research/           desk findings, studies/, accessibility audit, explorations.md, reference images in img/
   board/index.html    mood board with directions (phase 5)
   DESIGN.md           experience system: tokens, voice, motion, agent contract (phase 6)
   mockups/            one rendered file or transcript per touchpoint state (phase 7)
   critique/           critic passes, one file per round (phase 8)
+  quality-pass.md     frictions found by using the work, and measured time budgets (phase 8)
   HANDOFF.md          implementation and production spec (phase 9)
   reply.md            draft of the final reply, linted before sending
 ```
@@ -100,7 +101,7 @@ K="python3 <this skill directory>/scripts/design_kit.py"
 $K init --surfaces web,ios,mcp,email      # creates .design/ files that do not exist yet
 $K log --tool parallel-task.createDeepResearch --processor pro --note "..."   # before a paid call
 $K spend                                  # spend so far against the budget
-$K check                                  # gate: journeys, states, alt text, Angle section, critic pass
+$K check                                  # gate: journeys, states, alt text, Angle, time budgets, quality pass, critic
 $K tools .design/mcp/tools.json           # gate for MCP: "Not for" clauses, inputSchema, all four hints
 $K reply .design/reply.md                 # gate for the reply: at most three questions, each recommended
 ```
@@ -158,8 +159,8 @@ construction, using the catalog in `states.md`: one state per error code or exit
 contract, a cold start for anything that reports on data over time, mixed membership for lists and
 groups, and stress states (longest copy, largest numbers) checked against the real bounds. Name each
 touchpoint's micro-interactions, including every row of the interaction-detail checklist in
-[reference/quality-bar.md](reference/quality-bar.md) whose trigger it contains, and give each a
-`budget` (input to visible result); specify them in phase 6. Include touchpoints outside the main product: store
+[reference/quality-bar.md](reference/quality-bar.md) whose trigger it contains, and give each
+on an interactive surface a time `budget` (input to visible result); specify them in phase 6. Include touchpoints outside the main product: store
 listings, emails, packaging inserts, signs, docs, support replies, and agent tool calls.
 
 ## 4. Research, on a budget
@@ -193,16 +194,16 @@ unless asked.
 Propose two or three **named directions**, each a different way to express the angle, following
 the direction rules in `taste.md`; every direction's lo-fi frame shows the same moment of truth on
 the platform's real chrome. Render the board, inspect each section, and let the user choose or mix;
-in autonomous runs pick one and justify it against the need and audience. For the hardest
-touchpoint (a new interaction model, a moment of truth no reference solves), build three to five
-directions as working prototypes and use each for the main task before choosing
-(`quality-bar.md`).
+in autonomous runs pick one and justify it against the need and audience. When a touchpoint
+has no reference that solves it (a new interaction model), build three to five directions as
+working prototypes and use each for the main task before choosing (`quality-bar.md`); not in
+Inspire or Refine work.
 
 ## 6. System
 
 Write `.design/DESIGN.md`: the direction as named tokens with values and jobs. Cover color (OKLCH
-for screens with light, dark, and contrast, derived from a few inputs by the rule in
-`quality-bar.md`, never hand-picked one by one; CMYK or spot equivalents when print is in scope),
+for screens with light, dark, and contrast, derived from a few inputs (brand colours among
+them) by the rule in `quality-bar.md`, not hand-picked one by one; CMYK or spot equivalents when print is in scope),
 typography (screen and print sizes), spacing, radii, elevation and materials, iconography, imagery,
 voice and tone (sample copy for success, error, empty, waiting, and refusal), motion tokens mapped
 per platform ([reference/motion.md](reference/motion.md)), and templates for social, print, and
@@ -257,9 +258,10 @@ For each touchpoint, at most three rounds:
    accessibility checklist, and the agent-legibility and AX checks. Record findings as P0 to P3.
 4. Fix the top three findings and re-render. Stop when no P0 or P1 remains and every dimension
    scores at least 8, or after round three, reporting what remains.
-5. For an interactive surface, run the quality pass in `quality-bar.md` on the prototype or the
-   most interactive mockups: every journey by pointer and by keyboard, on a throttled network,
-   with the budgets measured. Save it as `.design/critique/quality-pass.md`.
+5. For an interactive surface, run the quality pass in `quality-bar.md`: walk the journeys on
+   real data, by pointer and by keyboard on a throttled network with the budgets measured once a
+   prototype runs, or state by state through the mockups before that. Save it as
+   `.design/quality-pass.md`. P0 and P1 frictions and missed measured budgets block handoff.
 
 Self-critique is biased toward approval, so every UX or UI deliverable then gets **the critic
 pass** in [reference/critic.md](reference/critic.md): the Critic, a principal product designer and

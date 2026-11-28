@@ -123,14 +123,15 @@ class Coverage(unittest.TestCase):
             (design / "critique" / "1-critic.md").write_text("# Round 1\n\nNo verdict yet.\n")
             self.assertIn("no critic pass", run(work, "check").stdout)
             (design / "critique" / "1-critic.md").write_text("# Round 1\n\n**Verdict:** revise\n")
-            del touchpoint["interactions"][0]["budget"]
+            touchpoint["interactions"][0]["budget"] = "fast"
             path.write_text(json.dumps(data))
             gaps = [line for line in run(work, "check").stdout.splitlines() if line.startswith("gap:")]
             self.assertEqual(len(gaps), 2, gaps)
-            self.assertTrue(any("toggle is missing budget" in gap for gap in gaps), gaps)
+            self.assertTrue(any("toggle needs a budget with a number and unit" in gap for gap in gaps), gaps)
+            self.assertTrue(any("no quality pass" in gap for gap in gaps), gaps)
             touchpoint["interactions"][0]["budget"] = "100 ms to the new price"
             path.write_text(json.dumps(data))
-            (design / "critique" / "quality-pass.md").write_text("# Quality pass\n")
+            (design / "quality-pass.md").write_text("# Quality pass\n")
             result = run(work, "check")
             self.assertEqual(result.returncode, 0, result.stdout)
             self.assertIn("1 touchpoints, 6 states mocked, 1 skipped", result.stdout)
@@ -153,7 +154,9 @@ class Coverage(unittest.TestCase):
             path = design / "touchpoints.json"
             data = json.loads(path.read_text())
             data["touchpoints"] = [{"id": "launch-post", "surface": "social", "job": "Get sign-ups",
-                                    "states": states}]
+                                    "states": states,
+                                    "interactions": [{"id": "tap-link", "trigger": "tap", "feedback": "opens",
+                                                      "motion": "none", "reduced_motion": "none"}]}]
             path.write_text(json.dumps(data))
             result = run(work, "check")
             gaps = [line for line in result.stdout.splitlines() if line.startswith("gap:")]

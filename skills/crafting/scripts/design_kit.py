@@ -6,7 +6,8 @@ Commands (run from the project root; --dir defaults to .design):
   log   --tool T --note N      price a research call and refuse it when over budget (exit 2)
   spend                        show research spend against the budget
   check                        verify journeys, that every touchpoint has every required state, the
-                               Angle section of BRIEF.md, and a critic pass (exit 1 on gaps)
+                               Angle section of BRIEF.md, a numeric budget on every interaction of an
+                               interactive surface, a quality-pass file, and a critic pass (exit 1 on gaps)
   tools PATH                   lint an MCP tool list: each tool has a description with a "Not for"
                                clause, an inputSchema, and all four annotation hints (exit 1 on gaps)
   reply PATH                   lint a reply draft: at most three questions, one decision each, each
@@ -65,7 +66,12 @@ SURFACE_STATES = {
     "dataviz": CORE_STATES + ("color-blind", "dense", "table-alternative"),
 }
 SURFACES = tuple(SURFACE_STATES)
-INTERACTION_FIELDS = ("trigger", "feedback", "motion", "reduced_motion", "budget")
+INTERACTION_FIELDS = ("trigger", "feedback", "motion", "reduced_motion")
+# Surfaces where a person acts and waits: their interactions carry a time budget and get a quality pass
+# (reference/quality-bar.md).
+INTERACTIVE_SURFACES = ("cli", "tui", "web", "ios", "android", "macos", "windows", "watch", "tv", "car",
+                        "spatial", "kiosk", "device", "chat", "voice")
+BUDGET = re.compile(r"\d+(\.\d+)?\s*(ms|s)\b")
 
 # Parallel Task API, USD per run (docs.parallel.ai pricing, 2026-10-24). "-fast" variants cost the same.
 TASK_PRICES = {"lite": 0.005, "base": 0.01, "core": 0.025, "core2x": 0.05, "pro": 0.10,
@@ -259,6 +265,8 @@ def check_touchpoints(root):
             for field in INTERACTION_FIELDS:
                 if not str(interaction.get(field, "")).strip():
                     gaps.append(f"{tid}: interaction {name} is missing {field}")
+            if surface in INTERACTIVE_SURFACES and not BUDGET.search(str(interaction.get("budget", ""))):
+                gaps.append(f"{tid}: interaction {name} needs a budget with a number and unit (\"100 ms\")")
     for surface in surfaces:
         if surface in SURFACES and not any(t.get("surface") == surface for t in touchpoints):
             gaps.append(f"surface {surface} has no touchpoints")
@@ -276,8 +284,9 @@ def check_touchpoints(root):
     brief = root / "BRIEF.md"
     if brief.is_file():
         gaps.extend(check_angle(brief.read_text()))
-    if any(t.get("interactions") for t in touchpoints) and not (root / "critique" / "quality-pass.md").is_file():
-        gaps.append("no quality pass: save .design/critique/quality-pass.md (see reference/quality-bar.md)")
+    interactive = any(t.get("interactions") and t.get("surface") in INTERACTIVE_SURFACES for t in touchpoints)
+    if interactive and not (root / "quality-pass.md").is_file():
+        gaps.append("no quality pass: save .design/quality-pass.md (see reference/quality-bar.md)")
     if touchpoints and not has_critic_pass(root):
         gaps.append("no critic pass: save .design/critique/<round>-critic.md with a 'Verdict:' line "
                     "(see reference/critic.md)")

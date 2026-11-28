@@ -31,8 +31,8 @@ success criteria; you can redirect at any checkpoint.
 | --- | --- | --- |
 | Kickoff | The need and the angle, when the request is vague | `grilling` |
 | M1 Directions | Need, journeys and a touchpoint-by-state matrix; research within budget; named directions | `crafting` |
-| M2 System and mockups | Experience system; a mockup or transcript for every state; quality pass with measured budgets; critic pass; `design_kit.py check` until the handoff gate passes | `crafting` |
-| M3 Built-product comparison | When software is built, each built state captured, inspected and compared with its mockup; the quality pass rerun with every budget measured | `delivering` (through a [software delivery](software-delivery.md) mission) |
+| M2 System and mockups | Experience system; a mockup or transcript for every state; quality pass (time budgets measured once a prototype runs); critic pass; `design_kit.py check` until the handoff gate passes | `crafting` |
+| M3 Built-product comparison | When software is built, each built state captured, inspected and compared with its mockup; the quality pass rerun with every time budget measured | `delivering` (through a [software delivery](software-delivery.md) mission) |
 
 `crafting` is the conductor. A design-QA lens is planned; until then the agent compares each
 built state with its mockup at `delivering`'s second review gate and lists every difference.
@@ -44,8 +44,9 @@ built state with its mockup at `delivering`'s second review gate and lists every
 
 ## Done when
 
-`design_kit.py check` passes, and every designed state has a matching inspected capture of the
-built product. A measure built on real data states which rows it drops or caps, and how many.
+`design_kit.py check` passes, every designed state has a matching inspected capture of the
+built product, and the last quality pass leaves no serious friction open. When a prototype or
+software is built, every interaction's time budget is measured on a fast and a slow connection. A measure built on real data states which rows it drops or caps, and how many.
 
 ## Example
 
