@@ -307,7 +307,11 @@ boundaries, keep the red-run evidence, and stage only owned, relevant changes.
 
 Run the harness and representative journeys on the real platform, not just mocks or typechecks.
 Check actual outputs and persisted state, and exercise failure and recovery paths. For visual
-changes, render the affected states and inspect the captures. Open the produced artifact and
+changes, render the affected states and inspect the captures. For interactive UI changes, also
+run `crafting`'s quality pass (`reference/quality-bar.md`) on the journeys the change touches: by
+pointer and by keyboard on real data and a throttled network, each interaction's time budget
+measured (its default budgets when the design set none). A missed time budget or an open P0 or P1
+friction leaves the item not done. Open the produced artifact and
 compare it with the request. Record commands, expected and observed results, revision and
 environment. A skipped required check blocks completion; an unavailable environment is reported,
 not substituted. Before any pull request, commit and run `verify_gate.py run` and `check` for

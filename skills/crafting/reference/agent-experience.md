@@ -178,6 +178,14 @@ the agent's actual reliability:
 - **Honest uncertainty**: cite sources, mark guesses, and make it easy to check. Calibrated
   confidence beats confident prose.
 - **Recoverable**: undo, version history, and a clear record of what the agent did and why.
+- **Changes under the person's control**: when an agent edits something the person owns (a
+  document, code, a plan), show the change in place with "show changes", a short summary, and
+  accept or reject per change, not only for the whole.
+- **Review by intent**: when a person reviews an agent's work, lead with the intent it served,
+  then the changes grouped by theme in a logical order (not files sorted alphabetically), with
+  the raw diff one step away. Show the meaningful size (the code a person must read, without
+  generated files, lockfiles and snapshots) beside the full size, labelled so nobody mistakes it
+  for the whole.
 - **Handoffs**: when the agent stops (done, blocked, needs input), notify through the channel the
   person chose, with the result and the one action needed.
 - **Memory with consent**: show what the agent remembers and let people edit or delete it.
