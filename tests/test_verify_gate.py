@@ -267,6 +267,51 @@ class Core(Gate):
         self.write({"web/src/core/cart.ts": "import { S3Client } from '@aws-sdk/client-s3'\nexport const s = S3Client\n"})
         self.assertGate(["core"], 1, "web/src/core/cart.ts:1: io-import")
 
+    def test_csharp_core(self):
+        manifest = {"packages": [{"name": "shop", "path": "Shop", "core": ["Shop/Domain"], "e2e": "true"}]}
+        self.write({"verify.json": json.dumps(manifest),
+                    "Shop/Domain/Price.cs": "using System;\nusing System.Linq;\nusing Shop.Domain.Money;\n"
+                                            "namespace Shop.Domain;\n\npublic static class Price {\n"
+                                            "    // File.ReadAllText(p) and DateTime.Now in a comment\n"
+                                            "    public const string Doc = \"Console.WriteLine(x)\";\n"
+                                            "    public static decimal Total(decimal[] xs) => xs.Sum();\n}\n",
+                    "Shop/Domain/Money/Money.cs": "namespace Shop.Domain.Money;\npublic record Money(decimal Amount);\n",
+                    "Shop/Infrastructure/Db.cs": "namespace Shop.Infrastructure;\npublic class Db {}\n",
+                    "Shop/Domain/PriceTests.cs": "using System.IO;\nclass T { void A() { File.Delete(\"x\"); } }\n"})
+        self.assertGate(["core"], 0, "shop: core pass")
+        self.write({"Shop/Domain/Clock.cs": "\ufeffusing System.IO;\nusing Db = Shop.Infrastructure.Db;\nnamespace Shop.Domain;\n"
+                                            "static class Clock {\n    static object A() => DateTime.UtcNow;\n"
+                                            "    static string B(string p) => $\"{File.ReadAllText(p)} {{File.Nope}}\";\n"
+                                            "    static Guid C() => Guid.NewGuid();\n    static int D() => new Random().Next();\n"
+                                            "    static void E() => System.Console.WriteLine(1);\n}\n"})
+        out = self.assertGate(["core"], 1, "Clock.cs:1: io-import: imports System.IO",
+                              "Clock.cs:2: outward-import: imports Shop/Infrastructure/Db.cs",
+                              "Clock.cs:5: side-effect: calls DateTime.UtcNow", "Clock.cs:6: side-effect: calls File.ReadAllText",
+                              "Clock.cs:7: side-effect: calls Guid.NewGuid", "Clock.cs:8: side-effect: calls new Random",
+                              "Clock.cs:9: side-effect: calls System.Console.WriteLine")
+        self.assertNotIn("File.Nope", out)
+        self.assertNotIn("Price", out)
+
+    def test_rust_core(self):
+        manifest = {"packages": [{"name": "bank", "path": "bank", "core": ["bank/src/domain"], "e2e": "true"}]}
+        self.write({"verify.json": json.dumps(manifest), "bank/Cargo.toml": '[package]\nname = "bank"\n',
+                    "bank/src/lib.rs": "pub mod domain;\npub mod store;\n", "bank/src/store.rs": "pub fn save() {}\n",
+                    "bank/src/domain/mod.rs": "pub mod money;\nuse crate::domain::money::Money;\nuse std::{fmt, collections::HashMap};\n"
+                                              "// println!(\"x\") std::fs::read\n"
+                                              "pub fn total<'a>(xs: &'a [i64]) -> i64 { let _ = \"std::fs::read(\"; xs.iter().sum() }\n"
+                                              "#[cfg(test)]\nmod tests {\n    #[test]\n    fn t() { println!(\"{}\", std::env::var(\"X\").is_ok()); }\n}\n",
+                    "bank/src/domain/money.rs": "pub struct Money(pub i64);\npub const MAX: i64 = i64::MAX;\n"})
+        self.assertGate(["core"], 0, "bank: core pass")
+        self.write({"bank/src/domain/clock.rs": "use std::{fs, io::{self, Read}};\nuse crate::store::save;\nuse super::super::store;\n"
+                                                "pub fn now() -> u64 { std::time::SystemTime::now(); 0 }\n"
+                                                "pub fn read(p: &str) -> String { std::fs::read_to_string(p).unwrap() }\n"
+                                                "pub fn log() { println!(\"hi\"); }\n"})
+        out = self.assertGate(["core"], 1, "clock.rs:1: io-import: imports std::fs,", "clock.rs:1: io-import: imports std::io::Read",
+                              "clock.rs:2: outward-import: imports bank/src/store", "clock.rs:3: outward-import: imports bank/src/store",
+                              "clock.rs:4: side-effect: calls SystemTime::now", "clock.rs:5: io-import: imports std::fs::read_to_string",
+                              "clock.rs:6: side-effect: calls println!")
+        self.assertNotIn("mod.rs", out)
+
     def test_observe_mode_reports_without_failing(self):
         manifest = json.loads(json.dumps(MANIFEST))
         manifest["packages"][0]["mode"] = "observe"

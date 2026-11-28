@@ -467,6 +467,24 @@ class FloorGuard(unittest.TestCase):
         for path in ("src/http/client.ts", "docs/retries.md", "skills/x/scripts/floor_guard.py"):
             self.assertClean(diff(path, added=["const policy = { retries: 3 };"]))
 
+    def test_csharp_and_rust_lowered_bars(self):
+        self.assertFlags(diff("Shop.Tests/PriceTests.cs", removed=["        Assert.Equal(3, Price.Total(xs));"]),
+                         "assertion removed")
+        self.assertFlags(diff("tests/total.rs", removed=["    assert_eq!(total(&[1, 2]), 3);"]), "assertion removed")
+        for path, line in (("Shop.Tests/PriceTests.cs", '    [Fact(Skip = "flaky")]'), ("Shop.Tests/PriceTests.cs", "    [Ignore]"),
+                           ("Shop.Tests/PriceTests.cs", '        Assert.Ignore("later");'), ("src/lib.rs", '#[ignore = "slow"]')):
+            with self.subTest(line=line):
+                self.assertFlags(diff(path, added=[line]), "skip marker added")
+        for path, line in (("Shop.Tests/PriceTests.cs", "    [Retry(3)]"), ("Shop.Tests/PriceTests.cs", "    [RetryFact(MaxRetries = 3)]"),
+                           (".config/nextest.toml", "retries = 2")):
+            with self.subTest(line=line):
+                self.assertFlags(diff(path, added=[line]), "test retry added")
+        self.assertClean(diff("src/Http/Client.cs", added=["    [Retry(3)]"]))
+        for path, line in (("src/Price.cs", "#pragma warning disable CS8618"), ("src/lib.rs", "#![allow(dead_code)]"),
+                           ("src/Price.cs", '[SuppressMessage("Style", "IDE0060")]')):
+            with self.subTest(line=line):
+                self.assertFlags(diff(path, added=[line]), "silencer")
+
     def test_verify_json_set_to_observe_is_flagged(self):
         line = '      "mode": "observe"'
         self.assertFlags(diff("verify.json", removed=['      "mode": "enforce"'], added=[line]), "observe")

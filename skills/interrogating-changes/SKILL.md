@@ -166,10 +166,11 @@ widened checker silencer (`noqa`, `eslint-disable`, `@ts-ignore`, `type: ignore`
 Gradle file), an ignored failure in CI, an added or raised test retry (`retries: 2`, `--retries 2`,
 `reruns = 2`, `pytest.mark.flaky`) in a test, test or build config, CI file or `verify.json`,
 and in `verify.json` a package newly set to `"mode": "observe"` or a package removed. It knows the skip forms of pytest, Jest, Vitest and
-bun (`test.if`, `describe.if`, `it.runIf`, `test.failing`, `{ skip: true }`) and XCTest
-(`XCTSkip`, `XCTSkipIf`). A line commented out with `#`, `//`, `;`, `/*`, `<!--` or `--` holds
+bun (`test.if`, `describe.if`, `it.runIf`, `test.failing`, `{ skip: true }`), XCTest
+(`XCTSkip`, `XCTSkipIf`), xUnit and NUnit (`[Fact(Skip = ...)]`, `[Ignore]`, `Assert.Ignore`,
+`[Retry(3)]`) and Rust (`#[ignore]`, `#[allow(...)]`, nextest `retries`). A line commented out with `#`, `//`, `;`, `/*`, `<!--` or `--` holds
 no assertion and no threshold. Input with no diff prints "not run", never `pass`. It reads text
-patterns for common Python, JavaScript/TypeScript, Go, Swift, Java build, SQL, Lua, Haskell and
+patterns for common Python, JavaScript/TypeScript, Go, C#, Rust, Swift, Java build, SQL, Lua, Haskell and
 CI files, and may miss other forms: for example a skip option set from a variable
 (`{ skip: isCI }`) or an assertion in a framework it does not know. Accept a flag only
 with a reason the reviewer agrees with: `--accept <id>="<reason>"`. The reason prints in the

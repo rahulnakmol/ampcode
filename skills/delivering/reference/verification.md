@@ -97,14 +97,28 @@ Work test-first in this order:
 
 ## What the gate cannot prove
 
-- The core scan reads text patterns for Python, JavaScript/TypeScript and Go: imports, a list of
+- The core scan reads text patterns for Python, JavaScript/TypeScript, Go, C# and Rust: imports, a list of
   I/O modules, and calls such as `print`, `fetch`, `time.Now` and `Date.now`. In Python it reads
   imports and aliases with Python's parser, so `from time import time as now; now()` is the clock
   call `time.time`, while `t.gmtime(0)` and `dt(2000, 1, 2)` stay pure; `open`, `print` and
   `input` count also inside f-strings, and a local variable or parameter named `open` still
   counts as the builtin, as does `from builtins import open`. A name an enclosing scope rebinds
   has the binding that scope ends with. JavaScript strings, comments, regex literals and nested `${...}`
-  templates are read in one pass, so only code counts. It misses I/O through
+  templates are read in one pass, so only code counts.
+- C#: `using` directives (also `global`, `static` and aliases) against I/O namespaces such as
+  `System.IO`, `System.Net`, `Microsoft.EntityFrameworkCore` and `Microsoft.Extensions.Logging`;
+  calls such as `File.*`, `Console.*`, `DateTime.Now`, `Guid.NewGuid()`, `new Random()` and `new
+  HttpClient()`, also inside `$"..."` holes. A `using` of a namespace that only files outside the
+  core declare is an outward import. Test files (`*Tests.cs`, `*.Tests/`) are not scanned. It
+  misses a type used by its full name from outside the core, and namespaces a `global using` in
+  another file brings in.
+- Rust: `use` trees (`use std::{fs, io::Read}`) and paths written in code (`std::fs::read`)
+  against `std::fs`, `std::net`, `std::io`, `std::env`, `std::process`, `std::thread`, `tokio`,
+  `reqwest`, `sqlx`, `rand`, `tracing` and others; `println!`, `dbg!`, `SystemTime::now()`,
+  `Instant::now()`, `Utc::now()` and `Uuid::new_v4()`. A `crate::`, `super::`, workspace-crate or
+  child-module path outside the core is an outward import. `#[cfg(test)]` modules and `tests/`
+  are not scanned. It misses effects behind a trait object or a macro it does not list.
+- In every language it misses I/O through
   a library it does not list, or through a function passed in and called. The reviewer reads the
   core for those.
 - The evidence file is written by `run` on the author's machine. `check` proves it names this
