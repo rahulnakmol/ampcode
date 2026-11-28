@@ -39,8 +39,9 @@ pre-authorized effects.
 
 `delivering` is the conductor; on Amp, `mission-control` blocks a milestone merge until both
 reviews and the evidence match the candidate. The scripts enforce the rest: `verify_gate.py check`
-fails without fresh end-to-end evidence or with I/O in a pure core, and `review_ledger.py check`
-fails a ledger whose reviewer ran on an implementer's model.
+fails without fresh end-to-end evidence or with I/O in a pure core, and `review_ledger.py verdict`
+binds each review to the exact patch. Each reviewer starts on another model by construction
+(`goldfishing`'s `reviewer_model.py`); the ledger records which.
 
 ## How it verifies the work
 
@@ -50,9 +51,12 @@ hold for every item and milestone:
 - **End-to-end before the pull request.** Every package the change touches runs its end-to-end
   tests locally on the exact head, with saved evidence; `verify_gate.py check` must pass before
   a pull request opens, judged by `verify.json` at the base so a change cannot weaken its judge.
-- **A reviewer on another model.** Both review gates run `interrogating-changes` on a model that
-  wrote none of the change, read from the host; its ledger rule L10 refuses a reviewer on an
-  implementer's model, and each verdict is tied to the exact patch.
+- **A reviewer on another model.** Every review starts on a model that wrote none of the change,
+  by construction: before starting a reviewer, the gate reads the authors' models from the host
+  and `goldfishing`'s `reviewer_model.py` picks the reviewer's model from a stated rotation (Claude
+  work goes to GPT-6 Astra, then Gemini 4 Carbon; UI reviews go to Gemini 4 Neon or Carbon by how
+  complex the UI is). The ledger records which model reviewed, and each verdict is tied to the
+  exact patch.
 - **A pure core, side effects at the edge.** Domain rules sit in each package's pure core, with
   I/O, clocks and LLM calls only in the outer shell; `verify_gate.py core` fails the build on a
   violation, after an observe-mode start for a new gate.
@@ -73,7 +77,7 @@ Every merge into `dev` is an agent row once both reviews and the evidence match 
 
 Every acceptance criterion maps to an executed test or journey on the released revision, every
 milestone pull request carries a passing `verify_gate.py check` for its head, both reviews are
-recorded against it with reviewer and implementer models that differ, and the release is verified on its target. When accessibility
+recorded against it with the model each reviewer was started on, and the release is verified on its target. When accessibility
 is in scope, each WCAG 2.2 A and AA criterion reads pass, fail or not examined; built screens are
 compared with the approved renders; the threat model is updated after the build.
 

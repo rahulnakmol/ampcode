@@ -152,24 +152,16 @@ class Check(LedgerCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(result.stdout.strip(), "pass")
 
-    def test_l10_reviewer_on_an_implementer_model_fails(self):
-        ledger = self.ledger()
-        ledger["models"] = copy.deepcopy(MODELS)
-        ledger["models"]["implementers"].append({"model": "OpenAI/GPT-6-Astra ", "source": "T-child"})
-        self.assertFails(self.check(ledger), "L10", "openai/gpt-6-astra")
-        ledger["models"]["implementers"][-1]["model"] = "openai / gpt-6-astra"
-        self.assertFails(self.check(ledger), "L10")
-
-    def test_l10_models_need_a_source(self):
-        ledger = self.ledger()
-        ledger["models"] = {"implementers": [{"model": "anthropic/claude-opus-5-5"}],
-                            "reviewer": {"model": "openai/gpt-6-astra", "source": " "}}
-        self.assertFails(self.check(ledger), "implementers[1]", "models.reviewer")
-
-    def test_l10_missing_models_give_no_verdict(self):
-        ledger = self.ledger([])
-        ledger["models"] = {}
-        self.assertFails(self.verdict(ledger), "L10", "ledger invalid")
+    def test_models_are_a_record_not_a_gate(self):
+        # The reviewer is started on another model by construction; the ledger only records it.
+        ledger = self.ledger([PRE_EXISTING])
+        ledger["models"] = {"implementers": [{"model": "openai/gpt-6-astra", "source": "T-impl"}],
+                            "reviewer": {"model": "openai/gpt-6-astra", "source": "T-review"}}
+        self.assertEqual(self.check(ledger).returncode, 0)
+        ledger["models"] = ["openai/gpt-6-astra"]
+        result = self.verdict(ledger)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("reviewer model: not recorded; implementer models: not recorded", result.stdout)
 
     def test_w3_1_missing_field_is_named(self):
         for field in ("location", "quote", "severity", "lens"):
@@ -466,6 +458,35 @@ class FloorGuard(unittest.TestCase):
                               added=['  "e2e": "playwright test --retries 2",']), "test retry added")
         for path in ("src/http/client.ts", "docs/retries.md", "skills/x/scripts/floor_guard.py"):
             self.assertClean(diff(path, added=["const policy = { retries: 3 };"]))
+
+    def test_csharp_and_rust_lowered_bars(self):
+        self.assertFlags(diff("Shop.Tests/PriceTests.cs", removed=["        Assert.Equal(3, Price.Total(xs));"]),
+                         "assertion removed")
+        self.assertFlags(diff("tests/total.rs", removed=["    assert_eq!(total(&[1, 2]), 3);"]), "assertion removed")
+        for line in ("        total.Should().Be(3);", "        Assert.Equal<int>(3, total);", "        total.ShouldBe(3);",
+                     "        Should.Throw<ArgumentException>(() => Price.Total(null));"):
+            with self.subTest(line=line):
+                self.assertFlags(diff("Shop.UnitTests/PriceTests.cs", removed=[line]), "assertion removed")
+        for path, line in (("Shop.Tests/PriceTests.cs", '    [Fact(Skip = "flaky")]'), ("Shop.Tests/PriceTests.cs", "    [Ignore]"),
+                           ("Shop.Tests/PriceTests.cs", '        Assert.Ignore("later");'), ("src/lib.rs", '#[ignore = "slow"]'),
+                           ("Shop.Tests/PriceTests.cs", "    [Explicit]"), ("Shop.Tests/PriceTests.cs", "        Skip.If(ci);")):
+            with self.subTest(line=line):
+                self.assertFlags(diff(path, added=[line]), "skip marker added")
+        for path, line in (("Shop.Tests/PriceTests.cs", "    [Retry(3)]"), ("Shop.Tests/PriceTests.cs", "    [RetryFact(MaxRetries = 3)]"),
+                           (".config/nextest.toml", "retries = 2"), ("Shop.UnitTests/Fixtures.cs", "    [Retry(3)]"),
+                           ("Shop.Tests/PriceTests.cs", "    [RetryFact]"), ("Shop.Tests/PriceTests.cs", "    [RetryTheory(3)]")):
+            with self.subTest(line=line):
+                self.assertFlags(diff(path, added=[line]), "test retry added")
+        self.assertClean(diff("src/Http/Client.cs", added=["    [Retry(3)]"]))
+        # The codes are inside #[allow( ... )]: a widened list counts, an edit elsewhere on the line does not.
+        self.assertFlags(diff("src/lib.rs", removed=["#[allow(dead_code)] fn f(a: u8) {}"],
+                              added=["#[allow(dead_code, unused_variables)] fn unused_variables(a: u8) {}"]), "silencer")
+        self.assertClean(diff("src/lib.rs", removed=["#[allow(dead_code)] fn f(a: u8) {}"],
+                              added=["#[allow(dead_code)] fn f(a: u8, b: u8) {}"]))
+        for path, line in (("src/Price.cs", "#pragma warning disable CS8618"), ("src/lib.rs", "#![allow(dead_code)]"), ("src/lib.rs", "#[allow(dead_code)]"),
+                           ("src/Price.cs", '[SuppressMessage("Style", "IDE0060")]')):
+            with self.subTest(line=line):
+                self.assertFlags(diff(path, added=[line]), "silencer")
 
     def test_verify_json_set_to_observe_is_flagged(self):
         line = '      "mode": "observe"'

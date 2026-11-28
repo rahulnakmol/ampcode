@@ -56,7 +56,7 @@ words and expected results for each are in [Using the skills](./docs/using-skill
 | --- | --- | --- |
 | Mission core | [missioning](./skills/missioning/SKILL.md) | Charter, gate ledger, decision trail and the eight mission playbooks |
 | | [briefing-decisions](./skills/briefing-decisions/SKILL.md) | Plain-English decision brief for every human sign-off, checked by a script |
-| | [goldfishing](./skills/goldfishing/SKILL.md) | Fresh-reader review of a brief, spec, plan or design |
+| | [goldfishing](./skills/goldfishing/SKILL.md) | Fresh-reader review of a brief, spec, plan or design, on a model that wrote none of it |
 | | [grilling](./skills/grilling/SKILL.md) | Turns a vague ask into a confirmed brief, plan and handoff prompt |
 | Software delivery | [delivering](./skills/delivering/SKILL.md) | Contract mission: one kickoff approval, test-first milestones merged into `dev` |
 | | [crafting](./skills/crafting/SKILL.md) | Designs and renders the experience on any surface, for people or agents |

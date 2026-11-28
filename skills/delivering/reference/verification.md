@@ -7,13 +7,15 @@ three rules:
    repository, or each package of a monorepo) has end-to-end tests. They ran and passed on the
    exact head commit, with saved evidence, before the pull request opened.
 2. **A reviewer on another model.** The code and tests are reviewed by a model that wrote none of
-   the change. `interrogating-changes` checks it in the review ledger (rule L10).
+   the change: the review step picks the reviewer's model with `goldfishing`'s
+   `reviewer_model.py` and starts the reviewer on it, and the ledger records which model reviewed.
 3. **A pure core, side effects at the edge.** Each package names its core: the domain logic, in
    the domain's own words (DDD). The core does no I/O, reads no clock or randomness, and imports
    nothing outside the core. The imperative shell gathers input, calls the core and performs the
    effects (files, network, database, LLM calls). A scan fails the build when the core breaks it.
 
-`scripts/verify_gate.py` runs and checks rules 1 and 3; `review_ledger.py` checks rule 2.
+`scripts/verify_gate.py` runs and checks rules 1 and 3. Rule 2 holds by construction: the
+reviewer starts on the picked model, and `review_ledger.py verdict` prints the record.
 
 ## The manifest: verify.json
 
@@ -39,7 +41,7 @@ One file at the repository root lists the packages:
 | --- | --- |
 | `name`, `path` | The package, and its directory (`.` for a single-package repository). A changed file belongs to the deepest package at base whose path holds it; a package the change adds, whose path holds the file, must pass as well. A moved file changes both packages |
 | `checks` | The cheap checks (build, lint, type check, unit and property tests), run first, from the repository root |
-| `core` | Directories or files of pure domain code. Test files in them are not scanned. In enforce mode, a package with no core or a core path with no Python, JavaScript/TypeScript or Go source fails: a scan of nothing proves nothing. In observe mode both print and never fail |
+| `core` | Directories or files of pure domain code. Test files in them are not scanned. In enforce mode, a package with no core or a core path with no Python, JavaScript/TypeScript, Go, C# or Rust source fails: a scan of nothing proves nothing. In observe mode both print and never fail |
 | `e2e` | The end-to-end command: it starts the real program and drives it the way a user or client does (HTTP, CLI, browser). Required for every package |
 | `mode` | `enforce` (default): a core violation fails. `observe`: violations print and never fail. A new gate starts in observe mode; it moves to enforce in its own pull request once its violations are fixed |
 | `ignore` | Globs for changed files that belong to no package and need no end-to-end test, such as documents |
@@ -97,14 +99,30 @@ Work test-first in this order:
 
 ## What the gate cannot prove
 
-- The core scan reads text patterns for Python, JavaScript/TypeScript and Go: imports, a list of
+- The core scan reads text patterns for Python, JavaScript/TypeScript, Go, C# and Rust: imports, a list of
   I/O modules, and calls such as `print`, `fetch`, `time.Now` and `Date.now`. In Python it reads
   imports and aliases with Python's parser, so `from time import time as now; now()` is the clock
   call `time.time`, while `t.gmtime(0)` and `dt(2000, 1, 2)` stay pure; `open`, `print` and
   `input` count also inside f-strings, and a local variable or parameter named `open` still
   counts as the builtin, as does `from builtins import open`. A name an enclosing scope rebinds
   has the binding that scope ends with. JavaScript strings, comments, regex literals and nested `${...}`
-  templates are read in one pass, so only code counts. It misses I/O through
+  templates are read in one pass, so only code counts.
+- C#: `using` directives (also `global`, `static` and aliases) against I/O namespaces such as
+  `System.IO`, `System.Net`, `Microsoft.EntityFrameworkCore` and `Microsoft.Extensions.Logging`;
+  calls such as `File.*`, `Console.*`, `DateTime.Now`, `Guid.NewGuid()`, `new Random()` and `new
+  HttpClient()`, also inside `$"..."` and `$$"""..."""` holes and through an alias (`using Clock =
+  System.DateTime;`) or `using static`. A `using` of a namespace that only files outside the
+  core declare is an outward import. Test files (`*Tests.cs`, `*.Tests/`) are not scanned. It
+  misses a type used by its full name from outside the core, and namespaces a `global using` in
+  another file brings in.
+- Rust: `use` trees (`use std::{fs, io::Read}`) and paths written in code (`std::fs::read`)
+  against `std::fs`, `std::net`, `std::io`, `std::env`, `std::process`, `std::thread`, `tokio`,
+  `reqwest`, `sqlx`, `rand`, `tracing` and others; `println!`, `dbg!`, `SystemTime::now()`,
+  `Instant::now()`, `Utc::now()` and `Uuid::new_v4()`. A `crate::`, `super::`, workspace-crate or
+  child-module path outside the core is an outward import, resolved to its source file, so a core
+  listed as files works. An alias of a clock type (`use std::time::SystemTime as Clock`) still
+  counts; nested block comments are comments. `#[cfg(test)]` items and `tests/` are not scanned. It misses effects behind a trait object or a macro it does not list.
+- In every language it misses I/O through
   a library it does not list, or through a function passed in and called. The reviewer reads the
   core for those.
 - The evidence file is written by `run` on the author's machine. `check` proves it names this

@@ -9,15 +9,18 @@ It flags, per file in the diff:
            #, //, ;, /*, <!-- or --, is no assertion); also XCTAssert..., pgTAP, tSQLt, HUnit, hspec
   skip-    an added skip, ignore or focus marker (pytest.mark.skip, pytestmark, @skip(, it.skip,
            test.skipIf, test.if, describe.if, it.runIf, test.failing, test.concurrent.skip, it.only,
-           fit, fdescribe, { skip: true }, t.Skip, XCTSkip, XCTSkipIf, ...)
+           fit, fdescribe, { skip: true }, t.Skip, XCTSkip, XCTSkipIf, Rust #[ignore], xUnit
+           [Fact(Skip = ...)], NUnit [Ignore] and [Explicit], Assert.Ignore, Skip.If, ...)
   silence- an added or widened checker silencer (noqa, eslint-disable, @ts-ignore, type: ignore,
-           nosec, nolint, ...): '# noqa: F401' to '# noqa' is widened
+           nosec, nolint, C# #pragma warning disable and [SuppressMessage], Rust #[allow(...)], ...):
+           '# noqa: F401' to '# noqa' is widened
   floor-   a lowered, removed or commented-out number on a coverage, threshold, min, minimum, fail_under,
            lines, branches, functions or statements key, also as XML (JaCoCo <minimum>0.80</minimum>)
   ci-      an added continue-on-error: true or allow_failure: true, or || true in a CI file
   retry-   an added or raised retry of failing tests in a test, test or build config, CI file or verify.json
            (retries: 2, --retries 2, --retry=2, reruns = 2, jest.retryTimes(2), this.retries(2),
-           pytest.mark.flaky, @flaky): fix the flaky test's cause, or delete it with a reason
+           pytest.mark.flaky, @flaky, NUnit [Retry(3)], xRetry MaxRetries = 3, nextest retries = 2):
+           fix the flaky test's cause, or delete it with a reason
   observe- a package newly set to "mode": "observe" in verify.json (editing a package that already
            observes is not): the pure-core rule stops failing the build
   removed- a package's "name" removed from verify.json: its end-to-end and pure-core checks go
@@ -41,24 +44,28 @@ ASSERTION = re.compile(
     r"^\s*(?:await\s+|with\s+)?(?:assert\b|(?:self\.|this\.|t\.|s\.)?assert\w*!?\s*\(|expect\s*\("
     r"|pytest\.raises\s*\(|require\.\w+\s*\(|t\.(?:Error|Fatal)f?\s*\(|XCTAssert\w*\s*\(|assert[A-Z]\w*\s+[\"(\[\w]"
     r"|(?i:select)\s+(?:ok|is|isnt|matches|cmp_ok|results_eq|set_eq|bag_eq|throws_ok|lives_ok|is_empty)\s*\("
-    r"|(?i:exec(?:ute)?)\s+tSQLt\.(?:Assert|Fail)\w*)|\.should\b|`should\w*`")
+    r"|(?i:exec(?:ute)?)\s+tSQLt\.(?:Assert|Fail)\w*|(?:Assert|CollectionAssert|StringAssert|ClassicAssert)\.\w+\s*[(<])"
+    r"|\.should\b|\.Should\(\)|\.Should[A-Z]\w*\s*[(<]|\bShould\.(?:Throw|NotThrow)\w*|`should\w*`")
 SKIP = re.compile(
     r"(?:@|\bpytestmark\s*=\s*\[?\s*)?\bpytest\.mark\.(?:skip|skipif|xfail)\b|\bunittest\.skip\w*|\.skipTest\s*\("
     r"|\bpytest\.(?:skip|xfail)\s*\(|^\s*@skip(?:If|Unless)?\s*\("
     r"|\b(?:it|test|describe|context)(?:\.(?:concurrent|sequential|serial))*"
     r"\.(?:skip(?:If|Unless)?|only|todo(?:If)?|if|runIf|failing)\b"
     r"|\b(?:xit|xtest|xdescribe)\s*\(|(?<![\w.$])(?<!def )(?:fit|fdescribe)\s*\("
-    r"|\bt\.Skip\w*\s*\(|#\[ignore\]|@(?:Disabled|Ignore)\b|\bXCTSkip(?:If|Unless)?\s*\(|[{,]\s*skip\s*:\s*true\b")
+    r"|\bt\.Skip\w*\s*\(|#\[ignore\b|@(?:Disabled|Ignore)\b|\[(?:Fact|Theory|SkippableFact)\s*\([^)]*\bSkip\s*="
+    r"|\[\s*(?:Ignore|Explicit)\b|\bAssert\.Ignore\s*\(|\bSkip\.(?:If|IfNot|Unless)\s*\(|\bXCTSkip(?:If|Unless)?\s*\(|[{,]\s*skip\s*:\s*true\b")
 SILENCER = re.compile(
     r"\bnoqa\b|eslint-disable(?:-next-line|-line)?|@ts-(?:ignore|nocheck|expect-error)\b|\btype:\s*ignore\b|\bnosec\b"
-    r"|\bnolint\b|pylint:\s*disable", re.I)
+    r"|\bnolint\b|pylint:\s*disable|#pragma\s+warning\s+disable|\bSuppressMessage\b|#!?\[allow\(", re.I)
 # A test retry and its count; mark.flaky and @flaky retry without a count.
 RETRY = re.compile(
     r"(?:--retries|--retry|--reruns)(?:=|\s+)(?P<n>\d+)|\b(?:retries|retry|reruns)[\"']?\s*[:=]\s*(?P<m>\d+)"
-    r"|\b(?:retryTimes|this\.retries)\s*\(\s*(?P<k>\d+)|\bmark\.flaky\b|@flaky\b")
+    r"|\b(?:retryTimes|this\.retries)\s*\(\s*(?P<k>\d+)|\[Retry\s*\(\s*(?P<c>\d+)|\[Retry(?:Fact|Theory)\b(?:\s*\(\s*(?P<y>\d+))?|\bMaxRetries\s*=\s*(?P<x>\d+)"
+    r"|\bmark\.flaky\b|@flaky\b")
 # Retries count only in tests, test and build configuration, and CI.
 RETRY_PATHS = re.compile(
-    r"(?:^|/)(?:tests?|spec|__tests__|e2e)/|(?:^|/)test_[^/]*\.py$|_test\.(?:py|go)$|\.(?:test|spec)\.[cm]?[jt]sx?$"
+    r"(?:^|/)(?:tests?|spec|__tests__|e2e|[^/]*Tests?)/|(?:^|/)test_[^/]*\.py$|_test\.(?:py|go)$|\.(?:test|spec)\.[cm]?[jt]sx?$"
+    r"|Tests?\.cs$|(?:^|/)nextest\.toml$"
     r"|(?:^|/)(?:conftest\.py|[^/]*\.config\.[cm]?[jt]s|\.mocharc[^/]*|pytest\.ini|pyproject\.toml|setup\.cfg|tox\.ini"
     r"|package\.json|bunfig\.toml|verify\.json|Makefile|[^/]*\.mk)$")
 OBSERVE = re.compile(r"\"mode\"\s*:\s*\"observe\"")
@@ -141,6 +148,8 @@ def silencers(text):
     for match in SILENCER.finditer(text):
         family = re.sub(r"\s+", "", match.group(0)).lower()
         rest = re.split(r"\*/|#|//|--", text[match.end():], maxsplit=1)[0]
+        if family.endswith("(") or family == "suppressmessage":  # #[allow(a, b)], [SuppressMessage(...)]: inside ( )
+            rest = text[match.end():].lstrip("(").split(")", 1)[0]
         codes = set() if family.startswith("@ts-") else set(re.findall(r"[\w@/.-]+", rest))
         found.append((family, frozenset(codes)))
     return found
@@ -151,9 +160,9 @@ def retries(text):
     mark.flaky or @flaky without a count gives a count of 1."""
     found = []
     for m in RETRY.finditer(text):
-        count = m["n"] or m["m"] or m["k"]
-        setting = re.sub(r"[\s\"'=:(]", "", m.group(0)[:m.start("n" if m["n"] else "m" if m["m"] else "k") - m.start()]
-                         if count else m.group(0))
+        group = next((g for g in ("n", "m", "k", "c", "x", "y") if m[g]), None)
+        count = m[group] if group else None
+        setting = re.sub(r"[\s\"'=:(\[]", "", m.group(0)[:m.start(group) - m.start()] if group else m.group(0))
         found.append((setting, int(count or 1)))
     return found
 

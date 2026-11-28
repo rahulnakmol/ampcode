@@ -265,12 +265,13 @@ For each touchpoint, at most three rounds:
 
 Self-critique is biased toward approval, so every UX or UI deliverable then gets **the critic
 pass** in [reference/critic.md](reference/critic.md): the Critic, a principal product designer and
-design architect, reads the artifacts in a fresh subagent before the brief, judges the angle, the
+design architect, reads the artifacts in a fresh context on a Gemini 4 model picked by the UI's
+complexity (`critic.md` says how) before the brief, judges the angle, the
 joy, the need, the architecture, and the craft, and returns findings, three guidance moves, one
 bold move, and a verdict. Save it in `.design/critique/`, fix its P0 and P1 findings, and go back
 to phase 2 when the verdict is "rethink". For agent-facing surfaces, also run the agent usability
 test in `user-research.md`, with tasks that differ from your transcripts. If you cannot start a
-subagent, follow the fallback in `critic.md` and give the user the prompts. Recommend a human
+reviewer on another model, follow the fallback in `critic.md` and give the user the prompts. Recommend a human
 usability test for the moments of truth before launch.
 
 ## 9. Handoff
@@ -349,7 +350,7 @@ Rahul treats token and API cost as a design constraint. Defaults, unless the bri
   before `getResultMarkdown`.
 - Load reference files per phase and only the surface files in the brief; capture only required
   sizes and variants; inspect images with an objective instead of describing them at length.
-- Use subagents only for independent surface families and the fresh critique.
+- Use subagents only for independent surface families; the fresh critique runs on its picked model.
 - Report actual spend from `$K spend` in the final reply.
 
 ## Anti-patterns

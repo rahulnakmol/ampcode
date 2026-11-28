@@ -27,7 +27,8 @@ decision.
    (`crafting`'s `reference/quality-bar.md`).
 5. Build the experience system, with tokens derived by its rule, and a mockup or transcript for
    every state; give every interaction a time budget; run the quality pass.
-6. Run `crafting`'s critic pass; repair.
+6. Run `crafting`'s critic pass on the Gemini 4 model `goldfishing`'s `reviewer_model.py` picks
+   (`ui` for a bounded UI, `ui-complex` otherwise); repair.
 7. Run `design_kit.py check` until the handoff gate passes.
 8. When software is built, compare each built state with its mockup, and rerun the quality
    pass on the built product with every budget measured.

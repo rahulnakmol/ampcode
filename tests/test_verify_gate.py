@@ -267,6 +267,147 @@ class Core(Gate):
         self.write({"web/src/core/cart.ts": "import { S3Client } from '@aws-sdk/client-s3'\nexport const s = S3Client\n"})
         self.assertGate(["core"], 1, "web/src/core/cart.ts:1: io-import")
 
+    def test_csharp_core(self):
+        manifest = {"packages": [{"name": "shop", "path": "Shop", "core": ["Shop/Domain"], "e2e": "true"}]}
+        self.write({"verify.json": json.dumps(manifest),
+                    "Shop/Domain/Price.cs": "using System;\nusing System.Linq;\nusing Shop.Domain.Money;\n"
+                                            "namespace Shop.Domain;\n\npublic static class Price {\n"
+                                            "    // File.ReadAllText(p) and DateTime.Now in a comment\n"
+                                            "    public const string Doc = \"Console.WriteLine(x)\";\n"
+                                            "    public static decimal Total(decimal[] xs) => xs.Sum();\n}\n",
+                    "Shop/Domain/Money/Money.cs": "namespace Shop.Domain.Money;\npublic record Money(decimal Amount);\n",
+                    "Shop/Infrastructure/Db.cs": "namespace Shop.Infrastructure;\npublic class Db {}\n",
+                    "Shop/Domain/PriceTests.cs": "using System.IO;\nclass T { void A() { File.Delete(\"x\"); } }\n"})
+        self.assertGate(["core"], 0, "shop: core pass")
+        self.write({"Shop/Domain/Clock.cs": "\ufeffusing System.IO;\nusing Db = Shop.Infrastructure.Db;\nnamespace Shop.Domain;\n"
+                                            "static class Clock {\n    static object A() => DateTime.UtcNow;\n"
+                                            "    static string B(string p) => $\"{File.ReadAllText(p)} {{File.Nope}}\";\n"
+                                            "    static Guid C() => Guid.NewGuid();\n    static int D() => new Random().Next();\n"
+                                            "    static void E() => System.Console.WriteLine(1);\n}\n"})
+        out = self.assertGate(["core"], 1, "Clock.cs:1: io-import: imports System.IO",
+                              "Clock.cs:2: outward-import: imports Shop/Infrastructure/Db.cs",
+                              "Clock.cs:5: side-effect: calls DateTime.UtcNow", "Clock.cs:6: side-effect: calls File.ReadAllText",
+                              "Clock.cs:7: side-effect: calls Guid.NewGuid", "Clock.cs:8: side-effect: calls new Random",
+                              "Clock.cs:9: side-effect: calls System.Console.WriteLine")
+        self.assertNotIn("File.Nope", out)
+        self.assertNotIn("Price", out)
+
+    def core_cases(self, manifest, path, cases, extra=None):
+        """Each case: (source, the violation line, or None for a pure core)."""
+        for name, (source, line) in cases.items():
+            with self.subTest(name=name):
+                self.write({"verify.json": json.dumps(manifest), **(extra or {}), path: source})
+                if line:
+                    out = self.assertGate(["core"], 1, f"{path}:{line}: ")
+                    self.assertEqual(out.count(f"{path}:"), 1, out)
+                else:
+                    self.assertGate(["core"], 0, "core pass")
+
+    def test_csharp_effects_behind_strings_aliases_and_directives(self):
+        manifest = {"packages": [{"name": "shop", "path": "Shop", "core": ["Shop/Domain"], "e2e": "true"}]}
+        self.core_cases(manifest, "Shop/Domain/Rule.cs", {
+            "raw-interpolated": ('static class R {\n    static string A() => $$"""at {{System.DateTime.UtcNow}} {x}""";\n}\n', 2),
+            "nested-string": ('static class R {\n    static string A() => $"{string.Join(", ", new[] {"a"})} {DateTime.Now}";\n}\n', 2),
+            "literal-only": ('static class R {\n    const string A = $"DateTime.Now {{File.Read}}";\n'
+                             '    const string B = @"Console.WriteLine("")" + "x";\n}\n', None),
+            "alias": ("using Clock = System.DateTime;\nstatic class R {\n    static object A() => Clock.UtcNow;\n}\n", 3),
+            "static": ("using static System.Console;\nstatic class R {\n    static void A() => WriteLine(1);\n}\n", 3),
+            "static-pure": ("using static System.Math;\nstatic class R {\n    static int A() => Max(1, 2);\n}\n", None),
+            "global": ("global using System.Net.Http;\nstatic class R { }\n", 1),
+            "same-line": ("using System; using IO = System.IO;\nstatic class R { }\n", 1),
+            "block-namespace": ("namespace App { using IO = System.IO; static class R { } }\n", 1),
+            "escaped-brace-hole": ('static class R {\n    static string A() => $"{{{System.DateTime.UtcNow}}}";\n}\n', 2),
+            "escaped-brace-literal": ('static class R {\n    const string A = $"{{DateTime.Now}}";\n}\n', None),
+            "verbatim-quote-then-code": ('static class R {\n    const string A = @"""";\n    static object B() => DateTime.UtcNow;\n}\n', 3),
+            "aliased-constructor": ("using R2 = System.Random;\nstatic class R {\n    static int A() => new R2().Next();\n}\n", 3),
+            "static-environment": ("using static System.Environment;\nstatic class R {\n    static string A() => MachineName;\n}\n", 3),
+            "unicode-char-quote": ("static class R {\n    static readonly char[] Q = {'\\u0022','\"'}; static object A() => DateTime.UtcNow;\n}\n", 2),
+            "static-stopwatch": ("using static System.Diagnostics.Stopwatch;\nstatic class R {\n    static int X(int y) => y;\n"
+                                 "    static long T() => GetTimestamp();\n}\n", 4),
+            "domain-process-alias": ("using Approval = Shop.Domain.Process;\nstatic class R {\n    static void A() => Approval.Start();\n}\n", None),
+            "generic-io-alias": ("using Logger = Microsoft.Extensions.Logging.ILogger<string>;\nstatic class R { }\n", 1),
+            "global-qualified": ("using global::System.Net.Http;\nstatic class R { }\n", 1),
+            "verbatim-interpolated": ('static class R {\n    static string A(string p) => $@"C:\\{System.IO.File.ReadAllText(p)}";\n}\n', 2),
+            "unknown-namespace": ("using Shop.ExternalContracts;\nstatic class R { }\n", None),
+            "nested-block-namespace": ("using Shop.Infrastructure;\nstatic class R { }\n", 1),
+            "generic-outward-alias": ("using Repo = Shop.Infrastructure.Repo<int>;\nstatic class R { }\n", 1),
+            "static-outward": ("using static Shop.Infrastructure.Repo;\nstatic class R { }\n", 1),
+            "verbatim-interpolated-quotes": ('static class R {\n    static string A() => $@"a ""{System.DateTime.UtcNow}"" b";\n}\n', 2),
+            "using-statement": ("static class R {\n    static int A(D d) { using var x = d.Open(); return 1; }\n}\n", None),
+        }, {"Shop/Program.cs": "namespace Shop;\nclass Program { }\n",
+            "Shop/Infrastructure/Repo.cs": "namespace Shop {\n    namespace Infrastructure {\n        class Repo<T> { }\n    }\n}\n",
+            "Shop/Domain/UnitTests/Fixture.cs": "using System.IO;\nclass T { }\n", "Shop/bin/Debug/Gen.cs": "using System.IO;\n",
+            "Shop/Domain/obj/Gen.cs": "using System.IO;\n"})
+
+    def test_rust_effects_behind_comments_aliases_and_test_code(self):
+        manifest = {"packages": [{"name": "bank", "path": "bank", "core": ["bank/src/domain"], "e2e": "true"}]}
+        extra = {"bank/Cargo.toml": '[package]\nname = "bank"\n', "bank/src/lib.rs": "pub mod domain;\n"}
+        self.core_cases(manifest, "bank/src/domain/mod.rs", {
+            "nested-comment": ('/* outer /* inner */ std::fs::read("x"); */\npub fn f() -> i64 { 1 }\n', None),
+            "alias": ("use std::time::SystemTime as Clock;\npub fn f() { Clock::now(); }\n", 2),
+            "qualified-macro": ('pub fn f() { std::println!("x"); }\n', 1),
+            "lifetime-then-effect": ("pub fn f<'a>(x: &'a str) -> &'a str { println!(\"{}\", x); x }\n", 1),
+            "cfg-test-spaced": ('pub fn f() -> i64 { 1 }\n#[cfg( test )]\nmod tests {\n    fn t() { println!("x"); }\n}\n', None),
+            "cfg-test-helper": ('pub fn f() -> i64 { 1 }\n#[cfg(test)]\n#[allow(dead_code)]\nfn helper() { println!("x"); }\n', None),
+            "cfg-test-array-type": ('#[cfg(test)]\nfn helper(x: [u8; 1]) -> [u8; 1] { println!("x"); x }\npub fn f() -> i64 { 1 }\n', None),
+            "inline-mod-super": ("pub struct Price;\nmod inner {\n    use super::Price;\n}\n", None),
+            "inline-mod-direct-super": ("fn helper() -> i64 { 1 }\nmod inner {\n    pub fn f() -> i64 { super::helper() }\n}\n", None),
+            "raw-strings": ('pub const A: &str = r#"say "std::fs::read(x)" now"#;\npub const B: &[u8] = br#"x "println!()" y"#;\n', None),
+            "extern-crate": ("extern crate reqwest;\n", 1),
+            "glob-use": ("use std::fs::*;\n", 1),
+            "self-child": ("mod money;\nuse self::money::Money;\npub fn f() {}\n", None),
+            "production-after-test": ('#[cfg(test)]\nfn helper() {}\npub fn f() { println!("x"); }\n', 3),
+        }, {**extra, "bank/src/domain/money.rs": "pub struct Money;\n", "bank/src/domain/shell.rs": "pub fn s() {}\n",
+               "bank/target/debug/build/out.rs": "use std::fs;\n"})
+
+    def test_rust_file_listed_core_and_workspace_crates(self):
+        files = {"Cargo.toml": '[workspace]\nmembers = ["bank", "store"]\n', "bank/Cargo.toml": '[package]\nname = "bank"\n',
+                 "store/Cargo.toml": '[package]\nauthors = ["a"]\nname = "bank-store"\n', "store/src/lib.rs": "pub fn save() {}\n",
+                 "rules/Cargo.toml": '[package]\nauthors = ["a"]\nname = "rules"\n\n[lib]\npath = "lib/rules.rs"\n',
+                 "rules/lib/rules.rs": "pub mod money;\nuse crate::money::M;\npub fn r() {}\n", "rules/lib/money.rs": "pub struct M;\n",
+                 "bank/src/lib.rs": "pub mod core;\npub mod shell;\n", "bank/src/shell.rs": "pub fn s() {}\n",
+                 "bank/src/core/helper.rs": "pub fn h() {}\n"}
+        manifest = {"packages": [{"name": "bank", "path": "bank", "e2e": "true",
+                                  "core": ["bank/src/core/mod.rs", "rules/lib/rules.rs", "rules/lib/money.rs"]}]}
+        self.core_cases(manifest, "bank/src/core/mod.rs", {
+            "self-reference": ("pub struct Price;\nmod inner {\n    use crate::core::Price;\n}\n", None),
+            "workspace-inward": ("use rules::r;\npub fn f() { r() }\n", None),
+            "workspace-outward": ("use bank_store::save;\npub fn f() { save() }\n", 1),
+            "child-of-listed-file": ("mod helper;\nuse helper::h;\npub fn f() { h() }\n", 2),
+            "sibling-outward": ("use crate::shell::s;\npub fn f() { s() }\n", 1),
+            "self-child-outward": ("mod helper;\nuse self::helper::h;\npub fn f() { h() }\n", 2),
+            "inline-mod-direct-outward": ("mod inner {\n    pub fn f() { super::super::shell::s() }\n}\n", 2),
+        }, files)
+        # A crate root not named lib.rs holds its child modules in its own directory.
+        self.core_cases(manifest, "rules/lib/rules.rs", {
+            "custom-root-child-inward": ("pub mod money;\nuse self::money::M;\n", None),
+            "custom-root-child-outward": ("pub mod shell;\nuse self::shell::s;\n", 2),
+        }, {**files, "rules/lib/shell.rs": "pub fn s() {}\n", "bank/src/core/mod.rs": "pub fn f() {}\n"})
+        # Any valid TOML spelling of the package name names the same workspace crate.
+        for cargo in ["[package]\nname = 'bank-store'\n", '[package]\n  name = "bank-store"\n', '[package] # id\nname = "bank-store"\n']:
+            self.core_cases(manifest, "bank/src/core/mod.rs", {cargo: ("use bank_store::save;\npub fn f() { save() }\n", 1)},
+                            {**files, "store/Cargo.toml": cargo})
+
+    def test_rust_core(self):
+        manifest = {"packages": [{"name": "bank", "path": "bank", "core": ["bank/src/domain"], "e2e": "true"}]}
+        self.write({"verify.json": json.dumps(manifest), "bank/Cargo.toml": '[package]\nname = "bank"\n',
+                    "bank/src/lib.rs": "pub mod domain;\npub mod store;\n", "bank/src/store.rs": "pub fn save() {}\n",
+                    "bank/src/domain/mod.rs": "pub mod money;\nuse crate::domain::money::Money;\nuse std::{fmt, collections::HashMap};\n"
+                                              "// println!(\"x\") std::fs::read\n"
+                                              "pub fn total<'a>(xs: &'a [i64]) -> i64 { let _ = \"std::fs::read(\"; xs.iter().sum() }\n"
+                                              "#[cfg(test)]\nmod tests {\n    #[test]\n    fn t() { println!(\"{}\", std::env::var(\"X\").is_ok()); }\n}\n",
+                    "bank/src/domain/money.rs": "pub struct Money(pub i64);\npub const MAX: i64 = i64::MAX;\n"})
+        self.assertGate(["core"], 0, "bank: core pass")
+        self.write({"bank/src/domain/clock.rs": "use std::{fs, io::{self, Read}};\nuse crate::store::save;\nuse super::super::store;\n"
+                                                "pub fn now() -> u64 { std::time::SystemTime::now(); 0 }\n"
+                                                "pub fn read(p: &str) -> String { std::fs::read_to_string(p).unwrap() }\n"
+                                                "pub fn log() { println!(\"hi\"); }\n"})
+        out = self.assertGate(["core"], 1, "clock.rs:1: io-import: imports std::fs,", "clock.rs:1: io-import: imports std::io::Read",
+                              "clock.rs:2: outward-import: imports bank/src/store", "clock.rs:3: outward-import: imports bank/src/store",
+                              "clock.rs:4: side-effect: calls SystemTime::now", "clock.rs:5: io-import: imports std::fs::read_to_string",
+                              "clock.rs:6: side-effect: calls println!")
+        self.assertNotIn("mod.rs", out)
+
     def test_observe_mode_reports_without_failing(self):
         manifest = json.loads(json.dumps(MANIFEST))
         manifest["packages"][0]["mode"] = "observe"
@@ -274,16 +415,16 @@ class Core(Gate):
         self.assertGate(["core"], 0, "observe: app: app/core/price.py:1: io-import")
 
     def test_observe_mode_reports_an_unscannable_core_without_failing(self):
-        # A Rust package: its core has no Python, JS/TS or Go source, and a second package names no core.
-        manifest = {"packages": [{"name": "rs", "path": "rs", "core": ["rs/src/domain"], "e2e": "true", "mode": "observe"},
+        # A Java package: its core has no source the scan reads, and a second package names no core.
+        manifest = {"packages": [{"name": "jv", "path": "jv", "core": ["jv/src/domain"], "e2e": "true", "mode": "observe"},
                                  {"name": "infra", "path": "infra", "e2e": "true", "mode": "observe"}]}
-        self.write({"verify.json": json.dumps(manifest), "rs/src/domain/price.rs": "pub fn total() -> i64 { 0 }\n"})
-        self.assertGate(["core"], 0, "observe: rs: core path rs/src/domain holds no source files",
+        self.write({"verify.json": json.dumps(manifest), "jv/src/domain/Price.java": "class Price { }\n"})
+        self.assertGate(["core"], 0, "observe: jv: core path jv/src/domain holds no source files",
                         "observe: infra: no core paths")
         for package in manifest["packages"]:
             package["mode"] = "enforce"
         self.write({"verify.json": json.dumps(manifest)})
-        self.assertGate(["core"], 1, "rs: core path rs/src/domain holds no source files", "infra: no core paths")
+        self.assertGate(["core"], 1, "jv: core path jv/src/domain holds no source files", "infra: no core paths")
 
     def test_empty_core_fails(self):
         manifest = json.loads(json.dumps(MANIFEST))

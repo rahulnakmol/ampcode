@@ -9,7 +9,7 @@ core and end-to-end tests, with evidence bound to the exact commit.
 The repository's verify.json lists its packages (one for a single repository, one per package in
 a monorepo); ../reference/verification.md gives the format.
 
-core:  scans each package's core paths (Python, JavaScript/TypeScript, Go) and prints one line
+core:  scans each package's core paths (Python, JavaScript/TypeScript, Go, C#, Rust) and prints one line
        per violation: an I/O module imported, a side effect called (print, fetch, time.Now ...), or
        an import of code outside the core (dependencies point inward). Exits 1 when a package in
        "enforce" mode has a violation, names no core or has a core path with no source files;
@@ -41,13 +41,14 @@ import re
 import subprocess
 import sys
 import time
+import tomllib
 
 MANIFEST = "verify.json"
 CODE = {".py": "py", ".js": "js", ".jsx": "js", ".mjs": "js", ".cjs": "js", ".ts": "js", ".tsx": "js",
-        ".mts": "js", ".cts": "js", ".go": "go"}
-TEST_FILE = re.compile(r"(?:^|/)(?:test_[^/]*\.py|[^/]*_test\.(?:py|go)|conftest\.py|[^/]*\.(?:test|spec)\.[cm]?[jt]sx?)$"
-                       r"|(?:^|/)(?:__tests__|testdata|tests?)/")
-SKIP_DIRS = {".git", "node_modules", "vendor", "__pycache__", "dist", "build", ".venv"}
+        ".mts": "js", ".cts": "js", ".go": "go", ".cs": "cs", ".rs": "rs"}
+TEST_FILE = re.compile(r"(?:^|/)(?:test_[^/]*\.py|[^/]*_test\.(?:py|go)|conftest\.py|[^/]*\.(?:test|spec)\.[cm]?[jt]sx?"
+                       r"|[^/]*Tests?\.cs)$|(?:^|/)(?:__tests__|testdata|tests?|benches|[^/]*Tests?)/")
+SKIP_DIRS = {".git", "node_modules", "vendor", "__pycache__", "dist", "build", ".venv", "bin", "obj", "target"}
 
 IO_MODULES = {
     "py": {"os", "sys", "subprocess", "socket", "shutil", "pathlib", "io", "tempfile", "glob", "sqlite3", "http",
@@ -64,13 +65,36 @@ IO_MODULES = {
            "github.com/anthropics/anthropic-sdk-go", "github.com/jackc/pgx/v5", "gorm.io/gorm",
            "github.com/redis/go-redis/v9"},
 }
+# Environment members that read or change the process's surroundings.
+CS_ENVIRONMENT = (r"GetEnvironmentVariable\w*|SetEnvironmentVariable|Exit|CurrentDirectory|GetCommandLineArgs|TickCount\w*"
+                  r"|MachineName|UserName|ProcessId|GetFolderPath")
 IO_PREFIXES = {"js": ("@aws-sdk/", "@azure/", "@google-cloud/"), "py": (), "go": ("github.com/aws/aws-sdk-go",)}
+# C# namespaces and Rust paths that do I/O, clock or randomness: a match is the name itself or
+# anything under it (System.IO covers System.IO.Compression; std::fs covers std::fs::File).
+IO_SCOPES = {
+    "cs": ("System.IO", "System.Net", "System.Data", "System.Diagnostics.Eventing", "System.Management", "Microsoft.Win32",
+           "Microsoft.Data", "Microsoft.EntityFrameworkCore", "Microsoft.Extensions.Logging",
+           "Microsoft.Extensions.Configuration", "Microsoft.AspNetCore", "Dapper", "Npgsql", "MySql", "MySqlConnector",
+           "StackExchange.Redis", "MongoDB", "Serilog", "NLog", "Azure", "Amazon", "Google.Cloud", "RestSharp",
+           "Grpc.Net.Client", "OpenAI", "Anthropic"),
+    "rs": ("std::fs", "std::net", "std::process", "std::env", "std::io", "std::os", "std::thread", "tokio", "async_std",
+           "reqwest", "hyper", "ureq", "sqlx", "diesel", "rusqlite", "redis", "mongodb", "rand", "getrandom", "log",
+           "tracing", "env_logger", "openai", "async_openai"),
+}
 SIDE_EFFECTS = {
     "py": r"(?<![\w.])(?:open|print|input)\s*\(",
     "js": r"(?<![\w.])fetch\s*\(|\bconsole\.\w+|(?<![\w.])process\.\w+|\bDate\.now\s*\(|\bnew\s+Date\s*\(\s*\)"
           r"|\bMath\.random\s*\(|\brandomUUID\s*\(|(?<![\w.])set(?:Timeout|Interval)\s*\(|\b(?:localStorage|sessionStorage|document|window)\.\w+"
           r"|\bXMLHttpRequest\b|(?<![\w.])(?:Bun|Deno)\.\w+",
     "go": r"\btime\.(?:Now|Since|Until|Sleep|After|Tick|NewTimer|NewTicker)\s*\(|\bfmt\.(?:Print|Scan)\w*\s*\(",
+    "cs": r"(?<![\w.])(?:System\.(?:IO\.)?)?(?:Console|File|Directory)\.\w+|(?<![\w.])(?:System\.)?Environment\."
+          r"(?:" + CS_ENVIRONMENT + r")\b|\b(?:DateTime|DateTimeOffset)\.(?:Now|UtcNow|Today)\b"
+          r"|\bStopwatch\.\w+|\bGuid\.NewGuid\s*\(|\bnew\s+(?:System\.)?Random\s*\(|\bRandom\.Shared\b"
+          r"|\bRandomNumberGenerator\.\w+|\bProcess\.(?:Start|GetCurrentProcess|Kill)\b|\b(?:Thread\.Sleep|Task\.Delay)\s*\("
+          r"|\bTimeProvider\.System\b|\b(?:Debug|Trace)\.Write\w*|\bnew\s+(?:[\w.]+\.)?(?:HttpClient|WebClient|TcpClient"
+          r"|UdpClient|Socket|SqlConnection|SqliteConnection|NpgsqlConnection|FileStream|StreamReader|StreamWriter)\s*\(",
+    "rs": r"(?<![\w:])(?:(?:::)?std::)?(?:println|print|eprintln|eprint|dbg)!|\b(?:SystemTime|Instant|Utc|Local|OffsetDateTime)::now\w*\s*\("
+          r"|\bthread_rng\s*\(|\bUuid::new_v[47]\s*\(|\bOsRng\b",
 }
 # Python clock and randomness calls, by the full name a call resolves to through its imports and
 # aliases: `from time import time as now; now()` is time.time.
@@ -107,10 +131,13 @@ class Tree:
                     self.files.add(os.path.relpath(os.path.join(root, name), repo).replace(os.sep, "/"))
 
     def read(self, path):
+        """The file's text, without a leading byte-order mark (common in C# files)."""
         if self.rev:
-            return git(self.repo, "show", f"{self.rev}:{path}")
-        with open(os.path.join(self.repo, path), encoding="utf-8", errors="replace") as handle:
-            return handle.read()
+            text = git(self.repo, "show", f"{self.rev}:{path}")
+        else:
+            with open(os.path.join(self.repo, path), encoding="utf-8", errors="replace") as handle:
+                text = handle.read()
+        return text[1:] if text and text.startswith("\ufeff") else text
 
     def under(self, path):
         path = path.strip("/")
@@ -224,6 +251,8 @@ def code_only(text, lang, keep_strings=False):
     """Text with comments blanked, and string contents too unless keep_strings; line numbers kept."""
     if lang == "js":
         return js_code(text, keep_strings)
+    if lang in ("cs", "rs"):
+        return cs_rs_code(text, lang, keep_strings)
     # A Go raw string has no escapes: a backslash in it is text.
     strings = [r'"""[\s\S]*?"""', r"'''[\s\S]*?'''"] if lang == "py" else [r"`[^`]*`"]
     strings += [r'"(?:\\.|[^"\\\n])*"', r"'(?:\\.|[^'\\\n])*'"]
@@ -239,6 +268,258 @@ def code_only(text, lang, keep_strings=False):
         q = 3 if token[:3] in ('"""', "'''") else 1
         return token[:q] + blank(re.match(r"[\s\S]*", token[q:-q])) + token[-q:]
     return pattern.sub(keep, text)
+
+
+# A C# using directive where a directive can start: a line, or after ; { or }.
+# "static" is set for `using static`, "alias" is the alias, and group 3 the namespace or type.
+CS_USING = re.compile(r"(?:^|(?<=[;{}]))[ \t]*(?:global\s+)?using\s+(?:(?P<static>static)\s+)?(?:(?P<alias>\w+)\s*=\s*)?"
+                      r"(?:global::)?([A-Za-z_][\w.]*)(?:\s*<[^;]*>)?\s*;", re.M)
+# Effect types a C# alias or `using static` may hide, and the members `using static` exposes.
+# Keyed by full name, so a domain type that is also called Process is not one.
+CS_STATIC_EFFECTS = {
+    "System.DateTime": r"Now|UtcNow|Today", "System.DateTimeOffset": r"Now|UtcNow", "System.Guid": r"NewGuid",
+    "System.Console": r"Write\w*|Read\w*|Clear|Beep|Out|Error|In", "System.Threading.Thread": r"Sleep",
+    "System.Threading.Tasks.Task": r"Delay", "System.Environment": CS_ENVIRONMENT, "System.Random": r"Shared",
+    "System.IO.File": r"(?:Read|Write|Append|Delete|Exists|Copy|Move|Create|Open|Replace|Encrypt|Decrypt)\w*",
+    "System.IO.Directory": r"(?:Get|Enumerate|Delete|Exists|Create|Move|Set)\w*",
+    "System.Diagnostics.Process": r"Start|Kill|GetCurrentProcess", "System.Diagnostics.Stopwatch": r"StartNew|GetTimestamp|GetElapsedTime",
+    "System.Security.Cryptography.RandomNumberGenerator": r"GetBytes|GetInt32|GetNonZeroBytes|Fill|GetHexString|GetString|GetItems|Shuffle|Create",
+    "System.Diagnostics.Debug": r"Write\w*|Print|Assert|Fail", "System.Diagnostics.Trace": r"Write\w*|Trace\w*|Assert|Fail",
+}
+# Effect types a Rust `use ... as Alias` may hide.
+RS_EFFECT_TYPES = {"SystemTime", "Instant", "Utc", "Local", "OffsetDateTime", "Uuid", "OsRng", "thread_rng"}
+
+
+def resolve_effect_names(code, lang):
+    """Code with each alias of an effect type written as the type, and each member a C# `using
+    static` exposes written with its type, so the side-effect patterns see Clock.UtcNow as
+    DateTime.UtcNow. Newlines stay where they are, so line numbers hold."""
+    if lang == "cs":
+        for m in CS_USING.finditer(code):
+            if m[3] not in CS_STATIC_EFFECTS:
+                continue
+            last = m[3].rsplit(".", 1)[-1]
+            if m["alias"]:
+                code = re.sub(rf"(?<![\w.]){re.escape(m['alias'])}(?=\s*[.(])", last, code)  # R.X and new R()
+            elif m["static"]:
+                code = re.sub(rf"(?<![\w.])(?=(?:{CS_STATIC_EFFECTS[m[3]]})\b)", last + ".", code)
+    elif lang == "rs":
+        for m in re.finditer(r"\b(\w+)\s+as\s+(\w+)", code):
+            if m[1] in RS_EFFECT_TYPES:
+                code = re.sub(rf"(?<![\w:]){re.escape(m[2])}\b(?!\s+as\b)", m[1], code)
+    return code
+
+
+def cs_rs_code(text, lang, keep_strings):
+    """C# or Rust with comments blanked, and string text too unless keep_strings; same length as
+    text. The {...} holes of a C# interpolated string ($"...", $@"...", and $$\"\"\"...\"\"\" with as many
+    braces as dollar signs) stay code, nested strings included. Rust block comments nest, a quote
+    after a lifetime name is not a char, and #[cfg(test)] items are blanked: test code is not core."""
+    n, out = len(text), list(text)
+
+    def clear(a, b):
+        for k in range(a, min(b, n)):
+            if out[k] != "\n":
+                out[k] = " "
+
+    def string_body(a, b):
+        if not keep_strings:
+            clear(a, b)
+
+    def cs_string(i):
+        """Index after the C# string starting at i (its $ and @ prefix included)."""
+        j = i
+        while text[j] in "$@":
+            j += 1
+        prefix = text[i:j]
+        dollars = prefix.count("$")
+        quotes = 0
+        while j + quotes < n and text[j + quotes] == '"':
+            quotes += 1
+        raw = quotes >= 3 and "@" not in prefix  # @"""" is a verbatim string holding one quote
+        if not raw:
+            quotes = 1
+        j += quotes
+        start = j
+        while j < n:
+            c = text[j]
+            if raw and text.startswith('"' * quotes, j):
+                string_body(start, j)
+                return j + quotes
+            if not raw and c == '"':
+                if "@" in prefix and text.startswith('""', j):
+                    j += 2
+                    continue
+                string_body(start, j)
+                return j + 1
+            if not raw and "@" not in prefix and c == "\\":
+                j += 2
+                continue
+            if not raw and "@" not in prefix and c == "\n":
+                break
+            if dollars and c == "{":
+                need = dollars if raw else 1
+                run = len(text[j:]) - len(text[j:].lstrip("{"))
+                if raw and run >= need:
+                    string_body(start, j + run - need)
+                    j = code(j + run, True)
+                    start = j
+                    continue
+                if not raw and run % 2:  # each {{ is a literal brace; an odd one opens a hole
+                    string_body(start, j + run - 1)
+                    j = code(j + run, True)
+                    start = j
+                    continue
+                j += max(run, 1)
+                continue
+            j += 1
+        string_body(start, j)
+        return j
+
+    def rs_raw(i, j):
+        """Index after a Rust raw string whose r is at i and whose hashes start at j."""
+        hashes = len(text[j:]) - len(text[j:].lstrip("#"))
+        end = text.find('"' + "#" * hashes, j + hashes + 1)
+        end = n if end < 0 else end
+        string_body(j + hashes + 1, end)
+        return min(n, end + 1 + hashes)
+
+    def code(i, in_hole):
+        depth = 0
+        while i < n:
+            c = text[i]
+            if text.startswith("//", i):
+                j = text.find("\n", i)
+                j = n if j < 0 else j
+                clear(i, j)
+                i = j
+            elif text.startswith("/*", i):
+                j, nest = i + 2, 1
+                while j < n and nest:
+                    if lang == "rs" and text.startswith("/*", j):
+                        nest, j = nest + 1, j + 2
+                    elif text.startswith("*/", j):
+                        nest, j = nest - 1, j + 2
+                    else:
+                        j += 1
+                clear(i, j)
+                i = j
+            elif lang == "cs" and (c == '"' or (c in "$@" and re.match(r'[$@]+"', text[i:]))):
+                i = cs_string(i)
+            elif c == '"':
+                j = i + 1
+                while j < n and text[j] != '"':
+                    j += 2 if text[j] == "\\" else 1
+                string_body(i + 1, j)
+                i = j + 1
+            elif c == "'":
+                m = re.match(r"'(?:\\(?:u\{[0-9a-fA-F]+\}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|x[0-9a-fA-F]{1,4}|.)|[^'\\\n])'", text[i:])
+                if m:
+                    string_body(i + 1, i + len(m.group(0)) - 1)
+                    i += len(m.group(0))
+                else:
+                    i += 1  # a Rust lifetime such as 'a
+            elif c.isalnum() or c == "_":
+                j = i
+                while j < n and (text[j].isalnum() or text[j] == "_"):
+                    j += 1
+                word = text[i:j]
+                if lang == "rs" and word in ("r", "br") and j < n and text[j] in '#"':
+                    i = rs_raw(i, j) if re.match(r'#*"', text[j:]) else j
+                else:
+                    i = j  # b"..." and b'x' continue at the quote
+            elif in_hole and c in "{}":
+                if c == "}" and not depth:
+                    return i + 1
+                depth += 1 if c == "{" else -1
+                i += 1
+            else:
+                i += 1
+        return n
+
+    code(0, False)
+    result = "".join(out)
+    if lang == "rs":
+        attr = re.compile(r"#\[\s*cfg\s*\(\s*test\s*\)\s*\](?:\s*#\[[^\]]*\])*")
+        for m in reversed(list(attr.finditer(result))):
+            # The item ends at its first ; or {...} outside parentheses and brackets: fn f() -> [u8; 1] {...}.
+            end, nest = m.end(), 0
+            while end < n:
+                c = result[end]
+                nest += 1 if c in "([" else -1 if c in ")]" else 0
+                if not nest and c == ";":
+                    end += 1
+                    break
+                if not nest and c == "{":
+                    depth, end = 1, end + 1
+                    while end < n and depth:
+                        depth += {"{": 1, "}": -1}.get(result[end], 0)
+                        end += 1
+                    break
+                end += 1
+            result = result[:m.start()] + re.sub(r"[^\n]", " ", result[m.start():end]) + result[end:]
+    return result
+
+
+def rs_use_paths(code):
+    """[(offset, path)] for each path a Rust use or extern crate statement names (code has its
+    comments and strings blanked): use a::{b, c::d as e} names a::b and a::c::d; a glob names its
+    module."""
+    found = []
+    for m in re.finditer(r"(?:^|(?<=[;{}]))[ \t]*(?:pub(?:\([^)]*\))?\s+)?(?:use\s+([^;]+);|extern\s+crate\s+(\w+))", code, re.M):
+        if m[2]:
+            found.append((m.start(2), m[2]))
+        else:
+            spec = re.sub(r"\s+", "", re.sub(r"\s+as\s+\w+", "", m[1]))
+            found += [(m.start(1), path) for path in rs_expand(spec)]
+    return found
+
+
+def rs_inline_modules(code, at):
+    """The names of the inline modules (mod a { ... }) that enclose offset at, outermost first."""
+    names = []
+    for m in re.finditer(r"\bmod\s+(\w+)\s*\{", code[:at]):
+        depth, j = 1, m.end()
+        while j < at and depth:
+            depth += {"{": 1, "}": -1}.get(code[j], 0)
+            j += 1
+        if depth:
+            names.append(m[1])
+    return names
+
+
+def rs_from_file_module(path, inline):
+    """A self:: or super:: path written inside inline modules, as seen from the file's own module:
+    super:: inside mod inner is self::; self::x inside mod inner is self::inner::x."""
+    parts = path.split("::")
+    inline = list(inline)
+    while parts and parts[0] == "super" and inline:
+        parts[0] = "self"
+        inline.pop()
+        if parts[1:2] == ["super"]:
+            parts.pop(0)
+    if parts[0] == "self" and inline:
+        parts = ["self", *inline, *parts[1:]]
+    return "::".join(parts)
+
+
+def rs_expand(spec):
+    """The paths one use tree names, from its text without spaces or aliases."""
+    items, depth, start = [], 0, 0
+    for i, c in enumerate(spec + ","):
+        depth += {"{": 1, "}": -1}.get(c, 0)
+        if c == "," and not depth:
+            items.append(spec[start:i])
+            start = i + 1
+    out = []
+    for item in filter(None, items):
+        if "{" in item:
+            prefix, inner = item.split("{", 1)
+            for sub in rs_expand(inner[:inner.rindex("}")]):
+                out.append(prefix.rstrip(":") if sub == "self" else prefix + sub)
+        else:
+            out.append(item)
+    return [p.lstrip(":") for p in out if p.strip(":")]
 
 
 def py_imports(text):
@@ -371,11 +652,27 @@ IMPORT = {
 def imports(text, lang):
     """[(line, module)] imported by the file; relative modules keep their dots or ./ prefix.
 
-    JavaScript and Go imports are read with comments removed, and count only where their keyword
+    JavaScript, Go, C# and Rust imports are read with comments removed, and count only where their keyword
     is code, not text inside a string.
     """
     if lang == "py":
         return py_imports(text)
+    if lang == "cs":
+        code = code_only(text, "cs")
+        # An alias or `using static` names a type, so its namespace is the name without its last part:
+        # mark it with "=".
+        return [(code.count("\n", 0, m.start(3)) + 1, m[3] + ("=" if m["alias"] or m["static"] else ""))
+                for m in CS_USING.finditer(code)]
+    if lang == "rs":
+        # Use statements, then every path written in code (std::fs::read(...)), outside the uses.
+        code = code_only(text, "rs")
+        uses = rs_use_paths(code)
+        found = [(code.count("\n", 0, at) + 1, rs_from_file_module(path, rs_inline_modules(code, at))) for at, path in uses]
+        rest = re.sub(r"(?:^|(?<=[;{}]))[ \t]*(?:pub(?:\([^)]*\))?\s+)?use\s+[^;]+;", blank, code, flags=re.M)
+        found += [(rest.count("\n", 0, m.start()) + 1, rs_from_file_module(m[1].lstrip(":"), rs_inline_modules(code, m.start())))
+                  for m in re.finditer(
+            r"(?<![\w:])((?:::)?[a-z_]\w*(?:::[A-Za-z_]\w*)+)", rest)]
+        return found
     plain, masked, found = code_only(text, lang, keep_strings=True), code_only(text, lang), []
     for m in IMPORT[lang].finditer(plain):
         word = m.start() + len(m.group(0)) - len(m.group(0).lstrip())
@@ -404,17 +701,130 @@ def go_module(tree, path):
     return None, None
 
 
+def cs_namespaces(tree):
+    """{namespace: [files that declare it]} for the C# files of the tree, read once."""
+    if getattr(tree, "_cs_namespaces", None) is None:
+        tree._cs_namespaces = {}
+        for f in sorted(tree.files):
+            if f.endswith(".cs") and not any(part in SKIP_DIRS for part in f.split("/")):
+                code, depth, stack = code_only(tree.read(f) or "", "cs"), 0, []
+                for m in re.finditer(r"\bnamespace\s+([\w.]+)\s*([{;])|[{}]", code):
+                    if m[1]:  # namespace A { namespace B { ... } } declares A.B
+                        name = ".".join([n for n, _ in stack] + [m[1]])
+                        tree._cs_namespaces.setdefault(name, []).append(f)
+                        if m[2] == "{":
+                            stack.append((m[1], depth))
+                            depth += 1
+                        else:
+                            stack.append((m[1], -1))  # file-scoped: holds to the end
+                    elif m[0] == "{":
+                        depth += 1
+                    else:
+                        depth -= 1
+                        while stack and stack[-1][1] == depth:
+                            stack.pop()
+    return tree._cs_namespaces
+
+
+def rs_crates(tree):
+    """{crate name with - as _: (source directory, root file)} from every Cargo.toml [package]."""
+    if getattr(tree, "_rs_crates", None) is None:
+        tree._rs_crates = {}
+        for f in sorted(tree.files):
+            if f.rsplit("/", 1)[-1] == "Cargo.toml":
+                name, *root = rs_manifest(tree, f)
+                if name:
+                    tree._rs_crates[name.replace("-", "_")] = tuple(root)
+    return tree._rs_crates
+
+
+def rs_manifest(tree, cargo):
+    """(package name or None, source directory, root file) of one Cargo.toml: [lib] path and its
+    directory when set, else src/ and src/lib.rs."""
+    try:
+        manifest = tomllib.loads(tree.read(cargo) or "")
+    except tomllib.TOMLDecodeError:
+        manifest = {}
+    name, lib = manifest.get("package", {}).get("name"), manifest.get("lib", {}).get("path")
+    top = lambda p: "" if posixpath.normpath(p) == "." else posixpath.normpath(p)
+    file = top(posixpath.join(posixpath.dirname(cargo), lib or "src/lib.rs"))
+    return name, top(posixpath.dirname(file) or "."), file
+
+
+def rs_module_dir(tree, file):
+    """The directory that holds a Rust file's child modules: src/a/b.rs has src/a/b; mod.rs,
+    lib.rs, main.rs and a crate root such as [lib] path = "lib/engine.rs" have their own directory."""
+    head, name = posixpath.split(file)
+    roots = {root for _, root in rs_crates(tree).values()}
+    return head if name in ("mod.rs", "lib.rs", "main.rs") or file in roots else posixpath.join(head, name[:-3])
+
+
+def rs_target(tree, file, path):
+    """The repository path a Rust path names (crate::, super::, self::, a workspace crate, or a child
+    module of this file's module), or None for the standard library or an outside crate."""
+    parts, root_file = path.split("::"), None
+    if parts[0] == "crate":
+        # The crate root is the nearest directory holding lib.rs or main.rs (crates/core/main.rs for
+        # a [[bin]] path), searched up to the Cargo.toml; else the Cargo.toml's src/.
+        here, root = file, None
+        while here:
+            here = posixpath.dirname(here)
+            if any(posixpath.join(here, r).lstrip("/") in tree.files for r in ("lib.rs", "main.rs")):
+                root = here
+                break
+            if posixpath.join(here, "Cargo.toml").lstrip("/") in tree.files:
+                _, root, root_file = rs_manifest(tree, posixpath.join(here, "Cargo.toml").lstrip("/"))
+                break
+        base, parts = root, parts[1:]
+    elif parts[0] in ("self", "super"):
+        base = rs_module_dir(tree, file)
+        while parts and parts[0] in ("self", "super"):
+            base = posixpath.dirname(base) if parts.pop(0) == "super" else base
+    elif parts[0] in rs_crates(tree):
+        (base, root_file), parts = rs_crates(tree)[parts[0]], parts[1:]
+    else:
+        child = posixpath.join(rs_module_dir(tree, file), parts[0])
+        if f"{child}.rs" not in tree.files and not tree.is_dir(child):
+            return None
+        base = rs_module_dir(tree, file)
+    if base is None:
+        return None
+    for k in range(len(parts), -1, -1):
+        target = posixpath.join(base, *parts[:k])
+        if not k and root_file in tree.files:
+            return root_file  # the crate root itself, such as [lib] path = "lib/rules.rs"
+        if f"{target}.rs" in tree.files:
+            return f"{target}.rs"
+        for root in ("mod.rs", "lib.rs", "main.rs"):
+            if posixpath.join(target, root) in tree.files:
+                return posixpath.join(target, root)
+        if tree.is_dir(target):
+            return target
+    return base
+
+
 def py_exists(tree, target):
     return f"{target}.py" in tree.files or tree.is_dir(target)
 
 
-def local_target(tree, file, lang, module, package_path=""):
+def local_target(tree, file, lang, module, package_path="", core=()):
     """The repository path an import names, or None for a library or the standard library.
 
     A Python import resolves from the importing file (relative), or from the package's own
     directory, its src/, the repository root or src/; `from a import b` names a/b when that
     exists, else a."""
     here = posixpath.dirname(file)
+    if lang == "rs":
+        return rs_target(tree, file, module)
+    if lang == "cs":
+        # A namespace declared in the repository (for `using X = A.B.C;`, A.B.C or A.B): outward when
+        # only files outside the core declare it. Returns one of those files.
+        name = module.rstrip("=")
+        for candidate in [name] + ([name.rsplit(".", 1)[0]] if module.endswith("=") and "." in name else []):
+            files = cs_namespaces(tree).get(candidate)
+            if files:
+                return None if any(inside(f, core) for f in files) else files[0]
+        return None
     if lang == "js":
         if not module.startswith("."):
             return None
@@ -446,7 +856,7 @@ def local_target(tree, file, lang, module, package_path=""):
 
 
 def bare(path):
-    return re.sub(r"\.(?:py|go|[cm]?[jt]sx?)$", "", path)
+    return re.sub(r"\.(?:py|go|cs|rs|[cm]?[jt]sx?)$", "", path)
 
 
 def inside(path, roots):
@@ -460,12 +870,17 @@ def scan_file(tree, file, core, package_path=""):
     stripped = code_only(text, lang)
     out = []
     for line, module in imports(text, lang):
-        name = module[5:] if lang == "js" and module.startswith("node:") else module
+        name = module[5:] if lang == "js" and module.startswith("node:") else module.rstrip("=")
         top = name.split(".")[0] if lang == "py" else name.split("/")[0] if lang == "js" else name
-        if name in IO_MODULES[lang] or top in IO_MODULES[lang] or name.startswith(IO_PREFIXES[lang]):
-            out.append((file, line, "io-import", f"imports {module}, an I/O module; move the call to the shell"))
+        if lang in IO_SCOPES:
+            sep = "." if lang == "cs" else "::"
+            io = any(name == p or name.startswith(p + sep) for p in IO_SCOPES[lang])
+        else:
+            io = name in IO_MODULES[lang] or top in IO_MODULES[lang] or name.startswith(IO_PREFIXES[lang])
+        if io:
+            out.append((file, line, "io-import", f"imports {module.rstrip('=')}, an I/O module; move the call to the shell"))
             continue
-        target = local_target(tree, file, lang, module, package_path)
+        target = local_target(tree, file, lang, module, package_path, core)
         if target and not NON_CODE.search(target) and not inside(target, core):
             out.append((file, line, "outward-import",
                         f"imports {target}, outside the core; dependencies point inward, so pass its result in"))
@@ -474,8 +889,9 @@ def scan_file(tree, file, core, package_path=""):
         effects = [(stripped.count("\n", 0, m.start()) + 1, f"calls {m.group(0).strip()}; side effects belong in the shell")
                    for m in re.finditer(SIDE_EFFECTS[lang] + "|" + PY_CLOCK_TEXT, stripped)]
     elif lang != "py":
-        effects = [(stripped.count("\n", 0, m.start()) + 1, f"calls {m.group(0).strip()}; side effects belong in the shell")
-                   for m in re.finditer(SIDE_EFFECTS[lang], stripped)]
+        seen = resolve_effect_names(stripped, lang) if lang in ("cs", "rs") else stripped
+        effects = [(seen.count("\n", 0, m.start()) + 1, f"calls {m.group(0).strip()}; side effects belong in the shell")
+                   for m in re.finditer(SIDE_EFFECTS[lang], seen)]
     out += [(file, line, "side-effect", what) for line, what in effects]
     return out
 
