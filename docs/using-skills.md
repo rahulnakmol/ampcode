@@ -281,7 +281,7 @@ retell each speaker. Missing or unchecked evidence is visibly incomplete.
 or “fully automatic” transcription promises. No transcription provider adapter is
 selected; normalized transcripts and required audio checks must be supplied/performed.
 PDF needs a supported local browser; live Azure archival remains separately authorized
-and unqualified. See [current capability limits](../README.md#distill).
+and unqualified. See [current capability limits](../skills/distill/SKILL.md#what-works-today-and-what-does-not).
 
 **Next:** review the argument and evidence before publication or archival.
 [Skill instructions](../skills/distill/SKILL.md).
