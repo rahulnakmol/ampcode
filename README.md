@@ -133,7 +133,7 @@ compatibility.
 
 | Area | Status |
 | --- | --- |
-| Evidence, rendering, packaging, sign-off, archive/cleanup logic | Implemented; unit-tested offline with fake media tools, browser, and Blob transport; end-to-end evaluation with real ffmpeg and Chrome Canary in [`docs/distilling-videos-evaluation.md`](./docs/distilling-videos-evaluation.md) |
+| Evidence, rendering, packaging, sign-off, archive/cleanup logic | Implemented; unit-tested offline with fake media tools, browser, and Blob transport; end-to-end evaluation with real ffmpeg and Chrome Canary in [`evals/distill/results.md`](./evals/distill/results.md) |
 | Transcription | No provider adapter and no provider selected: Amp must supply a normalized transcript (manual, captions, agent, or a provider the user runs). Captions and agent transcripts need recorded audio checks covering every transcript segment before sign-off releases media; partial spot checks are recorded but block sign-off. Neither is a measured accuracy rate. Not unattended end to end |
 | Provider choice and accuracy | Shortlist and benchmark protocol only; paid benchmark not run, no provider recommended, no transcription/caption/translation accuracy measured |
 | Live YouTube download (macOS) | Tested once on one public video: first download HTTP 403 (yt-dlp warned no JavaScript runtime), then succeeded with node; four later runs succeeded. Intermittent. `download --js-runtime` now selects the runtime explicitly |
@@ -146,14 +146,14 @@ Recommended invocation: Medium mode with Fast where supported (a user preference
 
 ## Grilling
 
-[`skills/grilling/`](./skills/grilling/SKILL.md) interviews you at the start of a task to turn a vague or partly detailed requirement, plan, or question into a confirmed, agent-ready brief. It sizes the request first (clear requests proceed without questions), looks up facts instead of asking, asks one to three high-impact questions per round with a recommended answer for each, runs an edge-case and pre-mortem pass using [`reference/edge-cases.md`](./skills/grilling/reference/edge-cases.md), and keeps grilling until a concreteness checklist passes. It ends with a confirmed brief covering the final shape, scope, requirements, edge cases, and verification, plus a step-by-step work plan and a ready-to-paste prompt for the agent that picks it up. It is model-invoked: it triggers at the start of most planning, design, build, or decision tasks and on phrases such as "grill me", "red-team this", "pre-mortem", "what could go wrong", "spec this out", or "write a PRD", and skips clear, small requests. Sources and design choices are in [`docs/grilling-research.md`](./docs/grilling-research.md). LLM-judged trigger and behavior evaluations live in [`evals/grilling/`](./evals/grilling/README.md), with results in [`docs/grilling-evaluation.md`](./docs/grilling-evaluation.md).
+[`skills/grilling/`](./skills/grilling/SKILL.md) interviews you at the start of a task to turn a vague or partly detailed requirement, plan, or question into a confirmed, agent-ready brief. It sizes the request first (clear requests proceed without questions), looks up facts instead of asking, asks one to three high-impact questions per round with a recommended answer for each, runs an edge-case and pre-mortem pass using [`reference/edge-cases.md`](./skills/grilling/reference/edge-cases.md), and keeps grilling until a concreteness checklist passes. It ends with a confirmed brief covering the final shape, scope, requirements, edge cases, and verification, plus a step-by-step work plan and a ready-to-paste prompt for the agent that picks it up. It is model-invoked: it triggers at the start of most planning, design, build, or decision tasks and on phrases such as "grill me", "red-team this", "pre-mortem", "what could go wrong", "spec this out", or "write a PRD", and skips clear, small requests. Sources and design choices are in [`docs/research/grilling.md`](./docs/research/grilling.md). LLM-judged trigger and behavior evaluations live in [`evals/grilling/`](./evals/grilling/README.md), with results in [`evals/grilling/results.md`](./evals/grilling/results.md).
 
 For consequential handoffs, the Elephant-Goldfish adaptation separates the problem from the
 grading criteria and tests the brief with a fresh, read-only reader through
 [`goldfishing`](./skills/goldfishing/SKILL.md). Missing context is repaired
 in the brief, not explained privately to the reviewer. Clear small edits skip this overhead.
 See the [paired scenario evaluation](./evals/goldfishing/README.md) and
-[source rationale](./docs/delivering-research.md#elephant-goldfish-adaptation).
+[source rationale](./docs/research/delivering.md#elephant-goldfish-adaptation).
 
 ## Crafting
 
@@ -165,7 +165,7 @@ Research climbs a cost ladder: local `.design/` cache and Figma, then Mobbin and
 
 Requires the Mobbin, Parallel Search, Firecrawl, and Figma MCP servers, plus the Parallel Task MCP (`https://task-mcp.parallel.ai/mcp`, OAuth) for deep research; without it the skill falls back to Parallel Search. Trigger it with requests to craft, design, mock up, prototype, polish, critique, audit, research, or animate any experience, or to find UX inspiration.
 
-LLM-judged routing and behavior evaluations live in [`evals/crafting/`](./evals/crafting/README.md), with results and consolidated judge feedback in [`docs/crafting-evaluation.md`](./docs/crafting-evaluation.md).
+LLM-judged routing and behavior evaluations live in [`evals/crafting/`](./evals/crafting/README.md), with results and consolidated judge feedback in [`evals/crafting/results.md`](./evals/crafting/results.md).
 
 ## Delivering
 
@@ -238,7 +238,7 @@ each changed package's end-to-end tests pass locally on the exact head and its p
 `verify_gate.py core`. Both milestone gates review with `interrogating-changes` on a model that
 implemented none of the change (gate 2 also runs its lowered-bar check), a mission picks the ship or
 stop variant for its PRs, and [hosts-pr-watch](./skills/delivering/reference/hosts-pr-watch.md)
-waits on PRs where Amp's GitHub events are not available. [Research](./docs/delivering-research.md)
+waits on PRs where Amp's GitHub events are not available. [Research](./docs/research/delivering.md)
 records the earlier design rationale; [evaluations](./evals/delivering/README.md), including the
 stop-replay eval, distinguish simulated decisions from live execution. Install `grilling`
 alongside it. Source integration does not publish skills to Amp Personal Skills or the plugin to
@@ -365,7 +365,7 @@ plugin. Once delivery starts, [`steering`](./skills/steering/SKILL.md) runs the 
 flow metrics and a seeded forecast, a risks, issues and decisions log, and a five-line status. See the [guide](./docs/mission-driven-planning.md) for prompts, entry points, and limits.
 Five simulated end-to-end missions, judged by stakeholder and product-lens judges, live in
 [`evals/planning/`](./evals/planning/README.md), with results in
-[`docs/planning-evaluation.md`](./docs/planning-evaluation.md).
+[`evals/planning/results.md`](./evals/planning/results.md).
 
 ## Using modes without changing the Dial
 

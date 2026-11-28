@@ -1,7 +1,7 @@
 # crafting evaluation
 
 LLM-judged evaluation of [`skills/crafting/`](../../skills/crafting/SKILL.md). Results and
-interpretation: [`docs/crafting-evaluation.md`](../../docs/crafting-evaluation.md).
+interpretation: [`results.md`](results.md).
 
 `make check` validates structure only. These evaluations make model and research calls, so they
 are run on demand, not in CI.
@@ -36,4 +36,4 @@ Every case has a `split` (`train`, `val`, `test`) so the data can drive an optim
    scenarios and the trigger set.
 
 Keep transcripts, artifacts, and judgments under the ignored `.amp/in/eval/` directory; record
-summaries in `docs/crafting-evaluation.md`.
+summaries in `results.md`.

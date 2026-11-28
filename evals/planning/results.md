@@ -3,7 +3,7 @@
 Five simulated missions tested the planning skills end to end, from raw inputs to a groomed
 backlog. Each mission was judged by its own internal and external stakeholder and by a panel of
 five product and program-management lenses (Amazon, Apple, Google, Stripe, Linear). Method and
-files: [`evals/planning/`](../evals/planning/README.md).
+files: [`evals/planning/`](README.md).
 
 ## The missions
 

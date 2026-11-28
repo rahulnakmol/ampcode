@@ -248,6 +248,6 @@ Missing modules are skipped. A module without `register` raises `RuntimeError`. 
 - The runtime does not call transcription, translation, or OCR providers. Transcripts arrive through `import-transcript`.
 - Frame sampling is bounded. It is not semantic or exhaustive.
 - Scene detection depends on ffmpeg heuristics, and it is exercised only with a fake ffmpeg in tests.
-- This repository's unit tests use fake `yt-dlp` and `ffmpeg` executables. Real runs were exercised once on macOS in `docs/distilling-videos-evaluation.md` (intermittent HTTP 403, then success); orbs and Linux are untested.
+- This repository's unit tests use fake `yt-dlp` and `ffmpeg` executables. Real runs were exercised once on macOS in `evals/distill/results.md` (intermittent HTTP 403, then success); orbs and Linux are untested.
 - `download` runs yt-dlp with `--ignore-config`, never `--remote-components`, and only the runtime chosen with `--js-runtime` (deno, node, or quickjs). Without remote components, the challenge solver scripts must come from the `yt-dlp-ejs` package: a PyPI yt-dlp ships without them, and the `default` extra (`pip install "yt-dlp[default]"`, which `bootstrap.sh` uses) supplies them. Official standalone yt-dlp binaries bundle them; third-party packages may not. Every yt-dlp and ffmpeg call in `download` is bounded by `--timeout`; on timeout the tool's process group is killed.
 - The runtime needs `fcntl`, so it supports POSIX systems such as macOS, Linux, and orbs.
