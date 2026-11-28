@@ -1,6 +1,6 @@
 """Contract tests for distilling-videos quality sign-off, archival, verification, and cleanup.
 
-Run: python3 -m unittest discover -s tests -p 'test_distilling_archive.py' -v
+Run: python3 -m unittest discover -s tests -p 'test_distill_archive.py' -v
 Evidence is built through the real CLI with fake media tools and a fake browser. Azure Blob is
 replaced by an in-process fake transport injected into command handlers, so no network, Azure
 writes, or credentials are used.
@@ -33,7 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import distill  # noqa: E402
 import evidence  # noqa: E402
-from test_distilling_publication import DEPTH  # noqa: E402  realistic prose above the narrative floor
+from test_distill_publication import DEPTH  # noqa: E402  realistic prose above the narrative floor
 
 CONTAINER = "https://acct.blob.core.windows.net/distilled"
 SIGNATURE = "TopSecretSignatureValue0123456789abcdef%3D"

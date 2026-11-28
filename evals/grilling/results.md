@@ -1,7 +1,7 @@
 # grilling evaluation results
 
-Run on 2026-10-23 against [`skills/grilling/`](../skills/grilling/SKILL.md) with the data and method
-in [`evals/grilling/`](../evals/grilling/README.md). Every role (router, agent under test,
+Run on 2026-10-23 against [`skills/grilling/`](../../skills/grilling/SKILL.md) with the data and method
+in [`evals/grilling/`](README.md). Every role (router, agent under test,
 simulated user, judge) was an Amp subagent. Judges never saw the skill file. These are LLM
 judgments on a small set, not statistically strong measurements: treat differences under about
 0.1 as noise.

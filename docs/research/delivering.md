@@ -3,8 +3,8 @@
 The user approved an instruction-only skill named `delivering`: reuse grilling for expectations,
 then execute outcome-driven TDD, working commits, real journeys, review, repair/revalidation,
 second review, customer value, and authorized dev integration. This page records that original
-rationale; the current workflow is the contract mission in [`delivering`](../skills/delivering/SKILL.md)
-and the [`mission-control`](mission-control.md) plugin.
+rationale; the current workflow is the contract mission in [`delivering`](../../skills/delivering/SKILL.md)
+and the [`mission-control`](../mission-control.md) plugin.
 
 ## Sources examined
 
@@ -132,5 +132,5 @@ next decision, never fabricated acceptance. Missing reviewers are also a blocker
 
 Qualification: four frozen paired tabletop scenarios with eight fresh contexts, old-package
 snapshots, prompt-only subject inputs, source fixtures where applicable and an anonymized judge.
-See [the evaluation record](../evals/egm/README.md). These assess decisions and handoff proposals,
+See [the evaluation record](../../evals/goldfishing/README.md). These assess decisions and handoff proposals,
 not automatic reviewer dispatch, real payment/storage safety, production delivery or trigger rates.

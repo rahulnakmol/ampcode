@@ -38,9 +38,10 @@ not the author's reasoning or a desired conclusion.
 
 ## Milestone gates
 
-Give each gate reviewer the milestone's criteria and exit criteria, the closed case list, the base
-and head, the actual diff, and the test, CI and journey evidence. The reviewer runs the
-verification gate ([verification.md](verification.md)) again itself and records a failure as a
+Give each gate reviewer the mission ID (only the ID, so a mission-run agent mode treats the review
+as a work item; the mission file holds the author's claims), the milestone's criteria and exit
+criteria, the closed case list, the base and head, the actual diff, and the test, CI and journey
+evidence. The reviewer runs the verification gate ([verification.md](verification.md)) again itself and records a failure as a
 finding under the tests lens; I/O in the core that the scan cannot see is a correctness finding. Push the head first; a branch name
 alone does not transfer unpushed work. Do not tell the reviewer which conclusion to reach.
 
@@ -142,6 +143,8 @@ record, never in the contract, so the approval stands.
 
 An M or L item goes to a child thread; an XS or S item goes to a subagent. Every brief carries:
 
+- the mission ID and the mission file's path, so a mission-run agent mode treats the brief as a
+  work item of this mission and starts no kickoff of its own;
 - the item's contract slice: outcome, in and out of scope, definition of done, automated and human
   tests, trace, the cases it touches, and the defense;
 - the repository, the milestone branch on `origin`, the item branch name, and the files it may edit;

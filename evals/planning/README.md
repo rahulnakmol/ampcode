@@ -3,7 +3,7 @@
 LLM-judged, end-to-end evaluation of the planning mission:
 [`planning`](../../skills/planning/SKILL.md), `synthesizing`, `specifying`, `grooming`, and
 `syncing` working together, from raw inputs to a groomed backlog. Results and the fixes they
-led to: [`docs/planning-evaluation.md`](../../docs/planning-evaluation.md).
+led to: [`results.md`](results.md).
 
 `make check` runs the unit tests for the scripts. This evaluation makes model calls, so it runs
 on demand, not in CI.
@@ -14,7 +14,7 @@ on demand, not in CI.
 | --- | --- |
 | `scenarios.json` | 5 missions (product, operations, marketing, grooming against an existing backlog, and a frontier AI change). Each has the owner's opening message, a hidden owner persona, an internal and an external stakeholder judge, and checks of its own. It also holds the panel of five frontier-company lenses |
 | `fixtures/<id>/inputs/` | The raw inputs each mission starts from: transcripts, minutes, emails, chats, drafts, and data. `s4` also has the `backlog.json` it grooms |
-| `rubric.md` | Hard checks H1–H8, seven scores from 1 to 5 with a defined 4, the judge output, and the pass bar. Open items a plan names, with who decides and by when, are not gaps; the verdict follows approvability. This is the rubric adopted after the calibration in `docs/planning-evaluation.md` |
+| `rubric.md` | Hard checks H1–H8, seven scores from 1 to 5 with a defined 4, the judge output, and the pass bar. Open items a plan names, with who decides and by when, are not gaps; the verdict follows approvability. This is the rubric adopted after the calibration in `results.md` |
 | `readability.py` | Reading ease (Flesch) and words per sentence for the prose people read |
 
 ## Method
@@ -44,4 +44,4 @@ on demand, not in CI.
    new revision and rerun. Budget one rerun round unless the user asks for more.
 
 Keep transcripts, deliverables, and judgments out of git (under `/tmp` or `.amp/in/eval/`);
-record summaries in `docs/planning-evaluation.md`.
+record summaries in `results.md`.

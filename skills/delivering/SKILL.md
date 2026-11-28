@@ -104,9 +104,11 @@ repository's isolation policy; preserve existing work and never reset or clean i
 
 - **Executor:** M and L items go to a child thread; XS and S items go to a subagent. The steering
   thread stays the one integration owner.
-- **The brief is the item's contract slice:** its outcome, in and out of scope, definition of done,
-  automated and human tests, trace, the cases it touches, the defense, the milestone branch on `origin`, the five
-  stop reasons, and the reply route (the steering thread's ID, for `send_thread_message`).
+- **The brief is the item's contract slice:** the mission ID and mission file (so an agent mode
+  treats it as a work item, not a new mission), its outcome, in and out of scope, definition of
+  done, automated and human tests, trace, the cases it touches, the defense, the milestone branch
+  on `origin`, the five stop reasons, and the reply route (the steering thread's ID, for
+  `send_thread_message`).
 - **The child** works test-first with the build loop below, passes the verification gate
   (`verify_gate.py check`) on its head, pushes its item branch, and reports: a teach-back
   (outcome, approach, constraints, key risks, first check), branch and head, each done line with

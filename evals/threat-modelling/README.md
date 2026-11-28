@@ -11,7 +11,7 @@ shell" rule.
 - The agent is a fresh subagent. It may read only `skills/threat-modelling/` and the scenario's
   fixture, and write only its working folder.
 - **S1** has a shell. **S2** has no shell: the agent may read files but may not run any command,
-  as in a read-only advisory mode.
+  as in a read-only caller.
 - After the run, the operator runs `python3 skills/threat-modelling/scripts/threat_check.py check`
   and then `render` on each model file (in S2, after saving the returned JSON), and gives the
   output, the fixture and the agent's files to a separate fresh judge. The judge does not see

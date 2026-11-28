@@ -10,7 +10,7 @@ tests the "Without a shell" rule.
 - The agent is a fresh subagent. It may read only `skills/architecting/` and the scenario's
   fixture, and write only its working folder.
 - **S1** has a shell. **S2** has no shell: the agent may read files but may not run any command,
-  as in the read-only Archi mode.
+  as for a read-only caller.
 - `threat-modelling` is not installed for either run, so the manual fallback applies.
 - After the run, the operator runs `python3 skills/architecting/scripts/design_check.py` on each
   design file and gives the output, the fixture and the agent's files to a separate fresh judge.

@@ -414,6 +414,18 @@ class Core(Gate):
         self.write({"verify.json": json.dumps(manifest), "app/core/price.py": "import socket\n"})
         self.assertGate(["core"], 0, "observe: app: app/core/price.py:1: io-import")
 
+    def test_observe_mode_reports_an_unscannable_core_without_failing(self):
+        # A Java package: its core has no source the scan reads, and a second package names no core.
+        manifest = {"packages": [{"name": "jv", "path": "jv", "core": ["jv/src/domain"], "e2e": "true", "mode": "observe"},
+                                 {"name": "infra", "path": "infra", "e2e": "true", "mode": "observe"}]}
+        self.write({"verify.json": json.dumps(manifest), "jv/src/domain/Price.java": "class Price { }\n"})
+        self.assertGate(["core"], 0, "observe: jv: core path jv/src/domain holds no source files",
+                        "observe: infra: no core paths")
+        for package in manifest["packages"]:
+            package["mode"] = "enforce"
+        self.write({"verify.json": json.dumps(manifest)})
+        self.assertGate(["core"], 1, "jv: core path jv/src/domain holds no source files", "infra: no core paths")
+
     def test_empty_core_fails(self):
         manifest = json.loads(json.dumps(MANIFEST))
         manifest["packages"][1]["core"] = ["web/src/missing"]

@@ -1,7 +1,7 @@
 # grilling evaluation
 
 LLM-judged evaluation of [`skills/grilling/`](../../skills/grilling/SKILL.md). Results and
-interpretation: [`docs/grilling-evaluation.md`](../../docs/grilling-evaluation.md).
+interpretation: [`results.md`](results.md).
 
 `make check` validates structure only. These evaluations make model calls, so they are run on
 demand, not in CI.
@@ -34,7 +34,7 @@ Every case has a `split` (`train`, `val`, `test`) so the same data can drive a S
    set.
 
 Keep transcripts and judgments under the ignored `.amp/in/eval/` directory; record summaries in
-`docs/grilling-evaluation.md`.
+`results.md`.
 
 ## Using with SkillOpt
 

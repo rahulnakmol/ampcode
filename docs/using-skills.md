@@ -42,9 +42,9 @@ the skill explicitly when you want it, and ask Amp which skill it is using if un
 
 The planning skills are covered in [Mission-driven planning](mission-driven-planning.md);
 the six enterprise consulting skills are covered in [Start a Blueprinting engagement](blueprinting.md).
-Source availability and publication to your own Amp account are separate. Archi, Darci and Opsci are
-[advisory modes/tools](advisory-team.md); Swift, Weave and Prime are execution modes,
-not skills. Selecting a mode does not select a workflow or start a mission.
+Source availability and publication to your own Amp account are separate. Swift, Weave and Prime
+are execution modes, not skills; each runs its work as a mission through `missioning`. The Archi,
+Darci and Opsci advisory modes were retired: use `architecting` and `investigating-incidents`.
 
 ## Grilling: make the ask executable
 
@@ -281,7 +281,7 @@ retell each speaker. Missing or unchecked evidence is visibly incomplete.
 or “fully automatic” transcription promises. No transcription provider adapter is
 selected; normalized transcripts and required audio checks must be supplied/performed.
 PDF needs a supported local browser; live Azure archival remains separately authorized
-and unqualified. See [current capability limits](../README.md#distill).
+and unqualified. See [current capability limits](../skills/distill/SKILL.md#what-works-today-and-what-does-not).
 
 **Next:** review the argument and evidence before publication or archival.
 [Skill instructions](../skills/distill/SKILL.md).
@@ -341,8 +341,8 @@ preview/confirmation boundary, domain choices, resume prompt and current limits.
 ## Engineering, security and operations
 
 - **architecting:** "Use architecting to design the webhook delivery service in `services/hooks`:
-  contracts, ADRs and NFRs with numbers." It runs `scripts/design_check.py` on the design. In the
-  read-only Archi or Darci mode it gives you the command and marks the check "not run".
+  contracts, ADRs and NFRs with numbers." It runs `scripts/design_check.py` on the design. Without
+  a shell it gives you the command and marks the check "not run".
 - **interrogating-changes:** "Use interrogating-changes on `origin/dev...HEAD` (from the merge-base), with
   the acceptance criteria in `docs/brief.md`." A fresh reviewer gets the diff and the criteria,
   never the author's claims. `scripts/review_ledger.py verdict` ties the verdict to the patch, and
@@ -370,7 +370,7 @@ preview/confirmation boundary, domain choices, resume prompt and current limits.
   `check --release` fails while any alert has no firing evidence from outside production.
 - **investigating-incidents:** "Use investigating-incidents: checkout errors rose after this
   morning's release." It works read-only from the evidence you give it; `scripts/pir_check.py
-  check` validates the review and `bugs` files its actions in a `grooming` backlog. Opsci uses it.
+  check` validates the review and `bugs` files its actions in a `grooming` backlog.
 - **steering:** "Use steering for this week's review of the close initiative." `scripts/flow.py`
   measures flow and forecasts from `flow.json` or a `gh issue list --json` export;
   `scripts/raid_check.py` checks the log and the status. It writes to no tracker.

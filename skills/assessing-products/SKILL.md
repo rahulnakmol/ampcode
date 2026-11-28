@@ -191,7 +191,7 @@ accept terms.
 
 ## Without a shell
 
-When you have no shell (a read-only advisory mode, or a chat-only host), do not run or simulate
+When you have no shell (a read-only subagent or a chat-only host), do not run or simulate
 `score.py`, and never total or rank scores in your head. Return `criteria.json`, `scores.json`
 and the draft recommendation as text for the caller to save, with the exact commands, for
 example:

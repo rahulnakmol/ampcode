@@ -58,7 +58,7 @@ argument must score at least 4/5 and have no unsupported central inference. Neit
 nor the machine rubric can apply this gate. Use `editorial-assessment.md` for a blind contrastive
 assessment on shared evidence; `editorial-expected.md` is withheld until judgments are recorded.
 
-Recorded in `docs/distilling-videos-evaluation.md`, using the rubric from
+Recorded in `results.md`, using the rubric from
 `skills/distill/reference/evaluations.md`. Each score says who gave it. The evaluator's
 scores are self-assessed. Scores from an independent reviewer are labeled, and they take precedence
 over the evaluator's own scores. An article corrected after review counts as not re-scored until

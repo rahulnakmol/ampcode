@@ -1,187 +1,32 @@
 # Amp frontier kit
 
-Personal extensions for getting more leverage from [Amp](https://ampcode.com): reusable plugins, agent modes, and skills designed around clear ownership, efficient model routing, and deliberate token use.
+Rahul's personal extensions for [Amp](https://ampcode.com): skills that run substantial work as
+**missions** (one approval at kickoff, then autonomous milestones), plus plugins that add agent
+modes and the mission-control coordinator. They are designed around clear ownership, efficient
+model routing and deliberate token use.
 
-This GitHub repository is the readable source of truth. Amp loads published copies from its separate Personal Plugins and Personal Skills repositories.
+This GitHub repository is the readable source of truth. Amp loads published copies from separate
+Personal Plugins and Personal Skills repositories; cloning this one installs nothing
+(see [Publish](#publish)).
 
-## User guides
+## Start here
 
-- **[Missions you can run](./docs/missions/README.md):** the eight mission types, what each is for, how to start it, the skills it runs in order, what it delivers and when it is done, with an example from real validation runs.
-- **[Using the skills](./docs/using-skills.md):** choose a skill, learn when to use it, copy a prompt, and understand what a good result looks like.
-- **[Mission-driven development](./docs/mission-driven-development.md):** take an idea or requirement to one contract, one approval at kickoff, and milestones merged into `dev`; start or resume a mission.
-- **[Mission-driven planning](./docs/mission-driven-planning.md):** take a product, operations, or marketing initiative from workshop notes to a signed-off PRD and an executable backlog in GitHub or Excel, traced to delivered outcomes.
-- **[Start a Blueprinting engagement](./docs/blueprinting.md):** use the published functional-discovery skills, prepare the first workshop, select an engagement root and templates, and resume safely.
-- **[Advisory team](./docs/advisory-team.md):** use Archi, Darci and Opsci for architecture and operational advice.
-
-## Layout
-
-```text
-plugins/                  TypeScript or JavaScript Amp plugins
-skills/<skill-name>/      Agent Skills, each rooted at SKILL.md
-docs/                     User guides; docs/missions/ has one guide per mission type
-evals/                    Fresh-agent evaluations per skill: scenarios, rubrics and results
-tests/                    Bun plugin tests and Python skill-script tests
-scripts/check.sh          Repository validation (run with `make check`)
-.amp/plugins/             Project-only plugins, such as the mission-control dialog preview
-```
-
-See [`plugins/README.md`](./plugins/README.md) and [`skills/README.md`](./skills/README.md) before adding an extension.
-
-## Blueprinting
-
-The six skills below are published to Rahul's Amp User Skills. Start with the
-[engagement guide](./docs/blueprinting.md) for copyable kickoff/resume prompts and
-the separate template prerequisite. Other users need their own authorized installation.
-
-[`skills/blueprinting/`](./skills/blueprinting/SKILL.md) is the enterprise functional-discovery
-capability for consultant workshops, operating models, kickoff, pre-sales and RFP work. Its first
-local helper retains exact Markdown revisions, records pending corrections and reports stale
-dependencies without overwriting human notes. It also checks reported written-client baselines
-and records explicit reconciliation. Functional coverage, estimate arithmetic and recipient-bound
-content packets now support generic local Markdown, Word, PowerPoint, Excel and PDF exports.
-Excel includes literal registers and bounded native estimate scenarios, not a business baseline.
-Registered file observation, explicit Start/Resume, staged template upgrades and derived indexes
-are implemented locally; see [the template contract](./skills/blueprinting/reference/templates.md).
-The separate `blueprinting-engagement-template` source is qualified locally but not published;
-template-backed Start requires an explicitly supplied compatible local copy.
-Native Obsidian 1.15.0 has bounded synthetic editing, filtering, navigation and save/reopen evidence.
-Selected local ZIP handoffs stage files for reported inspection and package their exact bytes;
-see [the export contract](./skills/blueprinting/reference/exports.md). Export is not delivery.
-Reviewed theme-only brand configuration can bind typography, colors and issuer/classification
-to exact source revisions; it does not import arbitrary templates or mandatory logo assets.
-Schema-4 diagrams add a bounded native Word/PowerPoint mapping with evidence-linked entities,
-directed relationships and cross-view registers. Bounded English synthetic/redacted evaluation,
-two independent reviews and owner acceptance of the demonstrated editable handoff are complete.
-This is not production-client validation or Microsoft desktop certification. Notion qualification
-includes a controlled human-edit simulation; two reminder wakes and later manual recovery do not
-establish continuous monitoring. Google Slides/Docs are deferred. Revision freshness does not
-establish client approval. Loading a published skill does not activate integrations or grant
-permission to process client data; GitHub source alone does not install skills into Amp.
-
-| Blueprinting task | Skill |
+| You want to | Read |
 | --- | --- |
-| Engagement continuity, policy and shared helpers | [blueprinting](./skills/blueprinting/SKILL.md) |
-| Opportunity, pre-sales and RFP, including a weighted fit-gap scored with `assessing-products` | [shaping-engagements](./skills/shaping-engagements/SKILL.md) |
-| Workshops, questionnaires and evidence | [discovering-requirements](./skills/discovering-requirements/SKILL.md) |
-| Process, operating model and functional handover | [designing-functions](./skills/designing-functions/SKILL.md) |
-| Narrative, reviewed packets and exports | [publishing-engagements](./skills/publishing-engagements/SKILL.md) |
-| Source-grounded functional and communication review | [reviewing-engagements](./skills/reviewing-engagements/SKILL.md) |
+| Run a piece of work end to end: software, planning, transformation, design, review, infrastructure, assessment, campaigns | [Missions you can run](./docs/missions/README.md) |
+| Pick one skill for a task and copy a prompt for it | [Using the skills](./docs/using-skills.md) |
+| Build software from an idea or requirement | [Mission-driven development](./docs/mission-driven-development.md), then the [mission-control reference](./docs/mission-control.md) |
+| Take an initiative from workshop notes to a signed-off PRD and a backlog | [Mission-driven planning](./docs/mission-driven-planning.md) |
+| Run an enterprise functional-discovery or pre-sales engagement | [Start a Blueprinting engagement](./docs/blueprinting.md) |
+| Use the Swift, Weave and Prime modes | [Custom mode dials](./docs/custom-mode-dials.md) |
+| Add or change a skill or plugin | [`skills/README.md`](./skills/README.md), [`plugins/README.md`](./plugins/README.md) and [Validate](#validate) |
 
-Domain entries load the host-selected coordinator and use its shared contracts and helpers;
-they do not duplicate state or create a subagent per skill. Standalone coordinator/helper use
-remains supported. Keep complete packages together when preparing an explicitly authorized
-Personal publication; do not copy helpers into domain packages. Publication verification checked
-all 45 text files against integrated source, all five domain contracts and six native skill loads.
-Installed-host qualification remains bounded to the tested orb. Verify the selected package in
-your environment; lifecycle observations do not establish production outcomes.
+## How a mission runs
 
-## Meet the advisory team
-
-**Start with the [advisory team usage guide](./docs/advisory-team.md)** for installation, example prompts, interviews, consultations, access limits, troubleshooting, and model updates.
-
-| Mode | Responsibility | Main model | Consultation tool |
-| --- | --- | --- | --- |
-| **Archi** | Enterprise SaaS architect, including .NET and mobile/Windows clients | Fable 5.1, high | `consult_archi` |
-| **Darci** | Enterprise data, analytics and evidence-grounded AI architect | Fable 5.1, high | `consult_darci` |
-| **Opsci** | Guided SRE investigator across telemetry and deployed code | Astra, high | `consult_opsci` |
-
-All three are advisory-only. Archi and Darci interview users and evolve a shared design brief. Opsci investigates supplied incident evidence. Specialist routing stays automatic. The plugin provides no live database/telemetry connectors or report-file writer; the guide explains these boundaries and how to extend access safely.
-
-Select a mode for an ongoing conversation, or ask an implementation agent to use its named consultation tool. Source lives in [`plugins/advisory-team/`](./plugins/advisory-team/). Publishing this GitHub repository alone does not install the modes in Amp. Like every agent mode here, each advisor runs its work as a mission through the shared mission core in [`missioning`](./skills/missioning/reference/agent-modes.md).
-
-## Amp Custom Mode Dials
-
-[`plugins/amp-custom-mode-dials.ts`](./plugins/amp-custom-mode-dials.ts) targets the gaps in Low → Swift → Medium → Weave → High → Prime → Ultra. Each mode runs its work as a mission through the same shared mission core, with its own workflow doing each work item. These are intended workflow positions, not a benchmark-proven capability ranking:
-
-| Mode | Position | Main agent | Serving |
-| --- | --- | --- | --- |
-| **Swift** | Low → Medium | Sonnet 5.5, medium | Normal by default |
-| **Weave** | Medium → High | GPT-6.1 Sol, high | Normal by default |
-| **Weave Fast** | Same Weave rung | GPT-6.1 Sol, high | Fast requested |
-| **Prime** | High → Ultra | Fable 5.1, medium | Normal by default |
-| **Prime Fast** | Same Prime rung | Fable 5.1, medium | Fast requested |
-
-### Why this routing
-
-- **Swift** keeps a Medium-style workflow but prioritizes direct execution on Sonnet 5.5 at medium effort.
-- **Weave** uses GPT-6.1 Sol at high effort for focused implementation and artifact verification.
-- **Prime** extends High rather than Ultra, using Fable 5.1 at medium effort and risk-scaled verification.
-
-Select `weave-fast` or `prime-fast` to request Fast without changing the model, effort or workflow. Base modes declare `features: []` to avoid inheriting Fast from a creating thread; callers can still explicitly add it. Fast variants require `features: ['fast']`. Actual acceleration, availability and premium billing depend on the provider route; registration alone does not verify them. No accelerated-serving guarantee is made for either route.
-
-The current Amp plugin API does not expose separate `oracle` or `subagents` model overrides. The obsolete fields have been removed; specialist routing stays with Amp. Opus 5.5 workers are a requested preference, not an enforced configuration. Explicit Opus child agents would require a separate supported delegation mechanism; these modes do not silently substitute child threads for `Task`.
-
-Plugin agent modes cannot enforce a fixed token ceiling, so Prime cannot guarantee a precise percentage below Ultra. Its prompt, effort, delegation, and Oracle policy are deliberately configured to avoid Ultra-style exhaustive exploration.
-
-The [realistic async-cache benchmark](./docs/amp-custom-mode-dials-benchmark.md) records earlier configurations; it does not validate this new routing.
-
-## Distill
-
-Videos and transcripts are research inputs. The primary deliverable is an original analyst-authored
-article or whitepaper in its own voice, organized around a reader decision and independent thesis,
-not a recap or fact-check audit. A required prewriting analytical brief maps the argument to evidence
-and counterevidence; citations and panels carry provenance. Independent review marks a faithful
-but recap-dominated article NEEDS REVISION, preserving sound evidence while rebuilding the argument.
-Useful recap passages are allowed; unsupported central claims receive FAIL. Only PASS permits
-editorial approval, followed by the remaining publication checks.
-
-[`skills/distill/`](./skills/distill/SKILL.md) turns up to ten public YouTube videos into reusable evidence (timed original and English transcripts, selected frames, checksummed manifests), an evidence-backed brief, and an offline HTML site (cover, article, brief, per-video transcripts, gallery, glossary, references, with offline search, Copy Page Markdown, and house light/dark plus 20 attributed reader theme families) plus an article PDF, packaged as a ZIP with optional verified Azure Blob archival. A complete article needs at least 1000 narrative body words (target 1200–1500+, refused below the floor; short drafts must be `partial`), is written to an entice / engage / empower rubric, and its page carries escaped search and share metadata (description, Open Graph, Twitter, JSON-LD, and a canonical link only for a user-supplied public URL); offline packages are not crawlable until hosted. Amp does the listening, visual judgment, research, and writing; a standard-library Python CLI (`scripts/distill.py`) does download, frames, validation, rendering, packaging, sign-off, archival, and guarded media cleanup.
-
-Invoke with “distill this video” or “distill these videos” and the YouTube URLs. Formerly
-`distilling-videos`; the runtime cache and archive format identifiers retain their old names for
-compatibility. Historical evaluation/spec filenames are unchanged.
-
-| Area | Status |
-| --- | --- |
-| Evidence, rendering, packaging, sign-off, archive/cleanup logic | Implemented; unit-tested offline with fake media tools, browser, and Blob transport; end-to-end evaluation with real ffmpeg and Chrome Canary in [`docs/distilling-videos-evaluation.md`](./docs/distilling-videos-evaluation.md) |
-| Transcription | No provider adapter and no provider selected: Amp must supply a normalized transcript (manual, captions, agent, or a provider the user runs). Captions and agent transcripts need recorded audio checks covering every transcript segment before sign-off releases media; partial spot checks are recorded but block sign-off. Neither is a measured accuracy rate. Not unattended end to end |
-| Provider choice and accuracy | Shortlist and benchmark protocol only; paid benchmark not run, no provider recommended, no transcription/caption/translation accuracy measured |
-| Live YouTube download (macOS) | Tested once on one public video: first download HTTP 403 (yt-dlp warned no JavaScript runtime), then succeeded with node; four later runs succeeded. Intermittent. `download --js-runtime` now selects the runtime explicitly |
-| Real PDF (macOS, Chrome Canary) | Tested in the evaluation |
-| Amp orbs (Linux) | Real FFmpeg/Chromium fixture evaluation: 475 checks passed; 141 Python and 4 Bun tests passed. Synthetic media and supplied transcripts; no live-provider accuracy claim |
-| Live Azure Blob | Not tested; requires an authorized disposable container/prefix and private credentials |
-| GitHub Actions archive hand-off | Blocked: needs a producer workflow that does not exist |
-
-Recommended invocation: Medium mode with Fast where supported (a user preference; the skill cannot enforce modes or cap billing). Run `skills/distill/scripts/bootstrap.sh` once to create a private venv with `yt-dlp[default]` (including the `yt-dlp-ejs` challenge solver scripts) and check `ffmpeg`, a browser, and the JavaScript runtime yt-dlp needs for YouTube (deno by default; node or quickjs via `download --js-runtime`); it installs nothing globally, edits no yt-dlp config, and handles no credentials.
-
-## Grilling
-
-[`skills/grilling/`](./skills/grilling/SKILL.md) interviews you at the start of a task to turn a vague or partly detailed requirement, plan, or question into a confirmed, agent-ready brief. It sizes the request first (clear requests proceed without questions), looks up facts instead of asking, asks one to three high-impact questions per round with a recommended answer for each, runs an edge-case and pre-mortem pass using [`reference/edge-cases.md`](./skills/grilling/reference/edge-cases.md), and keeps grilling until a concreteness checklist passes. It ends with a confirmed brief covering the final shape, scope, requirements, edge cases, and verification, plus a step-by-step work plan and a ready-to-paste prompt for the agent that picks it up. It is model-invoked: it triggers at the start of most planning, design, build, or decision tasks and on phrases such as "grill me", "red-team this", "pre-mortem", "what could go wrong", "spec this out", or "write a PRD", and skips clear, small requests. Sources and design choices are in [`docs/grilling-research.md`](./docs/grilling-research.md). LLM-judged trigger and behavior evaluations live in [`evals/grilling/`](./evals/grilling/README.md), with results in [`docs/grilling-evaluation.md`](./docs/grilling-evaluation.md).
-
-For consequential handoffs, the Elephant-Goldfish adaptation separates the problem from the
-grading criteria and tests the brief with a fresh, read-only reader through
-[`goldfishing`](./skills/goldfishing/SKILL.md). Missing context is repaired
-in the brief, not explained privately to the reviewer. Clear small edits skip this overhead.
-See the [paired scenario evaluation](./evals/egm/README.md) and
-[source rationale](./docs/delivering-research.md#elephant-goldfish-adaptation).
-
-## Crafting
-
-[`skills/crafting/`](./skills/crafting/SKILL.md) (formerly `designing-experiences`) takes a use case, finds the real need behind it, and crafts a design-worthy experience at every touchpoint where a person or an AI agent interacts. It covers 31 surfaces in nine families: terminal (CLI, TUI), screens (web, iOS, Android, macOS, Windows), ambient (watch, TV, car, spatial, kiosk, device screens), conversation (chat, voice), messaging (notifications, email, SMS), agents (APIs, MCP tools, agent-to-agent, webhooks, agent docs), social, physical (print, packaging, signage), and media (presentations, video, documents, data visualization).
-
-The workflow is: understand (demystify the use case into a job, actors, moments of truth, measures, and experience principles, grilled with the `grilling` skill when vague), journeys and a touchpoint × state matrix, budgeted research, a mood board with named directions, an experience system (tokens, voice, motion, agent contract, production specs), a mockup or transcript for every state, a critique loop against an anti-slop rubric, and a handoff spec. Entry points also cover discovery only, accessibility audits (WCAG 2.2 with per-surface test scripts), user research (study plans, interview and usability guides, agent usability tests, synthesis), motion, critique, and inspiration. Audiences from Gen Alpha to Millennials, including child-safety requirements, are part of the brief and the rubric.
-
-Research climbs a cost ladder: local `.design/` cache and Figma, then Mobbin and Parallel Search, then Firecrawl `branding` scrapes of a shortlist, then at most one Parallel Task deep research run per brief. `scripts/design_kit.py` (standard library) prices each paid call before it is made, refuses calls over the per-brief budget (default $0.30 Parallel, 15 Firecrawl credits, 10 Mobbin searches), gates handoff on journey and per-surface state coverage (including alt text on every social asset), lints MCP tool lists for "Not for" clauses, input schemas, and all four annotation hints, and lints reply drafts (at most three questions, each with a recommendation). Every design starts from an explicit angle (`reference/angle.md`) and ends with a critic pass by a principal designer and architect persona (`reference/critic.md`); `check` requires both. Interactive work also meets the quality bar in `reference/quality-bar.md`: an interaction-detail checklist with triggers, a time budget on every interaction, motion with a named job, colours derived from a few inputs, three to five prototyped directions for a touchpoint no reference solves, and a quality pass that uses the product by pointer and keyboard on a throttled network; `check` requires a numeric budget on every interaction of an interactive surface and a quality-pass file.
-
-Requires the Mobbin, Parallel Search, Firecrawl, and Figma MCP servers, plus the Parallel Task MCP (`https://task-mcp.parallel.ai/mcp`, OAuth) for deep research; without it the skill falls back to Parallel Search. Trigger it with requests to craft, design, mock up, prototype, polish, critique, audit, research, or animate any experience, or to find UX inspiration.
-
-LLM-judged routing and behavior evaluations live in [`evals/crafting/`](./evals/crafting/README.md), with results and consolidated judge feedback in [`docs/crafting-evaluation.md`](./docs/crafting-evaluation.md).
-
-## Delivering
-
-[`skills/delivering/`](./skills/delivering/SKILL.md) carries a major feature, use case or concrete
-requirement through a **contract mission**. `grilling` makes the requirement concrete, with
-criteria that each name a finite set of cases; `crafting` renders every changed state; a
-whiteboard defense and a readiness preflight of the repository, CI, credentials and every outside
-target come before kickoff. All of it becomes one baselined contract with open questions (each
-with a default) and outside effects (each pre-authorized or not). The owner approves it **once**,
-at kickoff. Execution is then autonomous, milestone by milestone: M and L items in child threads,
-XS and S items in subagents, each test-first with a fresh review. A milestone squash-merges into
-`dev` after tests, CI and two fresh reviews of the same head, and a checkpoint report that asks
-nothing follows. Missions have no budgets and use no agent teams. Invoke it with "use delivering
-for this feature" or "deliver this approved brief."
-
-**Start a mission:** open the target project in Amp and paste:
+Every mission starts from [`missioning`](./skills/missioning/SKILL.md): one charter, one gate
+ledger and one decision trail. The owner approves the charter **once, at kickoff**. The agent then
+works milestone by milestone and writes a checkpoint report after each one; the reports ask
+nothing. Missions have no budgets and use no agent teams. A software mission starts like this:
 
 ```text
 Use delivering to start a mission for [outcome] in [repository]. Use grilling
@@ -192,10 +37,6 @@ approval at kickoff. Pre-authorize the milestone merges into dev and pushing
 mission branches.
 ```
 
-See [Ways to kick off a mission](./docs/mission-control.md#ways-to-kick-off-a-mission) for
-prompts for an idea, a concrete requirement, an approved plan, an issue or PR, design-only work,
-interrupted work and a separate delivery thread. These are prompts to Amp, not slash commands.
-
 After kickoff the owner is asked only for one of the five stop reasons:
 
 1. Change to the baseline: a criterion, scope item or design decision is wrong or conflicts, and no reading inside the contract works.
@@ -204,181 +45,70 @@ After kickoff the owner is asked only for one of the five stop reasons:
 4. A red line: security, legal or safety.
 5. A milestone cannot meet its exit criteria after the work was re-planned and split.
 
-Anything else is a recorded assumption, listed in the next checkpoint report. New scope becomes a
-filed item in a later milestone. At a review cap (3 failed rounds at a gate) the disposition
-policy decides, never the owner: fix, re-plan and split, or file. There is no owner merge gate at
-any risk level; high risk means independent reviewers and the full case list. The steering thread
-watches its children and restarts or re-plans any that settle without a report. The close-out
-report gives evidence per criterion, every assumption, filed items, the effects performed, the
-gate ledger and the human tests.
+Anything else is a recorded assumption, listed in the next checkpoint report.
 
-The kickoff brief is written with [`briefing-decisions`](./skills/briefing-decisions/SKILL.md) and
-reviewed with [`goldfishing`](./skills/goldfishing/SKILL.md). In the kickoff dialog the owner
-ticks one box per default and pre-authorized effect, or writes what to change; there is no typed
-word and no secret field. Communication supports standard and editorial records, guided by
-ASD-STE100 principles without an unvalidated compliance claim, and ELI5 summaries under 300 words.
+## Skills
 
-The skill supplies guidance; [`mission-control`](./plugins/mission-control/) supplies the
-contract record when installed: `mission_start({ contract })`, `mission_preflight`,
-`mission_approve` (the one kickoff dialog), `mission_effect`, `mission_update` with 12 actions,
-`mission_status`, `mission_merge`, `mission_reconcile`, `mission_recover` and `mission_report`.
-Its [guide](./docs/mission-control.md) covers the tools, the dialogs, the merge blockers, the
-trust boundary and the setup prerequisites. It uses the GitHub credentials `gh` already has;
-protected `dev` must enforce strict required checks pinned to their source Apps and include
-administrators. The plugin does not provision CI or protection, and its local state enforces the
-workflow, not security against an unrestricted executor. The v1 single-PR flow and the v2 shadow
-flow are retired: their records report a retired schema and stay unchanged.
+Each skill works on its own and is also used by at least one mission playbook. Prompts, trigger
+words and expected results for each are in [Using the skills](./docs/using-skills.md).
 
-Its [mission record](./skills/delivering/reference/mission-record.md) lists the contract fields,
-the tools and the path for hosts without the plugin;
-[review/recovery guidance](./skills/delivering/reference/review-and-recovery.md) keeps reviews
-bound to the exact head and resumption safe. The
-[verification gate](./skills/delivering/reference/verification.md) opens no pull request until
-each changed package's end-to-end tests pass locally on the exact head and its pure core passes
-`verify_gate.py core`. Both milestone gates review with `interrogating-changes` on a model that
-implemented none of the change (gate 2 also runs its lowered-bar check), a mission picks the ship or
-stop variant for its PRs, and [hosts-pr-watch](./skills/delivering/reference/hosts-pr-watch.md)
-waits on PRs where Amp's GitHub events are not available. [Research](./docs/delivering-research.md)
-records the earlier design rationale; [evaluations](./evals/delivering/README.md), including the
-stop-replay eval, distinguish simulated decisions from live execution. Install `grilling`
-alongside it. Source integration does not publish skills to Amp Personal Skills or the plugin to
-Amp Personal Plugins. Promotion to `rolling` or `main`, deployment and Personal publication are
-outside effects that run only when the contract pre-authorizes them or the owner approves each
-one once in the effect dialog (without the plugin, that question is stop reason 2).
-
-## Goldfishing
-
-[`skills/goldfishing/`](./skills/goldfishing/SKILL.md) is the one fresh-reader review protocol the
-other skills call. A reviewer with no access to the author's conversation reads only the artifact,
-its sources and the grading criteria. It covers four lenses (comprehension, critic, readiness,
-novice reader), Blocker/Major/Nit severity, how each finding is fixed, contested, escalated or
-declined, round limits, what happens when a reviewer fails, a codeword isolation check, and the
-review record. Every reviewer starts on a model that wrote none of the artifact:
-`scripts/reviewer_model.py` picks it from the rotation in
-[`reference/reviewer-models.md`](./skills/goldfishing/reference/reviewer-models.md) (Claude work to
-GPT-6 Astra, then Gemini 4 Carbon; UI reviews to Gemini 4 Neon or Carbon by complexity), which
-also shows how to set the model on Amp, Claude Code, VS Code with Copilot and the Copilot app (the
-last three from documentation, not tested). `grilling`, `planning` and `delivering` add their own questions; a
-test keeps the generic rules in this one skill.
-
-**Use it:** "Use goldfishing to review `docs/plan.md` with the critic lens against
-`src/billing/`." **Adapt it:** add questions and change the round cap in the calling skill; change
-the novice persona to match the real approver.
-
-## Briefing decisions
-
-[`skills/briefing-decisions/`](./skills/briefing-decisions/SKILL.md) writes a plain-English
-decision brief for any human sign-off: what you decide, what happens on yes and on no, what
-changes, what done looks like, what was and was not checked, the risks you accept, what is not
-included, how to undo it, and a glossary. Codes, hashes and IDs go into a closing technical
-record. `scripts/brief_check.py` (standard library) checks the structure, sentence length,
-reading ease, banned codes, and HTML or Markdown that hides words. `mission-control` requires a
-brief and its document link in every contract and links it from the kickoff dialog. On a
-synthetic case, run before the contract dialogs, a fresh non-technical reader answered all four
-sign-off questions from the brief and two of four from the dialog text of that time
-([results](./evals/briefing-decisions/results.md)).
-
-**Use it:** "Use briefing-decisions to write the sign-off brief for this vendor choice, for our
-finance director." **Adapt it:** headings, limits and banned codes are constants in the script
-and `banned.json`; mission-control's `lib/brief.ts` keeps a copy that a test compares.
-
-## Missioning
-
-[`skills/missioning/`](./skills/missioning/SKILL.md) is the thin conductor every mission starts
-from. One mission file holds a charter (outcome, decision owner, approvers, success criteria,
-Definition of Done, open questions with defaults, pre-authorized effects and what the agent may do
-without asking), a gate ledger and a decision trail. There is no budget. The success criteria are agreed before the work. The chosen playbook's steps go
-into the host's todo list, with `skip: <reason>` for any step not done. The owner approves the
-charter once, at kickoff; after that the agent asks only for the five stop reasons. Before every
-human gate it writes a `briefing-decisions` brief and runs a
-`goldfishing` novice-reader review. An approval counts only as a ledger row naming an approver,
-where they answered (`dialog`, `question`, `tracker` or `written`), the brief and its review;
-never chat. `scripts/ledger_check.py` (standard library) rejects a row without these. It cannot
-prove a person really answered; on Amp, `mission-control`'s kickoff dialog is the stronger record.
-Close-out audits the trail and proposes skill edits for approval.
-
-Eight playbooks of about 60 lines, loaded only when used, cover ERP and AI transformation
-(through `blueprinting`), product delivery operations (`planning`), software delivery
-(`delivering`), campaigns and research, UX and UI design (`crafting`), code and security review,
-infrastructure and DevSecOps, and product and SaaS assessment; [Missions you can run](./docs/missions/README.md)
-has a guide to each and shows which skills each uses. Skills from later waves are marked
-*planned* with a manual fallback; a playbook never reports that a planned skill ran.
-[`reference/hosts.md`](./skills/missioning/reference/hosts.md) maps each step to the tools of
-Amp, Claude Code, Copilot in VS Code and the Copilot app; the last three come from their
-documentation and are not tested. There are no teams, swarms or scheduled workers.
-
-**Use it:** "Use missioning to run a security review of acme/payments on Claude Code. I decide;
-Priya Shah approves the report release." **Adapt it:** add a playbook with the same six headings
-and register it in the checker's `PLAYBOOKS`; change charter fields in the checker and
-[`reference/charter.md`](./skills/missioning/reference/charter.md) together; add a host column to
-`hosts.md`. Simulated scenario runs are in [`evals/missioning/`](./evals/missioning/README.md).
-
-## Engineering, security and operations skills
-
-Waves 1 and 2 of the mission skill plan add skills that the `missioning` playbooks for software
-delivery, security review, infrastructure, delivery operations and product assessment call. Each
-skill works on its own; each has deterministic checks in `scripts/` (Python standard library) and a
-fresh-agent evaluation in `evals/<skill>/`. Skills that could promote, apply, write to a tracker
-or publish run that effect only when the mission contract pre-authorizes it or the owner approves
-the exact plan.
-
-| Task | Skill |
-| --- | --- |
-| Technical design: contracts, ADRs, measurable NFRs; data and AI architecture | [architecting](./skills/architecting/SKILL.md) |
-| Adversarial fresh-context review of a diff or PR, with proven findings and a patch-bound verdict | [interrogating-changes](./skills/interrogating-changes/SKILL.md) |
-| Promotion from dev to rolling to main, release notes, rollback before GO | [releasing](./skills/releasing/SKILL.md) |
-| Threat model: trust zones, STRIDE and LINDDUN per flow, abuse cases, OWASP ASVS review | [threat-modelling](./skills/threat-modelling/SKILL.md) |
-| Merge and triage scanner SARIF (code, dependencies, secrets, IaC, containers) with stated coverage | [scanning-vulnerabilities](./skills/scanning-vulnerabilities/SKILL.md) |
-| Vendor or product assessment with weights frozen before scoring and cited evidence | [assessing-products](./skills/assessing-products/SKILL.md) |
-| Infrastructure as code on Azure, AWS or Google Cloud: preview, policy, cost, a change summary digest, approved apply, drift check | [provisioning](./skills/provisioning/SKILL.md) |
-| SLOs and error budgets from NFRs, burn-rate alerts with runbooks, proven to fire outside production | [monitoring](./skills/monitoring/SKILL.md) |
-| Read-only incident investigation with competing hypotheses, a post-incident review and fixes filed as bugs | [investigating-incidents](./skills/investigating-incidents/SKILL.md) |
-| Weekly steering of delivery: flow metrics, Monte Carlo forecast, risks, issues and decisions log, five-line status | [steering](./skills/steering/SKILL.md) |
-
-Archi and Darci load `architecting`, and Opsci loads `investigating-incidents`; install them in Personal skills before using those modes.
-
-## Planning
-
-A planning mission is for a product, operations, or marketing strategist who is also the
-delivery lead. It takes one initiative from workshop notes, transcripts, minutes, or rough drafts
-to a PRD stakeholders sign off and a backlog of executable stories in the tracker they use, then
-keeps score against the initiative's business drivers. Five small skills, each usable alone:
-
-| Skill | Does | Output |
+| Area | Skill | Does |
 | --- | --- | --- |
-| [`planning`](./skills/planning/SKILL.md) | Charters the mission, picks the entry point, runs gates G1–G7, defines done | Charter and gate-by-gate report |
-| [`synthesizing`](./skills/synthesizing/SKILL.md) | Turns raw inputs into cited evidence, then grills the owner to a confirmed intent and places each ask in the backlog (new initiative, goal, feature, change, bug, feedback) | `evidence.md`, `intake.md` (kickoff or session agenda) |
-| [`specifying`](./skills/specifying/SKILL.md) | Writes the PRD with `grilling`: drivers, measurable goals, requirements, criteria; fresh-reader review | `prd.md`, initiative and goals in `backlog.json` |
-| [`grooming`](./skills/grooming/SKILL.md) | Builds and maintains the backlog contract; splits, sizes, triages, records delivery | `backlog.json`, checked by `backlog.py` |
-| [`syncing`](./skills/syncing/SKILL.md) | Plans and applies GitHub, Azure DevOps or Linear sync (items, parent links, milestones or iterations; GitHub Project fields and roadmap view); pulls `/approve` and comments; exports Excel | Tracker items; sign-offs and feedback in the file |
+| Mission core | [missioning](./skills/missioning/SKILL.md) | Charter, gate ledger, decision trail and the eight mission playbooks |
+| | [briefing-decisions](./skills/briefing-decisions/SKILL.md) | Plain-English decision brief for every human sign-off, checked by a script |
+| | [goldfishing](./skills/goldfishing/SKILL.md) | Fresh-reader review of a brief, spec, plan or design, on a model that wrote none of it |
+| | [grilling](./skills/grilling/SKILL.md) | Turns a vague ask into a confirmed brief, plan and handoff prompt |
+| Software delivery | [delivering](./skills/delivering/SKILL.md) | Contract mission: one kickoff approval, test-first milestones merged into `dev` |
+| | [crafting](./skills/crafting/SKILL.md) | Designs and renders the experience on any surface, for people or agents |
+| | [architecting](./skills/architecting/SKILL.md) | Technical design: contracts, ADRs, measurable NFRs; data and AI architecture |
+| | [interrogating-changes](./skills/interrogating-changes/SKILL.md) | Adversarial review of a diff or PR with proven findings and a patch-bound verdict |
+| | [releasing](./skills/releasing/SKILL.md) | Promotion from `dev` to `rolling` to `main`, release notes, rollback before GO |
+| Security and operations | [threat-modelling](./skills/threat-modelling/SKILL.md) | Trust zones, STRIDE and LINDDUN per flow, abuse cases, OWASP ASVS review |
+| | [scanning-vulnerabilities](./skills/scanning-vulnerabilities/SKILL.md) | Merges and triages scanner SARIF with stated coverage |
+| | [provisioning](./skills/provisioning/SKILL.md) | Infrastructure as code: preview, policy, cost, approved apply, drift check |
+| | [monitoring](./skills/monitoring/SKILL.md) | SLOs, error budgets and burn-rate alerts proven to fire outside production |
+| | [investigating-incidents](./skills/investigating-incidents/SKILL.md) | Read-only incident investigation and a post-incident review |
+| Planning | [planning](./skills/planning/SKILL.md) | Runs a planning mission through gates G1–G7 |
+| | [synthesizing](./skills/synthesizing/SKILL.md) | Notes and transcripts into cited evidence and a confirmed intent |
+| | [specifying](./skills/specifying/SKILL.md) | One PRD per initiative with measurable goals and criteria |
+| | [grooming](./skills/grooming/SKILL.md) | Backlog contract: features, executable stories, bugs, feedback, trace |
+| | [syncing](./skills/syncing/SKILL.md) | Syncs the backlog to GitHub, Azure DevOps, Linear or Excel and reads sign-off back |
+| | [steering](./skills/steering/SKILL.md) | Weekly flow metrics, forecast, risks and decisions log, five-line status |
+| Blueprinting | [blueprinting](./skills/blueprinting/SKILL.md) | Engagement continuity, policy and shared helpers for the five domain skills |
+| | [shaping-engagements](./skills/shaping-engagements/SKILL.md) | Opportunity, pre-sales and RFP work, including a weighted fit-gap |
+| | [discovering-requirements](./skills/discovering-requirements/SKILL.md) | Workshops, questionnaires and attributed evidence |
+| | [designing-functions](./skills/designing-functions/SKILL.md) | Processes, operating model and functional handover |
+| | [publishing-engagements](./skills/publishing-engagements/SKILL.md) | Narratives, reviewed packets and Office or PDF exports |
+| | [reviewing-engagements](./skills/reviewing-engagements/SKILL.md) | Source-grounded review of functional evidence and deliverables |
+| Research and assessment | [assessing-products](./skills/assessing-products/SKILL.md) | Vendor and product assessment with weights frozen before scoring |
+| | [distill](./skills/distill/SKILL.md) | YouTube videos into an original article, brief and offline package (formerly `distilling-videos`; runtime cache and archive identifiers keep that name) |
 
-The [backlog contract](./skills/grooming/reference/contract.md) is SAFe-inspired without epics:
-initiative (drivers, PRD) → goals (metric, baseline, target) → features (benefit hypothesis,
-WSJF) → stories sized XS–L with measurable acceptance criteria, plus bugs with urgency and
-feedback filed on exactly one feature. `backlog.py trace` reports the chain from what was
-described, to what was agreed, delivered, and achieved, and lists every gap.
+## Plugins and modes
 
-Stakeholders work only in the tracker: they comment, and sign off with `/approve`. Every tracker
-write and every reply in the user's name waits for the user's approval of a shown plan. Scripts
-are standard-library Python; GitHub calls use the signed-in `gh`. The Azure DevOps and Linear
-adapters use their REST and GraphQL APIs with a token from an environment variable; they are
-tested offline only and labelled "not tested live", with the mapping in
-[`trackers.md`](./skills/syncing/reference/trackers.md). There is no audio transcription and no
-plugin. Once delivery starts, [`steering`](./skills/steering/SKILL.md) runs the weekly loop:
-flow metrics and a seeded forecast, a risks, issues and decisions log, and a five-line status. See the [guide](./docs/mission-driven-planning.md) for prompts, entry points, and limits.
-Five simulated end-to-end missions, judged by stakeholder and product-lens judges, live in
-[`evals/planning/`](./evals/planning/README.md), with results in
-[`docs/planning-evaluation.md`](./docs/planning-evaluation.md).
+| Plugin | Adds | Guide |
+| --- | --- | --- |
+| [`amp-custom-mode-dials.ts`](./plugins/amp-custom-mode-dials.ts) | Swift, Weave and Prime modes between Amp's Dial positions | [Custom mode dials](./docs/custom-mode-dials.md) |
+| [`mission-control/`](./plugins/mission-control/) | The contract record for `delivering`: kickoff dialog, preflight, merge blockers, reports | [Mission-control reference](./docs/mission-control.md) |
 
-## Using modes without changing the Dial
+Every agent mode here runs its work as a mission through the shared mission core in
+[`missioning`](./skills/missioning/reference/agent-modes.md). For architecture, data and AI, or
+incident advice, run a mission: its playbook loads `architecting` or `investigating-incidents`.
+The Archi, Darci and Opsci modes were retired for those skills.
 
-The standard Low, Medium, High, and Ultra Dial can remain unchanged. Published plugin modes stay available in the complete mode picker and to Puck.
+## Layout
 
-Example Puck request:
+```text
+plugins/                  TypeScript or JavaScript Amp plugins
+skills/<skill-name>/      Agent Skills, each rooted at SKILL.md
+docs/                     User guides; docs/missions/ has one guide per mission type, docs/research/ the design rationale
+evals/<skill>/            Fresh-agent evaluations per skill: scenarios, rubrics and results
+tests/                    Bun plugin tests and Python skill-script tests
+scripts/check.sh          Repository validation (run with `make check`)
+.amp/plugins/             Project-only plugins, such as the mission-control dialog preview
+```
 
-> Start a Weave thread in this project to implement the change, and a Prime thread to review the architecture. Ask both to report back here.
-
-Name the mode explicitly; otherwise Puck uses its normal routing. Threads created in separate orbs have separate checkouts and do not automatically share uncommitted files.
+Branches: `dev` is integration, `rolling` the canary snapshot and `main` the stable release.
+Every change is a pull request to `dev`.
 
 ## Validate
 
@@ -388,22 +118,24 @@ Run:
 make check
 ```
 
-The check loads every plugin through the installed Amp CLI, runs advisory-team wiring and tool-allowlist tests with Bun, runs the Python skill-script tests (including executing every documented `distill` JSON example through the CLI), syntax-checks skill shell scripts, verifies formatting errors detectable by Git, and validates the required metadata and 500-line limit of every skill package. It needs `amp`, `bun`, and `python3`; the tests make no network, paid, or cloud calls.
+The check loads every plugin through the installed Amp CLI, runs the Bun plugin tests and the
+Python skill-script tests, syntax-checks skill shell scripts, checks formatting errors detectable
+by Git, and validates the metadata and 500-line limit of every skill. It needs `amp`, `bun` and
+`python3`; the tests make no network, paid or cloud calls.
 
 Pull requests targeting `dev` and pushes to `dev` run the same command in
-[`Validate extensions`](./.github/workflows/check.yml). Its stable required check
-is **Extension checks**, emitted by GitHub Actions. The workflow uses pinned
-actions/tool versions, verifies the Amp binary checksum, grants read-only repository
-access, and supplies no Amp or cloud credentials. PR code runs on disposable
-GitHub-hosted Ubuntu runners; no Depot runner is configured for this repository.
+[`Validate extensions`](./.github/workflows/check.yml). Its stable required check is
+**Extension checks**, emitted by GitHub Actions. The workflow uses pinned actions and tool
+versions, verifies the Amp binary checksum, grants read-only repository access and supplies no Amp
+or cloud credentials. PR code runs on disposable GitHub-hosted Ubuntu runners; no Depot runner is
+configured for this repository.
 
-`dev` requires a pull request, an up-to-date successful **Extension checks** result
-from GitHub Actions, and resolved review conversations. Protection applies to
-administrators and disallows force pushes and deletion. No mandatory human review
-count is imposed: a contract mission merges each milestone into `dev` after its own
-tests, CI and two fresh reviews, with no owner merge gate. These
-controls do not make an agent with repository-administration credentials unable
-to change policy. Rolling/stable promotion and extension publication remain separate.
+`dev` requires a pull request, an up-to-date successful **Extension checks** result from GitHub
+Actions, and resolved review conversations. Protection applies to administrators and disallows
+force pushes and deletion. No mandatory human review count is imposed: a contract mission merges
+each milestone into `dev` after its own tests, CI and two fresh reviews, with no owner merge gate.
+These controls do not stop an agent with repository-administration credentials from changing
+policy. Rolling and stable promotion and extension publication remain separate.
 
 ## Publish
 
@@ -412,6 +144,11 @@ Amp stores personal plugins and personal skills in separate global repositories:
 - `amp plugins repositories`
 - `amp skills repositories`
 
-Copy standalone plugin entry points, or complete directory plugins such as `advisory-team/`, to the root of the Personal Plugins repository. Do not omit supporting Markdown files. Copy each complete `skills/<skill-name>/` directory to the root of the Personal Skills repository. Review and commit changes, then push only after explicit approval; new threads load published versions automatically.
+Copy standalone plugin entry points, or complete directory plugins such as `mission-control/`, to the
+root of the Personal Plugins repository. Do not omit supporting Markdown files. Copy each complete
+`skills/<skill-name>/` directory to the root of the Personal Skills repository. Review and commit
+changes, then push only after explicit approval; new threads load published versions
+automatically.
 
-Never commit API keys, provider credentials, access tokens, or generated secret-bearing settings here.
+Never commit API keys, provider credentials, access tokens or generated secret-bearing settings
+here.

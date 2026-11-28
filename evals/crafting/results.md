@@ -1,7 +1,7 @@
 # crafting evaluation results
 
-Run on 2026-10-24 against [`skills/crafting/`](../skills/crafting/SKILL.md) (merged in #11) with the
-data and method in [`evals/crafting/`](../evals/crafting/README.md). Every role (router, agent under
+Run on 2026-10-24 against [`skills/crafting/`](../../skills/crafting/SKILL.md) (merged in #11) with the
+data and method in [`evals/crafting/`](README.md). Every role (router, agent under
 test, simulated user, judge) was an Amp subagent. Judges never read the skill's Markdown. These are
 LLM judgments on a small set, not statistically strong measurements: treat differences under about
 0.1 as noise.
