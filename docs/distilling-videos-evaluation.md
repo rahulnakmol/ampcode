@@ -211,7 +211,7 @@ python3 evals/distilling-videos/run_eval.py --tools-bin .amp/in/tools/bin \
 
 ## Publication UX extension (2026-10-20)
 
-Spec: `docs/superpowers/specs/2026-10-20-distilling-videos-publication-ux-design.md`. The renderer
+Spec: `docs/superpowers/specs/2026-10-20-distilling-videos-publication-ux-design.md` (removed; in Git history at `9f4d25e`). The renderer
 now writes an offline site: `index.html` is an editorial cover and `article.html` is the article,
 which `pdf` prints (`pdf.json` records `page` and `page_sha256`; an older `index_sha256` record is
 stale). Every page has the collapsible navigation, Copy Page, Download Markdown, and its embedded
@@ -301,7 +301,7 @@ ignored.
 
 ## Depth floor, reader rubric, and SEO metadata (2026-10-21)
 
-Baseline amendment (recorded in `docs/superpowers/specs/2026-10-19-distilling-videos-design.md`):
+Baseline amendment (recorded in `docs/superpowers/specs/2026-10-19-distilling-videos-design.md`, removed; in Git history at `9f4d25e`):
 
 - `render` (renderer 3) refuses a `complete` article below 1000 narrative body words and reports
   `narrative` (words, `details` words, repeats, floor, target) in its output and `coverage.json`.
