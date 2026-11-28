@@ -1,6 +1,6 @@
 """Contract tests for the distilling-videos evidence runtime.
 
-Run: python3 -m unittest discover -s tests -p 'test_distilling_evidence.py' -v
+Run: python3 -m unittest discover -s tests -p 'test_distill_evidence.py' -v
 External media tools are replaced by local fake executables; no network or paid calls.
 """
 

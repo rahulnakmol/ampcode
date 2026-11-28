@@ -9,7 +9,7 @@ Flags two print defects seen in real batches:
 The geometry check is pure (`check_pages`) so it is unit-tested without a PDF library. Reading a PDF
 needs PyMuPDF (`pip install pymupdf`); no network, no browser.
 
-Usage: python3 evals/distilling-videos/print_layout.py ARTICLE.pdf [--captures DIR] [--dpi N]
+Usage: python3 evals/distill/print_layout.py ARTICLE.pdf [--captures DIR] [--dpi N]
 Exit: 0 clean, 1 defects found, 3 PyMuPDF missing.
 """
 

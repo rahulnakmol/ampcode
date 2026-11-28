@@ -1,6 +1,6 @@
 """Contract tests for distilling-videos publication rendering and packaging.
 
-Run: python3 -m unittest discover -s tests -p 'test_distilling_publication.py' -v
+Run: python3 -m unittest discover -s tests -p 'test_distill_publication.py' -v
 Evidence is built through the real CLI and evidence API; browsers are fake executables.
 No network or paid calls.
 """
@@ -1143,7 +1143,7 @@ class PrintLayout(unittest.TestCase):
     """Real batch defect: a 'Go deeper' rail note wrapped word by word over its prose (WeiB PDF p10)."""
 
     def setUp(self):
-        spec = importlib.util.spec_from_file_location("print_layout", ROOT / "evals" / "distilling-videos" /
+        spec = importlib.util.spec_from_file_location("print_layout", ROOT / "evals" / "distill" /
                                                       "print_layout.py")
         self.layout = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.layout)

@@ -129,7 +129,7 @@ editorial approval, followed by the remaining publication checks.
 
 Invoke with “distill this video” or “distill these videos” and the YouTube URLs. Formerly
 `distilling-videos`; the runtime cache and archive format identifiers retain their old names for
-compatibility. Historical evaluation/spec filenames are unchanged.
+compatibility.
 
 | Area | Status |
 | --- | --- |
@@ -152,7 +152,7 @@ For consequential handoffs, the Elephant-Goldfish adaptation separates the probl
 grading criteria and tests the brief with a fresh, read-only reader through
 [`goldfishing`](./skills/goldfishing/SKILL.md). Missing context is repaired
 in the brief, not explained privately to the reviewer. Clear small edits skip this overhead.
-See the [paired scenario evaluation](./evals/egm/README.md) and
+See the [paired scenario evaluation](./evals/goldfishing/README.md) and
 [source rationale](./docs/delivering-research.md#elephant-goldfish-adaptation).
 
 ## Crafting

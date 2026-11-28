@@ -1,4 +1,4 @@
-# distilling-videos evaluation fixtures
+# distill evaluation fixtures
 
 Runnable, end-to-end evaluation of `skills/distill` with controlled inputs and known
 ground truth. Results and interpretation: `docs/distilling-videos-evaluation.md`.
@@ -39,7 +39,7 @@ Needs Python 3.9+, `ffmpeg`/`ffprobe` with `drawtext` (libfreetype), and system 
 captures need a Chromium-family browser.
 
 ```sh
-python3 evals/distilling-videos/run_eval.py \
+python3 evals/distill/run_eval.py \
   --tools-bin DIR_WITH_FFMPEG_FFPROBE_YTDLP \
   --browser "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary" \
   --capture \
