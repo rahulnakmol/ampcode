@@ -14,7 +14,8 @@ three rules:
    nothing outside the core. The imperative shell gathers input, calls the core and performs the
    effects (files, network, database, LLM calls). A scan fails the build when the core breaks it.
 
-`scripts/verify_gate.py` runs and checks rules 1 and 3; `review_ledger.py` checks rule 2.
+`scripts/verify_gate.py` runs and checks rules 1 and 3. Rule 2 holds by construction: the
+reviewer starts on the picked model, and `review_ledger.py verdict` prints the record.
 
 ## The manifest: verify.json
 
@@ -109,7 +110,8 @@ Work test-first in this order:
 - C#: `using` directives (also `global`, `static` and aliases) against I/O namespaces such as
   `System.IO`, `System.Net`, `Microsoft.EntityFrameworkCore` and `Microsoft.Extensions.Logging`;
   calls such as `File.*`, `Console.*`, `DateTime.Now`, `Guid.NewGuid()`, `new Random()` and `new
-  HttpClient()`, also inside `$"..."` holes. A `using` of a namespace that only files outside the
+  HttpClient()`, also inside `$"..."` and `$$"""..."""` holes and through an alias (`using Clock =
+  System.DateTime;`) or `using static`. A `using` of a namespace that only files outside the
   core declare is an outward import. Test files (`*Tests.cs`, `*.Tests/`) are not scanned. It
   misses a type used by its full name from outside the core, and namespaces a `global using` in
   another file brings in.
@@ -117,8 +119,9 @@ Work test-first in this order:
   against `std::fs`, `std::net`, `std::io`, `std::env`, `std::process`, `std::thread`, `tokio`,
   `reqwest`, `sqlx`, `rand`, `tracing` and others; `println!`, `dbg!`, `SystemTime::now()`,
   `Instant::now()`, `Utc::now()` and `Uuid::new_v4()`. A `crate::`, `super::`, workspace-crate or
-  child-module path outside the core is an outward import. `#[cfg(test)]` modules and `tests/`
-  are not scanned. It misses effects behind a trait object or a macro it does not list.
+  child-module path outside the core is an outward import, resolved to its source file, so a core
+  listed as files works. An alias of a clock type (`use std::time::SystemTime as Clock`) still
+  counts; nested block comments are comments. `#[cfg(test)]` items and `tests/` are not scanned. It misses effects behind a trait object or a macro it does not list.
 - In every language it misses I/O through
   a library it does not list, or through a function passed in and called. The reviewer reads the
   core for those.

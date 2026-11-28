@@ -39,6 +39,9 @@ class ReviewerModel(unittest.TestCase):
         self.assertEqual(pick("ui-complex", CARBON), (0, NEON))
         self.assertEqual(pick("ui", NEON), (0, CARBON))
         self.assertEqual(pick("ui", CARBON, taken=[NEON]), (0, ASTRA))
+        for kind in ("ui", "ui-complex"):
+            self.assertEqual(pick(kind, CARBON, NEON, taken=[ASTRA]), (1, "no reviewer model: every listed reviewer model "
+                                                                        "wrote or reviewed this candidate; choose one by hand and say why"))
 
     def test_bad_input(self):
         self.assertEqual(pick("code-1", " ")[0], 1)

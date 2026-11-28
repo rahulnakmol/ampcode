@@ -54,6 +54,8 @@ def pick(kind, implementers, taken=()):
     """(model, reason) for a reviewer of this kind."""
     used = list(implementers) + list(taken)
     free = [m for m in ORDER[kind] if not any(same(m, u) for u in used)]
+    if not free:
+        return None, "every listed reviewer model wrote or reviewed this candidate"
     if kind.startswith("ui"):
         model, first = free[0], ORDER[kind][0]
         if model == first:

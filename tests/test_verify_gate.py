@@ -292,6 +292,59 @@ class Core(Gate):
         self.assertNotIn("File.Nope", out)
         self.assertNotIn("Price", out)
 
+    def core_cases(self, manifest, path, cases, extra=None):
+        """Each case: (source, the violation line, or None for a pure core)."""
+        for name, (source, line) in cases.items():
+            with self.subTest(name=name):
+                self.write({"verify.json": json.dumps(manifest), **(extra or {}), path: source})
+                if line:
+                    out = self.assertGate(["core"], 1, f"{path}:{line}: ")
+                    self.assertEqual(out.count(f"{path}:"), 1, out)
+                else:
+                    self.assertGate(["core"], 0, "core pass")
+
+    def test_csharp_effects_behind_strings_aliases_and_directives(self):
+        manifest = {"packages": [{"name": "shop", "path": "Shop", "core": ["Shop/Domain"], "e2e": "true"}]}
+        self.core_cases(manifest, "Shop/Domain/Rule.cs", {
+            "raw-interpolated": ('static class R {\n    static string A() => $$"""at {{System.DateTime.UtcNow}} {x}""";\n}\n', 2),
+            "nested-string": ('static class R {\n    static string A() => $"{string.Join(", ", new[] {"a"})} {DateTime.Now}";\n}\n', 2),
+            "literal-only": ('static class R {\n    const string A = $"DateTime.Now {{File.Read}}";\n'
+                             '    const string B = @"Console.WriteLine("")" + "x";\n}\n', None),
+            "alias": ("using Clock = System.DateTime;\nstatic class R {\n    static object A() => Clock.UtcNow;\n}\n", 3),
+            "static": ("using static System.Console;\nstatic class R {\n    static void A() => WriteLine(1);\n}\n", 3),
+            "static-pure": ("using static System.Math;\nstatic class R {\n    static int A() => Max(1, 2);\n}\n", None),
+            "global": ("global using System.Net.Http;\nstatic class R { }\n", 1),
+            "same-line": ("using System; using IO = System.IO;\nstatic class R { }\n", 1),
+            "block-namespace": ("namespace App { using IO = System.IO; static class R { } }\n", 1),
+            "using-statement": ("static class R {\n    static int A(D d) { using var x = d.Open(); return 1; }\n}\n", None),
+        })
+
+    def test_rust_effects_behind_comments_aliases_and_test_code(self):
+        manifest = {"packages": [{"name": "bank", "path": "bank", "core": ["bank/src/domain"], "e2e": "true"}]}
+        extra = {"bank/Cargo.toml": '[package]\nname = "bank"\n', "bank/src/lib.rs": "pub mod domain;\n"}
+        self.core_cases(manifest, "bank/src/domain/mod.rs", {
+            "nested-comment": ('/* outer /* inner */ std::fs::read("x"); */\npub fn f() -> i64 { 1 }\n', None),
+            "alias": ("use std::time::SystemTime as Clock;\npub fn f() { Clock::now(); }\n", 2),
+            "qualified-macro": ('pub fn f() { std::println!("x"); }\n', 1),
+            "lifetime-then-effect": ("pub fn f<'a>(x: &'a str) -> &'a str { println!(\"{}\", x); x }\n", 1),
+            "cfg-test-spaced": ('pub fn f() -> i64 { 1 }\n#[cfg( test )]\nmod tests {\n    fn t() { println!("x"); }\n}\n', None),
+            "cfg-test-helper": ('pub fn f() -> i64 { 1 }\n#[cfg(test)]\n#[allow(dead_code)]\nfn helper() { println!("x"); }\n', None),
+            "production-after-test": ('#[cfg(test)]\nfn helper() {}\npub fn f() { println!("x"); }\n', 3),
+        }, extra)
+
+    def test_rust_file_listed_core_and_workspace_crates(self):
+        files = {"Cargo.toml": '[workspace]\nmembers = ["bank", "store"]\n', "bank/Cargo.toml": '[package]\nname = "bank"\n',
+                 "store/Cargo.toml": '[package]\nname = "bank-store"\n', "store/src/lib.rs": "pub fn save() {}\n",
+                 "rules/Cargo.toml": '[package]\nname = "rules"\n', "rules/src/lib.rs": "pub fn r() {}\n",
+                 "bank/src/lib.rs": "pub mod core;\npub mod shell;\n", "bank/src/shell.rs": "pub fn s() {}\n"}
+        manifest = {"packages": [{"name": "bank", "path": "bank", "core": ["bank/src/core/mod.rs", "rules"], "e2e": "true"}]}
+        self.core_cases(manifest, "bank/src/core/mod.rs", {
+            "self-reference": ("pub struct Price;\nmod inner {\n    use crate::core::Price;\n}\n", None),
+            "workspace-inward": ("use rules::r;\npub fn f() { r() }\n", None),
+            "workspace-outward": ("use bank_store::save;\npub fn f() { save() }\n", 1),
+            "sibling-outward": ("use crate::shell::s;\npub fn f() { s() }\n", 1),
+        }, files)
+
     def test_rust_core(self):
         manifest = {"packages": [{"name": "bank", "path": "bank", "core": ["bank/src/domain"], "e2e": "true"}]}
         self.write({"verify.json": json.dumps(manifest), "bank/Cargo.toml": '[package]\nname = "bank"\n',

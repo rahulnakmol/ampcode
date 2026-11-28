@@ -89,7 +89,7 @@ SIDE_EFFECTS = {
           r"|\bRandomNumberGenerator\.\w+|\bProcess\.(?:Start|GetCurrentProcess|Kill)\b|\b(?:Thread\.Sleep|Task\.Delay)\s*\("
           r"|\bTimeProvider\.System\b|\b(?:Debug|Trace)\.Write\w*|\bnew\s+(?:[\w.]+\.)?(?:HttpClient|WebClient|TcpClient"
           r"|UdpClient|Socket|SqlConnection|SqliteConnection|NpgsqlConnection|FileStream|StreamReader|StreamWriter)\s*\(",
-    "rs": r"(?<![\w:])(?:println|print|eprintln|eprint|dbg)!|\b(?:SystemTime|Instant|Utc|Local|OffsetDateTime)::now\w*\s*\("
+    "rs": r"(?<![\w:])(?:(?:::)?std::)?(?:println|print|eprintln|eprint|dbg)!|\b(?:SystemTime|Instant|Utc|Local|OffsetDateTime)::now\w*\s*\("
           r"|\bthread_rng\s*\(|\bUuid::new_v[47]\s*\(|\bOsRng\b",
 }
 # Python clock and randomness calls, by the full name a call resolves to through its imports and
@@ -266,58 +266,185 @@ def code_only(text, lang, keep_strings=False):
     return pattern.sub(keep, text)
 
 
-CS_RS_TOKENS = {
-    # C#: raw """...""" strings, verbatim @"..." (a "" is a quote), regular strings, chars.
-    "cs": [r'(?P<p>\$*)"""[\s\S]*?"""+', r'(?P<v>\$@|@\$|@)"(?:[^"]|"")*"', r'(?P<r>\$?)"(?:\\.|[^"\\\n])*"',
-           r"'(?:\\.[^'\n]*|[^'\\\n])'"],
-    # Rust: raw strings r#"..."#, strings that may span lines, chars (not lifetimes such as 'a).
-    "rs": [r'b?r(?P<h>#*)"[\s\S]*?"(?P=h)', r'b?"(?:\\[\s\S]|[^"\\])*"', r"b?'(?:\\.[^'\n]*|[^'\\\n])'"],
+# A C# using directive where a directive can start: a line, or after ; { or }.
+# "static" is set for `using static`, "alias" is the alias, and group 3 the namespace or type.
+CS_USING = re.compile(r"(?:^|(?<=[;{}]))[ \t]*(?:global\s+)?using\s+(?:(?P<static>static)\s+)?(?:(?P<alias>\w+)\s*=\s*)?"
+                      r"(?:global::)?([A-Za-z_][\w.]*)\s*;", re.M)
+# Effect types a C# alias or `using static` may hide, and the members `using static` exposes.
+CS_STATIC_EFFECTS = {
+    "DateTime": r"Now|UtcNow|Today", "DateTimeOffset": r"Now|UtcNow", "Guid": r"NewGuid",
+    "Console": r"Write\w*|Read\w*|Clear|Beep|Out|Error|In", "Thread": r"Sleep", "Task": r"Delay",
+    "File": r"(?:Read|Write|Append|Delete|Exists|Copy|Move|Create|Open|Replace|Encrypt|Decrypt)\w*",
+    "Directory": r"(?:Get|Enumerate|Delete|Exists|Create|Move|Set)\w*", "Process": r"Start|Kill|GetCurrentProcess",
+    "Environment": r"GetEnvironmentVariable\w*|SetEnvironmentVariable|Exit|CurrentDirectory|GetCommandLineArgs|TickCount\w*",
+    "Stopwatch": r"\w+", "RandomNumberGenerator": r"\w+", "Random": r"Shared", "Debug": r"Write\w*", "Trace": r"Write\w*",
 }
+# Effect types a Rust `use ... as Alias` may hide.
+RS_EFFECT_TYPES = {"SystemTime", "Instant", "Utc", "Local", "OffsetDateTime", "Uuid", "OsRng", "thread_rng"}
+
+
+def resolve_effect_names(code, lang):
+    """Code with each alias of an effect type written as the type, and each member a C# `using
+    static` exposes written with its type, so the side-effect patterns see Clock.UtcNow as
+    DateTime.UtcNow. Newlines stay where they are, so line numbers hold."""
+    if lang == "cs":
+        for m in CS_USING.finditer(code):
+            last = m[3].rsplit(".", 1)[-1]
+            if last not in CS_STATIC_EFFECTS:
+                continue
+            if m["alias"]:
+                code = re.sub(rf"(?<![\w.]){re.escape(m['alias'])}(?=\s*\.)", last, code)
+            elif m["static"]:
+                code = re.sub(rf"(?<![\w.])(?=(?:{CS_STATIC_EFFECTS[last]})\b)", last + ".", code)
+    elif lang == "rs":
+        for m in re.finditer(r"\b(\w+)\s+as\s+(\w+)", code):
+            if m[1] in RS_EFFECT_TYPES:
+                code = re.sub(rf"(?<![\w:]){re.escape(m[2])}\b(?!\s+as\b)", m[1], code)
+    return code
 
 
 def cs_rs_code(text, lang, keep_strings):
-    """C# or Rust with comments blanked, and string text too unless keep_strings; the {...} holes
-    of a C# interpolated string ($"...") stay code. Rust #[cfg(test)] modules are blanked: test code
-    is not core. Same length as text."""
-    pattern = re.compile("|".join(f"(?:{p})" for p in CS_RS_TOKENS[lang] + [r"/\*[\s\S]*?\*/", r"//[^\n]*"]))
+    """C# or Rust with comments blanked, and string text too unless keep_strings; same length as
+    text. The {...} holes of a C# interpolated string ($"...", $@"...", and $$\"\"\"...\"\"\" with as many
+    braces as dollar signs) stay code, nested strings included. Rust block comments nest, a quote
+    after a lifetime name is not a char, and #[cfg(test)] items are blanked: test code is not core."""
+    n, out = len(text), list(text)
 
-    def keep(match):
-        token = match.group(0)
-        if token.startswith(("//", "/*")):
-            return blank(match)
-        if keep_strings:
-            return token
-        first = min(i for i in (token.find('"'), token.find("'")) if i >= 0)
-        last = max(token.rfind('"'), token.rfind("'"))
-        body = token[first + 1:last]
-        if lang == "cs" and "$" in token[:first]:
-            # Keep each {expression} of an interpolated string; {{ is a literal brace.
-            out, depth, i = [], 0, 0
-            while i < len(body):
-                c = body[i]
-                if not depth and body.startswith("{{", i):
-                    out.append("  ")
-                    i += 2
+    def clear(a, b):
+        for k in range(a, min(b, n)):
+            if out[k] != "\n":
+                out[k] = " "
+
+    def string_body(a, b):
+        if not keep_strings:
+            clear(a, b)
+
+    def cs_string(i):
+        """Index after the C# string starting at i (its $ and @ prefix included)."""
+        j = i
+        while text[j] in "$@":
+            j += 1
+        prefix = text[i:j]
+        dollars = prefix.count("$")
+        quotes = 0
+        while j + quotes < n and text[j + quotes] == '"':
+            quotes += 1
+        raw = quotes >= 3
+        if not raw:
+            quotes = 1
+        j += quotes
+        start = j
+        while j < n:
+            c = text[j]
+            if raw and text.startswith('"' * quotes, j):
+                string_body(start, j)
+                return j + quotes
+            if not raw and c == '"':
+                if "@" in prefix and text.startswith('""', j):
+                    j += 2
                     continue
-                if c == "{" or depth:
-                    depth += {"{": 1, "}": -1}.get(c, 0)
-                    out.append(c)
+                string_body(start, j)
+                return j + 1
+            if not raw and "@" not in prefix and c == "\\":
+                j += 2
+                continue
+            if not raw and "@" not in prefix and c == "\n":
+                break
+            if dollars and c == "{":
+                need = dollars if raw else 1
+                run = len(text[j:]) - len(text[j:].lstrip("{"))
+                if raw and run >= need:
+                    string_body(start, j + run - need)
+                    j = code(j + run, True)
+                    start = j
+                    continue
+                if not raw and run == 1:
+                    string_body(start, j)
+                    j = code(j + 1, True)
+                    start = j
+                    continue
+                j += max(run, 1)
+                continue
+            j += 1
+        string_body(start, j)
+        return j
+
+    def rs_raw(i, j):
+        """Index after a Rust raw string whose r is at i and whose hashes start at j."""
+        hashes = len(text[j:]) - len(text[j:].lstrip("#"))
+        end = text.find('"' + "#" * hashes, j + hashes + 1)
+        end = n if end < 0 else end
+        string_body(j + hashes + 1, end)
+        return min(n, end + 1 + hashes)
+
+    def code(i, in_hole):
+        depth = 0
+        while i < n:
+            c = text[i]
+            if text.startswith("//", i):
+                j = text.find("\n", i)
+                j = n if j < 0 else j
+                clear(i, j)
+                i = j
+            elif text.startswith("/*", i):
+                j, nest = i + 2, 1
+                while j < n and nest:
+                    if lang == "rs" and text.startswith("/*", j):
+                        nest, j = nest + 1, j + 2
+                    elif text.startswith("*/", j):
+                        nest, j = nest - 1, j + 2
+                    else:
+                        j += 1
+                clear(i, j)
+                i = j
+            elif lang == "cs" and (c == '"' or (c in "$@" and re.match(r'[$@]+"', text[i:]))):
+                i = cs_string(i)
+            elif c == '"':
+                j = i + 1
+                while j < n and text[j] != '"':
+                    j += 2 if text[j] == "\\" else 1
+                string_body(i + 1, j)
+                i = j + 1
+            elif c == "'":
+                m = re.match(r"'(?:\\(?:u\{[0-9a-fA-F]+\}|x[0-9a-fA-F]{2}|.)|[^'\\\n])'", text[i:])
+                if m:
+                    string_body(i + 1, i + len(m.group(0)) - 1)
+                    i += len(m.group(0))
                 else:
-                    out.append(c if c == "\n" else " ")
+                    i += 1  # a Rust lifetime such as 'a
+            elif c.isalnum() or c == "_":
+                j = i
+                while j < n and (text[j].isalnum() or text[j] == "_"):
+                    j += 1
+                word = text[i:j]
+                if lang == "rs" and word in ("r", "br") and j < n and text[j] in '#"':
+                    i = rs_raw(i, j) if re.match(r'#*"', text[j:]) else j
+                else:
+                    i = j  # b"..." and b'x' continue at the quote
+            elif in_hole and c in "{}":
+                if c == "}" and not depth:
+                    return i + 1
+                depth += 1 if c == "{" else -1
                 i += 1
-            body = "".join(out)
-        else:
-            body = re.sub(r"[^\n]", " ", body)
-        return token[:first + 1] + body + token[last:]
-    out = pattern.sub(keep, text)
+            else:
+                i += 1
+        return n
+
+    code(0, False)
+    result = "".join(out)
     if lang == "rs":
-        for m in reversed(list(re.finditer(r"#\[cfg\(test\)\]\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+\w+\s*\{", out))):
-            depth, j = 1, m.end()
-            while j < len(out) and depth:
-                depth += {"{": 1, "}": -1}.get(out[j], 0)
-                j += 1
-            out = out[:m.start()] + re.sub(r"[^\n]", " ", out[m.start():j]) + out[j:]
-    return out
+        attr = re.compile(r"#\[\s*cfg\s*\(\s*test\s*\)\s*\](?:\s*#\[[^\]]*\])*")
+        for m in reversed(list(attr.finditer(result))):
+            brace, semi = result.find("{", m.end()), result.find(";", m.end())
+            if brace < 0 or (0 <= semi < brace):
+                end = n if semi < 0 else semi + 1
+            else:
+                depth, end = 1, brace + 1
+                while end < n and depth:
+                    depth += {"{": 1, "}": -1}.get(result[end], 0)
+                    end += 1
+            result = result[:m.start()] + re.sub(r"[^\n]", " ", result[m.start():end]) + result[end:]
+    return result
 
 
 def rs_use_paths(code):
@@ -490,8 +617,7 @@ def imports(text, lang):
         return py_imports(text)
     if lang == "cs":
         code = code_only(text, "cs")
-        return [(code.count("\n", 0, m.start(1)) + 1, m[1]) for m in re.finditer(
-            r"^[ \t]*(?:global\s+)?using\s+(?:static\s+)?(?:\w+\s*=\s*)?(?:global::)?([A-Za-z_][\w.]*)\s*;", code, re.M)]
+        return [(code.count("\n", 0, m.start(3)) + 1, m[3]) for m in CS_USING.finditer(code)]
     if lang == "rs":
         # Use statements, then every path written in code (std::fs::read(...)), outside the uses.
         code = code_only(text, "rs")
@@ -585,9 +711,14 @@ def rs_target(tree, file, path):
         base = rs_module_dir(file)
     if base is None:
         return None
-    for k in range(len(parts), 0, -1):
+    for k in range(len(parts), -1, -1):
         target = posixpath.join(base, *parts[:k])
-        if f"{target}.rs" in tree.files or tree.is_dir(target):
+        if f"{target}.rs" in tree.files:
+            return f"{target}.rs"
+        for root in ("mod.rs", "lib.rs", "main.rs"):
+            if posixpath.join(target, root) in tree.files:
+                return posixpath.join(target, root)
+        if tree.is_dir(target):
             return target
     return base
 
@@ -678,8 +809,9 @@ def scan_file(tree, file, core, package_path=""):
         effects = [(stripped.count("\n", 0, m.start()) + 1, f"calls {m.group(0).strip()}; side effects belong in the shell")
                    for m in re.finditer(SIDE_EFFECTS[lang] + "|" + PY_CLOCK_TEXT, stripped)]
     elif lang != "py":
-        effects = [(stripped.count("\n", 0, m.start()) + 1, f"calls {m.group(0).strip()}; side effects belong in the shell")
-                   for m in re.finditer(SIDE_EFFECTS[lang], stripped)]
+        seen = resolve_effect_names(stripped, lang) if lang in ("cs", "rs") else stripped
+        effects = [(seen.count("\n", 0, m.start()) + 1, f"calls {m.group(0).strip()}; side effects belong in the shell")
+                   for m in re.finditer(SIDE_EFFECTS[lang], seen)]
     out += [(file, line, "side-effect", what) for line, what in effects]
     return out
 
