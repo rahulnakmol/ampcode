@@ -323,8 +323,10 @@ the packages the change touched; a failure blocks the pull request.
 
 ### 6. Review, fix and recheck
 
-Review the item against its definition of done and the cases it touches with a fresh reviewer
-(see [reference/review-and-recovery.md](reference/review-and-recovery.md)). Turn each real bug
+The item is reviewed against its definition of done and the cases it touches by a fresh reviewer
+on another model, which the steering thread starts (see
+[reference/review-and-recovery.md](reference/review-and-recovery.md)); a child does not review
+its own work. Turn each real bug
 into a regression test that fails without the fix, make the smallest correction and rerun the
 affected checks. Never suppress failures, delete useful assertions, hard-code answers or rerun a
 flaky test until it passes; never add a retry, sleep or skip to a flaky test: fix its cause or

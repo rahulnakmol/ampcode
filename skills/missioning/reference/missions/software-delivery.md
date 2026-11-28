@@ -62,7 +62,7 @@ match the exact candidate.
 
 Every acceptance criterion maps to an executed test or journey on the released revision, every
 milestone PR carries a passing `verify_gate.py check` for its head, both reviews are recorded
-against that revision with reviewer and implementer models that differ, the trace has no gaps, and the release is verified on
+against that revision with the model each reviewer was started on, the trace has no gaps, and the release is verified on
 its target. Each test written for a new or changed behaviour keeps its failing run on the unchanged
 code; a refactor's checks pass on both. When accessibility is in scope, each in-scope WCAG 2.2 A
 and AA criterion reads pass, fail or not examined. Built screens are compared with the approved

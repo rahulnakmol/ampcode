@@ -39,8 +39,9 @@ pre-authorized effects.
 
 `delivering` is the conductor; on Amp, `mission-control` blocks a milestone merge until both
 reviews and the evidence match the candidate. The scripts enforce the rest: `verify_gate.py check`
-fails without fresh end-to-end evidence or with I/O in a pure core, and `review_ledger.py check`
-fails a ledger whose reviewer ran on an implementer's model.
+fails without fresh end-to-end evidence or with I/O in a pure core, and `review_ledger.py verdict`
+binds each review to the exact patch. Each reviewer starts on another model by construction
+(`goldfishing`'s `reviewer_model.py`); the ledger records which.
 
 ## How it verifies the work
 
@@ -76,7 +77,7 @@ Every merge into `dev` is an agent row once both reviews and the evidence match 
 
 Every acceptance criterion maps to an executed test or journey on the released revision, every
 milestone pull request carries a passing `verify_gate.py check` for its head, both reviews are
-recorded against it with reviewer and implementer models that differ, and the release is verified on its target. When accessibility
+recorded against it with the model each reviewer was started on, and the release is verified on its target. When accessibility
 is in scope, each WCAG 2.2 A and AA criterion reads pass, fail or not examined; built screens are
 compared with the approved renders; the threat model is updated after the build.
 

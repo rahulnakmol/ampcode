@@ -11,7 +11,8 @@ One JSON file per review. Each round adds an entry to `rounds`; earlier rounds n
   "cap": 3,
   "models": {
     "implementers": [{"model": "anthropic/claude-opus-5-5", "source": "get_thread_status T-…impl"}],
-    "reviewer": {"model": "openai/gpt-6-astra", "source": "get_thread_status T-…review"}
+    "reviewer": {"model": "openai/gpt-6-astra", "source": "get_thread_status T-…review",
+                 "reason": "reviewer_model.py --kind code-1: first code-1 reviewer from a provider that wrote none of it (anthropic)"}
   },
   "rounds": [
     {

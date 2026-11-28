@@ -321,8 +321,21 @@ class Core(Gate):
             "verbatim-quote-then-code": ('static class R {\n    const string A = @"""";\n    static object B() => DateTime.UtcNow;\n}\n', 3),
             "aliased-constructor": ("using R2 = System.Random;\nstatic class R {\n    static int A() => new R2().Next();\n}\n", 3),
             "static-environment": ("using static System.Environment;\nstatic class R {\n    static string A() => MachineName;\n}\n", 3),
+            "unicode-char-quote": ("static class R {\n    static readonly char[] Q = {'\\u0022','\"'}; static object A() => DateTime.UtcNow;\n}\n", 2),
+            "static-stopwatch": ("using static System.Diagnostics.Stopwatch;\nstatic class R {\n    static int X(int y) => y;\n"
+                                 "    static long T() => GetTimestamp();\n}\n", 4),
+            "domain-process-alias": ("using Approval = Shop.Domain.Process;\nstatic class R {\n    static void A() => Approval.Start();\n}\n", None),
+            "generic-io-alias": ("using Logger = Microsoft.Extensions.Logging.ILogger<string>;\nstatic class R { }\n", 1),
+            "global-qualified": ("using global::System.Net.Http;\nstatic class R { }\n", 1),
+            "verbatim-interpolated": ('static class R {\n    static string A(string p) => $@"C:\\{System.IO.File.ReadAllText(p)}";\n}\n', 2),
+            "unknown-namespace": ("using Shop.ExternalContracts;\nstatic class R { }\n", None),
+            "nested-block-namespace": ("using Shop.Infrastructure;\nstatic class R { }\n", 1),
+            "generic-outward-alias": ("using Repo = Shop.Infrastructure.Repo<int>;\nstatic class R { }\n", 1),
             "using-statement": ("static class R {\n    static int A(D d) { using var x = d.Open(); return 1; }\n}\n", None),
-        })
+        }, {"Shop/Program.cs": "namespace Shop;\nclass Program { }\n",
+            "Shop/Infrastructure/Repo.cs": "namespace Shop {\n    namespace Infrastructure {\n        class Repo<T> { }\n    }\n}\n",
+            "Shop/Domain/UnitTests/Fixture.cs": "using System.IO;\nclass T { }\n", "Shop/bin/Debug/Gen.cs": "using System.IO;\n",
+            "Shop/Domain/obj/Gen.cs": "using System.IO;\n"})
 
     def test_rust_effects_behind_comments_aliases_and_test_code(self):
         manifest = {"packages": [{"name": "bank", "path": "bank", "core": ["bank/src/domain"], "e2e": "true"}]}
@@ -335,19 +348,29 @@ class Core(Gate):
             "cfg-test-spaced": ('pub fn f() -> i64 { 1 }\n#[cfg( test )]\nmod tests {\n    fn t() { println!("x"); }\n}\n', None),
             "cfg-test-helper": ('pub fn f() -> i64 { 1 }\n#[cfg(test)]\n#[allow(dead_code)]\nfn helper() { println!("x"); }\n', None),
             "cfg-test-array-type": ('#[cfg(test)]\nfn helper(x: [u8; 1]) -> [u8; 1] { println!("x"); x }\npub fn f() -> i64 { 1 }\n', None),
+            "inline-mod-super": ("pub struct Price;\nmod inner {\n    use super::Price;\n}\n", None),
+            "raw-strings": ('pub const A: &str = r#"say "std::fs::read(x)" now"#;\npub const B: &[u8] = br#"x "println!()" y"#;\n', None),
+            "extern-crate": ("extern crate reqwest;\n", 1),
+            "glob-use": ("use std::fs::*;\n", 1),
+            "self-child": ("mod money;\nuse self::money::Money;\npub fn f() {}\n", None),
             "production-after-test": ('#[cfg(test)]\nfn helper() {}\npub fn f() { println!("x"); }\n', 3),
-        }, extra)
+        }, {**extra, "bank/src/domain/money.rs": "pub struct Money;\n", "bank/src/domain/shell.rs": "pub fn s() {}\n",
+               "bank/target/debug/build/out.rs": "use std::fs;\n"})
 
     def test_rust_file_listed_core_and_workspace_crates(self):
         files = {"Cargo.toml": '[workspace]\nmembers = ["bank", "store"]\n', "bank/Cargo.toml": '[package]\nname = "bank"\n',
-                 "store/Cargo.toml": '[package]\nname = "bank-store"\n', "store/src/lib.rs": "pub fn save() {}\n",
-                 "rules/Cargo.toml": '[package]\nname = "rules"\n', "rules/src/lib.rs": "pub fn r() {}\n",
-                 "bank/src/lib.rs": "pub mod core;\npub mod shell;\n", "bank/src/shell.rs": "pub fn s() {}\n"}
-        manifest = {"packages": [{"name": "bank", "path": "bank", "core": ["bank/src/core/mod.rs", "rules"], "e2e": "true"}]}
+                 "store/Cargo.toml": '[package]\nauthors = ["a"]\nname = "bank-store"\n', "store/src/lib.rs": "pub fn save() {}\n",
+                 "rules/Cargo.toml": '[package]\nauthors = ["a"]\nname = "rules"\n\n[lib]\npath = "lib/rules.rs"\n',
+                 "rules/lib/rules.rs": "pub mod money;\nuse crate::money::M;\npub fn r() {}\n", "rules/lib/money.rs": "pub struct M;\n",
+                 "bank/src/lib.rs": "pub mod core;\npub mod shell;\n", "bank/src/shell.rs": "pub fn s() {}\n",
+                 "bank/src/core/helper.rs": "pub fn h() {}\n"}
+        manifest = {"packages": [{"name": "bank", "path": "bank", "e2e": "true",
+                                  "core": ["bank/src/core/mod.rs", "rules/lib/rules.rs", "rules/lib/money.rs"]}]}
         self.core_cases(manifest, "bank/src/core/mod.rs", {
             "self-reference": ("pub struct Price;\nmod inner {\n    use crate::core::Price;\n}\n", None),
             "workspace-inward": ("use rules::r;\npub fn f() { r() }\n", None),
             "workspace-outward": ("use bank_store::save;\npub fn f() { save() }\n", 1),
+            "child-of-listed-file": ("mod helper;\nuse helper::h;\npub fn f() { h() }\n", 2),
             "sibling-outward": ("use crate::shell::s;\npub fn f() { s() }\n", 1),
         }, files)
 

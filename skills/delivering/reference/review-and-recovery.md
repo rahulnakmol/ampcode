@@ -148,7 +148,7 @@ An M or L item goes to a child thread; an XS or S item goes to a subagent. Every
 - the five stop reasons, copied exactly, and the rule that anything else is a recorded assumption;
 - the reply route: the steering thread's ID for `send_thread_message`, and the report it expects
   (a teach-back of the outcome, approach, constraints, risks and first check; branch and head; each done line
-  with its evidence; the review record; assumptions; findings outside the case list);
+  with its evidence; assumptions; findings outside the case list);
 - the rules: work test-first, pass `verify_gate.py check` on the item head, push the item branch,
   fix what the item review (started by the steering thread) finds, create no threads, merge
   nothing into `dev`. The steering thread reads the child's model from the host; an XS or S
@@ -165,7 +165,7 @@ backstop. When a child settles, read it before acting:
 
 | What you find | Action |
 | --- | --- |
-| A report with evidence | Check it, merge the item branch into the milestone branch, run the checks |
+| A report with evidence | Check it, start the item review on the picked model (Item review, above), send its findings to the child; once the review passes, merge the item branch into the milestone branch and run the checks |
 | A question the contract or a safe default settles | Answer it and tell it to continue |
 | A stop for one of the five reasons | Record it; ask the owner if it is not settled; continue other work |
 | Idle with no report, or paused over usage | Tell it to continue |

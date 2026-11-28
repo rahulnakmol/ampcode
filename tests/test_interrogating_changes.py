@@ -158,7 +158,7 @@ class Check(LedgerCase):
         ledger["models"] = {"implementers": [{"model": "openai/gpt-6-astra", "source": "T-impl"}],
                             "reviewer": {"model": "openai/gpt-6-astra", "source": "T-review"}}
         self.assertEqual(self.check(ledger).returncode, 0)
-        ledger["models"] = {}
+        ledger["models"] = ["openai/gpt-6-astra"]
         result = self.verdict(ledger)
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn("reviewer model: not recorded; implementer models: not recorded", result.stdout)
@@ -463,16 +463,27 @@ class FloorGuard(unittest.TestCase):
         self.assertFlags(diff("Shop.Tests/PriceTests.cs", removed=["        Assert.Equal(3, Price.Total(xs));"]),
                          "assertion removed")
         self.assertFlags(diff("tests/total.rs", removed=["    assert_eq!(total(&[1, 2]), 3);"]), "assertion removed")
+        for line in ("        total.Should().Be(3);", "        Assert.Equal<int>(3, total);", "        total.ShouldBe(3);",
+                     "        Should.Throw<ArgumentException>(() => Price.Total(null));"):
+            with self.subTest(line=line):
+                self.assertFlags(diff("Shop.UnitTests/PriceTests.cs", removed=[line]), "assertion removed")
         for path, line in (("Shop.Tests/PriceTests.cs", '    [Fact(Skip = "flaky")]'), ("Shop.Tests/PriceTests.cs", "    [Ignore]"),
-                           ("Shop.Tests/PriceTests.cs", '        Assert.Ignore("later");'), ("src/lib.rs", '#[ignore = "slow"]')):
+                           ("Shop.Tests/PriceTests.cs", '        Assert.Ignore("later");'), ("src/lib.rs", '#[ignore = "slow"]'),
+                           ("Shop.Tests/PriceTests.cs", "    [Explicit]"), ("Shop.Tests/PriceTests.cs", "        Skip.If(ci);")):
             with self.subTest(line=line):
                 self.assertFlags(diff(path, added=[line]), "skip marker added")
         for path, line in (("Shop.Tests/PriceTests.cs", "    [Retry(3)]"), ("Shop.Tests/PriceTests.cs", "    [RetryFact(MaxRetries = 3)]"),
-                           (".config/nextest.toml", "retries = 2")):
+                           (".config/nextest.toml", "retries = 2"), ("Shop.UnitTests/Fixtures.cs", "    [Retry(3)]"),
+                           ("Shop.Tests/PriceTests.cs", "    [RetryFact]"), ("Shop.Tests/PriceTests.cs", "    [RetryTheory(3)]")):
             with self.subTest(line=line):
                 self.assertFlags(diff(path, added=[line]), "test retry added")
         self.assertClean(diff("src/Http/Client.cs", added=["    [Retry(3)]"]))
-        for path, line in (("src/Price.cs", "#pragma warning disable CS8618"), ("src/lib.rs", "#![allow(dead_code)]"),
+        # The codes are inside #[allow( ... )]: a widened list counts, an edit elsewhere on the line does not.
+        self.assertFlags(diff("src/lib.rs", removed=["#[allow(dead_code)] fn f(a: u8) {}"],
+                              added=["#[allow(dead_code, unused_variables)] fn unused_variables(a: u8) {}"]), "silencer")
+        self.assertClean(diff("src/lib.rs", removed=["#[allow(dead_code)] fn f(a: u8) {}"],
+                              added=["#[allow(dead_code)] fn f(a: u8, b: u8) {}"]))
+        for path, line in (("src/Price.cs", "#pragma warning disable CS8618"), ("src/lib.rs", "#![allow(dead_code)]"), ("src/lib.rs", "#[allow(dead_code)]"),
                            ("src/Price.cs", '[SuppressMessage("Style", "IDE0060")]')):
             with self.subTest(line=line):
                 self.assertFlags(diff(path, added=[line]), "silencer")

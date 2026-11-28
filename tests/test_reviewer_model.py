@@ -43,8 +43,21 @@ class ReviewerModel(unittest.TestCase):
             self.assertEqual(pick(kind, CARBON, NEON, taken=[ASTRA]), (1, "no reviewer model: every listed reviewer model "
                                                                         "wrote or reviewed this candidate; choose one by hand and say why"))
 
+    def test_bare_or_differently_written_names_are_the_same_model(self):
+        # Hosts print models with or without a provider; both name the same model.
+        self.assertEqual(pick("ui-complex", "gemini-4-carbon"), (0, NEON))
+        self.assertEqual(pick("code-1", "gpt-6-astra"), (0, OPUS))
+        self.assertEqual(pick("code-1", "claude-sonnet-5-5", taken=[ASTRA]), (0, CARBON))
+        self.assertEqual(pick("ui", " Google-Vertex/Gemini-4-Neon "), (0, CARBON))
+        self.assertEqual(pick("code-2", "gemini-4-neon"), (0, ASTRA))
+        self.assertEqual(pick("code-2", "google/gemini-4-neon"), (0, ASTRA))
+        run = subprocess.run([sys.executable, str(PICK), "--kind", "code-2", "--implementer", OPUS, "--not", ASTRA],
+                             capture_output=True, text=True)
+        self.assertEqual(run.stdout.splitlines()[1], "reason: first code-2 reviewer from a provider that wrote none of it (anthropic)")
+
     def test_bad_input(self):
         self.assertEqual(pick("code-1", " ")[0], 1)
+        self.assertEqual(pick("code-1", OPUS, taken=[" "])[0], 1)
         self.assertNotEqual(pick("review", OPUS)[0], 0)
 
 

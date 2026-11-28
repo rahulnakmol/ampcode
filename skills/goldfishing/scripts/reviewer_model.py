@@ -40,14 +40,25 @@ ORDER = {
 }
 
 
+def name_of(model):
+    """The model's name without its provider and spaces: openai/gpt-6-astra gives gpt-6-astra."""
+    return "".join(model.split()).lower().rsplit("/", 1)[-1]
+
+
 def provider(model):
-    """openai/gpt-6-astra gives openai; google-vertex/... gives google."""
-    name = model.strip().lower().split("/", 1)[0]
-    return "google" if name.startswith(("google", "gemini")) else name
+    """The provider: from the prefix (google-vertex/... gives google), or for a bare name from the
+    model family (claude gives anthropic, gpt gives openai, gemini gives google)."""
+    flat = "".join(model.split()).lower()
+    prefix = flat.split("/", 1)[0] if "/" in flat else ""
+    name = name_of(model)
+    for family, owner in (("claude", "anthropic"), ("gpt", "openai"), ("gemini", "google")):
+        if name.startswith(family):
+            return owner
+    return "google" if prefix.startswith("google") else prefix or name
 
 
 def same(a, b):
-    return "".join(a.split()).lower() == "".join(b.split()).lower()
+    return name_of(a) == name_of(b)
 
 
 def pick(kind, implementers, taken=()):

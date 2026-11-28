@@ -45,7 +45,7 @@ MANIFEST = "verify.json"
 CODE = {".py": "py", ".js": "js", ".jsx": "js", ".mjs": "js", ".cjs": "js", ".ts": "js", ".tsx": "js",
         ".mts": "js", ".cts": "js", ".go": "go", ".cs": "cs", ".rs": "rs"}
 TEST_FILE = re.compile(r"(?:^|/)(?:test_[^/]*\.py|[^/]*_test\.(?:py|go)|conftest\.py|[^/]*\.(?:test|spec)\.[cm]?[jt]sx?"
-                       r"|[^/]*Tests?\.cs)$|(?:^|/)(?:__tests__|testdata|tests?|benches|[^/]*\.Tests?)/")
+                       r"|[^/]*Tests?\.cs)$|(?:^|/)(?:__tests__|testdata|tests?|benches|[^/]*Tests?)/")
 SKIP_DIRS = {".git", "node_modules", "vendor", "__pycache__", "dist", "build", ".venv", "bin", "obj", "target"}
 
 IO_MODULES = {
@@ -271,15 +271,18 @@ def code_only(text, lang, keep_strings=False):
 # A C# using directive where a directive can start: a line, or after ; { or }.
 # "static" is set for `using static`, "alias" is the alias, and group 3 the namespace or type.
 CS_USING = re.compile(r"(?:^|(?<=[;{}]))[ \t]*(?:global\s+)?using\s+(?:(?P<static>static)\s+)?(?:(?P<alias>\w+)\s*=\s*)?"
-                      r"(?:global::)?([A-Za-z_][\w.]*)\s*;", re.M)
+                      r"(?:global::)?([A-Za-z_][\w.]*)(?:\s*<[^;]*>)?\s*;", re.M)
 # Effect types a C# alias or `using static` may hide, and the members `using static` exposes.
+# Keyed by full name, so a domain type that is also called Process is not one.
 CS_STATIC_EFFECTS = {
-    "DateTime": r"Now|UtcNow|Today", "DateTimeOffset": r"Now|UtcNow", "Guid": r"NewGuid",
-    "Console": r"Write\w*|Read\w*|Clear|Beep|Out|Error|In", "Thread": r"Sleep", "Task": r"Delay",
-    "File": r"(?:Read|Write|Append|Delete|Exists|Copy|Move|Create|Open|Replace|Encrypt|Decrypt)\w*",
-    "Directory": r"(?:Get|Enumerate|Delete|Exists|Create|Move|Set)\w*", "Process": r"Start|Kill|GetCurrentProcess",
-    "Environment": CS_ENVIRONMENT,
-    "Stopwatch": r"\w+", "RandomNumberGenerator": r"\w+", "Random": r"Shared", "Debug": r"Write\w*", "Trace": r"Write\w*",
+    "System.DateTime": r"Now|UtcNow|Today", "System.DateTimeOffset": r"Now|UtcNow", "System.Guid": r"NewGuid",
+    "System.Console": r"Write\w*|Read\w*|Clear|Beep|Out|Error|In", "System.Threading.Thread": r"Sleep",
+    "System.Threading.Tasks.Task": r"Delay", "System.Environment": CS_ENVIRONMENT, "System.Random": r"Shared",
+    "System.IO.File": r"(?:Read|Write|Append|Delete|Exists|Copy|Move|Create|Open|Replace|Encrypt|Decrypt)\w*",
+    "System.IO.Directory": r"(?:Get|Enumerate|Delete|Exists|Create|Move|Set)\w*",
+    "System.Diagnostics.Process": r"Start|Kill|GetCurrentProcess", "System.Diagnostics.Stopwatch": r"StartNew|GetTimestamp|GetElapsedTime",
+    "System.Security.Cryptography.RandomNumberGenerator": r"GetBytes|GetInt32|GetNonZeroBytes|Fill|GetHexString|GetString|GetItems|Shuffle|Create",
+    "System.Diagnostics.Debug": r"Write\w*|Print|Assert|Fail", "System.Diagnostics.Trace": r"Write\w*|Trace\w*|Assert|Fail",
 }
 # Effect types a Rust `use ... as Alias` may hide.
 RS_EFFECT_TYPES = {"SystemTime", "Instant", "Utc", "Local", "OffsetDateTime", "Uuid", "OsRng", "thread_rng"}
@@ -291,13 +294,13 @@ def resolve_effect_names(code, lang):
     DateTime.UtcNow. Newlines stay where they are, so line numbers hold."""
     if lang == "cs":
         for m in CS_USING.finditer(code):
-            last = m[3].rsplit(".", 1)[-1]
-            if last not in CS_STATIC_EFFECTS:
+            if m[3] not in CS_STATIC_EFFECTS:
                 continue
+            last = m[3].rsplit(".", 1)[-1]
             if m["alias"]:
                 code = re.sub(rf"(?<![\w.]){re.escape(m['alias'])}(?=\s*[.(])", last, code)  # R.X and new R()
             elif m["static"]:
-                code = re.sub(rf"(?<![\w.])(?=(?:{CS_STATIC_EFFECTS[last]})\b)", last + ".", code)
+                code = re.sub(rf"(?<![\w.])(?=(?:{CS_STATIC_EFFECTS[m[3]]})\b)", last + ".", code)
     elif lang == "rs":
         for m in re.finditer(r"\b(\w+)\s+as\s+(\w+)", code):
             if m[1] in RS_EFFECT_TYPES:
@@ -408,7 +411,7 @@ def cs_rs_code(text, lang, keep_strings):
                 string_body(i + 1, j)
                 i = j + 1
             elif c == "'":
-                m = re.match(r"'(?:\\(?:u\{[0-9a-fA-F]+\}|x[0-9a-fA-F]{2}|.)|[^'\\\n])'", text[i:])
+                m = re.match(r"'(?:\\(?:u\{[0-9a-fA-F]+\}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|x[0-9a-fA-F]{1,4}|.)|[^'\\\n])'", text[i:])
                 if m:
                     string_body(i + 1, i + len(m.group(0)) - 1)
                     i += len(m.group(0))
@@ -470,6 +473,34 @@ def rs_use_paths(code):
     return found
 
 
+def rs_inline_modules(code, at):
+    """The names of the inline modules (mod a { ... }) that enclose offset at, outermost first."""
+    names = []
+    for m in re.finditer(r"\bmod\s+(\w+)\s*\{", code[:at]):
+        depth, j = 1, m.end()
+        while j < at and depth:
+            depth += {"{": 1, "}": -1}.get(code[j], 0)
+            j += 1
+        if depth:
+            names.append(m[1])
+    return names
+
+
+def rs_from_file_module(path, inline):
+    """A self:: or super:: path written inside inline modules, as seen from the file's own module:
+    super:: inside mod inner is self::; self::x inside mod inner is self::inner::x."""
+    parts = path.split("::")
+    inline = list(inline)
+    while parts and parts[0] == "super" and inline:
+        parts[0] = "self"
+        inline.pop()
+        if parts[1:2] == ["super"]:
+            parts.pop(0)
+    if parts[0] == "self" and inline:
+        parts = ["self", *inline, *parts[1:]]
+    return "::".join(parts)
+
+
 def rs_expand(spec):
     """The paths one use tree names, from its text without spaces or aliases."""
     items, depth, start = [], 0, 0
@@ -485,7 +516,7 @@ def rs_expand(spec):
             for sub in rs_expand(inner[:inner.rindex("}")]):
                 out.append(prefix.rstrip(":") if sub == "self" else prefix + sub)
         else:
-            out.append(re.sub(r"::\*$", "", item))
+            out.append(item)
     return [p.lstrip(":") for p in out if p.strip(":")]
 
 
@@ -626,12 +657,13 @@ def imports(text, lang):
         return py_imports(text)
     if lang == "cs":
         code = code_only(text, "cs")
-        return [(code.count("\n", 0, m.start(3)) + 1, m[3]) for m in CS_USING.finditer(code)]
+        # An alias names a type, so its namespace is the name without its last part: mark it with "=".
+        return [(code.count("\n", 0, m.start(3)) + 1, m[3] + ("=" if m["alias"] else "")) for m in CS_USING.finditer(code)]
     if lang == "rs":
         # Use statements, then every path written in code (std::fs::read(...)), outside the uses.
         code = code_only(text, "rs")
         uses = rs_use_paths(code)
-        found = [(code.count("\n", 0, at) + 1, path) for at, path in uses]
+        found = [(code.count("\n", 0, at) + 1, rs_from_file_module(path, rs_inline_modules(code, at))) for at, path in uses]
         rest = re.sub(r"(?:^|(?<=[;{}]))[ \t]*(?:pub(?:\([^)]*\))?\s+)?use\s+[^;]+;", blank, code, flags=re.M)
         found += [(rest.count("\n", 0, m.start()) + 1, m[1].lstrip(":")) for m in re.finditer(
             r"(?<![\w:])((?:::)?[a-z_]\w*(?:::[A-Za-z_]\w*)+)", rest)]
@@ -670,22 +702,47 @@ def cs_namespaces(tree):
         tree._cs_namespaces = {}
         for f in sorted(tree.files):
             if f.endswith(".cs") and not any(part in SKIP_DIRS for part in f.split("/")):
-                code = code_only(tree.read(f) or "", "cs")
-                for m in re.finditer(r"^[ \t]*namespace\s+([\w.]+)", code, re.M):
-                    tree._cs_namespaces.setdefault(m[1], []).append(f)
+                code, depth, stack = code_only(tree.read(f) or "", "cs"), 0, []
+                for m in re.finditer(r"\bnamespace\s+([\w.]+)\s*([{;])|[{}]", code):
+                    if m[1]:  # namespace A { namespace B { ... } } declares A.B
+                        name = ".".join([n for n, _ in stack] + [m[1]])
+                        tree._cs_namespaces.setdefault(name, []).append(f)
+                        if m[2] == "{":
+                            stack.append((m[1], depth))
+                            depth += 1
+                        else:
+                            stack.append((m[1], -1))  # file-scoped: holds to the end
+                    elif m[0] == "{":
+                        depth += 1
+                    else:
+                        depth -= 1
+                        while stack and stack[-1][1] == depth:
+                            stack.pop()
     return tree._cs_namespaces
 
 
 def rs_crates(tree):
-    """{crate name with - as _: its src directory} from every Cargo.toml [package] in the tree."""
+    """{crate name with - as _: (source directory, root file)} from every Cargo.toml [package]."""
     if getattr(tree, "_rs_crates", None) is None:
         tree._rs_crates = {}
         for f in sorted(tree.files):
             if f.rsplit("/", 1)[-1] == "Cargo.toml":
-                m = re.search(r"^\[package\][^\[]*?^name\s*=\s*\"([^\"]+)\"", tree.read(f) or "", re.M | re.S)
-                if m:
-                    tree._rs_crates[m[1].replace("-", "_")] = posixpath.join(posixpath.dirname(f), "src").lstrip("/")
+                name, *root = rs_manifest(tree, f)
+                if name:
+                    tree._rs_crates[name.replace("-", "_")] = tuple(root)
     return tree._rs_crates
+
+
+def rs_manifest(tree, cargo):
+    """(package name or None, source directory, root file) of one Cargo.toml: [lib] path and its
+    directory when set, else src/ and src/lib.rs."""
+    text = tree.read(cargo) or ""
+    section = lambda title: (re.search(rf"^\[{title}\][ \t]*$(.*?)(?=^\[|\Z)", text, re.M | re.S) or [None, ""])[1]
+    name = re.search(r'^name\s*=\s*"([^"]+)"', section("package"), re.M)
+    lib = re.search(r'^path\s*=\s*"([^"]+)"', section("lib"), re.M)
+    top = lambda p: "" if posixpath.normpath(p) == "." else posixpath.normpath(p)
+    file = top(posixpath.join(posixpath.dirname(cargo), lib[1] if lib else "src/lib.rs"))
+    return (name[1] if name else None), top(posixpath.dirname(file) or "."), file
 
 
 def rs_module_dir(file):
@@ -698,13 +755,18 @@ def rs_module_dir(file):
 def rs_target(tree, file, path):
     """The repository path a Rust path names (crate::, super::, self::, a workspace crate, or a child
     module of this file's module), or None for the standard library or an outside crate."""
-    parts = path.split("::")
+    parts, root_file = path.split("::"), None
     if parts[0] == "crate":
+        # The crate root is the nearest directory holding lib.rs or main.rs (crates/core/main.rs for
+        # a [[bin]] path), searched up to the Cargo.toml; else the Cargo.toml's src/.
         here, root = file, None
         while here:
             here = posixpath.dirname(here)
+            if any(posixpath.join(here, r).lstrip("/") in tree.files for r in ("lib.rs", "main.rs")):
+                root = here
+                break
             if posixpath.join(here, "Cargo.toml").lstrip("/") in tree.files:
-                root = posixpath.join(here, "src").lstrip("/")
+                _, root, root_file = rs_manifest(tree, posixpath.join(here, "Cargo.toml").lstrip("/"))
                 break
         base, parts = root, parts[1:]
     elif parts[0] in ("self", "super"):
@@ -712,7 +774,7 @@ def rs_target(tree, file, path):
         while parts and parts[0] in ("self", "super"):
             base = posixpath.dirname(base) if parts.pop(0) == "super" else base
     elif parts[0] in rs_crates(tree):
-        base, parts = rs_crates(tree)[parts[0]], parts[1:]
+        (base, root_file), parts = rs_crates(tree)[parts[0]], parts[1:]
     else:
         child = posixpath.join(rs_module_dir(file), parts[0])
         if f"{child}.rs" not in tree.files and not tree.is_dir(child):
@@ -722,6 +784,8 @@ def rs_target(tree, file, path):
         return None
     for k in range(len(parts), -1, -1):
         target = posixpath.join(base, *parts[:k])
+        if not k and root_file in tree.files:
+            return root_file  # the crate root itself, such as [lib] path = "lib/rules.rs"
         if f"{target}.rs" in tree.files:
             return f"{target}.rs"
         for root in ("mod.rs", "lib.rs", "main.rs"):
@@ -746,11 +810,11 @@ def local_target(tree, file, lang, module, package_path="", core=()):
     if lang == "rs":
         return rs_target(tree, file, module)
     if lang == "cs":
-        # A namespace (or, for `using X = A.B.C;`, the namespace of a type) declared in the repository:
-        # outward when only files outside the core declare it. Returns one of those files.
-        parts = module.split(".")
-        for k in range(len(parts), 0, -1):
-            files = cs_namespaces(tree).get(".".join(parts[:k]))
+        # A namespace declared in the repository (for `using X = A.B.C;`, A.B.C or A.B): outward when
+        # only files outside the core declare it. Returns one of those files.
+        name = module.rstrip("=")
+        for candidate in [name] + ([name.rsplit(".", 1)[0]] if module.endswith("=") and "." in name else []):
+            files = cs_namespaces(tree).get(candidate)
             if files:
                 return None if any(inside(f, core) for f in files) else files[0]
         return None
@@ -799,7 +863,7 @@ def scan_file(tree, file, core, package_path=""):
     stripped = code_only(text, lang)
     out = []
     for line, module in imports(text, lang):
-        name = module[5:] if lang == "js" and module.startswith("node:") else module
+        name = module[5:] if lang == "js" and module.startswith("node:") else module.rstrip("=")
         top = name.split(".")[0] if lang == "py" else name.split("/")[0] if lang == "js" else name
         if lang in IO_SCOPES:
             sep = "." if lang == "cs" else "::"
@@ -807,7 +871,7 @@ def scan_file(tree, file, core, package_path=""):
         else:
             io = name in IO_MODULES[lang] or top in IO_MODULES[lang] or name.startswith(IO_PREFIXES[lang])
         if io:
-            out.append((file, line, "io-import", f"imports {module}, an I/O module; move the call to the shell"))
+            out.append((file, line, "io-import", f"imports {module.rstrip('=')}, an I/O module; move the call to the shell"))
             continue
         target = local_target(tree, file, lang, module, package_path, core)
         if target and not NON_CODE.search(target) and not inside(target, core):

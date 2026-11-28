@@ -45,7 +45,7 @@ ASSERTION = re.compile(
     r"|pytest\.raises\s*\(|require\.\w+\s*\(|t\.(?:Error|Fatal)f?\s*\(|XCTAssert\w*\s*\(|assert[A-Z]\w*\s+[\"(\[\w]"
     r"|(?i:select)\s+(?:ok|is|isnt|matches|cmp_ok|results_eq|set_eq|bag_eq|throws_ok|lives_ok|is_empty)\s*\("
     r"|(?i:exec(?:ute)?)\s+tSQLt\.(?:Assert|Fail)\w*|(?:Assert|CollectionAssert|StringAssert|ClassicAssert)\.\w+\s*[(<])"
-    r"|\.should\b|\.Should\(\)|`should\w*`")
+    r"|\.should\b|\.Should\(\)|\.Should[A-Z]\w*\s*[(<]|\bShould\.(?:Throw|NotThrow)\w*|`should\w*`")
 SKIP = re.compile(
     r"(?:@|\bpytestmark\s*=\s*\[?\s*)?\bpytest\.mark\.(?:skip|skipif|xfail)\b|\bunittest\.skip\w*|\.skipTest\s*\("
     r"|\bpytest\.(?:skip|xfail)\s*\(|^\s*@skip(?:If|Unless)?\s*\("
@@ -60,11 +60,11 @@ SILENCER = re.compile(
 # A test retry and its count; mark.flaky and @flaky retry without a count.
 RETRY = re.compile(
     r"(?:--retries|--retry|--reruns)(?:=|\s+)(?P<n>\d+)|\b(?:retries|retry|reruns)[\"']?\s*[:=]\s*(?P<m>\d+)"
-    r"|\b(?:retryTimes|this\.retries)\s*\(\s*(?P<k>\d+)|\[Retry\s*\(\s*(?P<c>\d+)|\bMaxRetries\s*=\s*(?P<x>\d+)"
+    r"|\b(?:retryTimes|this\.retries)\s*\(\s*(?P<k>\d+)|\[Retry\s*\(\s*(?P<c>\d+)|\[Retry(?:Fact|Theory)\b(?:\s*\(\s*(?P<y>\d+))?|\bMaxRetries\s*=\s*(?P<x>\d+)"
     r"|\bmark\.flaky\b|@flaky\b")
 # Retries count only in tests, test and build configuration, and CI.
 RETRY_PATHS = re.compile(
-    r"(?:^|/)(?:tests?|spec|__tests__|e2e|[^/]*\.Tests?)/|(?:^|/)test_[^/]*\.py$|_test\.(?:py|go)$|\.(?:test|spec)\.[cm]?[jt]sx?$"
+    r"(?:^|/)(?:tests?|spec|__tests__|e2e|[^/]*Tests?)/|(?:^|/)test_[^/]*\.py$|_test\.(?:py|go)$|\.(?:test|spec)\.[cm]?[jt]sx?$"
     r"|Tests?\.cs$|(?:^|/)nextest\.toml$"
     r"|(?:^|/)(?:conftest\.py|[^/]*\.config\.[cm]?[jt]s|\.mocharc[^/]*|pytest\.ini|pyproject\.toml|setup\.cfg|tox\.ini"
     r"|package\.json|bunfig\.toml|verify\.json|Makefile|[^/]*\.mk)$")
@@ -148,6 +148,8 @@ def silencers(text):
     for match in SILENCER.finditer(text):
         family = re.sub(r"\s+", "", match.group(0)).lower()
         rest = re.split(r"\*/|#|//|--", text[match.end():], maxsplit=1)[0]
+        if family.endswith("(") or family == "suppressmessage":  # #[allow(a, b)], [SuppressMessage(...)]: inside ( )
+            rest = text[match.end():].lstrip("(").split(")", 1)[0]
         codes = set() if family.startswith("@ts-") else set(re.findall(r"[\w@/.-]+", rest))
         found.append((family, frozenset(codes)))
     return found
@@ -158,7 +160,7 @@ def retries(text):
     mark.flaky or @flaky without a count gives a count of 1."""
     found = []
     for m in RETRY.finditer(text):
-        group = next((g for g in ("n", "m", "k", "c", "x") if m[g]), None)
+        group = next((g for g in ("n", "m", "k", "c", "x", "y") if m[g]), None)
         count = m[group] if group else None
         setting = re.sub(r"[\s\"'=:(\[]", "", m.group(0)[:m.start(group) - m.start()] if group else m.group(0))
         found.append((setting, int(count or 1)))
